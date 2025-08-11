@@ -161,6 +161,7 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.internal.loader.NativeLibraries;
+import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -528,6 +529,7 @@ public class SVMHost extends HostVM {
             componentHub = dynamicHub(hybrid.componentType());
         }
         int modifiers = javaClass.getModifiers();
+        int classFileAccessFlags = Reflection.getClassAccessFlags(javaClass);
 
         /*
          * If the class is an application class then it was loaded by NativeImageClassLoader. The
@@ -573,7 +575,7 @@ public class SVMHost extends HostVM {
                         isLambdaFormHidden, isLinked, isProxyClass);
 
         return new DynamicHub(javaClass, className, computeHubType(type), ReferenceType.computeReferenceType(javaClass),
-                        superHub, componentHub, sourceFileName, modifiers, flags, hubClassLoader, nestHost,
+                        superHub, componentHub, sourceFileName, modifiers, classFileAccessFlags, flags, hubClassLoader, nestHost,
                         simpleBinaryName, getDeclaringClass(javaClass), getSignature(javaClass), layerId);
     }
 

@@ -397,8 +397,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, byte hubType, ReferenceType referenceType, DynamicHub superType,
-                    DynamicHub componentHub, String sourceFileName, int modifiers, short flags, ClassLoader classLoader,
-                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
+                    DynamicHub componentHub, String sourceFileName, int modifiers, int classFileAccessFlags, short flags,
+                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType;
@@ -412,7 +412,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature);
+                        modifiers, classFileAccessFlags, loader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     /**
@@ -457,7 +457,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
 
-        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        // FIXME: proper value
+        int classFileAccessFlags = 0;
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass,
+                        signature);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
@@ -1038,7 +1041,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.modifiers;
     }
 
-    public int getClassAccessFlags() {
+    @Substitute
+    int getClassFileAccessFlags() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             int classAccessFlags = 0;
             for (var reflectionMetadata : LayeredReflectionMetadataSingleton.singletons()) {
@@ -1046,7 +1050,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
             return classAccessFlags;
         } else {
-            return getClassAccessFlags(reflectionMetadata());
+            return companion.classFileAccessFlags;
         }
     }
 

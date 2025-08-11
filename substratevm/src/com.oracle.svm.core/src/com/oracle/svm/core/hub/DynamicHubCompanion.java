@@ -67,6 +67,12 @@ public final class DynamicHubCompanion {
     /** The {@link Modifier modifiers} of this class. */
     final int modifiers;
 
+    /**
+     * The access flags of this class as they were in the class's bytecode, including the original
+     * setting of ACC_SUPER.
+     */
+    final int classFileAccessFlags;
+
     /** The class that serves as the host for the nest. All nestmates have the same host. */
     final Class<?> nestHost;
 
@@ -146,24 +152,25 @@ public final class DynamicHubCompanion {
     @Stable boolean canUnsafeAllocate;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+    static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
                     Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
 
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
-    static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+    static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
                     ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
-    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
                     Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
         this.module = module;
         this.superHub = superHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
+        this.classFileAccessFlags = classFileAccessFlags;
         this.nestHost = nestHost;
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
