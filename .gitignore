@@ -29,7 +29,6 @@
 .externalToolBuilders
 .factorypath
 .idea
-!.idea/icon.png
 .metadata/
 .project
 .pydevproject
