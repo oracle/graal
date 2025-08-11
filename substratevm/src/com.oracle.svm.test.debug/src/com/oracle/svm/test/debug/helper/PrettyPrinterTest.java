@@ -151,7 +151,7 @@ public class PrettyPrinterTest {
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testLambda(Function<String, String> lambda) {
-        blackhole(lambda);
+        lambda.apply("test");
     }
 
     @SuppressWarnings("unused")
@@ -166,6 +166,7 @@ public class PrettyPrinterTest {
     }
 
     static ExampleClass setupExampleObject(boolean recursive) {
+        ExampleClass.s1 += "!"; // Ensure the static field ends up in the debug info.
         ExampleClass example = new ExampleClass();
         example.f10 = new ExampleClass(10, 20, (short) 30, '\40', (byte) 50, true, "60", Day.Sunday, new Object(), null);
         example.f9 = new ArrayList<>(List.of(example.f10, new ExampleClass()));
