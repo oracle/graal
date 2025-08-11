@@ -187,7 +187,7 @@ final class ExceptionAccessor extends Accessor {
             } else if (throwable instanceof AbstractTruffleException) {
                 Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
                 if (lazyStackTrace != null) {
-                    hostStack = ACCESSOR.languageSupport().getInternalStackTraceElements(lazyStackTrace);
+                    hostStack = ACCESSOR.languageSupport().getInternalStackTraceElements(lazyStackTrace, true);
                 }
             } else {
                 // Internal error.

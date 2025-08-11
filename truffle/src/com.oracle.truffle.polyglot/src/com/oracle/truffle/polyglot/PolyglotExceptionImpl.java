@@ -573,7 +573,7 @@ final class PolyglotExceptionImpl {
         } else if (EngineAccessor.EXCEPTION.isException(impl.exception)) {
             Throwable lazyStack = EngineAccessor.EXCEPTION.getLazyStackTrace(impl.exception);
             if (lazyStack != null) {
-                hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(lazyStack);
+                hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(lazyStack, true);
             }
             // AbstractTruffleException.getStackTrace() always returns an empty stack trace.
         } else {
