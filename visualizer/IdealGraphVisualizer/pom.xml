@@ -122,6 +122,15 @@
             <plugin>
                 <groupId>org.openrewrite.maven</groupId>
                 <artifactId>rewrite-maven-plugin</artifactId>
+                <!-- move to CI -->
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>dryRun</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
