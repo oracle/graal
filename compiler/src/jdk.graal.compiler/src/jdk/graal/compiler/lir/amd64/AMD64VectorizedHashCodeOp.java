@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -205,7 +205,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     }
 
     private static void reduce2I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
-        if (vtmp1.equals(src2)) {
+        if (!vtmp1.equals(src2)) {
             masm.movdqu(vtmp1, src2);
         }
         masm.emit(VPHADDD, vtmp1, vtmp1, vtmp1, XMM);
@@ -215,7 +215,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     }
 
     private static void reduce4I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
-        if (vtmp1.equals(src2)) {
+        if (!vtmp1.equals(src2)) {
             masm.movdqu(vtmp1, src2);
         }
         masm.emit(VPHADDD, vtmp1, vtmp1, src2, XMM);
@@ -225,7 +225,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     private static void reduce8I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
         masm.emit(VPHADDD, vtmp1, src2, src2, YMM);
         masm.emit(VEXTRACTI128, vtmp2, vtmp1, 1, YMM);
-        masm.emit(VPADDD, vtmp1, vtmp1, vtmp2, YMM);
+        masm.emit(VPADDD, vtmp1, vtmp1, vtmp2, XMM);
         reduce2I(masm, dst, src1, vtmp1, vtmp1, vtmp2);
     }
 
