@@ -27,14 +27,14 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNA
 import static org.graalvm.visualizer.settings.TestUtils.assertNot;
 import static org.junit.Assert.*;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.data.DataTestUtil;
 import org.graalvm.visualizer.difference.Difference;

@@ -25,7 +25,7 @@ package org.graalvm.visualizer.source.impl.editor;
 
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
 
-import java.awt.*;
+import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.util.*;
 import java.util.List;

@@ -40,7 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.data.Source.Provider;
 import org.graalvm.visualizer.difference.Difference;

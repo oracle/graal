@@ -22,7 +22,9 @@
  */
 package org.graalvm.visualizer.view;
 
-import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
@@ -32,7 +34,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 

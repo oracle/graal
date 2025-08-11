@@ -23,12 +23,11 @@
 
 package org.graalvm.visualizer.view.editors;
 
-import java.awt.*;
+import java.awt.Component;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 import java.beans.PropertyEditorSupport;
 import java.util.*;
-import java.util.List;
 
 import org.openide.explorer.propertysheet.ExPropertyEditor;
 import org.openide.explorer.propertysheet.PropertyEnv;

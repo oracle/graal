@@ -26,7 +26,8 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNA
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_START;
 
-import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.Callable;

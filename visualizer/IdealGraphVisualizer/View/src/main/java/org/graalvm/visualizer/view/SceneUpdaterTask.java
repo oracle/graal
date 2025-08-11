@@ -25,7 +25,9 @@ package org.graalvm.visualizer.view;
 import static org.graalvm.visualizer.view.DiagramScene.ANIMATION_LIMIT;
 import static org.graalvm.visualizer.view.DiagramScene.BORDER_SIZE;
 
-import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.util.*;
 import java.util.List;
 import java.util.Queue;
@@ -35,7 +37,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import javax.swing.*;
+import javax.swing.JViewport;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.data.Pair;
 import org.graalvm.visualizer.graph.*;

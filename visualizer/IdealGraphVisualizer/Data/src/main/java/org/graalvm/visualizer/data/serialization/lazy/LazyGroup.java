@@ -25,7 +25,6 @@ package org.graalvm.visualizer.data.serialization.lazy;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 

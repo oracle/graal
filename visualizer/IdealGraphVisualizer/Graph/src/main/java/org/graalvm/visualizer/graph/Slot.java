@@ -24,7 +24,10 @@ package org.graalvm.visualizer.graph;
 
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
