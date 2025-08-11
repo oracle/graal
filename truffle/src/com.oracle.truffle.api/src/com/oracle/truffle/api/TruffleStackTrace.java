@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -106,7 +107,14 @@ public final class TruffleStackTrace extends Exception {
      */
     private void materializeHostException() {
         if (this.materializedHostException == null) {
-            this.materializedHostException = new Exception();
+            Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
+            AbstractHostLanguageService hostService;
+            if (polyglotEngine != null && (hostService = LanguageAccessor.ENGINE.getHostService(polyglotEngine)) != null) {
+                this.materializedHostException = hostService.materializeHostException();
+            } else {
+                // hostService is null during context pre-initialization
+                this.materializedHostException = new Exception();
+            }
         }
     }
 
@@ -119,13 +127,13 @@ public final class TruffleStackTrace extends Exception {
         return this;
     }
 
-    StackTraceElement[] getInternalStackTrace() {
+    StackTraceElement[] getInternalStackTrace(boolean reserveElementsForLazyFrames) {
         Throwable hostException = this.materializedHostException;
         if (hostException == null) {
             hostException = this;
         }
         StackTraceElement[] hostFrames = hostException.getStackTrace();
-        if (lazyFrames == 0) {
+        if (lazyFrames == 0 || !reserveElementsForLazyFrames) {
             return hostFrames;
         } else {
             StackTraceElement[] extended = new StackTraceElement[hostFrames.length + lazyFrames];
@@ -266,6 +274,15 @@ public final class TruffleStackTrace extends Exception {
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;
+    }
+
+    static void fillInForeign(Throwable truffleException, StackTraceElement[] hostStack) {
+        assert LanguageAccessor.EXCEPTIONS.isException(truffleException);
+        LazyStackTrace lazyStackTrace = new LazyStackTrace();
+        lazyStackTrace.stackTrace = new TruffleStackTrace(List.of(), 0);
+        lazyStackTrace.stackTrace.materializedHostException = new Exception();
+        lazyStackTrace.stackTrace.materializedHostException.setStackTrace(hostStack);
+        LanguageAccessor.EXCEPTIONS.setLazyStackTrace(truffleException, lazyStackTrace);
     }
 
     private static boolean isHostException(Throwable throwable) {
