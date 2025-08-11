@@ -45,7 +45,7 @@ public class ManagedSessionImpl extends GraphDocument implements Lookup.Provider
 
     public ManagedSessionImpl(Object id, Properties initialValues) {
         this(id, (FileObject) null);
-        initialValues.iterator().forEachRemaining((p) -> {
+        initialValues.iterator().forEachRemaining(p -> {
             if (!KnownPropertyNames.PROPNAME_NAME.equals(p.getName())) {
                 getProperties().setProperty(p.getName(), p.getValue());
             }

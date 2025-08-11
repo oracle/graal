@@ -260,7 +260,7 @@ public class GraphViewerImplementation implements DiagramViewerLocator, Property
 
         // attempt to focus/locate the lowest numbered node; must do after the graph/diagram fully loads
         // because nodes may be removed by filters etc.
-        tc.getModel().withDiagramToView((dg) -> {
+        tc.getModel().withDiagramToView(dg -> {
             InputGraph g = dg.getGraph();
             ArrayList<Integer> ids = new ArrayList<>(g.getNodeIds());
             Collections.sort(ids);//Ids aren't sorted in graph
@@ -425,12 +425,12 @@ public class GraphViewerImplementation implements DiagramViewerLocator, Property
 
     @Override
     public List<DiagramViewer> find(Group g) {
-        return viewers().filter((v) -> v.getModel().getContainer().getContentOwner() == g).collect(Collectors.toList());
+        return viewers().filter(v -> v.getModel().getContainer().getContentOwner() == g).collect(Collectors.toList());
     }
 
     @Override
     public List<DiagramViewer> find(InputGraph g) {
-        return viewers().filter((v) -> v.getModel().getGraphToView() == g).collect(Collectors.toList());
+        return viewers().filter(v -> v.getModel().getGraphToView() == g).collect(Collectors.toList());
     }
 
     @Override
@@ -440,7 +440,7 @@ public class GraphViewerImplementation implements DiagramViewerLocator, Property
         if (gtype == null) {
             return find(gg);
         }
-        return viewers().filter((v) -> {
+        return viewers().filter(v -> {
             GraphContainer c = v.getModel().getContainer();
             if (c.getContentOwner() != gg) {
                 return false;

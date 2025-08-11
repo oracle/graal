@@ -341,7 +341,7 @@ public class ShellUtils {
             engines = Lookup.getDefault().lookupResult(UserScriptEngine.class);
             engines.addLookupListener(WeakListeners.create(
                     LookupListener.class,
-                    ll = (ev) -> invalidate(),
+                    ll = ev -> invalidate(),
                     engines));
         }
 
@@ -420,7 +420,7 @@ public class ShellUtils {
                 globalScrapNotifyList.add(scrapCallback);
                 return;
             }
-            refs = scrapNotifyList.computeIfAbsent(scrap, (f) -> new ArrayList<>());
+            refs = scrapNotifyList.computeIfAbsent(scrap, f -> new ArrayList<>());
         }
         if (refs.isEmpty()) {
             scrap.addFileChangeListener(SCRAP_SHARED_LISTENER);

@@ -72,7 +72,7 @@ public class MethodNode extends AbstractNode {
      * Creates a new instance of MethodNode
      */
     public MethodNode(InputMethod method, InputGraph graph, String bciString) {
-        super((method != null && method.getBytecodes().isEmpty()) ? Children.LEAF : new MethodNodeChildren(method, graph, bciString));
+        super(method != null && method.getBytecodes().isEmpty() ? Children.LEAF : new MethodNodeChildren(method, graph, bciString));
         if (method != null) {
             this.setDisplayName(method.getName());
         }

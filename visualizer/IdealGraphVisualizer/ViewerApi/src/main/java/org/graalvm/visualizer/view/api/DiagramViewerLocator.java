@@ -64,6 +64,7 @@ public interface DiagramViewerLocator extends GraphViewer {
      *
      * @return
      */
+    @Override
     public List<DiagramViewer> getViewers();
 
     /**
@@ -74,6 +75,7 @@ public interface DiagramViewerLocator extends GraphViewer {
      * @param g group which the viewer should display
      * @return list of viewers
      */
+    @Override
     public List<DiagramViewer> find(Group g);
 
 

@@ -69,6 +69,7 @@ public abstract class AbstractFilter implements Filter {
         }
     }
 
+    @Override
     public Lookup getLookup() {
         return lkp;
     }

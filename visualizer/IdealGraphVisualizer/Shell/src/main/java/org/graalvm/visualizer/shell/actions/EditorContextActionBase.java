@@ -107,7 +107,7 @@ public abstract class EditorContextActionBase extends AbstractAction implements 
             enabled = Boolean.TRUE.equals(value);
         } else {
             synchronized (properties) {
-                oldValue = properties.put(key, (value != null) ? value : MASK_NULL_VALUE);
+                oldValue = properties.put(key, value != null ? value : MASK_NULL_VALUE);
             }
         }
         firePropertyChange(key, oldValue, value); // Checks whether oldValue.equals(value)

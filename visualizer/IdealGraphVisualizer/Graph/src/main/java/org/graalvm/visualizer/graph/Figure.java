@@ -431,10 +431,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         return sb.toString();
     }
 
-    private int outputSlotCount() {
-        return outputSlots == null ? (singleOutput != null ? 1 : 0) : outputSlots.size();
-    }
-
     @Override
     public Dimension getSize() {
         return new Dimension(getWidth(), getHeight());

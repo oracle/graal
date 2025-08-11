@@ -83,6 +83,7 @@ public class GraphItem implements ResultItem {
         return type;
     }
 
+    @Override
     public String getDisplayName() {
         return displayName;
     }

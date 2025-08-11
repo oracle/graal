@@ -129,9 +129,9 @@ public final class ProcessorContext {
 
     private Location finishNewLocation(Location l) {
         if (l.isResolved()) {
-            fileLocations.computeIfAbsent(l.getOriginFile(), (x) -> new ArrayList<>()).add(l);
+            fileLocations.computeIfAbsent(l.getOriginFile(), x -> new ArrayList<>()).add(l);
         } else {
-            keyLocations.computeIfAbsent(l.getFile(), (x) -> new ArrayList<>()).add(l);
+            keyLocations.computeIfAbsent(l.getFile(), x -> new ArrayList<>()).add(l);
         }
         return l;
     }
@@ -139,7 +139,7 @@ public final class ProcessorContext {
     private Location unique(Location l) {
         // first look in cache here, since it is unsynchronized. Then look/enter 
         // in the source cache.
-        return locations.computeIfAbsent(l, (loc) -> {
+        return locations.computeIfAbsent(l, loc -> {
             Location srcLoc = source.uniqueLocation(l);
             return finishNewLocation(srcLoc);
         });

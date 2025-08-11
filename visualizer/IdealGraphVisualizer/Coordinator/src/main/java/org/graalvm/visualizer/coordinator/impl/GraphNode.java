@@ -38,7 +38,6 @@ import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
 
-import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
 
@@ -46,13 +45,6 @@ public class GraphNode extends AbstractNode {
     private InputGraph graph;
     private boolean error;
     private Image baseIcon;
-
-    private final ChangedListener l = new ChangedListener() {
-        @Override
-        public void changed(Object source) {
-            SwingUtilities.invokeLater(GraphNode.this::refreshError);
-        }
-    };
 
     /**
      * Creates a new instance of GraphNode
@@ -153,7 +145,7 @@ public class GraphNode extends AbstractNode {
             return true;
         }
         if (obj instanceof GraphNode) {
-            return (graph == ((GraphNode) obj).graph);
+            return graph == ((GraphNode) obj).graph;
         }
         return false;
     }

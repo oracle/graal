@@ -168,6 +168,7 @@ public class JavaProjectLocatorUI implements LocatorUI {
                 }
                 OpenProjects.getDefault().open(prjs.toArray(new Project[prjs.size()]), true, true);
                 RequestProcessor.getDefault().post(new Runnable() {
+                    @Override
                     public void run() {
                         try {
                             OpenProjects.getDefault().openProjects().get();

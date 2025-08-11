@@ -144,6 +144,7 @@ public class RootSwitchNode extends FilterNode implements SearchResultsListener 
             this.scrollToView = scrollToView;
         }
 
+        @Override
         public void run() {
             expandAndSelect();
         }

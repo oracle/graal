@@ -29,7 +29,6 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_
 import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 import org.graalvm.visualizer.filter.FilterChain;
 import org.graalvm.visualizer.settings.layout.LayoutSettings;
@@ -144,6 +143,4 @@ public class NodeQuickSearchTest extends NbTestCase {
         assertTrue(foundNodes.first().size() > 0);
         assertTrue(foundNodes.second().isEmpty());
     }
-
-    private final ScheduledExecutorService srv = Executors.newSingleThreadScheduledExecutor();
 }

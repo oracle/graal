@@ -318,8 +318,6 @@ public class SearchResultsModelTest extends NbTestCase implements SearchResultsL
 
     private SearchResultsEvent addEvent;
     private SearchResultsEvent removeEvent;
-    private SearchResultsEvent parentsEvent;
-    private SearchResultsEvent propertiesEvent;
 
     private final List<GraphItem> changedParents = new ArrayList<>();
     private final List<GraphItem> parents = new ArrayList<>();

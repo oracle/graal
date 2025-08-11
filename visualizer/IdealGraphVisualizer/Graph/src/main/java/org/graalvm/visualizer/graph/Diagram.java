@@ -321,7 +321,7 @@ public class Diagram {
 
     public void removeAllFigures(Collection<Figure> figuresToRemove) {
         if (figuresToRemove instanceof Set) {
-            removeAllFigures(((Set) figuresToRemove));
+            removeAllFigures((Set) figuresToRemove);
         }
         Set s = new HashSet<>(figuresToRemove);
         removeAllFigures(s);
@@ -512,7 +512,7 @@ public class Diagram {
                 Stream.of(f),
                 f.getSlots().stream())).forEach(s -> {
             for (InputNode in : s.getSource().getSourceNodes()) {
-                m.computeIfAbsent(in.getId(), (id) -> new ArrayList<>(2)).add(s);
+                m.computeIfAbsent(in.getId(), id -> new ArrayList<>(2)).add(s);
             }
         });
         return sourceMap = m;

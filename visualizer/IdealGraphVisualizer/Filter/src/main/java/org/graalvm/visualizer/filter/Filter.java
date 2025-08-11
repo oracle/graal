@@ -59,7 +59,7 @@ public interface Filter extends Properties.Provider, ChangedEventProvider<Filter
      * @param d the diagram on which the filter applies.
      * @throws java.util.concurrent.CancellationException may throw, when the processing cancelled
      */
-    default public void apply(Diagram d) {
+    public default void apply(Diagram d) {
         FilterExecution e = FilterExecution.getOrCreate(d, this);
         e.processSingle(this);
     }
@@ -78,7 +78,7 @@ public interface Filter extends Properties.Provider, ChangedEventProvider<Filter
      *
      * @param d diagram to cancel
      */
-    default public boolean cancel(FilterEnvironment d) {
+    public default boolean cancel(FilterEnvironment d) {
         return false;
     }
 

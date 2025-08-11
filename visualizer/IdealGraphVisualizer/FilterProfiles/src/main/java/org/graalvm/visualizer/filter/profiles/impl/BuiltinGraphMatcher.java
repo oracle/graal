@@ -622,7 +622,7 @@ public class BuiltinGraphMatcher implements ProfileGraphMatcher {
 
     private static void filterRegexpProperties(java.util.Properties props, String prefix, C callback) {
         Set<String> processed = new HashSet<>();
-        props.stringPropertyNames().stream().filter((s) -> s.startsWith(prefix)).forEach(s -> {
+        props.stringPropertyNames().stream().filter(s -> s.startsWith(prefix)).forEach(s -> {
             String rest = s.substring(prefix.length());
             processed.add(s);
             int i = rest.indexOf(',');

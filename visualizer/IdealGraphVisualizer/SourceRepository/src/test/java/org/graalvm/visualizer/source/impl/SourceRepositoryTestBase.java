@@ -161,7 +161,7 @@ public class SourceRepositoryTestBase extends NbTestCase {
 
         @Override
         protected AbstractPreferences childSpi(String name) {
-            return nodes.computeIfAbsent(name, (n) -> new TestMemPrefs(this, n));
+            return nodes.computeIfAbsent(name, n -> new TestMemPrefs(this, n));
         }
 
         @Override

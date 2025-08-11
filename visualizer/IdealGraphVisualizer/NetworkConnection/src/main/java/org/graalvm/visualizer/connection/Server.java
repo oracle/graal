@@ -95,7 +95,7 @@ public class Server implements PreferenceChangeListener {
             Files.list(rootPath)
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
-                    .peek((n) -> {
+                    .peek(n -> {
                         LOG.log(Level.FINE, "Deleting {0}", n); // NOI18N
                     })
                     .forEach(File::delete);
@@ -201,6 +201,7 @@ public class Server implements PreferenceChangeListener {
                                 f = rootDocumentFactory;
                             }
                             NETWORK_RP.post(new Client(clientSocket, f, monitor, streamLoader) {
+                                @Override
                                 public void run() {
                                     try {
                                         super.run();

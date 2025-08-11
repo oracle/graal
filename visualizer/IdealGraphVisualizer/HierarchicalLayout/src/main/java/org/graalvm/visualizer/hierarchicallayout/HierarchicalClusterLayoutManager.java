@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.graalvm.visualizer.settings.layout.LayoutSettings.BLOCKVIEW_AS_CONTROLFLOW;
@@ -53,8 +52,6 @@ import static org.graalvm.visualizer.settings.layout.LayoutSettings.EDGE_BENDING
 import static org.graalvm.visualizer.settings.layout.LayoutSettings.STANDALONES;
 
 public class HierarchicalClusterLayoutManager implements LayoutManager {
-
-    private static final Logger LOG = Logger.getLogger(HierarchicalClusterLayoutManager.class.getName());
 
     private final AtomicBoolean cancelled;
 
@@ -563,8 +560,8 @@ public class HierarchicalClusterLayoutManager implements LayoutManager {
         HashMap<Port, Link> usedPorts = new HashMap<>();
         for (Link li : links) {
             Link l = inner.get(li);
-            inMap.computeIfAbsent(l.getTo().getVertex(), (v) -> new ArrayList<>()).add(l);
-            outMap.computeIfAbsent(l.getFrom().getVertex(), (v) -> new ArrayList<>()).add(l);
+            inMap.computeIfAbsent(l.getTo().getVertex(), v -> new ArrayList<>()).add(l);
+            outMap.computeIfAbsent(l.getFrom().getVertex(), v -> new ArrayList<>()).add(l);
         }
         final int offset = HierarchicalLayoutManager.X_OFFSET + layoutSetting.get(Integer.class, DUMMY_WIDTH);
         for (Map.Entry<Vertex, List<Link>> entry : outMap.entrySet()) {

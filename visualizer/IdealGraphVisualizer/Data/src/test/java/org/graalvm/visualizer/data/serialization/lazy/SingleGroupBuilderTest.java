@@ -129,25 +129,22 @@ public class SingleGroupBuilderTest extends BinaryDataTestBase {
 
         Deque<Group> toProcess = new ArrayDeque();
         toProcess.addAll((Collection<Group>) checkDocument.getElements());
-        int processed = 0;
         while (!toProcess.isEmpty()) {
             Collection<? extends FolderElement> els;
-
-            processed++;
             Group g = toProcess.poll();
             if (g instanceof Group.LazyContent) {
                 els = ((Group.LazyContent<List<? extends FolderElement>>) g).completeContents(null).get();
             } else {
                 els = g.getElements();
             }
-            Collection<? extends FolderElement> foundGraphs = els.stream().filter((e) -> e instanceof InputGraph).collect(Collectors.toList());
+            Collection<? extends FolderElement> foundGraphs = els.stream().filter(e -> e instanceof InputGraph).collect(Collectors.toList());
             int graphCount = g.getGraphsCount();
             Collection<? extends InputGraph> graphs = g.getGraphs();
 
             assertEquals(foundGraphs.size(), graphCount);
             assertEquals(foundGraphs, graphs);
 
-            toProcess.addAll((List<Group>) els.stream().filter((e) -> !(e instanceof InputGraph)).collect(Collectors.toList()));
+            toProcess.addAll((List<Group>) els.stream().filter(e -> !(e instanceof InputGraph)).collect(Collectors.toList()));
         }
     }
 

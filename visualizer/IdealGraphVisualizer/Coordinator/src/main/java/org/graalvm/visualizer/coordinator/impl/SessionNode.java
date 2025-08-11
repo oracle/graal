@@ -44,8 +44,6 @@ public class SessionNode extends FolderNode implements ChangedListener<GraphDocu
     private static final String ICON_PREFIX = "org/graalvm/visualizer/coordinator/images/"; // NOI18N
     private Lookup.Result<FileObject> storageResult;
 
-    private FileObject file;
-
     public SessionNode(Folder folder) {
         super(folder);
 
@@ -76,12 +74,10 @@ public class SessionNode extends FolderNode implements ChangedListener<GraphDocu
     })
     private void updateUI() {
         boolean hasFile;
-        FileObject f;
 
         synchronized (this) {
             Collection<? extends FileObject> col = storageResult.allInstances();
             hasFile = !col.isEmpty();
-            f = file = hasFile ? col.iterator().next() : null;
         }
         setIconBaseWithExtension(ICON_PREFIX + (hasFile ? "file.png" : "graal.png"));
 

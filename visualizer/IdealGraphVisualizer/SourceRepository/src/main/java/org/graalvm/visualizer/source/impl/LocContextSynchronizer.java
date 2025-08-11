@@ -257,7 +257,7 @@ public class LocContextSynchronizer implements PropertyChangeListener, Runnable,
                 nodes = new HashSet<>(SourceUtils.findLineNodes(pane, gs, lineLocs, false));
                 nodes.retainAll(locContext.getContextNodes());
             }
-            SourceUtils.resolveSelectableNodes(nodes, viewer, (nn) -> {
+            SourceUtils.resolveSelectableNodes(nodes, viewer, nn -> {
                 if (!nn.isEmpty()) {
                     inSync = true;
 //                    locContext.setSelectedNodes(nn);

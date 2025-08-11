@@ -84,7 +84,7 @@ public final class UpgradeFromOldDev extends Upgrader {
                         line = line.substring(0, valStart)
                                 + replacement
                                 + line.substring(valEnd);
-                        start += (replacement.length() - val.length());
+                        start += replacement.length() - val.length();
                     }
                     // repackage filter references
                     line = line.replaceAll("com.sun.hotspot.igv", "org.graalvm.visualizer"); // NOI18N

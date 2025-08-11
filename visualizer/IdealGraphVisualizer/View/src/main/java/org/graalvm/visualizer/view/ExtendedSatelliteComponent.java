@@ -90,9 +90,9 @@ public final class ExtendedSatelliteComponent extends JComponent implements Mous
         addMouseListener(this);
         addMouseMotionListener(this);
         // react on viewport 
-        scene.getScrollPane().getViewport().addChangeListener((e) -> sceneViewportChanged());
+        scene.getScrollPane().getViewport().addChangeListener(e -> sceneViewportChanged());
         // listen for extraction, compilation phase changes
-        scene.getModel().getChangedEvent().addListener((e) -> SwingUtilities.invokeLater(this::update));
+        scene.getModel().getChangedEvent().addListener(e -> SwingUtilities.invokeLater(this::update));
         sceneSize = scene.getSceneSize();
     }
 
@@ -314,7 +314,7 @@ public final class ExtendedSatelliteComponent extends JComponent implements Mous
             return false;
         }
 
-        boolean inv = (imageWidth != vw || imageHeight != vh);
+        boolean inv = imageWidth != vw || imageHeight != vh;
         if (image == null || inv) {
             // do not invalidate during repaint
             if (inv && invalidate) {

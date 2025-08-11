@@ -43,21 +43,21 @@ import java.util.stream.Collectors;
  */
 public final class GraalSettings extends SettingsStore<GraalSettings, GraalSettingBean> {
 
-    public final static String PORT_BINARY = "portBinary";// NOI18N
-    public final static int PORT_BINARY_DEFAULT = 4445;
-    public final static String DIRECTORY = "directory";// NOI18N
-    public final static String DIRECTORY_DEFAULT = System.getProperty("user.dir");
-    public final static String MAP = "map";// NOI18N
-    public final static String MAP_DEFAULT = "";// NOI18N
-    public final static String REPOSITORY = "repository";// NOI18N
-    public final static String REPOSITORY_DEFAULT = NbBundle.getMessage(GraalSettings.class, "DefaultMavenRepository");
-    public final static String CLEAN_CACHES = "cleanCaches"; // NOI18N
-    public final static String ACCEPT_NETWORK = "acceptNetwork"; // NOI18N
-    public final static boolean ACCEPT_NETWORK_DEFAULT = false; // NOI18
-    public final static String SESSION_CLOSE_TIMEOUT = "sessionCloseTimeout"; // NOI18N
-    public final static int SESSION_CLOSE_TIMEOUT_DEFAULT = 10; // NOI18N
-    public final static String AUTO_SEPARATE_SESSIONS = "autoSeparateSessions"; // NOI18N
-    public final static boolean AUTO_SEPARATE_SESSIONS_DEFAULT = false; // NOI18N
+    public static final String PORT_BINARY = "portBinary";// NOI18N
+    public static final int PORT_BINARY_DEFAULT = 4445;
+    public static final String DIRECTORY = "directory";// NOI18N
+    public static final String DIRECTORY_DEFAULT = System.getProperty("user.dir");
+    public static final String MAP = "map";// NOI18N
+    public static final String MAP_DEFAULT = "";// NOI18N
+    public static final String REPOSITORY = "repository";// NOI18N
+    public static final String REPOSITORY_DEFAULT = NbBundle.getMessage(GraalSettings.class, "DefaultMavenRepository");
+    public static final String CLEAN_CACHES = "cleanCaches"; // NOI18N
+    public static final String ACCEPT_NETWORK = "acceptNetwork"; // NOI18N
+    public static final boolean ACCEPT_NETWORK_DEFAULT = false; // NOI18
+    public static final String SESSION_CLOSE_TIMEOUT = "sessionCloseTimeout"; // NOI18N
+    public static final int SESSION_CLOSE_TIMEOUT_DEFAULT = 10; // NOI18N
+    public static final String AUTO_SEPARATE_SESSIONS = "autoSeparateSessions"; // NOI18N
+    public static final boolean AUTO_SEPARATE_SESSIONS_DEFAULT = false; // NOI18N
 
     public static GraalSettings obtain() {
         return SettingsStore.obtain(GraalSettings.class, GraalSettings::new);

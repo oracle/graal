@@ -289,7 +289,7 @@ public class DiagramViewModelTest {
         Colorizer timelineColorizer = new Colorizer(timeline.getPrimaryPartition(), timeline.getPrimaryRange());
         // DiagramViewModel do not directly call the colorizer.
         instance.addPropertyChangeListener(DiagramViewModel.PROP_SELECTED_NODES,
-                (e) -> timelineColorizer.setTrackedNodes(
+                e -> timelineColorizer.setTrackedNodes(
                         instance.getSelectedNodes().stream().map(InputNode::getId).collect(Collectors.toSet())));
         Set<InputNode> expResultNodes = new HashSet<>();
         Set<Figure> expResultFigures = new HashSet<>();
@@ -319,8 +319,8 @@ public class DiagramViewModelTest {
         testGetSelectedFigures(expResultFigures);
 
         expResultFigures.removeIf(x -> x.getSource().getSourceNodes().contains(N4));
-        instance.withDiagramToView((d) -> d.getFigures().stream()
-                .filter((f) -> (f.getSource().getSourceNodes().contains(N3)))
+        instance.withDiagramToView(d -> d.getFigures().stream()
+                .filter(f -> (f.getSource().getSourceNodes().contains(N3)))
                 .forEach(expResultFigures::add)).get();
 
         assertFired(0, 1, 0, 0, 1, 0);

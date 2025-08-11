@@ -73,7 +73,6 @@ import java.util.Map;
         "TOOLTIP_FilterClickEdit=Double click to open filter contents"
 })
 public final class FilterNode extends CheckNode implements FilterListener {
-    private static final String ACTIONS = "IGV/Actions/Filter"; // NOI18N
 
     private static final String ICON_NORMAL = "org/graalvm/visualizer/filterwindow/images/filterIcon.png"; // NOI18N
     private static final String ICON_ERROR = "org/graalvm/visualizer/filterwindow/images/filterIconError.png"; // NOI18N
@@ -219,7 +218,7 @@ public final class FilterNode extends CheckNode implements FilterListener {
                 return;
             }
             Collection<? extends Filter> filters = f.getLookup().lookupAll(Filter.class);
-            if (!filters.stream().anyMatch((t) -> t == this.filter)) {
+            if (!filters.stream().anyMatch(t -> t == this.filter)) {
                 return;
             }
         }

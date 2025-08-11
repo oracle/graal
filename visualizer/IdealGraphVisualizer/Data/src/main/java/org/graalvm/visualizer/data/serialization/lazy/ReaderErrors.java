@@ -38,7 +38,6 @@ import jdk.graal.compiler.graphio.parsing.model.*;
  * @author sdedic
  */
 public final class ReaderErrors {
-    private static final ReaderErrors INSTANCE = new ReaderErrors();
 
     /**
      * For each element, holds list of errors. For group, also references
@@ -88,7 +87,7 @@ public final class ReaderErrors {
 
     static void addError(FolderElement el, Folder folder, String error) {
         synchronized (errorList) {
-            ElementData data = errorList.computeIfAbsent(el, (e) -> {
+            ElementData data = errorList.computeIfAbsent(el, e -> {
                 ElementData ne = new ElementData(e, folder);
                 if (e instanceof InputGraph) {
                     Folder f = el.getParent();
@@ -97,7 +96,7 @@ public final class ReaderErrors {
                     }
                     if (f != null) {
                         FolderElement fe = f;
-                        ElementData fed = errorList.computeIfAbsent(fe, (e2) -> new ElementData(fe, null));
+                        ElementData fed = errorList.computeIfAbsent(fe, e2 -> new ElementData(fe, null));
                         fed.addGraphError(ne);
                     }
                 }

@@ -26,6 +26,7 @@ package org.graalvm.visualizer.data.serialization.lazy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
@@ -90,6 +91,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
         }
     }
 
+    @Override
     protected Builder createScanningTestBuilder() {
         switch (builderType) {
             case 1:
@@ -164,6 +166,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
             super(generation, data);
         }
 
+        @Override
         protected VerifyValuePool create(List<Object> data) {
             return new VerifyValuePool(generation + 1, data);
         }
@@ -245,7 +248,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
     ReadableByteChannel dataChannel;
 
     private void initContent() throws IOException {
-        File name = File.createTempFile("igvtest_", "");
+        File name = Files.createTempFile("igvtest_", "").toFile();
         name.delete();
         name.mkdirs();
         content = new NetworkStreamContent(dataChannel, name);

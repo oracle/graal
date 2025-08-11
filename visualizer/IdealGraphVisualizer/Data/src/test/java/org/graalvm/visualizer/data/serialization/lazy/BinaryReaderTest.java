@@ -105,6 +105,7 @@ public class BinaryReaderTest extends BinaryDataTestBase {
 
     private boolean countGroups;
 
+    @Override
     protected Builder createScanningTestBuilder() {
         if (!countGroups) {
             return super.createScanningTestBuilder();

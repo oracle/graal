@@ -87,7 +87,7 @@ public final class CustomizablePanAction extends WidgetAction.LockedAdapter {
             if (component == null)
                 return null;
             if (component instanceof JScrollPane)
-                return ((JScrollPane) component);
+                return (JScrollPane) component;
             Container parent = component.getParent();
             if (!(parent instanceof JComponent))
                 return null;

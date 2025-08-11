@@ -52,7 +52,7 @@ public class GraphTypeContainer implements GraphContainer {
     private final Predicate<InputGraph> acceptor;
     private final ChangedEvent<GraphContainer> changeEvent = new ChangedEvent<>(this);
     private final String type;
-    private final ChangedListener<GraphContainer> refireListener = (e) -> {
+    private final ChangedListener<GraphContainer> refireListener = e -> {
         filteredGraphs = null;
         changeEvent.fire();
     };
@@ -170,12 +170,12 @@ public class GraphTypeContainer implements GraphContainer {
 
     @Override
     public Set<Integer> getChildNodeIds() {
-        return getGraphs().parallelStream().flatMap((e) -> e.getNodeIds().stream()).collect(Collectors.toSet());
+        return getGraphs().parallelStream().flatMap(e -> e.getNodeIds().stream()).collect(Collectors.toSet());
     }
 
     @Override
     public Set<InputNode> getChildNodes() {
-        return getGraphs().parallelStream().flatMap((e) -> e.getNodes().stream()).collect(Collectors.toSet());
+        return getGraphs().parallelStream().flatMap(e -> e.getNodes().stream()).collect(Collectors.toSet());
     }
 
     @Override

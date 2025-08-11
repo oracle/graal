@@ -42,7 +42,6 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.logging.Logger;
 
 @ActionID(category = "File", id = "org.graalvm.visualizer.coordinator.actions.ImportAction")
 @ActionRegistration(iconBase = "org/graalvm/visualizer/coordinator/images/import.png", displayName = "#CTL_ImportAction")
@@ -51,7 +50,6 @@ import java.util.logging.Logger;
         , @ActionReference(path = "Shortcuts", name = "C-O")
 })
 public final class ImportAction extends SystemAction {
-    private static final Logger LOG = Logger.getLogger(ImportAction.class.getName());
 
     @NbBundle.Messages("MSG_BIGV_Description_ZIP=Compressed dumps (*.zip)")
     public static FileFilter getZipFilter() {

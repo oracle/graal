@@ -147,7 +147,7 @@ public class GraphSourceTest extends GraphSourceTestBase {
         FileObject fString = sourcePath.findResource("java/lang/StringBuilder.java");
 
         Semaphore lck = new Semaphore(0);
-        src.getFileRegistry().addFileRegistryListener((e) -> {
+        src.getFileRegistry().addFileRegistryListener(e -> {
             lck.release();
         });
         // these are tested to fire events elsewhere, so hook at the event
@@ -276,7 +276,7 @@ public class GraphSourceTest extends GraphSourceTestBase {
         }
 
         Set<InputNode> nodesWithPositions = src.getGraph().getNodes()
-                .stream().filter((n) -> n.getProperties().get(PROPNAME_NODE_SOURCE_POSITION) != null)
+                .stream().filter(n -> n.getProperties().get(PROPNAME_NODE_SOURCE_POSITION) != null)
                 .collect(Collectors.toSet());
         assertTrue(foundNodes.containsAll(nodesWithPositions));
     }
@@ -350,7 +350,7 @@ public class GraphSourceTest extends GraphSourceTestBase {
             }
             Location loc = src.findNodeLocation(n);
             assertNotNull(loc);
-            Collection<InputNode> nodes = foundLocations.computeIfAbsent(loc, (l) -> new ArrayList<>(2));
+            Collection<InputNode> nodes = foundLocations.computeIfAbsent(loc, l -> new ArrayList<>(2));
             nodes.add(n);
         }
 

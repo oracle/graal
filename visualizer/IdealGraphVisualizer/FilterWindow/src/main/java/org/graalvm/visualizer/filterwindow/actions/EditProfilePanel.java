@@ -63,14 +63,17 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
 
     private RequestProcessor.Task delayedInputValidation;
     private final DocumentListener dl = new DocumentListener() {
+        @Override
         public void insertUpdate(DocumentEvent e) {
             inputChanged();
         }
 
+        @Override
         public void removeUpdate(DocumentEvent e) {
             inputChanged();
         }
 
+        @Override
         public void changedUpdate(DocumentEvent e) {
         }
     };
@@ -253,6 +256,7 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
         priorityNumber.setFont(new java.awt.Font("Dialog", 0, 12)); // NOI18N
         priorityNumber.setModel(new javax.swing.SpinnerNumberModel(1, 0, null, 1));
         priorityNumber.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
                 priorityNumberFocusLost(evt);
             }
@@ -262,6 +266,7 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
 
         nameText.setText(org.openide.util.NbBundle.getMessage(EditProfilePanel.class, "EditProfilePanel.nameText.text")); // NOI18N
         nameText.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
                 nameTextFocusLost(evt);
             }
@@ -271,6 +276,7 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
 
         groupNameText.setText(org.openide.util.NbBundle.getMessage(EditProfilePanel.class, "EditProfilePanel.groupNameText.text")); // NOI18N
         groupNameText.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
                 groupNameTextFocusLost(evt);
             }

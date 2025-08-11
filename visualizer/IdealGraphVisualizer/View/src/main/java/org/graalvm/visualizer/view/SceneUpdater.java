@@ -126,8 +126,8 @@ class SceneUpdater {
         this.model = scene.getModel();
         lastDiagram = model.getDiagramToView();
         // PENDING: remove listener, if the scene (topcomponent) closes
-        scene.getScrollPane().getViewport().addChangeListener((e) -> refreshView(false));
-        model.getDiagramChangedEvent().addListener((e) -> SwingUtilities.invokeLater(this::forceViewRefresh));
+        scene.getScrollPane().getViewport().addChangeListener(e -> refreshView(false));
+        model.getDiagramChangedEvent().addListener(e -> SwingUtilities.invokeLater(this::forceViewRefresh));
         String sceneName = model.getContainer().getName();
         processor = new RequestProcessor("SceneUpdater - " + sceneName);
 
@@ -135,7 +135,7 @@ class SceneUpdater {
         // when the user closes the diagram and then reopens another one.
         TopComponent.getRegistry().addPropertyChangeListener(
                 WeakListeners.propertyChange(
-                        topRegistryListener = (e) -> {
+                        topRegistryListener = e -> {
                             if (!TopComponent.Registry.PROP_TC_CLOSED.equals(e.getPropertyName())) {
                                 return;
                             }
@@ -247,8 +247,8 @@ class SceneUpdater {
                 "\tGraph name: " + lastDiagram.getGraph().getName() + ".\n" +
                 "\tnodes count: " + lastDiagram.getGraph().getNodeCount() + ".\n" +
                 "\tfigures count: " + lastDiagram.getFigures().size() + ".\n" +
-                "\tvisible figures count: " + lastDiagram.getFigures().stream().filter((n) -> n.isVisible()).count() + ".\n" +
-                "\tboundary figures count: " + lastDiagram.getFigures().stream().filter((n) -> n.isBoundary()).count() + ".";
+                "\tvisible figures count: " + lastDiagram.getFigures().stream().filter(n -> n.isVisible()).count() + ".\n" +
+                "\tboundary figures count: " + lastDiagram.getFigures().stream().filter(n -> n.isBoundary()).count() + ".";
         return sb;
     }
 
@@ -330,7 +330,7 @@ class SceneUpdater {
             }
             LOG.log(Level.FINE, "New viewport update task {2}, for rectangle {0}, current view rect {1}", new Object[]{upd.getExtendedBounds(), viewRect, upd});
             viewportUpdate = upd;
-            viewportUpdate.schedule(VIEWPORT_UPDATE_DELAY).onCompletion((e) -> {
+            viewportUpdate.schedule(VIEWPORT_UPDATE_DELAY).onCompletion(e -> {
                 synchronized (this) {
                     if (upd != viewportUpdate) {
                         return;
@@ -364,7 +364,7 @@ class SceneUpdater {
             }
             LOG.log(Level.FINE, "Scheduling viewport cleanup task");
             SceneUpdaterTask.Cleaner cl = new SceneUpdaterTask.Cleaner(scene, processor, this::limitUpdatedRectangle);
-            cl.schedule(VIEWPORT_CLEAN_DELAY).onCompletion((e) -> {
+            cl.schedule(VIEWPORT_CLEAN_DELAY).onCompletion(e -> {
                 synchronized (this) {
                     if (viewportCleanup != cl) {
                         return;

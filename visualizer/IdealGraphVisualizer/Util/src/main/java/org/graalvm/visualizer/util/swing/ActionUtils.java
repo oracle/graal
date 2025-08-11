@@ -138,12 +138,9 @@ public class ActionUtils {
                 }
                 a.isEnabled();
             }
-            Object item;
 
             if (a instanceof Presenter.Popup) {
-                item = menu.add(((Presenter.Popup) a).getPopupPresenter());
             } else {
-                item = menu.add(a);
             }
 
             // end 

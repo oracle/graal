@@ -91,8 +91,8 @@ public final class BinaryMap implements NameTranslator, PreferenceChangeListener
             List<File> files = new ArrayList<>();
             final GraalSettings settings = GraalSettings.obtain();
             settings.getFileMap().stream().
-                    map((s) -> new File(s)).
-                    filter((f) -> f.exists()).
+                    map(s -> new File(s)).
+                    filter(f -> f.exists()).
                     forEach(files::add);
             try {
                 final String repo = settings.get(String.class, GraalSettings.REPOSITORY);

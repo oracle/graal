@@ -78,6 +78,7 @@ final class CompactComboRenderer extends NodeRenderer {
             setBorder(null);
         }
 
+        @Override
         public Dimension getPreferredSize() {
             if (lastRenderer == null) {
                 return super.getPreferredSize();

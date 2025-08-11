@@ -139,6 +139,7 @@ public abstract class ScriptEnvironment implements AutoCloseable {
      *
      * @throws IOException thrown by called close()s
      */
+    @Override
     public void close() throws IOException {
         for (Object v : values()) {
             if (v instanceof Closeable) {

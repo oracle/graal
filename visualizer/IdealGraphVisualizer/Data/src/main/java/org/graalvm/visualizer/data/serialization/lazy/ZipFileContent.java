@@ -356,7 +356,7 @@ public final class ZipFileContent implements SeekableByteChannel, CachedContent,
      * Must reference original Path just as weak reference, since ZipPaths reference
      * ZipFilesystem.
      */
-    final static class ExpandedFile {
+    static final class ExpandedFile {
         private final Path expandedPath;
         private final Path zipPath;
         private final long cacheMax;
@@ -384,7 +384,7 @@ public final class ZipFileContent implements SeekableByteChannel, CachedContent,
     /**
      * Wrapper channel which limits size of data to the one zip file.
      */
-    final static class LimitedChannel implements SeekableByteChannel {
+    static final class LimitedChannel implements SeekableByteChannel {
         private final ReadableByteChannel delegate;
         private final long limit;
         private long count;

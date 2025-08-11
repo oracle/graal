@@ -397,6 +397,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
             }
         }
 
+        @Override
         public Dimension getMinimumSize() {
             Dimension d = super.getMinimumSize();
             d.width = 60;
@@ -799,7 +800,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
     };
 
     public void setSelection(PropertyMatcher matcher) {
-        getModel().withDiagramToView((d) -> {
+        getModel().withDiagramToView(d -> {
             Properties.PropertySelector<Figure> selector = new Properties.PropertySelector<>(d.getFigures());
             List<Figure> list = selector.selectMultiple(matcher);
             setSelectedFigures(list);
@@ -816,7 +817,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
     }
 
     public void setSelectedNodes(Collection<InputNode> nodes) {
-        getModel().withDiagramToView((d) -> {
+        getModel().withDiagramToView(d -> {
             setSelectedFigures(new ArrayList<>(scene.figuresForNodes(nodes)));
         });
     }
@@ -887,7 +888,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
     }
 
     public void showAll() {
-        getModel().showNot(Collections.<Integer>emptySet());
+        getModel().showNot(Collections.emptySet());
     }
 
     private Diagram getDiagram() {
@@ -958,7 +959,6 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         private final TimelineModel viewModel;
         private final DiagramViewModel diagramModel;
         private final EditorTopComponent target;
-        private final ChangedListener<GraphDocument> docL = (e) -> refresh();
 
         public TitleUpdater(DiagramViewModel diagramModel, EditorTopComponent target) {
             this.diagramModel = diagramModel;

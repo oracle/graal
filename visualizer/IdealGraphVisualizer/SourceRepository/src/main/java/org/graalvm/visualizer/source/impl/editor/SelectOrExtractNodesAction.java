@@ -175,10 +175,10 @@ public abstract class SelectOrExtractNodesAction extends BaseAction implements C
         GraphSelections sel = LookupHistory.getLast(GraphSelections.class);
         DiagramViewer viewer = LookupHistory.getLast(DiagramViewer.class);
         final Collection<InputNode> fNodes = nodes;
-        viewer.getModel().withDiagramToView((dg) -> {
+        viewer.getModel().withDiagramToView(dg -> {
             SwingUtilities.invokeLater(() -> {
                 if (selection) {
-                    selectFirstOrNext(dg, viewer, fNodes, shiftPressed, false, (ns) -> viewer.getSelections().setSelectedNodes(ns));
+                    selectFirstOrNext(dg, viewer, fNodes, shiftPressed, false, ns -> viewer.getSelections().setSelectedNodes(ns));
                 } else {
                     sel.extractNodes(fNodes);
                 }

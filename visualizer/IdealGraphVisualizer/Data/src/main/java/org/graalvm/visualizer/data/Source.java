@@ -68,7 +68,7 @@ public class Source {
 
     private List<InputNode> list() {
         assert hasMany();
-        return ((List<InputNode>) sources);
+        return (List<InputNode>) sources;
     }
 
     /**

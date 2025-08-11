@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.prefs.Preferences;
 
 /**
  * Represents source location(s) of a Node or a set of nodes. Maintains the current
@@ -86,11 +85,6 @@ public class NodeLocationContext {
      */
     private NodeStack.Frame selectedFrame;
 
-    /**
-     * Frames for individual languages for the selected node and frame level.
-     */
-    private Map<String, NodeStack.Frame> langFrames = new HashMap<>();
-
     private final PropertyChangeSupport supp = new PropertyChangeSupport(this);
 
     /**
@@ -105,8 +99,6 @@ public class NodeLocationContext {
             fireStackResolved(ev.getResolvedKeys());
         }
     };
-
-    private Preferences prefs = NbPreferences.forModule(NodeLocationContext.class);
 
     public void addPropertyChangeListener(PropertyChangeListener l) {
         supp.addPropertyChangeListener(l);

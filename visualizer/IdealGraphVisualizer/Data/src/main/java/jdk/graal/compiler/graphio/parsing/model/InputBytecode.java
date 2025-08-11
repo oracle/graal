@@ -188,7 +188,7 @@ public class InputBytecode {
                 position += padding;
                 int l = intFromRange(code, position + 4, position + 8);
                 if (opcode == 171) {
-                    return 8 + padding + 8 * (l);
+                    return 8 + padding + 8 * l;
                 }
                 int h = intFromRange(code, position + 8, position + 12);
                 return 12 + padding + 4 * (h - l + 1);

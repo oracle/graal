@@ -163,7 +163,7 @@ public final class ResultView extends TopComponent {
     }
 
     @Deprecated
-    final public static class ResolvableHelper implements java.io.Serializable {
+    public static final class ResolvableHelper implements java.io.Serializable {
         static final long serialVersionUID = 7398708142639457544L;
 
         public Object readResolve() {
@@ -236,17 +236,6 @@ public final class ResultView extends TopComponent {
             return null;
         }
         return panel2SearchEntry(comp);
-    }
-
-
-    private void updateTabTitle(JPanel panel) {
-        if (getComponentCount() != 0) {
-            if (tabs.getTabCount() > 0) {
-                int index = tabs.indexOfComponent(panel);
-                tabs.setTitleAt(index, panel.getName());
-                tabs.setToolTipTextAt(index, panel.getToolTipText());
-            }
-        }
     }
 
     private SearchResultsEntry panel2SearchEntry(Component comp) {

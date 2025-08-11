@@ -51,7 +51,7 @@ public interface FilterListener extends EventListener {
      *
      * @param e event
      */
-    default public void executionStart(FilterEvent e) {
+    public default void executionStart(FilterEvent e) {
     }
 
     /**
@@ -59,6 +59,6 @@ public interface FilterListener extends EventListener {
      *
      * @param e
      */
-    default public void executionEnd(FilterEvent e) {
+    public default void executionEnd(FilterEvent e) {
     }
 }

@@ -151,7 +151,7 @@ public class SelectGraphNodesAction extends SelectOrExtractNodesAction implement
             return;
         }
         DiagramViewer sel = LookupHistory.getLast(DiagramViewer.class);
-        SourceUtils.resolveSelectableNodes(nodes, sel, (nn) -> {
+        SourceUtils.resolveSelectableNodes(nodes, sel, nn -> {
             lineNodes = new ArrayList<>(nn);
             Collections.sort(lineNodes, InputNode.COMPARATOR);
             setEnabled(!lineNodes.isEmpty());
@@ -195,7 +195,7 @@ public class SelectGraphNodesAction extends SelectOrExtractNodesAction implement
         DiagramViewer v = LookupHistory.getLast(DiagramViewer.class);
         if (cancelRefresh()) {
             Collection<InputNode> nodes = findLineNodes(pane, null);
-            SourceUtils.resolveSelectableNodes(nodes, v, (nn) -> {
+            SourceUtils.resolveSelectableNodes(nodes, v, nn -> {
                 lineNodes = new ArrayList<>(nn);
                 Collections.sort(lineNodes, InputNode.COMPARATOR);
                 doPopulateMenu(menu, loc);
@@ -253,7 +253,7 @@ public class SelectGraphNodesAction extends SelectOrExtractNodesAction implement
         }
         ctx.setCurrentNode(nodeToSelect, selFrame);
         DiagramViewer sel = LookupHistory.getLast(DiagramViewer.class);
-        SourceUtils.resolveSelectableNodes(Collections.singletonList(nodeToSelect), sel, (nn) -> {
+        SourceUtils.resolveSelectableNodes(Collections.singletonList(nodeToSelect), sel, nn -> {
             sel.getSelections().setSelectedNodes(nn);
             sel.getSelections().scrollToVisible(nn);
         }, true);

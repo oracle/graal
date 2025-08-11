@@ -340,7 +340,7 @@ public class TimelineModelImpl implements TimelineModel, ChangedListener<Group>,
                 continue;
             }
             usedTypes.add(t);
-            indices.computeIfAbsent(t, (k) -> new ArrayList<>(els.size())).add(b);
+            indices.computeIfAbsent(t, k -> new ArrayList<>(els.size())).add(b);
             b++;
         }
         ncmap.keySet().retainAll(usedTypes);

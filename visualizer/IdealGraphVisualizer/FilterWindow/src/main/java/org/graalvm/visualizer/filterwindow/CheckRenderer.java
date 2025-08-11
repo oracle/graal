@@ -95,7 +95,7 @@ public class CheckRenderer extends NodeRenderer {
             Dimension pDim = toPaint.getPreferredSize();
             Insets ins = getInsets();
 
-            size.height -= (ins.top + ins.bottom);
+            size.height -= ins.top + ins.bottom;
             int x = ins.left;
             int y = cDim.height >= size.height ? ins.top : ins.top + ((size.height - cDim.height) / 2);
 
@@ -131,6 +131,7 @@ public class CheckRenderer extends NodeRenderer {
             g.translate(-x, -yLabel);
         }
 
+        @Override
         public Dimension getPreferredSize() {
             Dimension cSize = check.getPreferredSize();
             Dimension pSize = toPaint == null ? new Dimension(0, 0) : toPaint.getPreferredSize();

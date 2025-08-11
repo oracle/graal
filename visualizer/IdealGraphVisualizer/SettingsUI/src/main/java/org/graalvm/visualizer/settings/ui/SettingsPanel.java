@@ -60,17 +60,17 @@ import java.util.function.Function;
 public abstract class SettingsPanel<P extends SettingsPanel<P, C>, C extends SettingsOptionsPanelController<P, C>> extends JPanel {
 
     protected static final Connector<Boolean, AbstractButton> BOOL = new Connector<>(Boolean.class,
-            (c) -> c.isSelected(), (c, v) -> c.setSelected(v), (c, l) -> c.addActionListener(l));
+            c -> c.isSelected(), (c, v) -> c.setSelected(v), (c, l) -> c.addActionListener(l));
     protected static final Connector<Boolean, AbstractButton> NOT = new Connector<>(Boolean.class,
-            (c) -> !c.isSelected(), (c, v) -> c.setSelected(!v), (c, l) -> c.addActionListener(l));
+            c -> !c.isSelected(), (c, v) -> c.setSelected(!v), (c, l) -> c.addActionListener(l));
     protected static final Connector<String, JTextField> STRING = new Connector<>(String.class,
-            (c) -> c.getText(), (c, v) -> c.setText(v), (c, l) -> c.addActionListener(l));
+            c -> c.getText(), (c, v) -> c.setText(v), (c, l) -> c.addActionListener(l));
     protected static final Connector<Float, JFormattedTextField> FLOAT = new Connector<>(Float.class,
-            (c) -> (Float) c.getValue(), (c, v) -> c.setValue(v), (c, l) -> c.addActionListener(l));
+            c -> (Float) c.getValue(), (c, v) -> c.setValue(v), (c, l) -> c.addActionListener(l));
     protected static final Connector<Integer, JFormattedTextField> INT_FORM = new Connector<>(Integer.class,
-            (c) -> (Integer) c.getValue(), (c, v) -> c.setValue(v), (c, l) -> c.addActionListener(l));
+            c -> (Integer) c.getValue(), (c, v) -> c.setValue(v), (c, l) -> c.addActionListener(l));
     protected static final Connector<Integer, JComboBox> INT_COMB = new Connector<>(Integer.class,
-            (c) -> Integer.parseInt(c.getSelectedItem().toString()), (c, v) -> c.setSelectedItem(v), (c, l) -> c.addActionListener(l));
+            c -> Integer.parseInt(c.getSelectedItem().toString()), (c, v) -> c.setSelectedItem(v), (c, l) -> c.addActionListener(l));
 
     private final List<Runnable> loads = new ArrayList<>();
     private final Map<AbstractButton, Runnable> enables = new HashMap<>();
@@ -99,7 +99,7 @@ public abstract class SettingsPanel<P extends SettingsPanel<P, C>, C extends Set
     }
 
     protected <T, C extends JComponent> void tie(Connector<T, C> type, C comp, String name) {
-        type.attach(comp, (e) -> {
+        type.attach(comp, e -> {
             type.save(comp, getSettings(), name);
             settingsChanged();
         });
@@ -224,7 +224,7 @@ public abstract class SettingsPanel<P extends SettingsPanel<P, C>, C extends Set
         }
     }
 
-    public static abstract class SettingsOptionsPanelController<P extends SettingsPanel<P, C>, C extends SettingsOptionsPanelController<P, C>> extends OptionsPanelController {
+    public abstract static class SettingsOptionsPanelController<P extends SettingsPanel<P, C>, C extends SettingsOptionsPanelController<P, C>> extends OptionsPanelController {
 
         private P panel;
         private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);

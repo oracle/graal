@@ -294,7 +294,7 @@ public class JavaStackProcessor2 implements StackProcessor {
     }
 
     @ServiceProvider(service = StackProcessor.Factory.class, position = 10000)
-    public final static class Factory implements StackProcessor.Factory {
+    public static final class Factory implements StackProcessor.Factory {
         @Override
         public String[] getLanguageIDs() {
             return new String[]{"text/x-java"}; // NOI18N

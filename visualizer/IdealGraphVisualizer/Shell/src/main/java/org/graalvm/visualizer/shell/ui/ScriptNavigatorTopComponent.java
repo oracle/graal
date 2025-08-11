@@ -86,7 +86,7 @@ public final class ScriptNavigatorTopComponent extends TopComponent
         associateLookup(ExplorerUtils.createLookup(listMan, map));
 
         ExplorerUtils.activateActions(listMan, true);
-        listMan.addPropertyChangeListener((e) -> {
+        listMan.addPropertyChangeListener(e -> {
             final String n = e.getPropertyName();
             if (ExplorerManager.PROP_SELECTED_NODES.equals(n)) {
                 setActivatedNodes((Node[]) e.getNewValue());

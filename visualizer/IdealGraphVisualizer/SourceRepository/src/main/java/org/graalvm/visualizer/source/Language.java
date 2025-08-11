@@ -105,6 +105,7 @@ public final class Language {
         return true;
     }
 
+    @Override
     public String toString() {
         return displayName + "[" + mimeType + " : " + graalID + "]";
     }
@@ -114,7 +115,7 @@ public final class Language {
 
         public Language findLanguageByMime(String mimeType) {
             return getSupportedLanguages().stream().filter(
-                            (l) -> l.getMimeType().equals(mimeType))
+                            l -> l.getMimeType().equals(mimeType))
                     .findAny()
                     .orElse(null);
         }
@@ -141,11 +142,11 @@ public final class Language {
         }
 
         public Collection<String> getLanguageIDs() {
-            return getSupportedLanguages().stream().map((l) -> l.getGraalID()).collect(Collectors.toList());
+            return getSupportedLanguages().stream().map(l -> l.getGraalID()).collect(Collectors.toList());
         }
 
         public Collection<String> getMimeTypes() {
-            return getSupportedLanguages().stream().map((l) -> l.getMimeType()).collect(Collectors.toList());
+            return getSupportedLanguages().stream().map(l -> l.getMimeType()).collect(Collectors.toList());
         }
     }
 }

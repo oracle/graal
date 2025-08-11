@@ -48,6 +48,7 @@ public class NodeLocationContextTest extends GraphSourceTestBase {
 
     NodeLocationListener listener;
 
+    @Override
     protected void setUp() throws Exception {
         super.setUp();
         nctx = Lookup.getDefault().lookup(NodeLocationContext.class);

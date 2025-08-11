@@ -73,8 +73,8 @@ public class TestUtils {
         if (checkNotNulls(a, b)) {
             assertEquals(a.size(), b.size());
             Map<M, T> objs = new HashMap<>();
-            b.forEach((obj) -> objs.put(mapFunc.apply(obj), obj));
-            a.forEach((obj) -> assertion.accept(obj, objs.get(mapFunc.apply(obj))));
+            b.forEach(obj -> objs.put(mapFunc.apply(obj), obj));
+            a.forEach(obj -> assertion.accept(obj, objs.get(mapFunc.apply(obj))));
         }
     }
 
@@ -93,7 +93,7 @@ public class TestUtils {
     public static <T> void assertSetEquals(Set<? extends T> a, Set<? extends T> b) {
         if (checkNotNulls(a, b)) {
             assertEquals(a.size(), b.size());
-            b.forEach((obj) -> assertTrue(a.contains(obj)));
+            b.forEach(obj -> assertTrue(a.contains(obj)));
         }
     }
 

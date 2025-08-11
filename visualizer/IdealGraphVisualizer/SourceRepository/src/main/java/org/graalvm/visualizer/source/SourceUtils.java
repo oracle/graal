@@ -131,7 +131,7 @@ public class SourceUtils {
      */
     public static void resolveSelectableNodes(Collection<InputNode> nodes, DiagramViewer viewer,
                                               Consumer<Collection<InputNode>> callback, boolean all) {
-        viewer.getModel().withDiagramToView((dg) -> {
+        viewer.getModel().withDiagramToView(dg -> {
             SwingUtilities.invokeLater(() -> {
                 if (nodes == null) {
                     callback.accept(Collections.emptySet());

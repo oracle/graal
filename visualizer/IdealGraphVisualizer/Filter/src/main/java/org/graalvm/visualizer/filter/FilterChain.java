@@ -71,12 +71,14 @@ public class FilterChain implements FilterSequence<FilterChain>, ChangedEventPro
         return changedEvent;
     }
 
+    @Override
     public void addFilterListener(FilterListener l) {
         synchronized (listeners) {
             this.listeners.add(l);
         }
     }
 
+    @Override
     public void removeFilterListener(FilterListener l) {
         synchronized (listeners) {
             this.listeners.remove(l);
@@ -207,6 +209,7 @@ public class FilterChain implements FilterSequence<FilterChain>, ChangedEventPro
         changedEvent.fire();
     }
 
+    @Override
     public synchronized List<Filter> getFilters() {
         return Collections.unmodifiableList(new ArrayList<>(filters));
     }

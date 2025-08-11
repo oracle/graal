@@ -132,11 +132,13 @@ public class DropdownButton extends JPanel {
 
         if (toolbar) {
             JToolBar tb = new JToolBar() {
+                @Override
                 public void doLayout() {
                     for (Component c : getComponents())
                         c.setBounds(0, 0, getWidth(), getHeight());
                 }
 
+                @Override
                 public void paint(Graphics g) {
                     paintChildren(g);
                 }
@@ -158,17 +160,20 @@ public class DropdownButton extends JPanel {
         KeyStroke down = KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0);
         container.getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(down, POPUP_ACTION);
         container.getActionMap().put(POPUP_ACTION, new AbstractAction() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 displayPopup();
             }
         });
     }
 
+    @Override
     public boolean requestFocusInWindow() {
         return popup.isFocusable() ? popup.requestFocusInWindow() :
                 button.requestFocusInWindow();
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         if (button != null) {
             button.setEnabled(enabled);
@@ -183,6 +188,7 @@ public class DropdownButton extends JPanel {
         }
     }
 
+    @Override
     public boolean isEnabled() {
         return button == null ? false : button.isEnabled();
     }
@@ -205,6 +211,7 @@ public class DropdownButton extends JPanel {
     }
 
 
+    @Override
     public void setToolTipText(String text) {
         button.setToolTipText(text);
     }
@@ -283,6 +290,7 @@ public class DropdownButton extends JPanel {
     }
 
 
+    @Override
     public void paint(Graphics g) {
         paintChildren(g);
     }
@@ -368,20 +376,24 @@ public class DropdownButton extends JPanel {
     }
 
 
+    @Override
     public Dimension getPreferredSize() {
         Dimension d = button.getPreferredSize();
         d.width += POPUP_EXTENT + POPUP_XWIDTH;
         return d;
     }
 
+    @Override
     public Dimension getMinimumSize() {
         return getPreferredSize();
     }
 
+    @Override
     public Dimension getMaximumSize() {
         return getPreferredSize();
     }
 
+    @Override
     public void doLayout() {
         for (Component c : getComponents())
             c.setBounds(0, 0, getWidth(), getHeight());
@@ -400,14 +412,17 @@ public class DropdownButton extends JPanel {
                 putClientProperty("JComponent.sizeVariant", "regular"); // NOI18N
 
             setModel(new DefaultButtonModel() {
+                @Override
                 public boolean isRollover() {
                     return super.isRollover() || (isEnabled() && (popup != null && popup.getModel().isRollover()));
                 }
 
+                @Override
                 public boolean isPressed() {
                     return pushed || super.isPressed();
                 }
 
+                @Override
                 public boolean isArmed() {
                     return pushed || super.isArmed();
                 }
@@ -417,6 +432,7 @@ public class DropdownButton extends JPanel {
             setDefaultCapable(false);
         }
 
+        @Override
         public String getToolTipText() {
             if (pushed) {
                 Object pushedTT = getClientProperty("PUSHED_TOOLTIP"); // NOI18N
@@ -439,10 +455,12 @@ public class DropdownButton extends JPanel {
             super.processEvent(e);
         }
 
+        @Override
         public boolean hasFocus() {
             return isEnabled() ? super.hasFocus() : popup.hasFocus();
         }
 
+        @Override
         public void paint(Graphics g) {
             Rectangle c = g.getClipBounds();
             if (pushed || !isEnabled() || container.getComponent(0) != this)
@@ -451,10 +469,12 @@ public class DropdownButton extends JPanel {
             g.setClip(c);
         }
 
+        @Override
         public void repaint() {
             DropdownButton.this.repaint();
         }
 
+        @Override
         public Insets getMargin() {
             Insets i = super.getMargin();
             if (UIUtils.isWindowsClassicLookAndFeel()) {
@@ -495,6 +515,7 @@ public class DropdownButton extends JPanel {
             putClientProperty("MetalListener", new Object()); // NOI18N
 
             setModel(new DefaultButtonModel() {
+                @Override
                 public boolean isRollover() {
                     return super.isRollover() || pushed;
                 }
@@ -525,15 +546,18 @@ public class DropdownButton extends JPanel {
             }
         }
 
+        @Override
         public boolean hasFocus() {
             return isFocusable() ? super.hasFocus() : button.hasFocus();
 
         }
 
+        @Override
         public boolean isFocusable() {
             return !button.isEnabled();
         }
 
+        @Override
         public void paint(Graphics g) {
             if (isEnabled() && (pushed || !button.isEnabled() || container.getComponent(0) == this)) {
                 Rectangle c = g.getClipBounds();
@@ -543,6 +567,7 @@ public class DropdownButton extends JPanel {
             }
         }
 
+        @Override
         public void repaint() {
             DropdownButton.this.repaint();
         }
@@ -555,14 +580,17 @@ public class DropdownButton extends JPanel {
     static class SmallButton extends JButton {
 
         protected static final Icon NO_ICON = new Icon() {
+            @Override
             public int getIconWidth() {
                 return 0;
             }
 
+            @Override
             public int getIconHeight() {
                 return 16;
             }
 
+            @Override
             public void paintIcon(Component c, Graphics g, int x, int y) {
             }
         };
@@ -596,6 +624,7 @@ public class DropdownButton extends JPanel {
         }
 
 
+        @Override
         public void setIcon(Icon defaultIcon) {
             if (defaultIcon == null) {
                 defaultIcon = NO_ICON;
@@ -604,6 +633,7 @@ public class DropdownButton extends JPanel {
             super.setIcon(defaultIcon);
         }
 
+        @Override
         public Insets getMargin() {
             Insets margin = super.getMargin();
             if (margin != null) {

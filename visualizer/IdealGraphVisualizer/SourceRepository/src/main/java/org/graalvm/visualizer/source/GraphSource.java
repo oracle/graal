@@ -152,7 +152,7 @@ public final class GraphSource {
                 return Collections.emptySet();
             }
             if (o instanceof Collection) {
-                data = ((Collection) o);
+                data = (Collection) o;
             } else {
                 data = Collections.singletonList((StackData) o);
             }
@@ -213,7 +213,7 @@ public final class GraphSource {
                 ids = allIds;
             }
             for (String m : ids) {
-                ProcessorContext ctx = contexts.computeIfAbsent(m, (mime) -> new ProcessorContext(this, g, fileRegistry, mime));
+                ProcessorContext ctx = contexts.computeIfAbsent(m, mime -> new ProcessorContext(this, g, fileRegistry, mime));
                 StackProcessor p = f.createProcessor(ctx);
                 if (p == null) {
                     continue;
@@ -277,7 +277,7 @@ public final class GraphSource {
                 }
                 Collections.sort(locs, this::compareLine);
             } else {
-                keyLocations.computeIfAbsent(f, (x) -> new HashSet<Location>()).addAll(l);
+                keyLocations.computeIfAbsent(f, x -> new HashSet<Location>()).addAll(l);
             }
         }
 
@@ -639,7 +639,7 @@ public final class GraphSource {
         }
         StackData sd = getStackData(id, mime);
         if (sd == null) {
-            NodeStack st = nostackMarkers.computeIfAbsent(mime, (m) -> new NodeStack(this, m));
+            NodeStack st = nostackMarkers.computeIfAbsent(mime, m -> new NodeStack(this, m));
             nodeStacks[id] = new WeakReference<>(st);
             return null;
         }

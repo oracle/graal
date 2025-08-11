@@ -382,7 +382,7 @@ public abstract class AbstractSearchResultsPanelBase extends javax.swing.JPanel
                                boolean canExpand) {
         Node[] selected = getExplorerManager().getSelectedNodes();
         Node n = null;
-        if ((selected == null || selected.length == 0)
+        if (selected == null || selected.length == 0
             /* TODO && getExplorerManager().getRootContext() == resultsOutlineSupport.getRootNode() */) {
             n = getExplorerManager().getRootContext();
         } else if (selected.length == 1) {

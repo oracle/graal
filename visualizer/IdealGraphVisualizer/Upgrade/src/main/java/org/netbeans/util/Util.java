@@ -116,8 +116,8 @@ public class Util {
         sourceFolder = source;
 
         Object[] options = p.getOptions();
-        JButton bYES = ((JButton) options[0]);
-        JButton bNO = ((JButton) options[1]);
+        JButton bYES = (JButton) options[0];
+        JButton bNO = (JButton) options[1];
         OptionsListener listener = new OptionsListener(p, bYES, bNO);
         bYES.addActionListener(listener);
         bNO.addActionListener(listener);

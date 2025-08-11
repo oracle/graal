@@ -962,7 +962,7 @@ public class BinaryReader implements GraphParser, ModelControl {
     private void parseProperties(BiConsumer<String, Object> propertyConsumer) throws IOException {
         int propCount = dataSource.readShort();
         if (dataSource.getMajorVersion() > 7) {
-            propCount = (propCount == Character.MAX_VALUE ? dataSource.readInt() : propCount);
+            propCount = propCount == Character.MAX_VALUE ? dataSource.readInt() : propCount;
         }
         builder.setPropertySize(propCount);
         for (int j = 0; j < propCount; j++) {

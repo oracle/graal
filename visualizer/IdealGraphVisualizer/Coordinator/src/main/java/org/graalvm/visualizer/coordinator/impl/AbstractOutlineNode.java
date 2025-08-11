@@ -60,7 +60,7 @@ public class AbstractOutlineNode extends AbstractNode {
 
     @Override
     public boolean canRename() {
-        return (item instanceof Properties.MutableOwner);
+        return item instanceof Properties.MutableOwner;
     }
 
     @Override

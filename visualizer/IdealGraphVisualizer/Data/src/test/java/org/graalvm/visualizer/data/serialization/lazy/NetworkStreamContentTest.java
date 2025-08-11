@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.util.concurrent.Semaphore;
 
 import org.netbeans.junit.NbTestCase;
@@ -88,7 +89,7 @@ public class NetworkStreamContentTest extends NbTestCase {
     }
 
     private void initContent() throws IOException {
-        File name = File.createTempFile("igvtest_", "");
+        File name = Files.createTempFile("igvtest_", "").toFile();
         name.delete();
         name.mkdirs();
         content = new NetworkStreamContent(dataChannel, name);

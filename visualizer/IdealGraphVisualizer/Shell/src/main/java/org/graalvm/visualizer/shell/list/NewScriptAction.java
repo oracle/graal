@@ -84,7 +84,7 @@ public class NewScriptAction extends AbstractAction {
             if (files != null && !files.isEmpty()) {
                 DataObject x = createScriptFolderShadow(files.iterator().next().getPrimaryFile(), scriptRoot);
                 // wait on materialize && show the script list window
-                ShellUtils.onScrapMaterialize(x.getPrimaryFile(), (f) -> {
+                ShellUtils.onScrapMaterialize(x.getPrimaryFile(), f -> {
                     TopComponent tc = WindowManager.getDefault().findTopComponent(ScriptNavigatorTopComponent.ID);
                     if (tc != null) {
                         tc.open();

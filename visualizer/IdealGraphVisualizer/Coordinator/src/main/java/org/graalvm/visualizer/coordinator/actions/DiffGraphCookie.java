@@ -51,7 +51,7 @@ public class DiffGraphCookie implements Node.Cookie {
 
     public boolean isPossible() {
         InputGraph cg = getCurrentGraph();
-        if (cg == null || cg == graph || !(Objects.equals(cg.getGraphType(), graph.getGraphType()))) {
+        if (cg == null || cg == graph || !Objects.equals(cg.getGraphType(), graph.getGraphType())) {
             return false;
         }
         Group p1 = graph.getGroup();

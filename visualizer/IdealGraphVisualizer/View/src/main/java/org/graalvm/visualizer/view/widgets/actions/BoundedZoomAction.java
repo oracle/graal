@@ -69,7 +69,7 @@ public class BoundedZoomAction extends WidgetAction.Adapter {
                 return null;
             }
             if (component instanceof JScrollPane) {
-                return ((JScrollPane) component);
+                return (JScrollPane) component;
             }
             Container parent = component.getParent();
             if (!(parent instanceof JComponent)) {
@@ -98,8 +98,8 @@ public class BoundedZoomAction extends WidgetAction.Adapter {
         Dimension componentSize = new Dimension(scene.getView().getPreferredSize());
         if (scrollPane != null) {
             viewPosition = scrollPane.getViewport().getViewPosition();
-            xOffset = (mouseLocation.x - viewPosition.x);
-            yOffset = (mouseLocation.y - viewPosition.y);
+            xOffset = mouseLocation.x - viewPosition.x;
+            yOffset = mouseLocation.y - viewPosition.y;
             viewPosition.x += xOffset;
             viewPosition.y += yOffset;
         }
