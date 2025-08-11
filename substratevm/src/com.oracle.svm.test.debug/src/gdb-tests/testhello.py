@@ -46,7 +46,6 @@
 # PYTHON_PATH which gdb needs to use to locate any imported code.
 #
 
-import re
 import sys
 import os
 
@@ -614,7 +613,7 @@ def test():
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:147")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (Hello\.java:147\. \(2 locations\)|file hello/Hello\.java, line {digits_pattern}\.)"
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (Hello\.java:147\. \({digits_pattern} locations\)|file hello/Hello\.java, line {digits_pattern}\.)"
     checker = Checker('break Hello.java:147', rexp)
     checker.check(exec_string)
 
@@ -859,7 +858,7 @@ def test():
     execute("delete breakpoints")
 
     exec_string = execute("break " + lambda_name)
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello.java, line 221|hello.Hello::lambda($static)?${digits_pattern}. \({digits_pattern} locations\))"
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello\.java, line 221|hello\.Hello::lambda(\$static)?\${digits_pattern}. \({digits_pattern} locations\))"
     checker = Checker('break ' + lambda_name, rexp)
     checker.check(exec_string)
 
@@ -872,7 +871,7 @@ def test():
     execute("delete breakpoints")
 
     exec_string = execute("break Hello.java:222")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello.java, line 222"
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello\.java, line 222|Hello\.java:222\. \({digits_pattern} locations\))"
     checker = Checker('break Hello.java:222', rexp)
     checker.check(exec_string)
 

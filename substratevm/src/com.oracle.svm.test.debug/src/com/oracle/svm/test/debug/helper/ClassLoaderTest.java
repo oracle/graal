@@ -44,10 +44,10 @@ public class ClassLoaderTest {
 
     static {
         try {
-            Path path = Paths.get(System.getProperty("svm.test.missing.classes"));
+            Path path = Paths.get(System.getProperty("com.oracle.svm.test.debug.missing.classes"));
             URL[] urls = new URL[]{path.toUri().toURL()};
             try (URLClassLoader classLoader = new URLClassLoader("testClassLoader", urls, ClassLoaderTest.class.getClassLoader())) {
-                testClass = classLoader.loadClass("com.oracle.svm.test.missing.classes.TestClass");
+                testClass = classLoader.loadClass("com.oracle.svm.test.debug.missing.classes.TestClass");
                 testObj = testClass.getConstructor().newInstance();
                 instanceMethod = testClass.getDeclaredMethod("instanceMethod");
             } catch (IOException | ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -55,7 +55,7 @@ public class ClassLoaderTest {
             }
             // load the same class from two different classLoaders
             try (URLClassLoader classLoader = new URLClassLoader(urls, ClassLoaderTest.class.getClassLoader())) {
-                testClass2 = classLoader.loadClass("com.oracle.svm.test.missing.classes.TestClass");
+                testClass2 = classLoader.loadClass("com.oracle.svm.test.debug.missing.classes.TestClass");
                 testObj2 = testClass2.getConstructor().newInstance();
                 instanceMethod2 = testClass2.getDeclaredMethod("instanceMethod");
             } catch (IOException | ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {

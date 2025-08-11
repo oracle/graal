@@ -982,9 +982,9 @@ def _helloworld(native_image, javac_command, path, build_only, args, variant=lis
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
 def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
-    sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
+    sourcepath = mx.project('com.oracle.svm.test.debug').source_dirs()[0]
     # the header file for foreign types resides at the root of the
-    # com.oracle.svm.test source tree
+    # com.oracle.svm.test.debug source tree
     cincludepath = sourcepath
     for key, value in get_java_properties().items():
         args.append("-D" + key + "=" + value)
@@ -1012,7 +1012,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     # this is a non-layered build
     env['debuginfotest_layered'] = 'no'
 
-    testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
+    testhello_py = join(sourcepath, 'gdb-tests', 'testhello.py')
     testhello_args = [
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=hello',
@@ -1034,7 +1034,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
 
 def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isolates_only, args):
-    sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
+    sourcepath = mx.project('com.oracle.svm.test.debug').source_dirs()[0]
     cincludepath = sourcepath
 
     for key, value in get_java_properties().items():
@@ -1058,7 +1058,7 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isola
         build_layer(base_layer_path, [
             '-o', join(base_layer_path, base_layer_name),
         ] + svm_experimental_options([
-            f'-H:LayerCreate={base_layer_name}.nil,module=java.base,package=com.oracle.svm.test'
+            f'-H:LayerCreate={base_layer_name}.nil,module=java.base'
         ]))
 
     app_layer_path = join(output_path, 'app-layer')
@@ -1080,7 +1080,7 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isola
     env['LD_LIBRARY_PATH'] = base_layer_path
 
     # fetch python test file
-    testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
+    testhello_py = join(sourcepath, 'gdb-tests', 'testhello.py')
 
     # run gdb
     mx.run(gdb_base_command() + ['-x', testhello_py, app_layer], cwd=app_layer_path, env=env)
@@ -1110,13 +1110,13 @@ def testhello_ni_args(cincludepath, sourcepath):
         '--native-compiler-options=-I' + cincludepath,
         '-H:CLibraryPath=' + sourcepath,
         '--native-image-info',
-        '-cp', classpath('com.oracle.svm.test'),
+        '-cp', classpath('com.oracle.svm.test.debug'),
         '-Djdk.graal.LogFile=graal.log',
-        '-DbuildDebugInfoTestExample=true', # set property controlling inclusion of foreign struct header
-        ] + svm_experimental_options([
-            '-H:+SourceLevelDebug',
-            '-H:DebugInfoSourceSearchPath=' + sourcepath,
-        ])
+        '-DbuildDebugInfoTestExample=true',  # set property controlling inclusion of foreign struct header
+    ] + svm_experimental_options([
+        '-H:+SourceLevelDebug',
+        '-H:DebugInfoSourceSearchPath=' + sourcepath,
+    ])
 
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
@@ -1134,13 +1134,13 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                  ('GDB Python API is not available.' if gdb_version == 0 else f'found GDB version {gdb_version}.'))
     # ===============================
 
-    test_proj = mx.dependency('com.oracle.svm.test')
+    test_proj = mx.dependency('com.oracle.svm.test.debug')
     test_source_path = test_proj.source_dirs()[0]
     tutorial_proj = mx.dependency('com.oracle.svm.tutorial')
     tutorial_c_source_dir = join(tutorial_proj.dir, 'native')
     tutorial_source_path = tutorial_proj.source_dirs()[0]
 
-    test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
+    test_python_source_dir = join(test_source_path, 'gdb-tests')
     test_pretty_printer_py = join(test_python_source_dir, 'test_pretty_printer.py')
     test_cinterface_py = join(test_python_source_dir, 'test_cinterface.py')
     test_class_loader_py = join(test_python_source_dir, 'test_class_loader.py')
@@ -1148,7 +1148,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
     test_svm_util_py = join(test_python_source_dir, 'test_svm_util.py')
 
     test_pretty_printer_args = [
-        '-cp', classpath('com.oracle.svm.test'),
+        '-cp', classpath('com.oracle.svm.test.debug'),
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
         'com.oracle.svm.test.debug.helper.PrettyPrinterTest'
@@ -1159,11 +1159,11 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         '-cp', tutorial_proj.output_dir()
     ]
     test_class_loader_args = [
-        '-cp', classpath('com.oracle.svm.test'),
-        '-Dsvm.test.missing.classes=' + classpath('com.oracle.svm.test.missing.classes'),
+        '-cp', classpath('com.oracle.svm.test.debug'),
+        '-Dcom.oracle.svm.test.debug.missing.classes=' + classpath('com.oracle.svm.test.debug.missing.classes'),
         '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
         # We need the static initializer of the ClassLoaderTest to run at image build time
-        '--initialize-at-build-time=com.oracle.svm.test.missing.classes',
+        '--initialize-at-build-time=com.oracle.svm.test.debug.missing.classes',
         'com.oracle.svm.test.debug.helper.ClassLoaderTest'
     ]
 
@@ -1253,13 +1253,13 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
 
     args = [] if args is None else args
 
-    test_proj = mx.dependency('com.oracle.svm.test')
+    test_proj = mx.dependency('com.oracle.svm.test.debug')
     test_source_path = test_proj.source_dirs()[0]
 
-    test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
+    test_python_source_dir = join(test_source_path, 'gdb-tests')
     test_runtime_compilation_py = join(test_python_source_dir, 'test_runtime_compilation.py')
     test_runtime_deopt_py = join(test_python_source_dir, 'test_runtime_deopt.py')
-    testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
+    testdeopt_js = join(test_python_source_dir, 'testdeopt.js')
 
     # clean / create output directory
     if exists(output_path):
@@ -1273,9 +1273,11 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         '-DbuildDebugInfoTestExample=true',
         '--native-compiler-options=-I' + test_source_path,
         '-o', join(output_path, 'runtimedebuginfotest'),
-        '-cp', classpath('com.oracle.svm.test'),
+        '-cp', classpath('com.oracle.svm.test.debug'),
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
+        # We need access to ModuleSupport
+        '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
         '--features=com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest$RegisterMethodsFeature',
         'com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest',
     ] + svm_experimental_options([
@@ -1876,7 +1878,7 @@ def debuginfotest(args, config=None):
 def layereddebuginfotest(args, config=None):
     """
     Builds a layered native image and tests it with gdb.
-    Base layer: java.base, com.oracle.svm.test
+    Base layer: java.base
     App Layer: hello.Hello
     """
     parser = ArgumentParser(prog='mx layereddebuginfotest')
