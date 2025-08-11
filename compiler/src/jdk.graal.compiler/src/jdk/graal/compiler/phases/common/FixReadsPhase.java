@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.phases.common;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.ListIterator;
 import java.util.Optional;
 
@@ -67,6 +69,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.UnaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValueNodeInterface;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
@@ -76,6 +79,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -706,12 +710,34 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                     // floating guarded nodes without a guard are "universally" true meaning they
                     // can be executed everywhere
                     final GuardingNode guard = ((FloatingGuardedNode) n).getGuard();
-                    final boolean isUniversallyTrue = guard == null;
-                    if (!isUniversallyTrue) {
-                        assert guard instanceof FixedNode : Assertions.errorMessage(
-                                        "Should not have floating guarded nodes without fixed guards left after removing pis, they could float uncontrolled now", n);
-                    }
+                    assert verifyOnlyFixedGuards(guard);
                 }
+            }
+        }
+        return true;
+    }
+
+    private static boolean verifyOnlyFixedGuards(ValueNodeInterface guardingRoot) {
+        final boolean isUniversallyTrue = guardingRoot == null;
+        if (isUniversallyTrue) {
+            return true;
+        }
+        final StructuredGraph graph = guardingRoot.asNode().graph();
+        NodeBitMap visited = graph.createNodeBitMap();
+        Deque<ValueNodeInterface> toVisit = new ArrayDeque<>();
+        toVisit.add(guardingRoot);
+
+        while (!toVisit.isEmpty()) {
+            ValueNodeInterface currentGuard = toVisit.pop();
+            if (visited.isMarked(currentGuard.asNode())) {
+                continue;
+            }
+            visited.mark(currentGuard.asNode());
+            if (currentGuard instanceof MultiGuardNode mg) {
+                toVisit.addAll(mg.getGuards());
+            } else {
+                assert currentGuard instanceof FixedNode : Assertions.errorMessage(
+                                "Should not have floating guarded nodes without fixed guards left after removing pis, they could float uncontrolled now", currentGuard);
             }
         }
         return true;
