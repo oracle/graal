@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
-
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -50,23 +48,20 @@ public interface IntrinsicMethodNodeInterface extends ValueNodeInterface, LIRLow
 
     @Override
     default void generate(NodeLIRBuilderTool gen) {
-        if (!InlineGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallDescriptor foreignCallDescriptor = getForeignCallDescriptor();
-            ForeignCallLinkage linkage = gen.lookupGraalStub(asNode(), foreignCallDescriptor);
-            if (linkage != null) {
-                ValueNode[] args = getForeignCallArguments();
-                Value[] operands = new Value[args.length];
-                for (int i = 0; i < args.length; i++) {
-                    operands[i] = gen.operand(args[i]);
-                }
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, operands);
-                if (foreignCallDescriptor.getResultType() != void.class) {
-                    gen.setResult(asNode(), result);
-                }
-                return;
+        ForeignCallDescriptor foreignCallDescriptor = getForeignCallDescriptor();
+        ForeignCallLinkage linkage = gen.lookupGraalStub(asNode(), foreignCallDescriptor);
+        if (linkage != null) {
+            ValueNode[] args = getForeignCallArguments();
+            Value[] operands = new Value[args.length];
+            for (int i = 0; i < args.length; i++) {
+                operands[i] = gen.operand(args[i]);
             }
+            Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, operands);
+            if (foreignCallDescriptor.getResultType() != void.class) {
+                gen.setResult(asNode(), result);
+            }
+            return;
         }
-
         emitIntrinsic(gen);
     }
 
