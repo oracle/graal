@@ -17,7 +17,7 @@
                 <plugin>
                     <groupId>org.openrewrite.maven</groupId>
                     <artifactId>rewrite-maven-plugin</artifactId>
-                    <version>${maven.rewrite.plugin.version}</version>
+                    <version>6.15.0</version>
                     <configuration>
                         <activeRecipes>
                             <recipe>org.openrewrite.staticanalysis.UnnecessaryParentheses</recipe>
