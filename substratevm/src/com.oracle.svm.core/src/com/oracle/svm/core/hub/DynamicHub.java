@@ -432,7 +432,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
+                    int modifiers, int classFileAccessFlags, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
                     Object declaringClass, String signature, int typeID,
                     short numClassTypes,
                     short typeIDDepth,
@@ -457,8 +457,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
 
-        // FIXME: proper value
-        int classFileAccessFlags = 0;
         DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass,
                         signature);
 
