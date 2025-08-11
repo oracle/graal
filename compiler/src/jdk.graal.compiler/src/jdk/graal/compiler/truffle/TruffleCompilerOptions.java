@@ -407,7 +407,7 @@ public class TruffleCompilerOptions implements OptionsContainer {
         }
     }
 
-    public static boolean maximumGraalGraphSiteEnabled(OptionValues options) {
+    public static boolean maximumGraalGraphSizeEnabled(OptionValues options) {
         int val = MaximumGraalGraphSize.getValue(options);
         return val > 0;
     }
