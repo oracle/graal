@@ -24,59 +24,10 @@
                             <recipe>org.openrewrite.staticanalysis.UnnecessaryReturnAsLastStatement</recipe>
                             <recipe>org.openrewrite.staticanalysis.UnnecessaryExplicitTypeArguments</recipe>
                             <recipe>org.openrewrite.staticanalysis.UnnecessaryCloseInTryWithResources</recipe>
-                            <recipe>org.openrewrite.staticanalysis.NoValueOfOnStringType</recipe>
-                            <recipe>org.openrewrite.staticanalysis.NoToStringOnStringType</recipe>
                             <recipe>org.openrewrite.maven.BestPractices</recipe>
                             <recipe>org.openrewrite.maven.cleanup.PrefixlessExpressions</recipe>
                         </activeRecipes>
                         <exclusions>
-                            <exclusion>**.groovy</exclusion>
-                            <exclusion>**AbstractItModuleTestSupport.java</exclusion>
-                            <exclusion>**AbstractRootNode.java</exclusion>
-                            <exclusion>**BaseCellEditor.java</exclusion>
-                            <exclusion>**BeforeExecutionExclusionFileFilterExamplesTest.java</exclusion>
-                            <exclusion>**CheckstyleAntTask.java</exclusion>
-                            <exclusion>**CsvFilterElement.java</exclusion>
-                            <exclusion>**DefaultConfiguration.java</exclusion>
-                            <exclusion>**DefaultContext.java</exclusion>
-                            <exclusion>**DetailAstSet.java</exclusion>
-                            <exclusion>**EqualsAvoidNullCheck.java</exclusion>
-                            <exclusion>**FileContents.java</exclusion>
-                            <exclusion>**FileNameTest.java</exclusion>
-                            <exclusion>**FinalClassCheck.java</exclusion>
-                            <exclusion>**GeneratedJavaTokenTypesTest.java</exclusion>
-                            <exclusion>**HeaderCheckTest.java</exclusion>
-                            <exclusion>**JavaAstVisitor.java</exclusion>
-                            <exclusion>**Main.java</exclusion>
-                            <exclusion>**MainTest.java</exclusion>
-                            <exclusion>**ModuleInputConfiguration.java</exclusion>
-                            <exclusion>**MultilineDetector.java</exclusion>
-                            <exclusion>**NonAsciiCharactersTest.java</exclusion>
-                            <exclusion>**OrderedPropertiesCheck.java</exclusion>
-                            <exclusion>**PackageStatementTest.java</exclusion>
-                            <exclusion>**PatternVariableAssignmentCheck.java</exclusion>
-                            <exclusion>**PropertiesExpander.java</exclusion>
-                            <exclusion>**PropertiesMacro.java.java</exclusion>
-                            <exclusion>**RegexpCheck.java</exclusion>
-                            <exclusion>**RegexpOnFilenameCheckExamplesTest.java</exclusion>
-                            <exclusion>**RegexpSinglelineJavaCheck.java</exclusion>
-                            <exclusion>**ReverseListIteratorTest.java</exclusion>
-                            <exclusion>**ScopeUtil.java</exclusion>
-                            <exclusion>**SiteUtil.java</exclusion>
-                            <exclusion>**SpecialEscapeSequencesTest.java</exclusion>
-                            <exclusion>**SuppressWithNearbyCommentFilterTest.java</exclusion>
-                            <exclusion>**SuppressWithNearbyTextFilter.java</exclusion>
-                            <exclusion>**SuppressWithPlainTextCommentFilter.java</exclusion>
-                            <exclusion>**SuppressionXpathSingleFilterExamplesTest.java</exclusion>
-                            <exclusion>**TreeWalkerTest.java</exclusion>
-                            <exclusion>**WhitespaceCharactersTest.java</exclusion>
-                            <exclusion>**XdocsTemplateParser.java</exclusion>
-                            <exclusion>**XpathFileGeneratorAstFilter.java</exclusion>
-                            <exclusion>**XpathIteratorUtil.java</exclusion>
-                            <exclusion>**release.yml</exclusion>
-                            <exclusion>**resources-noncompilable**</exclusion>
-                            <exclusion>**src/it/resources**</exclusion>
-                            <exclusion>**src/test/resources**</exclusion>
                             <exclusion>**src/xdocs-examples**</exclusion>
                         </exclusions>
                         <exportDatatables>true</exportDatatables>
