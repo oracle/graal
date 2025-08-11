@@ -125,7 +125,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     },
   }),
 
-  local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
+  local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   local upload_file_sizes = ['bench-uploader.py', 'sizes.json'],
 
   local mx_env = task_spec({
