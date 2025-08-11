@@ -477,7 +477,7 @@ local devkits = graal_common.devkits;
     },
   },
 
-  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
+  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
 
   build_base_graalvm_image: [
@@ -539,7 +539,7 @@ local devkits = graal_common.devkits;
     + $.deploy_standalones(self.os, self.tags)
     + (
       if (record_file_sizes) then [
-        $.mx_vm_complete + $.record_file_sizes + ['--', '--', 'standalones'],
+        $.mx_vm_complete + $.record_file_sizes + ['--', 'standalones'],
         $.upload_file_sizes,
       ] else []
     ),
