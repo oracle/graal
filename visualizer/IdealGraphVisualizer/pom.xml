@@ -167,6 +167,12 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.openrewrite.maven</groupId>
+                <artifactId>rewrite-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
     <modules>
         <module>branding</module>
