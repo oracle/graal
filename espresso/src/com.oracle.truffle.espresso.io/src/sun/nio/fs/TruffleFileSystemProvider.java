@@ -51,8 +51,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 class TruffleFileSystemProvider extends FileSystemProvider {
 

@@ -24,13 +24,17 @@ package com.oracle.truffle.espresso.libs;
 
 import java.util.zip.Inflater;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public class LibsState {
+    private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
+
     private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
 
     public long handlifyInflater(Inflater i) {
@@ -49,10 +53,14 @@ public class LibsState {
         return inflater;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static EspressoException throwInternalError() {
         Meta meta = EspressoContext.get(null).getMeta();
         return meta.throwExceptionWithMessage(meta.java_lang_InternalError, "the provided handle doesn't correspond to an Inflater");
+    }
+
+    public TruffleLogger getLogger() {
+        return logger;
     }
 
 }

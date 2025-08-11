@@ -31,39 +31,39 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-final class DiffVersionLoadHelper {
+public final class DiffVersionLoadHelper {
 
     private final Meta meta;
     private Symbol<Name> name;
     private Symbol<Type> type;
     private Symbol<Signature> signature;
 
-    DiffVersionLoadHelper(Meta meta) {
+    public DiffVersionLoadHelper(Meta meta) {
         this.meta = meta;
     }
 
-    DiffVersionLoadHelper klass(VersionRange range, Symbol<Type> t) {
+    public DiffVersionLoadHelper klass(VersionRange range, Symbol<Type> t) {
         if (range.contains(meta.getJavaVersion())) {
             this.type = t;
         }
         return this;
     }
 
-    ObjectKlass klass() {
+    public ObjectKlass klass() {
         if (type == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return meta.knownKlass(type);
     }
 
-    ObjectKlass notRequiredKlass() {
+    public ObjectKlass notRequiredKlass() {
         if (type == null) {
             return null;
         }
         return meta.loadKlassWithBootClassLoader(type);
     }
 
-    DiffVersionLoadHelper method(VersionRange range, Symbol<Name> n, Symbol<Signature> s) {
+    public DiffVersionLoadHelper method(VersionRange range, Symbol<Name> n, Symbol<Signature> s) {
         if (range.contains(meta.getJavaVersion())) {
             this.name = n;
             this.signature = s;
@@ -71,14 +71,14 @@ final class DiffVersionLoadHelper {
         return this;
     }
 
-    Method method(ObjectKlass klass) {
+    public Method method(ObjectKlass klass) {
         if (name == null || signature == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return klass.requireDeclaredMethod(name, signature);
     }
 
-    Method notRequiredMethod(ObjectKlass klass) {
+    public Method notRequiredMethod(ObjectKlass klass) {
         if (name == null || signature == null) {
             return null;
         }
@@ -88,7 +88,7 @@ final class DiffVersionLoadHelper {
         return klass.requireDeclaredMethod(name, signature);
     }
 
-    DiffVersionLoadHelper field(VersionRange range, Symbol<Name> n, Symbol<Type> t) {
+   public DiffVersionLoadHelper field(VersionRange range, Symbol<Name> n, Symbol<Type> t) {
         if (range.contains(meta.getJavaVersion())) {
             this.name = n;
             this.type = t;
@@ -96,14 +96,14 @@ final class DiffVersionLoadHelper {
         return this;
     }
 
-    Field field(ObjectKlass klass) {
+    public Field field(ObjectKlass klass) {
         if (name == null || type == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return klass.requireDeclaredField(name, type);
     }
 
-    Field notRequiredField(ObjectKlass klass) {
+    public Field notRequiredField(ObjectKlass klass) {
         if (name == null || type == null) {
             return null;
         }
@@ -113,7 +113,7 @@ final class DiffVersionLoadHelper {
         return klass.requireDeclaredField(name, type);
     }
 
-    Field maybeHiddenfield(ObjectKlass klass) {
+    public Field maybeHiddenfield(ObjectKlass klass) {
         if (name == null || type == null) {
             return null;
         }

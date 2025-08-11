@@ -53,8 +53,7 @@ import java.util.regex.Pattern;
  * native code.
  *
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 final class TruffleFileSystem extends FileSystem {
     private static final Set<String> SUPPORTED_ATTRIBUTES = Collections.singleton("basic");

@@ -216,7 +216,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       # Deploy it to the artifact server
       self.mx_vm_espresso + deploy_artifacts(self.os, suite='espresso', tags=['standalone']),
     ],
-  }) + timelimit('1:45:00') + notify_emails('gilles.m.duboscq@oracle.com'),
+  }) + timelimit('1:45:00') + task_spec(graal_common.deps.espresso) + notify_emails('gilles.m.duboscq@oracle.com'),
 
   local deploy_vm_base_task_dict = {
     #

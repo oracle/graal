@@ -27,9 +27,7 @@ package java.io;
  * <p>
  * Its native methods are provided by Espresso's custom {@code libjava} implementation.
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
- *
+ * This file must be compatible with 21+.
  */
 final class TruffleFileSystem extends FileSystem {
 
@@ -166,7 +164,7 @@ final class TruffleFileSystem extends FileSystem {
         return getSpace0(f, t);
     }
 
-    @Override
+    // @Override is defined in 11+
     public int getNameMax(String path) {
         return getNameMax0(path);
     }

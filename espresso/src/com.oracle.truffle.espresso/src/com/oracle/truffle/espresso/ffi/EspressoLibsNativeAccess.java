@@ -67,8 +67,9 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         Path libname = libraryPath.getFileName();
-        if (libs.isKnown(libraryPath.toString())) {
+        if (libname != null && libs.isKnown(libraryPath.toString())) {
             getLogger().fine(() -> "Loading espresso lib: " + libname);
+            // this
             return libs.loadLibrary(getContext(), libname.toString());
 
         }
@@ -140,6 +141,9 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
 
     @Override
     public boolean isFallbackSymbol(TruffleObject symbol) {
+        if (symbol instanceof SubstitutionFactoryWrapper) {
+            return false;
+        }
         return delegate.isFallbackSymbol(symbol);
     }
 

@@ -26,14 +26,14 @@ import java.io.IOException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 final class TruffleBasicFileAttributeView implements BasicFileAttributeView {
 
@@ -71,7 +71,7 @@ final class TruffleBasicFileAttributeView implements BasicFileAttributeView {
         TruffleBasicFileAttributes bfa = (TruffleBasicFileAttributes) readAttributes();
         List<String> queriedAttributes = "*".equals(attributes)
                         ? TruffleBasicFileAttributes.BASIC_ATTRIBUTES
-                        : List.of(attributes.split(","));
+                        : Arrays.asList(attributes.split(","));
 
         HashMap<String, Object> map = new HashMap<>();
         for (String attributeName : queriedAttributes) {
