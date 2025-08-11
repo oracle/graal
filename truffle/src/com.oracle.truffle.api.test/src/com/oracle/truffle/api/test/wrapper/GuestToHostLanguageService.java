@@ -153,4 +153,8 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
         return false;
     }
 
+    @Override
+    public Exception materializeHostException() {
+        return new Exception();
+    }
 }

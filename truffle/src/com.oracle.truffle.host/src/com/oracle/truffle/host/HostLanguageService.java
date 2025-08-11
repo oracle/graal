@@ -308,4 +308,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
         }
     }
 
+    @Override
+    public Exception materializeHostException() {
+        return new Exception();
+    }
 }
