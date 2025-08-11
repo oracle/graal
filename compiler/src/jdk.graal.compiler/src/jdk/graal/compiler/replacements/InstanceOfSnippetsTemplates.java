@@ -36,6 +36,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -138,7 +139,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             ConditionalNode cn = (ConditionalNode) usage;
             return cn.trueValue().isConstant() && cn.falseValue().isConstant();
         }
-        if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof ConditionAnchorNode) {
+        if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof ConditionAnchorNode || usage instanceof LogicNegationNode) {
             return false;
         }
         return true;
