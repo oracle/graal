@@ -101,7 +101,42 @@ suite = {
             "sourceDirs": ["src"],
             # Contains classes in sun.nio.* that only compile with javac.
             "forceJavac": "true",
-            "javaCompliance": "8+",
+            "javaCompliance": "21+",
+            "patchModule": "java.base",
+            "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.io.jdk21": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.io",
+            ],
+            "overlayTarget": "com.oracle.truffle.espresso.io",
+            # Contains classes in sun.nio.* that only compile with javac.
+            "forceJavac": "true",
+            "multiReleaseJarVersion": "21",
+            "patchModule": "java.base",
+            "javaCompliance": "21",
+            "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.io.jdk25": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.io",
+            ],
+            # GR-47124 spotbugs does not support jdk25
+            "spotbugs": "false",
+            "overlayTarget": "com.oracle.truffle.espresso.io",
+            # Contains classes in sun.nio.* that only compile with javac.
+            "forceJavac": "true",
+            "multiReleaseJarVersion": "25",
+            "patchModule": "java.base",
+            "javaCompliance": "25",
             "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
             "checkstyle": "com.oracle.truffle.espresso",
         },

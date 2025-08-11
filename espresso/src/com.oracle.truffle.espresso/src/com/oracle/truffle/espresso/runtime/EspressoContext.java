@@ -102,6 +102,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -203,6 +204,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
     @CompilationFinal private TruffleIO truffleIO = null;
     @CompilationFinal private LibsState libsState = null;
+    @CompilationFinal private LibsMeta libsMeta = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -404,6 +406,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return libsState;
     }
 
+    public LibsMeta getLibsMeta() {
+        return libsMeta;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -435,6 +441,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                 }
             } else {
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
+            }
+
+            if (!getJavaVersion().java21Or25() && getLanguage().useEspressoLibs()) {
+                throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
             }
 
             // Spawn JNI first, then the VM.
@@ -480,6 +490,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
                 this.truffleIO = new TruffleIO(this);
+                this.libsMeta = new LibsMeta(this);
                 this.libsState = new LibsState();
             }
 

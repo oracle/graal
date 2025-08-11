@@ -761,11 +761,6 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
         public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");
         public static final Symbol<Name> outputConsumed = SYMBOLS.putName("outputConsumed");
-        public static final Symbol<Name> len = SYMBOLS.putName("len");
-        public static final Symbol<Name> off = SYMBOLS.putName("off");
-        public static final Symbol<Name> needDict = SYMBOLS.putName("needDict");
-        public static final Symbol<Name> finished = SYMBOLS.putName("finished");
-        public static final Symbol<Name> buf = SYMBOLS.putName("buf");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");
