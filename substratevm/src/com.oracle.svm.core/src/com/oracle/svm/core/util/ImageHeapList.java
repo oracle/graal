@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,14 +40,19 @@ import com.oracle.svm.core.Uninterruptible;
 /**
  * A list that is filled at image build time while the static analysis is running, and then read at
  * run time.
- *
+ * <p>
  * Filling the list at image build time is thread safe. Every object added to the list while the
  * static analysis is running is properly added to the shadow heap.
- *
+ * <p>
  * The list is immutable at run time. The run-time list can optionally be sorted, to make code at
  * run time deterministic regardless of the order in which elements are discovered and added at
  * image build time. Sorting happens at image build time, but does not affect the list that users
  * are adding to at image build time.
+ * <p>
+ * We support (mostly) <b>append-only</b> semantics. Removing elements is not allowed. Changing the
+ * content of the list via iterator is <b>not supported</b>. Note that we allow updating elements at
+ * existing indexes as this operation is already used. We have deliberately chosen this design to
+ * limit the number of analysis rescans needed.
  */
 @Platforms(Platform.HOSTED_ONLY.class) //
 public final class ImageHeapList {
@@ -76,6 +81,12 @@ public final class ImageHeapList {
         private final Comparator<E> comparator;
         private final List<E> hostedList;
         public final RuntimeImageHeapList<E> runtimeList;
+        /**
+         * Used to signal if this list has been modified. If true, the change should be propagated
+         * from the hosted list to the runtime list by calling {@link #update()}. This variable
+         * should <b>always</b> be accessed within a <code>synchronized</code> block guarded by the
+         * object's intrinsic lock.
+         */
         private boolean modified;
 
         @SuppressWarnings("unchecked")
@@ -115,9 +126,8 @@ public final class ImageHeapList {
         }
 
         @Override
-        public synchronized E remove(int index) {
-            modified = true;
-            return hostedList.remove(index);
+        public E remove(int index) {
+            throw notSupported();
         }
 
         @Override
@@ -137,6 +147,14 @@ public final class ImageHeapList {
         @Override
         public synchronized int size() {
             return hostedList.size();
+        }
+
+        private static UnsupportedOperationException notSupported() {
+            /*
+             * We have deliberately chosen to only support append-only behavior to limit the number
+             * of analysis rescans needed.
+             */
+            throw new UnsupportedOperationException("ImageHeapList has append-only semantics. Removing elements is forbidden.");
         }
     }
 }
