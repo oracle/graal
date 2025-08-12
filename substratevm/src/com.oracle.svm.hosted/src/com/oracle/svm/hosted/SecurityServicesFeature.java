@@ -130,7 +130,7 @@ import sun.security.x509.OIDMap;
  * The feature distinguishes between providers that are initialized at build time and those that are
  * initialized at run time. This distinction is essential because certain providers may perform
  * sensitive operations. Right now, all providers are initialized build-time by default, but that
- * can be changed using --future-defaults=all or --future-defaults=run-time-initialized-jdk
+ * can be changed using <code>--future-defaults=run-time-initialize-security-providers</code>
  *
  * <p>
  * The initialization strategy is:
@@ -251,7 +251,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             ImageSingletons.add(SecurityProvidersSupport.class, new SecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values()));
         }
 
@@ -267,7 +267,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
-        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             addManuallyConfiguredUsedProviders(a);
             verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
             providerListField = access.findField("sun.security.jca.Providers", "providerList");
@@ -288,9 +288,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
              * in the build-time initialization, so we need to mark them explicitly for run-time
              * initialization instead.
              */
-            rci.initializeAtRunTime("java.security.Security", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("sun.security.jca.Providers", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.security.Security", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
+            rci.initializeAtRunTime("sun.security.jca.Providers", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
+            rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
         }
 
         /*
@@ -390,7 +390,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
-        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
@@ -818,7 +818,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                  * support. See also Target_javax_crypto_JceSecurity.
                  */
                 Object result = getVerificationResult.invoke(null, provider);
-                if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+                if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
                     /*
                      * Note that after verification, we move the result to a separate structure
                      * since we don't want to keep the provider object in the image heap.
@@ -920,7 +920,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         access.rescanRoot(oidTableField);
-        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             maybeScanVerificationResultsField(access);
             maybeScanProvidersField(access);
             if (cachedProviders != null) {

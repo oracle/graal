@@ -207,7 +207,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
         runConditionalInAnalysisTask(condition, (cnd) -> {
             registerClass(cnd, clazz, unsafeInstantiated, true);
-            if (FutureDefaultsOptions.treatNameAsType()) {
+            if (FutureDefaultsOptions.completeReflectionTypes()) {
                 registerClassMetadata(cnd, clazz);
             }
         });
