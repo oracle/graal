@@ -99,6 +99,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -202,6 +203,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     @CompilationFinal private TruffleIO truffleIO = null;
     @CompilationFinal private LibsState libsState = null;
     @CompilationFinal private LibsMeta libsMeta = null;
+    @CompilationFinal private InformationLeak informationLeak = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -407,6 +409,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return libsMeta;
     }
 
+    public InformationLeak getInformationLeak() {
+        return informationLeak;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -486,9 +492,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
-                this.libsState = new LibsState();
-                this.truffleIO = new TruffleIO(this);
                 this.libsMeta = new LibsMeta(this);
+                this.libsState = new LibsState(this, libsMeta);
+                this.truffleIO = new TruffleIO(this);
+                this.informationLeak = new InformationLeak(this);
             }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
