@@ -658,8 +658,13 @@ public class ProgressReporter {
 
         @Override
         public String toString() {
-            String locationSuffix = location == null ? "" : " (" + Utils.truncateName(location, 14) + ")";
-            return moduleNamePrefix(javaModule) + Utils.truncateFQN(javaPackage.getName(), 22) + locationSuffix;
+            String locationSuffix = location == null ? "" : " (" + Utils.truncateName(location, 0.12) + ")";
+            double packageNameRatio = 0.19;
+            if (!javaModule.isNamed()) {
+                /* Give extra package name space if module not shown */
+                packageNameRatio += 0.13;
+            }
+            return moduleNamePrefix(javaModule) + Utils.truncateFQN(javaPackage.getName(), packageNameRatio) + locationSuffix;
         }
 
     }
@@ -671,7 +676,7 @@ public class ProgressReporter {
         if (javaModule.equals(DynamicHub.class.getModule())) {
             return "VM ";
         }
-        return Utils.truncateFQN(javaModule.getName(), 19) + "/";
+        return Utils.truncateFQN(javaModule.getName(), 0.16) + "/";
     }
 
     private void printBreakdowns() {
@@ -701,6 +706,7 @@ public class ProgressReporter {
         long printedHeapItems = 0;
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
+            /* <- 16% for module name -><- 19% or 32% for class FQN -><- 12% for location -> */
             if (packagesBySize.hasNext()) {
                 Entry<BreakDownClassifier, Long> entry = packagesBySize.next();
                 codeSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(entry.getValue()), entry.getKey());
@@ -709,15 +715,12 @@ public class ProgressReporter {
             }
 
             String heapSizePart = "";
+            /* <- 16% for module name -><- 32% for class FQN -> */
             if (typesBySizeInHeap.hasNext()) {
                 HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
-                String className = e.label.renderToString(linkStrategy);
-                // Do not truncate special breakdown items, they can contain links.
-                if (e.label instanceof HeapBreakdownProvider.SimpleHeapObjectKindName) {
-                    className = Utils.truncateFQN(className);
-                }
+                String labelString = e.label.renderToString(linkStrategy);
                 long byteSize = e.byteSize;
-                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), className);
+                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), labelString);
                 printedHeapBytes += byteSize;
                 printedHeapItems++;
             }
@@ -983,19 +986,20 @@ public class ProgressReporter {
             return part / (double) total * 100;
         }
 
-        private static String truncateName(String name, int maxLength) {
+        private static String truncateName(String name, double maxLineRatio) {
             int length = name.length();
+            int maxLength = (int) (CHARACTERS_PER_LINE * maxLineRatio);
             if (length <= maxLength) {
                 return name;
             }
             return TRUNCATION_PLACEHOLDER + name.substring(length - maxLength + TRUNCATION_PLACEHOLDER.length(), length);
         }
 
-        private static String truncateFQN(String fqn) {
-            return truncateFQN(fqn, CHARACTERS_PER_LINE / 2 - 10);
+        static String truncateFQN(String fqn, double maxLineRatio) {
+            return truncateFQN(fqn, (int) (CHARACTERS_PER_LINE * maxLineRatio));
         }
 
-        static String truncateFQN(String fqn, int maxLength) {
+        private static String truncateFQN(String fqn, int maxLength) {
             int classNameLength = fqn.length();
             if (classNameLength <= maxLength) {
                 return fqn;

@@ -216,7 +216,7 @@ public class HeapBreakdownProvider {
 
         public HeapBreakdownEntry(HostedClass hostedClass) {
             this(ProgressReporter.moduleNamePrefix(hostedClass.getJavaClass().getModule()) +
-                            ProgressReporter.Utils.truncateFQN(hostedClass.toJavaName(true), 40));
+                            ProgressReporter.Utils.truncateFQN(hostedClass.toJavaName(true), 0.32));
         }
 
         public HeapBreakdownEntry(String name) {
