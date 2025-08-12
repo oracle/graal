@@ -1031,27 +1031,41 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
 
     /**
-     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
-     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
-     * code.
+     * The alignment for JIT compiled methods.
      */
     @Fold
-    public static int codeAlignment() {
+    public static int runtimeCodeAlignment() {
+        int value = ConcealedOptions.CodeAlignment.getValue();
+        // In runtime compiled methods, data is also aligned according to the return value of this
+        // method. As a result, it needs to be at least defaultCodeAlignment() so that it can
+        // support the allocation of large constants such as SIMD ones.
+        return Math.max(value, defaultCodeAlignment());
+    }
+
+    /**
+     * The alignment for AOT compiled methods.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int buildTimeCodeAlignment() {
         int value = ConcealedOptions.CodeAlignment.getValue();
         if (value > 0) {
+            // In contrast to runtimeCodeAlignment, this value can be less than
+            // defaultCodeAlignment() so that methods can be more densely packed in the generated
+            // native image.
             return value;
         }
 
-        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
-            return 32;
-        }
-        return 16;
+        return defaultCodeAlignment();
+    }
+
+    private static int defaultCodeAlignment() {
+        return ConfigurationValues.getTarget().arch instanceof AMD64 ? 32 : 16;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static int codeAlignment(OptionValues options) {
+    public static int buildTimeCodeAlignment(OptionValues options) {
         int value = ConcealedOptions.CodeAlignment.getValue(options);
-        return value > 0 ? value : codeAlignment();
+        return value > 0 ? value : buildTimeCodeAlignment();
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
@@ -1236,7 +1250,10 @@ public class SubstrateOptions {
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
         public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
 
-        /** Use {@link SubstrateOptions#codeAlignment()} instead. */
+        /**
+         * Use {@link SubstrateOptions#buildTimeCodeAlignment()} or
+         * {@link SubstrateOptions#runtimeCodeAlignment()} instead.
+         */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
         public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);

@@ -29,6 +29,8 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /** Base class common to both hosted and runtime compilations. */
 public abstract class SharedCompilationResult extends CompilationResult {
@@ -64,17 +66,19 @@ public abstract class SharedCompilationResult extends CompilationResult {
         this.framePointerSaveAreaOffset = value;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static int getCodeAlignment(CompilationResult compilation) {
         int result;
         if (compilation instanceof SharedCompilationResult s) {
             result = s.codeAlignment;
         } else {
-            result = SubstrateOptions.codeAlignment();
+            result = SubstrateOptions.buildTimeCodeAlignment();
         }
         VMError.guarantee(result > 0 && NumUtil.isUnsignedPowerOf2(result), "invalid alignment %d", result);
         return result;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setCodeAlignment(int codeAlignment) {
         VMError.guarantee(codeAlignment > 0 && NumUtil.isUnsignedPowerOf2(codeAlignment), "invalid alignment %d", codeAlignment);
         this.codeAlignment = codeAlignment;
