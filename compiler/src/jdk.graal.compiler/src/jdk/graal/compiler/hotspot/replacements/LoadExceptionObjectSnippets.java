@@ -105,7 +105,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
                 loadExceptionC.computeStateDuring(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
-                Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(loadException, loadExceptionObject.graph(), tool.getLoweringStage());
                 args.add("threadRegister", registers.getThreadRegister());
                 template(tool, loadExceptionObject, args).instantiate(tool.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }

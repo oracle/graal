@@ -295,7 +295,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
             assert kind == JavaKind.Float || kind == JavaKind.Double;
             SnippetTemplate.SnippetInfo snippet = kind == JavaKind.Float ? frem : drem;
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, graph, tool.getLoweringStage());
             args.add("x", node.getX());
             args.add("y", node.getY());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, tool, args);

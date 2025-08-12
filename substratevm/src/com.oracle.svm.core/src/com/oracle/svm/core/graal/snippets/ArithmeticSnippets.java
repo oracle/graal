@@ -259,7 +259,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             } else {
                 throw shouldNotReachHereUnexpectedInput(node); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("x", node.getX());
             args.add("y", node.getY());
 

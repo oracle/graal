@@ -62,7 +62,7 @@ public class SnippetSubstitutionNode extends MacroWithExceptionNode implements L
 
     @Override
     public void lower(LoweringTool tool) {
-        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, this.graph().getGuardsStage(), tool.getLoweringStage());
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, this.graph(), tool.getLoweringStage());
         int arg = 0;
         for (; arg < arguments.size(); arg++) {
             args.add(snippet.getParameterName(arg), arguments.get(arg));

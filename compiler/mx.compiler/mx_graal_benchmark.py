@@ -48,6 +48,7 @@ _graal_variants = [
     ('zgc', ['-XX:+UseZGC'], 12),
     ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
     ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
+    ('shenandoah', ['-XX:+UseShenandoahGC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),

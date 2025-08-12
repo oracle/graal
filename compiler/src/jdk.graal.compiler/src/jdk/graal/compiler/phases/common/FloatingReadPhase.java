@@ -131,17 +131,14 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     }
 
     public FloatingReadPhase(CanonicalizerPhase canonicalizer) {
-        this(false, canonicalizer);
+        this(false, true, canonicalizer);
     }
 
     /**
-     * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if this
+     * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if true
+     * @param createFloatingReads attempt to float {@link FloatableAccessNode}
      * @param canonicalizer
      */
-    public FloatingReadPhase(boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
-        this(createMemoryMapNodes, true, canonicalizer);
-    }
-
     public FloatingReadPhase(boolean createMemoryMapNodes, boolean createFloatingReads, CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
         this.createMemoryMapNodes = createMemoryMapNodes;
@@ -260,7 +257,9 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     @Override
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
-        graphState.setAfterStage(StageFlag.FLOATING_READS);
+        if (createFloatingReads) {
+            graphState.setAfterStage(StageFlag.FLOATING_READS);
+        }
     }
 
     @SuppressWarnings("try")

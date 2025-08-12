@@ -65,10 +65,10 @@ public abstract class IsArraySnippets implements Snippets {
             ValueNode node = replacer.instanceOf;
             SnippetTemplate.Arguments args;
             if (node instanceof ObjectIsArrayNode) {
-                args = new SnippetTemplate.Arguments(objectIsArraySnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(objectIsArraySnippet, node.graph(), tool.getLoweringStage());
                 args.add("object", ((ObjectIsArrayNode) node).getValue());
             } else if (replacer.instanceOf instanceof ClassIsArrayNode) {
-                args = new SnippetTemplate.Arguments(classIsArraySnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(classIsArraySnippet, node.graph(), tool.getLoweringStage());
                 args.add("clazz", ((ClassIsArrayNode) node).getValue());
             } else {
                 throw GraalError.shouldNotReachHere(node + " " + replacer); // ExcludeFromJacocoGeneratedReport

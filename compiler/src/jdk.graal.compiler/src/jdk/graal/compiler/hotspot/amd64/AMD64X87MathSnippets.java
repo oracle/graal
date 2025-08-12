@@ -107,7 +107,7 @@ public class AMD64X87MathSnippets implements Snippets {
                     throw GraalError.shouldNotReachHere("Snippet not found for math intrinsic " + mathIntrinsicNode.getOperation().name()); // ExcludeFromJacocoGeneratedReport
             }
 
-            Arguments args = new Arguments(info, mathIntrinsicNode.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(info, mathIntrinsicNode.graph(), tool.getLoweringStage());
             args.add("input", mathIntrinsicNode.getValue());
             template(tool, mathIntrinsicNode, args).instantiate(tool.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
             mathIntrinsicNode.safeDelete();

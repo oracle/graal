@@ -68,7 +68,8 @@ public final class GraphState {
                     StageFlag.EXPAND_LOGIC,
                     StageFlag.ADDRESS_LOWERING,
                     StageFlag.REMOVE_OPAQUE_VALUES,
-                    StageFlag.FINAL_SCHEDULE);
+                    StageFlag.FINAL_SCHEDULE,
+                    StageFlag.LOW_TIER_BARRIER_ADDITION);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -561,6 +562,10 @@ public final class GraphState {
         return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
     }
 
+    public boolean allowsFloatingReads() {
+        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
+    }
+
     /**
      * Configure the graph to only allow explicit exception edges without floating guard nodes. That
      * is the graph:
@@ -632,6 +637,7 @@ public final class GraphState {
         VECTOR_LOWERING,
         EXPAND_LOGIC,
         FIXED_READS,
+        LOW_TIER_BARRIER_ADDITION,
         PARTIAL_REDUNDANCY_SCHEDULE,
         ADDRESS_LOWERING,
         FINAL_CANONICALIZATION,
