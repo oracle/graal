@@ -176,19 +176,14 @@ final class CVSymbolSubsectionBuilder {
         final String externalName = primaryRange.getSymbolName();
         final MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getCallees().getFirst().getMethodEntry();
 
-        /* define 'this' as a local just as we define other object pointers */
-        if (!Modifier.isStatic(method.getModifiers())) {
-            final TypeEntry typeEntry = primaryEntry.ownerType();
-            LocalEntry thisParam = method.getThisParam();
-            final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(typeEntry);
-            emitLocal(thisParam, varRangeMap, thisParam.name(), typeEntry, typeIndex, true, externalName, primaryRange);
-        }
-
         /* define function parameters */
+        assert Modifier.isStatic(method.getModifiers()) || !method.getParams().isEmpty();
         for (LocalEntry paramInfo : method.getParams()) {
-            final TypeEntry typeEntry = paramInfo.type();
-            final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(typeEntry).getSequenceNumber();
-            emitLocal(paramInfo, varRangeMap, paramInfo.name(), typeEntry, typeIndex, true, externalName, primaryRange);
+            final TypeEntry paramType = paramInfo.type();
+            final int typeIndex = method.isThisParam(paramInfo)
+                    ? cvDebugInfo.getCVTypeSection().getIndexForPointer(paramType)
+                    : cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
+            emitLocal(paramInfo, varRangeMap, paramInfo.name(), paramType, typeIndex, true, externalName, primaryRange);
         }
     }
 
