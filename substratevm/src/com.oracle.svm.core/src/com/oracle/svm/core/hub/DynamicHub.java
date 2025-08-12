@@ -1042,18 +1042,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     int getClassFileAccessFlags() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * Currently, layered images do not use the Class#classFileAccessFlags. This will be
+             * addressed by GR-68631.
+             */
             int classAccessFlags = 0;
-            for (var reflectionMetadata : LayeredReflectionMetadataSingleton.singletons()) {
-                classAccessFlags |= getClassAccessFlags(reflectionMetadata.getReflectionMetadata(this));
+            for (var reflectionMetadataSingleton : LayeredReflectionMetadataSingleton.singletons()) {
+                ReflectionMetadata reflectionMetadata = reflectionMetadataSingleton.getReflectionMetadata(this);
+                classAccessFlags |= reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
             }
             return classAccessFlags;
         } else {
             return companion.classFileAccessFlags;
         }
-    }
-
-    private int getClassAccessFlags(ReflectionMetadata reflectionMetadata) {
-        return reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
     }
 
     @Substitute
