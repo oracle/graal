@@ -92,7 +92,7 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
             do {
                 nextRead = io.readBytes(fd, FDAccess.forFileDescriptor(), byteBuffer);
                 read += nextRead;
-            } while (nextRead != -1 && read < length);
+            } while (nextRead != io.ioStatusSync.EOF && read < length);
         } finally {
             // always reset the position
             io.seek(fd, FDAccess.forFileDescriptor(), oldPosition);
