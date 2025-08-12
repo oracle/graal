@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -75,7 +76,10 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
         }
         // Failed to find library in known libs:
         // try to find an actual library (can be null)
-        getLogger().fine(() -> "Could not find espresso lib '" + libname + "', trying delegate Native Access...");
+        String[] knownLibs = {"libnespresso.so", "libjvm.so", "libverify.so", "libjimage.so"};
+        if (!Arrays.asList(knownLibs).contains(libname.toString())) {
+            getLogger().warning(() -> "Could not find espresso lib '" + libname + "', trying delegate Native Access...");
+        }
         return delegate.loadLibrary(libraryPath);
     }
 
@@ -115,8 +119,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
             getLogger().fine(() -> "Failed to locate symbol '" + symbolName + "' in espresso lib " + lib.name());
         } else {
             // Delegate library
-            getLogger().fine(() -> "Espresso libs delegating for: " + symbolName);
-            return delegate.lookupSymbol(library, symbolName);
+            TruffleObject ret = delegate.lookupSymbol(library, symbolName);
+            if (ret != null) {
+                getLogger().fine(() -> "Found: " + symbolName + " through delegate library");
+            }
+            return ret;
         }
         return null;
     }

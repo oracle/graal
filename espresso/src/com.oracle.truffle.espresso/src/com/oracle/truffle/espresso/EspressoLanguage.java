@@ -148,6 +148,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
+    @CompilationFinal private boolean enableNetworking;
     @CompilationFinal private boolean continuum;
     @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;
@@ -265,6 +266,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
         this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        boolean userEnableNetworking = env.getOptions().get((EspressoOptions.enableNetworking));
+        if (userEnableNetworking && !env.isSocketIOAllowed()) {
+            throw EspressoError.shouldNotReachHere("Socket IO is not allowed, but Espresso networking is enabled.");
+        }
+        this.enableNetworking = userEnableNetworking;
         this.nativeBackendId = setNativeBackendId(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
@@ -628,6 +634,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public String nativeBackendId() {
         return nativeBackendId;
+    }
+
+    public boolean enableNetworking() {
+        return enableNetworking;
     }
 
     public boolean isContinuumEnabled() {

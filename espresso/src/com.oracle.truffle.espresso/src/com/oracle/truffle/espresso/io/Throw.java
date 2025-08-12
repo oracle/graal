@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.io;
 
 import java.io.IOException;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
@@ -58,6 +60,14 @@ public final class Throw {
 
     public static EspressoException throwIOException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_IOException, message);
+    }
+
+    public static EspressoException throwSocketException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_net_SocketException, message);
+    }
+
+    public static EspressoException throwSocketException(SocketException e, EspressoContext context) {
+        throw throwSocketException(getMessageBoundary(e), context);
     }
 
     public static EspressoException throwIOException(IOException e, EspressoContext context) {
@@ -103,6 +113,18 @@ public final class Throw {
             throw throwNotDirectoryException(message, context);
         }
 
+        if (exceptionClass == UnknownHostException.class) {
+            throw throwUnknownHostException(message, context);
+        }
+
+        if (exceptionClass == SocketException.class) {
+            throw throwSocketException(message, context);
+        }
+
+        if (isConnectionResetException(e)) {
+            throw throwConnectionResetException(message, context);
+        }
+
         if (exceptionClass != IOException.class) {
             context.getLogger().warning(() -> "Not exact translation of IOException: " + exceptionClass);
         }
@@ -119,6 +141,10 @@ public final class Throw {
 
     public static EspressoException throwClosedChannelException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_nio_channels_ClosedChannelException, message);
+    }
+
+    private static boolean isConnectionResetException(IOException e) {
+        return e.getClass() == SocketException.class && (getMessageBoundary(e).equals("Connection reset"));
     }
 
     public static EspressoException throwNonReadable(EspressoContext context) {
@@ -185,5 +211,15 @@ public final class Throw {
     public static EspressoException throwNotLinkException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_nio_file_NotLinkException, message);
+    }
+
+    public static EspressoException throwConnectionResetException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().sun_net_ConnectionResetException, message);
+    }
+
+    public static EspressoException throwUnknownHostException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().java_net_UnknownHostException, message);
     }
 }

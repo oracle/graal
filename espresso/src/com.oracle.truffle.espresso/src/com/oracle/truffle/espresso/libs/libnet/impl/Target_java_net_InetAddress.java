@@ -20,23 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.libs.libnet;
+package com.oracle.truffle.espresso.libs.libnet.impl;
 
-import com.oracle.truffle.espresso.libs.Lib;
-import com.oracle.truffle.espresso.libs.Libs;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.substitutions.Collect;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import java.net.InetAddress;
 
-@Collect(Libs.class)
-public final class LibNet implements Lib.Factory {
-    @Override
-    public String name() {
-        return "net";
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.libnet.LibNet;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.Substitution;
+
+@EspressoSubstitutions(value = InetAddress.class, group = LibNet.class)
+public final class Target_java_net_InetAddress {
+    @Substitution
+    public static void init() {
+        // nop
     }
 
-    @Override
-    public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibNetCollector.getInstances(JavaSubstitution.Factory.class), name());
+    @Substitution
+    public static boolean isIPv6Supported(@Inject InformationLeak iL) {
+        return iL.isIPv6Available0();
+
+    }
+
+    @Substitution
+    public static boolean isIPv4Available(@Inject InformationLeak iL) {
+        return iL.isIPv4Available();
     }
 }

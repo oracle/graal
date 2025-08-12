@@ -30,18 +30,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketOption;
+import java.net.StandardProtocolFamily;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.nio.channels.Channels;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.DatagramChannel;
+import java.nio.channels.NetworkChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,11 +75,13 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -88,10 +103,13 @@ public final class TruffleIO implements ContextAccess {
     // Checkstyle: stop field name check
     public final ObjectKlass java_io_IOException;
     public final ObjectKlass java_nio_file_NoSuchFileException;
+    public final ObjectKlass java_net_SocketException;
     public final ObjectKlass java_io_FileNotFoundException;
     public final ObjectKlass java_nio_channels_ClosedByInterruptException;
     public final ObjectKlass java_nio_channels_AsynchronousCloseException;
     public final ObjectKlass java_nio_channels_ClosedChannelException;
+    public final ObjectKlass sun_net_ConnectionResetException;
+    public final ObjectKlass java_net_UnknownHostException;
     public final ObjectKlass java_io_FileDescriptor;
     public final Field java_io_FileDescriptor_fd;
     public final Field java_io_FileDescriptor_append;
@@ -121,6 +139,9 @@ public final class TruffleIO implements ContextAccess {
 
     public final ObjectKlass sun_nio_fs_FileAttributeParser;
     @CompilationFinal public FileAttributeParser_Sync fileAttributeParserSync;
+
+    public final ObjectKlass sun_nio_ch_IOStatus;
+    public final IOStatus_Sync ioStatusSync;
 
     public final ObjectKlass java_io_FileSystem;
     public final FileSystem_Sync fileSystemSync;
@@ -216,6 +237,288 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
+     * Temporary Method to open a Socket with the given parameter and associate it with a generated
+     * fd. It will be replaced with a TruffleAPI as soon as one exists.
+     *
+     * @param preferIPv6 whether to prefer IPv6 over IPv4
+     * @param stream TCP or UDP
+     * @param reuse allows binding to an address even if in TIME_WAIT state
+     *
+     * @return The file descriptor associated with the file.
+     */
+    @TruffleBoundary
+    public int openSocket(boolean preferIPv6, boolean stream, boolean reuse) {
+        context.getInformationLeak().checkNetworkEnabled();
+        // opening the channel
+        java.net.ProtocolFamily family = preferIPv6 ? StandardProtocolFamily.INET6 : StandardProtocolFamily.INET;
+        ChannelWrapper channelWrapper;
+        try {
+            if (stream && !reuse) {
+                // this implies that we are opening a TCP Client Channel
+                // according to sun.nio.ch.Net.socket(java.net.ProtocolFamily,boolean)
+                SocketChannel channel = SocketChannel.open(family);
+                channel.setOption(StandardSocketOptions.SO_REUSEADDR, reuse);
+                channelWrapper = new ChannelWrapper(channel, 1);
+            } else if (stream) {
+                // opens a TCP Server Channel
+                ServerSocketChannel channel = ServerSocketChannel.open(family);
+                channel.setOption(StandardSocketOptions.SO_REUSEADDR, reuse);
+                channelWrapper = new TCPChannelWrapper(channel, 1);
+            } else {
+                // opens a UDP Channel
+                DatagramChannel channel = DatagramChannel.open(StandardProtocolFamily.INET);
+                channel.setOption(StandardSocketOptions.SO_REUSEADDR, reuse);
+                channelWrapper = new ChannelWrapper(channel, 1);
+            }
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+        return createFDforChannel(channelWrapper);
+    }
+
+    @TruffleBoundary
+    public int available(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        try {
+            return Channels.newInputStream(getReadableChannel(self, fdAccess)).available();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    @TruffleBoundary
+    public void bind(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean preferIPv6, boolean useExclBind, @JavaType(InetAddress.class) StaticObject addr,
+                    int port, LibsState libsState) {
+        ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
+        Objects.requireNonNull(channelWrapper);
+        Channel channel = channelWrapper.channel;
+
+        InetAddress inetAddress = libsState.net.fromGuestInetAddress(addr);
+
+        if (channel instanceof DatagramChannel datagramChannel) {
+            this.bindUDP(datagramChannel, inetAddress, preferIPv6, useExclBind, port);
+        } else if (channelWrapper instanceof TCPChannelWrapper tcpChannelWrapper) {
+            /*
+             * We shouldn't call bind directly on the ServerSocketChannel since we lack the backlog.
+             * parameter which will be provided by the listen method. Thus, we cache the arguments
+             * but wait with the bind.
+             */
+            tcpChannelWrapper.setTCPBindInformation(inetAddress, preferIPv6, useExclBind, port);
+        } else {
+            // the Server-fd isn't associated with a TCP-Channel for a TCP protocol method!
+            throw JavaSubstitution.shouldNotReachHere();
+        }
+    }
+
+    @TruffleBoundary
+    public void bindUDP(DatagramChannel datagramChannel, InetAddress inetAddress, boolean preferIPv6, boolean useExclBind, int port) {
+        this.initSocketOptions(datagramChannel, preferIPv6, useExclBind);
+        try {
+            datagramChannel.bind(new InetSocketAddress(inetAddress, port));
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    @TruffleBoundary
+    public int accept(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, @JavaType(FileDescriptor.class) StaticObject newfd, SocketAddress[] ret,
+                    LibsState libsState) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof ServerSocketChannel serverSocketChannel) {
+            try {
+                // accept the connection
+                SocketChannel clientSocket = serverSocketChannel.accept();
+                if (clientSocket == null) {
+                    return this.ioStatusSync.UNAVAILABLE;
+                }
+                // register the channel with a fd
+                int newfdVal = createFDforChannel(new ChannelWrapper(clientSocket, 1));
+                // set the value of the fd
+                libsState.net.setFDVal(newfd, newfdVal);
+                // return the remoteAddress
+                ret[0] = clientSocket.getRemoteAddress();
+                return 1;
+            } catch (AsynchronousCloseException e) {
+                return ioStatusSync.UNAVAILABLE;
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            // the Server-fd isn't associated with a TCP-Channel for a TCP protocol method!
+            throw JavaSubstitution.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * Calls finishConnect on the underlying SocketChannel.
+     */
+    @TruffleBoundary
+    public boolean finishConnect(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        try {
+            return getSocketChannel(self, fdAccess).finishConnect();
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    public <T> void setSocketOption(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketOption<T> name, T value) {
+        try {
+            getNetworkChannel(self, fdAccess).setOption(name, value);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    public boolean connect(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketAddress remote) {
+        try {
+            return getSocketChannel(self, fdAccess).connect(remote);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    public void shutdownSocketChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, int how) {
+        try {
+            SocketChannel socketChannel = getSocketChannel(self, fdAccess);
+            if (how == 2 || how == 0) {
+                socketChannel.shutdownInput();
+            }
+            if (how == 1 || how == 2) {
+                socketChannel.shutdownOutput();
+            }
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    public <T> T getSocketOption(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketOption<T> name) {
+        try {
+            return getNetworkChannel(self, fdAccess).getOption(name);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    private int createFDforChannel(ChannelWrapper channel) {
+        synchronized (files) {
+            int fd = nextFreeFd();
+            if (fd < 0) {
+                throw Throw.throwFileNotFoundException("Opened file limit reached.", context);
+            }
+            files.put(fd, channel);
+            return fd;
+        }
+    }
+
+    @TruffleBoundary
+    public void listenTCP(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, int backlog) {
+        int fd = getFD(getFileDesc(self, fdAccess));
+        ChannelWrapper channelWrapper = files.getOrDefault(fd, null);
+        Objects.requireNonNull(channelWrapper);
+        if (channelWrapper instanceof TCPChannelWrapper tcpWrapper) {
+            ServerSocketChannel channel = (ServerSocketChannel) channelWrapper.channel;
+            initSocketOptions(channel, tcpWrapper.preferIPv6, tcpWrapper.useExclBind);
+            try {
+                channel.bind(new InetSocketAddress(tcpWrapper.inetAddress, tcpWrapper.port), backlog);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            throw JavaSubstitution.shouldNotReachHere();
+        }
+    }
+
+    @TruffleBoundary
+    public @JavaType StaticObject getLocalAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+
+        try {
+            int fd = getFD(self, fdAccess);
+            NetworkChannel networkChannel = getNetworkChannel(fd);
+            InetSocketAddress socketAddress = (InetSocketAddress) networkChannel.getLocalAddress();
+            InetAddress inetAddress = null;
+            if (socketAddress != null) {
+                inetAddress = socketAddress.getAddress();
+            } else {
+                /*
+                 * The host socket is bound once listen is called. On the other hand, the guest
+                 * socket is bound by the call to bind (which proceeds the listen call. Thus, we
+                 * need to check if we have cached the bind information.
+                 */
+                TCPChannelWrapper tcpSocket = socketIsBound(fd);
+                if (tcpSocket != null) {
+                    inetAddress = tcpSocket.inetAddress;
+                } else {
+                    throw Throw.throwIOException("Unbound Socket", context);
+                }
+            }
+            return context.getLibsState().net.convertInetAddr(inetAddress);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    @TruffleBoundary
+    public int getPort(@JavaType(Object.class) StaticObject self, FDAccess fdAccess) {
+        try {
+            int fd = getFD(self, fdAccess);
+            InetSocketAddress socketAddress = (InetSocketAddress) getNetworkChannel(fd).getLocalAddress();
+            if (socketAddress != null) {
+                return socketAddress.getPort();
+            }
+            /*
+             * The host socket is bound once listen is called. On the other hand, the guest socket
+             * is bound by the call to bind (which proceeds the listen call. Thus, we need to check
+             * if we have cached the bind information.
+             */
+            TCPChannelWrapper tcpSocket = socketIsBound(fd);
+            if (tcpSocket != null) {
+                return tcpSocket.port;
+            }
+            throw Throw.throwIOException("Unbound Socket", context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    private TCPChannelWrapper socketIsBound(int fd) {
+        if (files.getOrDefault(fd, null) instanceof TCPChannelWrapper tcpChannelWrapper) {
+            if (tcpChannelWrapper.inetAddress != null) {
+                return tcpChannelWrapper;
+            }
+        }
+        return null;
+    }
+
+    private void initSocketOptions(NetworkChannel networkChannel, boolean preferIPv6, boolean useExclBind) {
+        try {
+            if (preferIPv6) {
+                // might be overkill. We could just let the system figure out what it wants to use.
+                System.setProperty("java.net.preferIPv6Addresses", "true");
+                System.setProperty("java.net.preferIPv6Addresses", "false");
+            } else {
+                System.setProperty("java.net.preferIPv6Addresses", "false");
+                System.setProperty("java.net.preferIPv6Addresses", "true");
+            }
+        } catch (SecurityException e) {
+            // ignore preferIPv6
+        }
+        try {
+            networkChannel.setOption(StandardSocketOptions.SO_REUSEADDR, !useExclBind);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
      * Opens a file and associates it with the given file descriptor holder.
      *
      * @param self A file descriptor holder.
@@ -291,6 +594,8 @@ public final class TruffleIO implements ContextAccess {
                     ByteBuffer bytes) {
         try {
             return getWritableChannel(self, fdAccess).write(bytes);
+        } catch (ClosedByInterruptException e) {
+            return ioStatusSync.UNAVAILABLE;
         } catch (NonWritableChannelException e) {
             throw Throw.throwNonWritable(context);
         } catch (IOException e) {
@@ -387,6 +692,8 @@ public final class TruffleIO implements ContextAccess {
                     ByteBuffer buffer) {
         try {
             return getReadableChannel(self, fdAccess).read(buffer);
+        } catch (ClosedByInterruptException e) {
+            return ioStatusSync.UNAVAILABLE;
         } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
         } catch (IOException e) {
@@ -486,8 +793,7 @@ public final class TruffleIO implements ContextAccess {
     public void seek(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     long pos) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        seek(getFD(fileDesc), pos);
+        seek(getFD(self, fdAccess), pos);
     }
 
     /**
@@ -601,6 +907,24 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
+    private static class TCPChannelWrapper extends ChannelWrapper {
+        InetAddress inetAddress;
+        boolean preferIPv6;
+        boolean useExclBind;
+        int port;
+
+        TCPChannelWrapper(Channel channel, int cnt) {
+            super(channel, cnt, null);
+        }
+
+        void setTCPBindInformation(InetAddress inetAddress, boolean preferIPv6, boolean useExclBind, int port) {
+            this.inetAddress = inetAddress;
+            this.preferIPv6 = preferIPv6;
+            this.useExclBind = useExclBind;
+            this.port = port;
+        }
+    }
+
     public TruffleIO(EspressoContext context) {
         this.context = context;
 
@@ -645,6 +969,9 @@ public final class TruffleIO implements ContextAccess {
         java_nio_channels_AsynchronousCloseException = meta.knownKlass(Types.java_nio_channels_AsynchronousCloseException);
         java_nio_channels_ClosedChannelException = meta.knownKlass(Types.java_nio_channels_ClosedChannelException);
         java_nio_file_NoSuchFileException = meta.knownKlass(Types.java_nio_file_NoSuchFileException);
+        java_net_SocketException = meta.knownKlass(Types.java_net_SocketException);
+        sun_net_ConnectionResetException = meta.knownKlass(EspressoSymbols.Types.sun_net_ConnectionResetException);
+        java_net_UnknownHostException = meta.knownKlass(EspressoSymbols.Types.java_net_UnknownHostException);
 
         java_io_File = meta.knownKlass(Types.java_io_File);
         java_io_File_path = java_io_File.requireDeclaredField(Names.path, Types.java_lang_String);
@@ -659,6 +986,9 @@ public final class TruffleIO implements ContextAccess {
         sun_nio_fs_DefaultFileSystemProvider_instance = sun_nio_fs_DefaultFileSystemProvider.requireDeclaredMethod(Names.instance, Signatures.sun_nio_fs_TruffleFileSystemProvider);
 
         sun_nio_fs_FileAttributeParser = meta.knownKlass(EspressoSymbols.Types.sun_nio_fs_FileAttributeParser);
+
+        sun_nio_ch_IOStatus = meta.knownKlass(EspressoSymbols.Types.sun_nio_ch_IOStatus);
+        ioStatusSync = new IOStatus_Sync(this);
 
         sun_nio_fs_TrufflePath = meta.knownKlass(Types.sun_nio_fs_TrufflePath);
         sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE = sun_nio_fs_TrufflePath.requireHiddenField(Names.HIDDEN_TRUFFLE_FILE);
@@ -771,7 +1101,7 @@ public final class TruffleIO implements ContextAccess {
             if (bytesRead == 1) {
                 return b[0] & 0xFF;
             } else {
-                return -1; // EOF
+                return context.getTruffleIO().ioStatusSync.EOF; // EOF
             }
         } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
@@ -807,6 +1137,34 @@ public final class TruffleIO implements ContextAccess {
             return readableByteChannel;
         }
         throw Throw.throwNonReadable(context);
+    }
+
+    private SocketChannel getSocketChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getSocketChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private SocketChannel getSocketChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SocketChannel socketChannel) {
+            return socketChannel;
+        }
+        // SocketChannels are backed by the host, thus it would be very suspicious if we reach here.
+        throw JavaSubstitution.shouldNotReachHere();
+    }
+
+    private NetworkChannel getNetworkChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getNetworkChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private NetworkChannel getNetworkChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof NetworkChannel networkChannel) {
+            return networkChannel;
+        }
+        // NetworkChannel are backed by the host, thus it would be very suspicious if we reach here.
+        throw JavaSubstitution.shouldNotReachHere();
     }
 
     private WritableByteChannel getWritableChannel(@JavaType(Object.class) StaticObject self,
@@ -918,6 +1276,24 @@ public final class TruffleIO implements ContextAccess {
             this.OTHERS_READ_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_READ_VALUE);
             this.OTHERS_WRITE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_WRITE_VALUE);
             this.OTHERS_EXECUTE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_EXECUTE_VALUE);
+        }
+    }
+
+    public static final class IOStatus_Sync {
+        public final int EOF;
+        public final int UNAVAILABLE;
+        public final int INTERRUPTED;
+        public final int UNSUPPORTED;
+        public final int THROWN;
+        public final int UNSUPPORTED_CASE;
+
+        public IOStatus_Sync(TruffleIO io) {
+            this.EOF = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.EOF);
+            this.UNAVAILABLE = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNAVAILABLE);
+            this.INTERRUPTED = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.INTERRUPTED);
+            this.UNSUPPORTED = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED);
+            this.THROWN = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.THROWN);
+            this.UNSUPPORTED_CASE = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED_CASE);
         }
     }
     // Checkstyle: resume field name check

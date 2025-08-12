@@ -131,6 +131,7 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_nio_file_AtomicMoveNotSupportedException = SYMBOLS.putType("Ljava/nio/file/AtomicMoveNotSupportedException;");
         public static final Symbol<Type> java_nio_file_AccessDeniedException = SYMBOLS.putType("Ljava/nio/file/AccessDeniedException;");
         public static final Symbol<Type> java_nio_file_NoSuchFileException = SYMBOLS.putType("Ljava/nio/file/NoSuchFileException;");
+        public static final Symbol<Type> java_net_SocketException = SYMBOLS.putType("Ljava/net/SocketException;");
         public static final Symbol<Type> java_nio_file_InvalidPathException = SYMBOLS.putType("Ljava/nio/file/InvalidPathException;");
         public static final Symbol<Type> java_nio_file_NotDirectoryException = SYMBOLS.putType("Ljava/nio/file/NotDirectoryException;");
 
@@ -162,10 +163,25 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_lang_module_ModuleDescriptor = SYMBOLS.putType("Ljava/lang/module/ModuleDescriptor;");
 
         // Espresso Libs
+        // libzip
         public static final Symbol<Type> java_util_zip_CRC32 = SYMBOLS.putType("Ljava/util/zip/CRC32;");
         public static final Symbol<Type> java_util_zip_Inflater = SYMBOLS.putType("Ljava/util/zip/Inflater;");
         public static final Symbol<Type> java_util_zip_DataFormatException = SYMBOLS.putType("Ljava/util/zip/DataFormatException;");
-
+        // libnet
+        public static final Symbol<Type> java_net_NetworkInterface = SYMBOLS.putType("Ljava/net/NetworkInterface;");
+        public static final Symbol<Type> java_net_NetworkInterface_array = SYMBOLS.putType("[Ljava/net/NetworkInterface;");
+        public static final Symbol<Type> java_net_InetSocketAddress = SYMBOLS.putType("Ljava/net/InetSocketAddress;");
+        public static final Symbol<Type> java_net_InetAddress = SYMBOLS.putType("Ljava/net/InetAddress;");
+        public static final Symbol<Type> java_net_InetAddress$InetAddressHolder = SYMBOLS.putType("Ljava/net/InetAddress$InetAddressHolder;");
+        public static final Symbol<Type> java_net_InterfaceAddress = SYMBOLS.putType("Ljava/net/InterfaceAddress;");
+        public static final Symbol<Type> java_net_InterfaceAddress_array = SYMBOLS.putType("[Ljava/net/InterfaceAddress;");
+        public static final Symbol<Type> java_net_Inet4Address = SYMBOLS.putType("Ljava/net/Inet4Address;");
+        public static final Symbol<Type> java_net_Inet6Address = SYMBOLS.putType("Ljava/net/Inet6Address;");
+        public static final Symbol<Type> java_net_Inet6Address$Inet6AddressHolder = SYMBOLS.putType("Ljava/net/Inet6Address$Inet6AddressHolder;");
+        public static final Symbol<Type> java_net_InetAddress_array = SYMBOLS.putType("[Ljava/net/InetAddress;");
+        public static final Symbol<Type> sun_net_ConnectionResetException = SYMBOLS.putType("Lsun/net/ConnectionResetException;");
+        public static final Symbol<Type> java_net_UnknownHostException = SYMBOLS.putType("Ljava/net/UnknownHostException;");
+        public static final Symbol<Type> sun_nio_ch_IOStatus = SYMBOLS.putType("Lsun/nio/ch/IOStatus;");
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = SYMBOLS.putType("Ljava/net/URLClassLoader;");
         public static final Symbol<Type> java_net_URL = SYMBOLS.putType("Ljava/net/URL;");
@@ -773,6 +789,23 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
         public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");
         public static final Symbol<Name> outputConsumed = SYMBOLS.putName("outputConsumed");
+        // java.net
+        public static final Symbol<Name> displayName = SYMBOLS.putName("displayName");
+        public static final Symbol<Name> virtual = SYMBOLS.putName("virtual");
+        public static final Symbol<Name> bindings = SYMBOLS.putName("bindings");
+        public static final Symbol<Name> childs = SYMBOLS.putName("childs");
+        public static final Symbol<Name> scope_ifname = SYMBOLS.putName("scope_ifname");
+        public static final Symbol<Name> holder6 = SYMBOLS.putName("holder6");
+        public static final Symbol<Name> ipaddress = SYMBOLS.putName("ipaddress");
+        public static final Symbol<Name> maskLength = SYMBOLS.putName("maskLength");
+        public static final Symbol<Name> broadcast = SYMBOLS.putName("broadcast");
+        // sun.nio.ch.IOStatus
+        public static final Symbol<Name> EOF = SYMBOLS.putName("EOF");
+        public static final Symbol<Name> UNAVAILABLE = SYMBOLS.putName("UNAVAILABLE");
+        public static final Symbol<Name> INTERRUPTED = SYMBOLS.putName("INTERRUPTED");
+        public static final Symbol<Name> UNSUPPORTED = SYMBOLS.putName("UNSUPPORTED");
+        public static final Symbol<Name> THROWN = SYMBOLS.putName("THROWN");
+        public static final Symbol<Name> UNSUPPORTED_CASE = SYMBOLS.putName("UNSUPPORTED_CASE");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");
@@ -1452,6 +1485,24 @@ public class EspressoSymbols {
                         Types._int,
                         Types._int,
                         Types.java_lang_Object);
+
+        public static final Symbol<Signature> java_net_NetworkInterface_init_signature = SYMBOLS.putSignature(Types._void,
+                        /* name */ Types.java_lang_String,
+                        /* index */ Types._int,
+                        /* addrs */ Types.java_net_InetAddress_array);
+
+        public static final Symbol<Signature> java_net_Inet4Address_init_signature = SYMBOLS.putSignature(Types._void,
+                        /* hostName */ Types.java_lang_String,
+                        /* address */ Types._byte_array);
+
+        public static final Symbol<Signature> java_net_Inet6Address_init_signature = SYMBOLS.putSignature(Types._void,
+                        /* hostName */ Types.java_lang_String,
+                        /* address */ Types._byte_array,
+                        /* scopeId */ Types._int);
+
+        public static final Symbol<Signature> java_net_InetSocketAddress_init_signature = SYMBOLS.putSignature(Types._void,
+                        /* addr */ Types.java_net_InetAddress,
+                        /* port */ Types._int);
 
         public static void ensureInitialized() {
             assert _void == ParserSymbols.ParserSignatures._void;

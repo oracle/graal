@@ -633,6 +633,12 @@ public final class EspressoOptions {
                     usageSyntax = "true|false") //
     public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
 
+    @Option(help = "Enables/Disables the use of Networking until Truffle implements something (GR-23755)", //
+            category = OptionCategory.EXPERT, //
+            stability = OptionStability.EXPERIMENTAL, //
+            usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> enableNetworking = new OptionKey<>(true);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

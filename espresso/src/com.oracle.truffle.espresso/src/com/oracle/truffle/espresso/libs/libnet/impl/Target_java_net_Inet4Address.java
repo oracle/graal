@@ -20,23 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.libs.libnet;
+package com.oracle.truffle.espresso.libs.libnet.impl;
 
-import com.oracle.truffle.espresso.libs.Lib;
-import com.oracle.truffle.espresso.libs.Libs;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.substitutions.Collect;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import java.net.Inet4Address;
 
-@Collect(Libs.class)
-public final class LibNet implements Lib.Factory {
-    @Override
-    public String name() {
-        return "net";
-    }
+import com.oracle.truffle.espresso.libs.libnet.LibNet;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-    @Override
-    public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibNetCollector.getInstances(JavaSubstitution.Factory.class), name());
+@EspressoSubstitutions(value = Inet4Address.class, group = LibNet.class)
+public final class Target_java_net_Inet4Address {
+    @Substitution
+    public static void init() {
+        // nop
     }
 }
