@@ -288,9 +288,6 @@ public final class GraalOptions {
     @Option(help = "Enable counters for various paths in snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> SnippetCounters = new OptionKey<>(false);
 
-    @Option(help = "Eagerly construct extra snippet info.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> EagerSnippets = new OptionKey<>(false);
-
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 

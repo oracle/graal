@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static jdk.graal.compiler.hotspot.test.TestNewInstanceWithException.MAX_HEAP_SPACE_ARG;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,7 +72,7 @@ public class TestNewInstanceWithExceptionRegression extends SubprocessTest {
             } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e);
             }
-        }, "-Xmx32m");
+        }, MAX_HEAP_SPACE_ARG);
     }
 
 }
