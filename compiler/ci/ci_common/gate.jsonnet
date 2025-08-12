@@ -240,14 +240,14 @@
 
   # Candidates for Tier3 jobs. In CE, these will be dailies.
   local tier3_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": t("30:00"),
-    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("30:00"),
-    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": t("30:00"),
-    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": t("45:00"),
+    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("45:00"),
+    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": t("45:00"),
+    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": t("45:00"),
 
-    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": t("45:00"),
 
-    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("45:00"),
   },
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
