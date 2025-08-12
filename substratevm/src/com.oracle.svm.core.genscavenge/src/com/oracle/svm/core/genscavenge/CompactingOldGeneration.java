@@ -45,6 +45,7 @@ import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
 import com.oracle.svm.core.genscavenge.compacting.PlanningVisitor;
 import com.oracle.svm.core.genscavenge.compacting.RuntimeCodeCacheFixupWalker;
 import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
+import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -107,7 +108,7 @@ import jdk.graal.compiler.word.Word;
  */
 final class CompactingOldGeneration extends OldGeneration {
 
-    private final Space space = new Space("Old", "O", false, HeapParameters.getMaxSurvivorSpaces() + 1);
+    private final Space space = new Space("Old", "O", false, getAge());
     private final MarkStack markStack = new MarkStack();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
@@ -142,11 +143,6 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    void appendChunk(AlignedHeapChunk.AlignedHeader hdr) {
-        space.appendAlignedHeapChunk(hdr);
-    }
-
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
         RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
@@ -178,7 +174,7 @@ final class CompactingOldGeneration extends OldGeneration {
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace.isFromSpace();
-            return space.copyAlignedObject(original, originalSpace);
+            return ObjectPromoter.copyAlignedObject(original, originalSpace, space);
         }
         assert originalSpace == space;
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
@@ -195,7 +191,7 @@ final class CompactingOldGeneration extends OldGeneration {
              * change during compaction, so we must add a field to store it, which increases the
              * object's size. The easiest way to handle this is to copy the object.
              */
-            result = space.copyAlignedObject(original, originalSpace);
+            result = ObjectPromoter.copyAlignedObject(original, originalSpace, space);
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
@@ -209,7 +205,7 @@ final class CompactingOldGeneration extends OldGeneration {
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace.isFromSpace();
-            space.promoteUnalignedHeapChunk(originalChunk, originalSpace);
+            ObjectPromoter.promoteUnalignedHeapChunk(originalChunk, originalSpace, space);
             return original;
         }
         assert originalSpace == space;
@@ -226,9 +222,9 @@ final class CompactingOldGeneration extends OldGeneration {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace != space && originalSpace.isFromSpace();
             if (isAligned) {
-                space.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+                ObjectPromoter.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace, space);
             } else {
-                space.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+                ObjectPromoter.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace, space);
             }
             return true;
         }
@@ -309,6 +305,13 @@ final class CompactingOldGeneration extends OldGeneration {
             oldFixupImageHeapTimer.stop();
         }
 
+        Timer oldFixupMetaspaceTimer = timers.oldFixupMetaspace.start();
+        try {
+            fixupMetaspace();
+        } finally {
+            oldFixupMetaspaceTimer.stop();
+        }
+
         Timer oldFixupThreadLocalsTimer = timers.oldFixupThreadLocals.start();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
@@ -353,6 +356,20 @@ final class CompactingOldGeneration extends OldGeneration {
             GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, refFixupVisitor, false);
         } else {
             GCImpl.walkImageHeapRoots(info, fixupVisitor);
+        }
+    }
+
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    private void fixupMetaspace() {
+        if (!MetaspaceImpl.isSupported()) {
+            return;
+        }
+
+        if (SerialGCOptions.useRememberedSet()) {
+            /* Cards have been cleaned and roots re-marked during the initial scan. */
+            MetaspaceImpl.singleton().walkDirtyObjects(fixupVisitor, refFixupVisitor, false);
+        } else {
+            MetaspaceImpl.singleton().walkObjects(fixupVisitor);
         }
     }
 

@@ -287,6 +287,27 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
+# The uncompressed file from perf script is ~25x bigger than the compressed file
+ADJUSTED_ITERS_FOR_PERF = {
+    "renaissance": {
+        "finagle-chirper": 10, # Default: 90 iters, 7GB compressed perf file
+        "fj-kmeans": 15, # Default: 30 iters, 520MB compressed perf file
+        "scala-stm-bench7": 20, # Default: 60 iters, 840MB compressed perf file
+        "philosophers": 10, # Default: 30 iters, 900MB compressed perf file
+        "akka-uct": 5, # Default: 24 iters, 2GB compressed perf file
+        "finagle-http": 5 # Default: 12 iters, 1.3GB compressed perf file
+    },
+    "dacapo": {
+        "sunflow": 15 # Default: 49 iters, 1.2GB compressed perf file
+    }
+}
+
+NUM_ITERS_FLAG_NAME = {
+    "renaissance": "-r",
+    "dacapo": "-n"
+}
+
+
 class NativeImageBenchmarkConfig:
     def __init__(self, vm: NativeImageVM, bm_suite: BenchmarkSuite | NativeImageBenchmarkMixin, args):
         self.bm_suite = bm_suite
@@ -308,6 +329,11 @@ class NativeImageBenchmarkConfig:
                                                                      not (vm.safepoint_sampler or vm.pgo_sampler_only or vm.pgo_use_perf))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args,
                                                                                  list(image_run_args))
+        if vm.pgo_use_perf and self.benchmark_suite_name in ADJUSTED_ITERS_FOR_PERF and self.benchmark_name in ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name]:
+            # For some benches the number of iters in the instrument-run stage is too much for perf, the generated files are too large.
+            desired_iters = ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name][self.benchmark_name]
+            mx.log(f"Adjusting number of iters for instrument-run stage to {desired_iters}")
+            self.extra_profile_run_args = adjust_arg_with_number(NUM_ITERS_FLAG_NAME[self.benchmark_suite_name], desired_iters, self.extra_profile_run_args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg',
                        'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
@@ -440,10 +466,7 @@ class NativeImageBenchmarkConfig:
         return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
 
     def get_executable_name_and_output_dir_for_stage(self, stage: Stage, vm: NativeImageVM) -> Tuple[str, Path]:
-        # Form executable name
-        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
-        executable_name = (
-                unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+        executable_name = self.compute_executable_name()
         is_shared_library = stage is not None and stage.is_layered() and stage.layer_info.is_shared_library
         if is_shared_library:
             # Shared library layers have to start with 'lib' and are differentiated with the layer index
@@ -451,11 +474,23 @@ class NativeImageBenchmarkConfig:
 
         # Form output directory
         root_dir = Path(
-            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False,
+            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('sdk').get_output_root(platformDependent=False,
                                                                                              jdkDependent=False)).absolute()
         output_dir = root_dir / "native-image-benchmarks" / f"{executable_name}-{vm.config_name()}"
 
         return executable_name, output_dir
+
+    def compute_executable_name(self) -> str:
+        result = self.bm_suite.executable_name()
+        if result is not None:
+            return result
+
+        parts = [self.bm_suite.benchSuiteName()]
+        if self.bm_suite.version() != "unknown":
+            parts.append(self.bm_suite.version().replace(".", "-"))
+        if self.benchmark_name:
+            parts.append(self.benchmark_name.replace(os.sep, "_"))
+        return "-".join(parts).lower()
 
     def get_build_output_json_file(self, stage: StageName) -> Path:
         """
@@ -1560,7 +1595,7 @@ class NativeImageVM(GraalVm):
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
         if self.pgo_use_perf:
-            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp,2048', '--freq=999'] + image_run_cmd
+            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp', '--freq=999'] + image_run_cmd
 
         with self.get_stage_runner() as s:
             if self.pgo_use_perf:
@@ -1808,6 +1843,11 @@ class NativeImageVM(GraalVm):
             for layer in benchmark_layers:
                 layered_stages.append(Stage(s.stage_name, layer))
         return layered_stages
+
+
+# Adds JAVA_HOME VMs so benchmarks can run on GraalVM binaries without building them first.
+for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
@@ -3733,6 +3773,15 @@ def strip_args_with_number(strip_args, args):
         result = _strip_arg_with_number_gen(strip_arg, result)
     return list(result)
 
+def adjust_arg_with_number(arg_name, new_value: int, user_args):
+    """
+    Sets the argument value of `arg_name` in `user_args` with `new_value`.
+    If `arg_name` is already present in `user_args`, the value will be replaced.
+    If `arg_name` is not already present, the argument and corresponding value will be added.
+    """
+
+    return [arg_name, str(new_value)] + strip_args_with_number(arg_name, user_args)
+
 class PerfInvokeProfileCollectionStrategy(Enum):
     """
     The strategy for extracting virtual invoke method profiles from perf sampling data.
@@ -4195,6 +4244,10 @@ class NativeImageBenchmarkMixin(object):
 
     def get_stage_env(self) -> Optional[dict]:
         """Return the environment to be used when executing a stage."""
+        return None
+
+    def executable_name(self) -> Optional[str]:
+        """Override to allow suites to control the executable name used in image builds."""
         return None
 
 

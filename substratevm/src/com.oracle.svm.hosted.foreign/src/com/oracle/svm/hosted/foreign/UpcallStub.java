@@ -218,9 +218,15 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             arguments.addFirst(returnBuffer);
         }
 
-        /* Transfers to the Java-side stub; note that exceptions should be handled there. */
+        /*
+         * Transfers to the Java-side stub; note that exceptions should be handled there. We
+         * explicitly disable inline for this call to prevent that operations floating to a point
+         * where the base registers are not initialized yet.
+         */
         arguments.addFirst(mh);
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, highLevelStub, arguments.toArray(ValueNode.EMPTY_ARRAY));
+        returnValue.setUseForInlining(false);
+
         kit.exceptionPart();
         kit.append(new DeadEndNode());
         kit.endInvokeWithException();

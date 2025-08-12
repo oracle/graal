@@ -44,7 +44,7 @@ public enum ConfigurationFile {
     DYNAMIC_PROXY("proxy", null, true, false),
     PREDEFINED_CLASSES_NAME("predefined-classes", null, true, false),
     /* Non-metadata categories */
-    FOREIGN("foreign", FOREIGN_KEY, true, false),
+    FOREIGN("foreign", FOREIGN_KEY, true, true),
     SERIALIZATION_DENY("serialization-deny", null, false, false);
 
     public static final String LEGACY_FILE_NAME_SUFFIX = "-config.json";

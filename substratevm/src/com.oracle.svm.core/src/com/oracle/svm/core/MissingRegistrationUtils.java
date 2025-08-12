@@ -33,6 +33,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -219,6 +220,24 @@ public class MissingRegistrationUtils {
                         .map(Class::getTypeName)
                         .map(MissingRegistrationUtils::quote)
                         .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    protected static StackTraceElement getResponsibleClass(Throwable t, Map<String, Set<String>> entryPoints) {
+        StackTraceElement[] stackTrace = t.getStackTrace();
+        boolean returnNext = false;
+        for (StackTraceElement stackTraceElement : stackTrace) {
+            if (entryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {
+                /*
+                 * Multiple functions with the same name can be called in succession, like the
+                 * Class.forName caller-sensitive adapters. We skip those until we find a method
+                 * that is not a monitored reflection entry point.
+                 */
+                returnNext = true;
+            } else if (returnNext) {
+                return stackTraceElement;
+            }
+        }
+        return null;
     }
 
     public static final class ExitException extends Error {

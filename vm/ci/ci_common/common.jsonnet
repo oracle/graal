@@ -275,8 +275,8 @@ local devkits = graal_common.devkits;
     # 2. Ensure the language is either:
     #    - already included in `ee_suites`, or
     #    - its suite is listed in `polyglot_isolate_ce_suites`.
-    local polyglot_isolate_languages = ['js', 'python'],
-    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython'],
+    local polyglot_isolate_languages = ['js', 'python', 'wasm'],
+    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython', 'wasm'],
     local polyglot_isolate_mx_args = std.flattenArrays([['--suite', s] for s in polyglot_isolate_ce_suites]),
 
     legacy_mx_args:: [],  # `['--force-bash-launcher=true', '--skip-libraries=true']` have been replaced by arguments from `vm.maven_deploy_base_functions.mx_args(os, arch)`
@@ -467,7 +467,7 @@ local devkits = graal_common.devkits;
 
   linux_deploy: self.deploy_build + {
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.5.3',
     },
   },
 
@@ -477,7 +477,7 @@ local devkits = graal_common.devkits;
     },
   },
 
-  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
+  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
 
   build_base_graalvm_image: [
@@ -539,7 +539,7 @@ local devkits = graal_common.devkits;
     + $.deploy_standalones(self.os, self.tags)
     + (
       if (record_file_sizes) then [
-        $.mx_vm_complete + $.record_file_sizes + ['--', '--', 'standalones'],
+        $.mx_vm_complete + $.record_file_sizes + ['--', 'standalones'],
         $.upload_file_sizes,
       ] else []
     ),

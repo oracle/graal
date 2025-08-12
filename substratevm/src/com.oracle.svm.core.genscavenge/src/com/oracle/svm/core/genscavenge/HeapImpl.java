@@ -49,8 +49,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
@@ -64,9 +63,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
@@ -74,12 +71,12 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
@@ -94,7 +91,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.replacements.AllocationSnippets;
 import jdk.graal.compiler.word.Word;
 
 public final class HeapImpl extends Heap {
@@ -110,8 +106,6 @@ public final class HeapImpl extends Heap {
     private final GCImpl gcImpl;
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapAccounting accounting = new HeapAccounting();
-
-    private AlignedHeader lastDynamicHubChunk;
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
@@ -216,6 +210,10 @@ public final class HeapImpl extends Heap {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
         getChunkProvider().tearDown();
+
+        if (MetaspaceImpl.isSupported()) {
+            MetaspaceImpl.singleton().tearDown();
+        }
         return true;
     }
 
@@ -276,11 +274,17 @@ public final class HeapImpl extends Heap {
     }
 
     void logUsage(Log log) {
+        if (MetaspaceImpl.isSupported()) {
+            MetaspaceImpl.singleton().logUsage(log);
+        }
         youngGeneration.logUsage(log);
         oldGeneration.logUsage(log);
     }
 
     void logChunks(Log log, boolean allowUnsafe) {
+        if (MetaspaceImpl.isSupported()) {
+            MetaspaceImpl.singleton().logChunks(log);
+        }
         getYoungGeneration().logChunks(log, allowUnsafe);
         getOldGeneration().logChunks(log);
         getChunkProvider().logFreeChunks(log);
@@ -799,6 +803,11 @@ public final class HeapImpl extends Heap {
         }
 
         if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
+            /* Accessing the metaspace is unsafe due to possible concurrent modifications. */
+            if (MetaspaceImpl.isSupported() && MetaspaceImpl.singleton().printLocationInfo(log, ptr)) {
+                return true;
+            }
+
             /*
              * If we are not at a safepoint, then it is unsafe to access thread locals of another
              * thread as the IsolateThread could be freed at any time.
@@ -818,8 +827,8 @@ public final class HeapImpl extends Heap {
         return false;
     }
 
-    boolean isInHeap(Pointer ptr) {
-        return isInImageHeap(ptr) || youngGeneration.isInSpace(ptr) || oldGeneration.isInSpace(ptr);
+    boolean isInHeapSlow(Pointer ptr) {
+        return isInImageHeap(ptr) || youngGeneration.isInSpace(ptr) || oldGeneration.isInSpace(ptr) || Metaspace.singleton().isInAllocatedMemory(ptr);
     }
 
     @Override
@@ -954,83 +963,6 @@ public final class HeapImpl extends Heap {
             boolean allowUnsafe = invocationCount == 1 && SubstrateDiagnostics.DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel);
             HeapImpl.getHeapImpl().logChunks(log, allowUnsafe);
             log.indent(false);
-        }
-    }
-
-    public static DynamicHub allocateDynamicHub(int vTableSlots) {
-        AllocateDynamicHubOp vmOp = new AllocateDynamicHubOp(vTableSlots);
-        vmOp.enqueue();
-        return vmOp.result;
-    }
-
-    private static class AllocateDynamicHubOp extends JavaVMOperation {
-        int vTableSlots;
-        DynamicHub result;
-
-        AllocateDynamicHubOp(int vTableSlots) {
-            super(VMOperationInfos.get(AllocateDynamicHubOp.class, "Allocate DynamicHub", SystemEffect.SAFEPOINT));
-            this.vTableSlots = vTableSlots;
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public boolean isGC() {
-            /* needs to append chunks into oldGen */
-            return true;
-        }
-
-        @Override
-        protected void operate() {
-            DynamicHub hubOfDynamicHub = DynamicHub.fromClass(Class.class);
-            /*
-             * Note that layoutEncoding already encodes the size of a DynamicHub and it is aware of
-             * its hybrid nature, including the size required for a VTable slot.
-             *
-             * Also note that inlined fields like `closedTypeWorldTypeCheckSlots` are not relevant
-             * here, as they are not available in the open type world configuration.
-             */
-            UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hubOfDynamicHub.getLayoutEncoding(), vTableSlots);
-
-            Pointer memory = Word.nullPointer();
-            if (getHeapImpl().lastDynamicHubChunk.isNonNull()) {
-                /*
-                 * GR-57355: move this fast-path out of vmOp. Needs some locking (it's not
-                 * thread-local)
-                 */
-                memory = AlignedHeapChunk.allocateMemory(getHeapImpl().lastDynamicHubChunk, size);
-            }
-
-            if (memory.isNull()) {
-                /* Either no storage for DynamicHubs yet or we are out of memory */
-                allocateNewDynamicHubChunk();
-
-                memory = AlignedHeapChunk.allocateMemory(getHeapImpl().lastDynamicHubChunk, size);
-            }
-
-            VMError.guarantee(memory.isNonNull(), "failed to allocate DynamicHub");
-
-            /* DynamicHubs live allocated on aligned heap chunks */
-            boolean unaligned = false;
-            result = (DynamicHub) FormatArrayNode.formatArray(memory, DynamicHub.class, vTableSlots, true, unaligned, AllocationSnippets.FillContent.WITH_ZEROES, true);
-        }
-
-        private static void allocateNewDynamicHubChunk() {
-            /*
-             * GR-60085: Should be a dedicated generation. Make sure that those chunks are close to
-             * the heap base. The hub is stored as offset relative to the heap base. There are 5
-             * status bits in the header and in addition, compressed references use a three-bit
-             * shift that word-aligns objects. This results in a 35-bit address range of 32 GB, of
-             * which DynamicHubs must reside in the lowest 1 GB.
-             */
-            OldGeneration oldGeneration = getHeapImpl().getOldGeneration();
-
-            /*
-             * GR-60085: DynamicHub objects must never be be moved. Pin them either by (1) pinning
-             * each DynamicHub, or (2) mark the whole chunk as pinned (not supported yet).
-             */
-            getHeapImpl().lastDynamicHubChunk = oldGeneration.requestAlignedChunk();
-
-            oldGeneration.appendChunk(getHeapImpl().lastDynamicHubChunk);
         }
     }
 }

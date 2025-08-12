@@ -42,6 +42,8 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -77,6 +79,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
@@ -347,6 +350,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         AnalysisError.guarantee(isBaseLayerAnalysisEnabled());
+        registerDefaultMethod(method, reason);
         PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(method);
         postTask(ignore -> {
             MethodTypeFlow typeFlow = analysisMethod.getTypeFlow();
@@ -357,6 +361,21 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             typeFlow.ensureFlowsGraphCreated(this, null);
         });
         return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
+    }
+
+    /**
+     * Non-abstract methods from an abstract class or default methods from an interface are not
+     * registered as implementation invoked by the analysis because their declaring class cannot be
+     * marked as instantiated and {@link AnalysisType#getTypeFlow(BigBang, boolean)} only includes
+     * instantiated types (see {@link TypeFlow#addObserver(PointsToAnalysis, TypeFlow)}). To ensure
+     * these methods are included in the image they are manually registered as implementation
+     * invoked.
+     */
+    private static void registerDefaultMethod(AnalysisMethod method, Object reason) {
+        if (!method.isAbstract() && (method.getDeclaringClass().isInterface() || method.getDeclaringClass().isAbstract())) {
+            method.registerAsDirectRootMethod(reason);
+            method.registerAsImplementationInvoked(reason);
+        }
     }
 
     protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
@@ -371,6 +390,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
+        AnalysisError.guarantee(!AnnotationAccess.isAnnotationPresent(aMethod, Fold.class), "@Fold annotated method cannot be a root method.");
         boolean isStatic = aMethod.isStatic();
         int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
@@ -515,11 +535,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             }
         }
         throw shouldNotReachHere("field not found: " + fieldName);
-    }
-
-    @Override
-    public AnalysisType addRootField(Field field) {
-        return addRootField(getMetaAccess().lookupJavaField(field));
     }
 
     @Override

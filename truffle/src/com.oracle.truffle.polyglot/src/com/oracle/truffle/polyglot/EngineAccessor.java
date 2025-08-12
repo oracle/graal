@@ -1435,6 +1435,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isKnownLoggerId(String id) {
+            return PolyglotLoggers.getInternalIds().contains(id) || LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+        }
+
+        @Override
+        public Collection<String> getKnownLoggerIds() {
+            List<String> ids = new ArrayList<>();
+            ids.addAll(PolyglotLoggers.getInternalIds());
+            ids.addAll(LanguageCache.languages().keySet());
+            ids.addAll(InstrumentCache.load().keySet());
+            Collections.sort(ids);
+            return ids;
+        }
+
+        @Override
         public boolean isContextBoundLogger(Object loggerCache) {
             return ((PolyglotLoggers.LoggerCache) loggerCache).isContextBoundLogger();
         }
@@ -1462,25 +1477,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getLoggerOwner(Object loggerCache) {
             return ((PolyglotLoggers.LoggerCache) loggerCache).getOwner();
-        }
-
-        @Override
-        public Set<String> getLanguageIds() {
-            return LanguageCache.languages().keySet();
-        }
-
-        @Override
-        public Set<String> getInstrumentIds() {
-            Set<String> ids = new HashSet<>();
-            for (InstrumentCache cache : InstrumentCache.load()) {
-                ids.add(cache.getId());
-            }
-            return ids;
-        }
-
-        @Override
-        public Set<String> getInternalIds() {
-            return PolyglotLoggers.getInternalIds();
         }
 
         @Override
@@ -2119,8 +2115,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
+            if (currentContext == null && Thread.currentThread() instanceof LanguageSystemThread systemThread) {
+                currentContext = systemThread.polyglotContext;
+            }
             // Ensure that thread is entered in correct context
-            if (PolyglotContextImpl.requireContext() != languageContext.context) {
+            if (currentContext != languageContext.context) {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
@@ -2210,9 +2210,9 @@ final class EngineAccessor extends Accessor {
             if (languageCache != null) {
                 return languageCache.getResourceIds();
             }
-            for (InstrumentCache instrumentCache : InstrumentCache.load()) {
-                if (instrumentCache.getId().equals(componentId)) {
-                    return instrumentCache.getResourceIds();
+            for (Map.Entry<String, InstrumentCache> entry : InstrumentCache.load().entrySet()) {
+                if (entry.getKey().equals(componentId)) {
+                    return entry.getValue().getResourceIds();
                 }
             }
             throw new IllegalArgumentException(componentId);

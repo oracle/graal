@@ -26,6 +26,14 @@ package com.oracle.svm.core.graal.snippets.amd64;
 
 import java.util.Map;
 
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
+import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -35,13 +43,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
-import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Implementation of C {@code va_list} handling for System V systems on AMD64 (Linux, but same

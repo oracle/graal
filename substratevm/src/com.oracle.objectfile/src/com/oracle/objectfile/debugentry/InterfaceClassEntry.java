@@ -26,30 +26,49 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 public final class InterfaceClassEntry extends ClassEntry {
-    private final ConcurrentSkipListSet<ClassEntry> implementors;
+    private List<ClassEntry> implementors;
 
     public InterfaceClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
                     ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
-        this.implementors = new ConcurrentSkipListSet<>(Comparator.comparingLong(ClassEntry::getTypeSignature));
+        this.implementors = new ArrayList<>();
     }
 
+    @Override
+    public void seal() {
+        super.seal();
+        assert implementors instanceof ArrayList<ClassEntry> : "InterfaceClassEntry should only be sealed once";
+        implementors = implementors.stream().distinct().toList();
+    }
+
+    /**
+     * Adds an interface implementor to this {@code InterfaceClassEntry}.
+     * <p>
+     * This is only called during debug info generation. No more implementors are added to this
+     * {@code InterfaceClassEntry} when writing debug info to the object file.
+     *
+     * @param classEntry the {@code ClassEntry} to add as implementor
+     */
     public void addImplementor(ClassEntry classEntry) {
-        implementors.add(classEntry);
+        assert implementors instanceof ArrayList<ClassEntry> : "Can only add implementors before a InterfaceClassEntry is sealed.";
+        synchronized (implementors) {
+            implementors.add(classEntry);
+        }
     }
 
     public List<ClassEntry> getImplementors() {
-        return List.copyOf(implementors);
+        assert !(implementors instanceof ArrayList<ClassEntry>) : "Can only access implementors after a InterfaceClassEntry is sealed.";
+        return implementors;
     }
 
     @Override
     public int getSize() {
+        assert !(implementors instanceof ArrayList<ClassEntry>) : "Can only request size after a InterfaceClassEntry is sealed.";
         /*
          * An interface is nominally sized to the class header size when it is first created. This
          * override computes the size of the union layout that models the interface as the maximum

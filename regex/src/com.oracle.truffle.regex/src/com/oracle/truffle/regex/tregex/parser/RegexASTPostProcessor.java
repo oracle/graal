@@ -178,23 +178,25 @@ public class RegexASTPostProcessor {
             return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && (term.getQuantifier().isUnrollTrivial() || term.isUnrollingCandidate(ast.getOptions()));
         }
 
-        private static final class ShouldUnrollQuantifierVisitor extends DepthFirstTraversalRegexASTVisitor {
+        private static final class ShouldUnrollQuantifierVisitor extends NodeCountVisitor {
 
-            private boolean result;
+            private boolean containsBackReference;
 
             boolean shouldUnroll(Group group) {
                 assert group.hasQuantifier();
                 if (group.getQuantifier().isUnrollTrivial()) {
                     return true;
                 }
-                result = true;
+                count = 0;
+                containsBackReference = false;
                 run(group);
-                return result;
+                return count <= TRegexOptions.TRegexQuantifierUnrollLimitGroupNodeCount && !containsBackReference;
             }
 
             @Override
             protected void visit(BackReference backReference) {
-                result = false;
+                super.visit(backReference);
+                containsBackReference = true;
             }
         }
 

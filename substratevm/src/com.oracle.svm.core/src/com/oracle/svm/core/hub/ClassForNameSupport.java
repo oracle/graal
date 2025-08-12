@@ -357,18 +357,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         if (className == null) {
             return null;
         }
-        Object result = null;
-        for (var singleton : layeredSingletons()) {
-            Object newResult = singleton.forName0(className, classLoader);
-            result = newResult != null ? newResult : result;
-            /*
-             * The class might have been registered in a shared layer but was not yet available. In
-             * that case, the extension layers need to be checked too.
-             */
-            if (result != null && result != NEGATIVE_QUERY) {
-                break;
-            }
-        }
+        Object result = queryResultFor(className, classLoader);
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
@@ -395,6 +384,22 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
             }
         }
         throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
+    }
+
+    private static Object queryResultFor(String className, ClassLoader classLoader) {
+        Object result = null;
+        for (var singleton : layeredSingletons()) {
+            Object newResult = singleton.forName0(className, classLoader);
+            result = newResult != null ? newResult : result;
+            /*
+             * The class might have been registered in a shared layer but was not yet available. In
+             * that case, the extension layers need to be checked too.
+             */
+            if (result != null && result != NEGATIVE_QUERY) {
+                break;
+            }
+        }
+        return result;
     }
 
     private Object forName0(String className, ClassLoader classLoader) {
@@ -451,12 +456,15 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     public static boolean isRegisteredClass(String className) {
-        assert respectClassLoader();
-        RuntimeConditionSet conditionSet = getConditionForName(className);
-        if (conditionSet == null) {
-            return false;
+        if (respectClassLoader()) {
+            RuntimeConditionSet conditionSet = getConditionForName(className);
+            if (conditionSet == null) {
+                return false;
+            }
+            return conditionSet.satisfied();
+        } else {
+            return queryResultFor(className, null) != null;
         }
-        return conditionSet.satisfied();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

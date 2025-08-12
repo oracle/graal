@@ -31,6 +31,9 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * A wrapper type that can be unwrapped to an original host VM type.
+ */
 public interface OriginalClassProvider {
 
     /**

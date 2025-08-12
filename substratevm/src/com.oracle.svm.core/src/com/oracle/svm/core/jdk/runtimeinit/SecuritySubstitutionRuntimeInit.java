@@ -35,20 +35,20 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKInitializedAtRunTime;
+import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
-@TargetClass(value = java.security.Security.class, onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtRunTime.class)
 final class Target_java_security_Security {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     static Properties props;
 }
 
-@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 final class Target_java_security_Security_SecPropLoader {
 
     /**
@@ -69,7 +69,7 @@ final class Target_java_security_Security_SecPropLoader {
  * properly signed and can be used by JCE. It does that via jar verification which we cannot
  * support.
  */
-@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
@@ -113,7 +113,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 
@@ -183,5 +183,6 @@ final class Target_sun_security_jca_ProviderConfig {
     }
 }
 
+@SuppressWarnings("unused")
 public class SecuritySubstitutionRuntimeInit {
 }

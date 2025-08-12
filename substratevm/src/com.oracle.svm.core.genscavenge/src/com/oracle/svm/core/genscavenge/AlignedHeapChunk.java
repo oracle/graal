@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
@@ -112,19 +114,21 @@ public final class AlignedHeapChunk {
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer allocateMemory(AlignedHeader that, UnsignedWord size) {
-        Pointer result = Word.nullPointer();
+    public static Pointer tryAllocateMemory(AlignedHeader that, UnsignedWord size) {
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
-        if (size.belowOrEqual(available)) {
-            result = HeapChunk.getTopPointer(that);
-            Pointer newTop = result.add(size);
-            HeapChunk.setTopPointerCarefully(that, newTop);
+        if (size.aboveThan(available)) {
+            return Word.nullPointer();
         }
+
+        Pointer result = HeapChunk.getTopPointer(that);
+        Pointer newTop = result.add(size);
+        HeapChunk.setTopPointerCarefully(that, newTop);
         return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunk(Object obj) {
+        assert ObjectHeaderImpl.isAlignedObject(obj);
         Pointer ptr = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(ptr);
     }
@@ -144,7 +148,8 @@ public final class AlignedHeapChunk {
         return objectPointer.subtract(objectsStart);
     }
 
-    static void walkObjects(AlignedHeader that, ObjectVisitor visitor) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void walkObjects(AlignedHeader that, ObjectVisitor visitor) {
         HeapChunk.walkObjectsFrom(that, getObjectsStart(that), visitor);
     }
 

@@ -46,13 +46,16 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
@@ -101,7 +104,8 @@ import jdk.graal.compiler.word.Word;
  * |----------------------------|
  * </pre>
  */
-public class HeapDumpMetadata implements InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+public class HeapDumpMetadata {
     private final ComputeHubDataVisitor computeHubDataVisitor;
 
     private int fieldNameCount;
@@ -320,16 +324,6 @@ public class HeapDumpMetadata implements InitialLayerOnlyImageSingleton {
             result += type.getSize();
         }
         return result;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
     }
 
     @RawStructure

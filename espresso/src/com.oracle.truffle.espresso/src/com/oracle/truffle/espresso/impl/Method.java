@@ -1390,7 +1390,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public long getLastBCI() {
+    public int getLastBCI() {
         int bci = 0;
         BytecodeStream bs = new BytecodeStream(getOriginalCode());
         int end = bs.endBCI();

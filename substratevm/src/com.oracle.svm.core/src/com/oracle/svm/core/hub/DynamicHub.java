@@ -90,6 +90,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
@@ -113,7 +114,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
-import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -124,6 +124,7 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
@@ -544,11 +545,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         companion.hubMetadata = null;
         companion.reflectionMetadata = null;
 
-        /*
-         * We cannot do the allocation via {@code new DynamicHub(...)} because we need to inject the
-         * length for its vtable.
-         */
-        DynamicHub hub = SubstrateNewDynamicHubNode.allocate(DynamicHub.class, vTableEntries);
+        DynamicHub hub = Metaspace.singleton().allocateDynamicHub(vTableEntries);
 
         DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         /* Write fields in defining order. */
@@ -1976,7 +1973,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceReflectionArrayType(toClass(this));
         }
-        if (companion.arrayHub == null) {
+        if (companion.arrayHub == null || (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(ClassNameSupport.getArrayReflectionName(getName())))) {
             MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
         }
         return companion.arrayHub;

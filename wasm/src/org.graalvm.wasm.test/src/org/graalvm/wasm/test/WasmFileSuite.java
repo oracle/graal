@@ -116,10 +116,16 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
 
-    private static Map<String, String> getInterpretedNoInline() {
+    private static boolean isFallbackRuntime() {
+        return Truffle.getRuntime().getName().equals("Interpreted");
+    }
+
+    private static Map<String, String> getInterpreted() {
+        if (isFallbackRuntime()) {
+            return Map.of();
+        }
         return Map.ofEntries(
-                        Map.entry("engine.Compilation", "false"),
-                        Map.entry("compiler.Inlining", "false"));
+                        Map.entry("engine.Compilation", "false"));
     }
 
     private static Map<String, String> getSyncCompiledNoInline() {
@@ -148,6 +154,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static Map<String, String> getAsyncCompiledShared() {
+        if (isFallbackRuntime()) {
+            return Map.of();
+        }
         return getAsyncCompiled();
     }
 
@@ -406,8 +415,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 interpreterIterations = Math.min(interpreterIterations, 1);
             }
 
-            context = contextBuilder.options(getInterpretedNoInline()).option("wasm.EvalReturnsInstance", "true").build();
+            context = contextBuilder.options(getInterpreted()).option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter", testOut);
+
+            if (isFallbackRuntime()) {
+                return;
+            }
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to

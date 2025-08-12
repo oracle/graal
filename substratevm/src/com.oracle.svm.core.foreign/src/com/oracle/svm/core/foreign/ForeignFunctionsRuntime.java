@@ -31,15 +31,18 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.MissingForeignRegistrationError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -49,6 +52,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -176,7 +180,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
         FunctionPointerHolder holder = downcallStubs.get(nep);
         if (holder == null) {
-            throw new UnregisteredForeignStubException(nep);
+            throw MissingForeignRegistrationUtils.reportDowncall(nep);
         }
         return holder.functionPointer;
     }
@@ -184,7 +188,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
         FunctionPointerHolder holder = upcallStubs.get(jep);
         if (holder == null) {
-            throw new UnregisteredForeignStubException(jep);
+            throw MissingForeignRegistrationUtils.reportUpcall(jep);
         }
         return holder.functionPointer;
     }
@@ -259,24 +263,32 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         }
     }
 
-    @SuppressWarnings("serial")
-    public static class UnregisteredForeignStubException extends RuntimeException {
-
-        UnregisteredForeignStubException(NativeEntryPointInfo nep) {
-            super(generateMessage(nep));
+    public static class MissingForeignRegistrationUtils extends MissingRegistrationUtils {
+        public static MissingForeignRegistrationError reportDowncall(NativeEntryPointInfo nep) {
+            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("downcall", nep.methodType()));
+            report(mfre);
+            return mfre;
         }
 
-        UnregisteredForeignStubException(JavaEntryPointInfo jep) {
-            super(generateMessage(jep));
+        public static MissingForeignRegistrationError reportUpcall(JavaEntryPointInfo jep) {
+            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("upcall", jep.cMethodType()));
+            report(mfre);
+            return mfre;
         }
 
-        private static String generateMessage(NativeEntryPointInfo nep) {
-            return "Cannot perform downcall with leaf type " + nep.methodType() + " as it was not registered at compilation time.";
+        private static String foreignRegistrationMessage(String failedAction, MethodType methodType) {
+            return registrationMessage("perform " + failedAction + " with leaf type", methodType.toString(), "", "", "foreign", "foreign");
         }
 
-        private static String generateMessage(JavaEntryPointInfo jep) {
-            return "Cannot perform upcall with leaf type " + jep.cMethodType() + " as it was not registered at compilation time.";
+        private static void report(MissingForeignRegistrationError exception) {
+            StackTraceElement responsibleClass = getResponsibleClass(exception, foreignEntryPoints);
+            MissingRegistrationUtils.report(exception, responsibleClass);
         }
+
+        private static final Map<String, Set<String>> foreignEntryPoints = Map.of(
+                        "jdk.internal.foreign.abi.AbstractLinker", Set.of(
+                                        "downcallHandle",
+                                        "upcallStub"));
     }
 
     /**

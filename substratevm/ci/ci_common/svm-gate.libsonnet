@@ -152,4 +152,9 @@
       JAVA_HOME_RISCV    : {name : "labsjdk", version : b.downloads.JAVA_HOME.version + "-linux-riscv64" }
     },
   })),
+
+  validate_tiers(b)::
+    assert b.target != "gate": "Must not add new `gate` jobs.\nPlease change the target of the job '%s' to `tier1`, `tier2`, `tier3` or make it a post-merge or periodic job" % [b.name] ;
+    b
+ ,
 }

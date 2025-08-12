@@ -52,17 +52,17 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          */
         INDEPENDENT(EmptyMetadata.class),
 
-        /*
-         * GR-66793, GR-66794, GR-66795, : switch from using interfaces to traits for implementing
-         * the following behaviors.
-         */
-
         /**
          * This singleton can only be installed in the initial layer. All references to this
          * singleton in all code compiled across all layers refer to the singleton installed in the
          * base layer.
          */
         INITIAL_LAYER_ONLY(EmptyMetadata.class),
+
+        /*
+         * GR-66794, GR-66795, : switch from using interfaces to traits for implementing the
+         * following behaviors.
+         */
 
         /**
          * This singleton can only be installed in the app layer. All references to this singleton
@@ -103,13 +103,9 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         VMError.guarantee(kind.metadataClass.isInstance(metadata));
     }
 
-    public static void validate(SingletonTrait trait) {
+    public static InstallationKind getInstallationKind(SingletonTrait trait) {
         VMError.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND);
-        SingletonLayeredInstallationKind behavior = (SingletonLayeredInstallationKind) trait.metadata();
-        if (behavior.kind() == InstallationKind.DISALLOWED) {
-            throw VMError.shouldNotReachHere("This singleton cannot be added to this layer");
-
-        }
+        return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
     }
 
     static final SingletonTrait DISALLOWED_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
@@ -129,6 +125,16 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         @Override
         public SingletonTrait getLayeredInstallationKindTrait() {
             return INDEPENDENT_TRAIT;
+        }
+    }
+
+    static final SingletonTrait INITIAL_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.INITIAL_LAYER_ONLY, EmptyMetadata.EMPTY));
+
+    public static final class InitialLayerOnly extends SingletonLayeredInstallationKindSupplier {
+        @Override
+        public SingletonTrait getLayeredInstallationKindTrait() {
+            return INITIAL_LAYER_ONLY;
         }
     }
 }

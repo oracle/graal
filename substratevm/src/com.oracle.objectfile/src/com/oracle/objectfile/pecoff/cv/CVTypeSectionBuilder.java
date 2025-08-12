@@ -66,7 +66,6 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CVClassRecord.ATTR_FO
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -298,7 +297,7 @@ class CVTypeSectionBuilder {
             superTypeIndex = objectHeaderRecordIndex;
         }
 
-        final List<MethodEntry> methods = typeEntry instanceof ClassEntry classEntry ? classEntry.getMethods() : Collections.emptyList();
+        final List<MethodEntry> methods = typeEntry instanceof ClassEntry classEntry ? classEntry.getMethods() : List.of();
 
         /* Build fieldlist record */
         FieldListBuilder fieldListBuilder = new FieldListBuilder();
@@ -349,7 +348,7 @@ class CVTypeSectionBuilder {
          * a M_FUNCTION entry in the field list, and a LF_METHODLIST record pointing to M_MFUNCTION
          * records for each overload.
          */
-        if (methods.size() > 0) {
+        if (!methods.isEmpty()) {
 
             log("building methods");
 
@@ -410,7 +409,7 @@ class CVTypeSectionBuilder {
              * Try to find a line number for the first function - if none, don't bother to create
              * the record.
              */
-            int line = classEntry.getMethods().isEmpty() ? 0 : classEntry.getMethods().get(0).getLine();
+            int line = methods.stream().mapToInt(MethodEntry::getLine).min().orElse(0);
             if (line > 0) {
                 int idIdx = typeSection.getStringId(classEntry.getFullFileName()).getSequenceNumber();
                 CVTypeRecord.CVUdtTypeLineRecord udt = new CVTypeRecord.CVUdtTypeLineRecord(typeRecord.getSequenceNumber(), idIdx, line);

@@ -185,7 +185,7 @@ public final class HeapAllocation {
 
         AlignedHeader newChunk = requestNewAlignedChunk();
         if (newChunk.isNonNull()) {
-            Pointer result = AlignedHeapChunk.allocateMemory(newChunk, requestedSize);
+            Pointer result = AlignedHeapChunk.tryAllocateMemory(newChunk, requestedSize);
             assert result.isNonNull();
 
             HeapChunk.setNext(newChunk, currentChunk);

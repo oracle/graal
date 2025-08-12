@@ -73,6 +73,7 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
             /* No need to restore anything in the frame of the new stack pointer. */
             masm.mov(64, AArch64.sp, asRegister(sp));
             returnTo(asRegister(ip), masm);
+            return;
         }
 
         /*

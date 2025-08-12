@@ -36,7 +36,7 @@ import mx_sdk_vm_ng
 import mx_subst
 import mx_util
 import mx_gate
-import mx_espresso_benchmarks  # pylint: disable=unused-import
+import mx_espresso_benchmarks
 import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
@@ -99,7 +99,7 @@ def _espresso_standalone_command(args, with_sulong=False, allow_jacoco=True, jdk
     )
 
 def javavm_deps():
-    result = [espresso_resources_suite() + ':ESPRESSO_RUNTIME_RESOURCES']
+    result = [espresso_runtime_resources_distribution()]
     if mx.suite('truffle-enterprise', fatalIfMissing=False):
         result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     if mx.suite('regex', fatalIfMissing=False):
@@ -115,7 +115,9 @@ def javavm_build_args():
         result += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal', '-H:+CopyLanguageResources'])
     if mx_sdk_vm_ng.get_bootstrap_graalvm_version() >= mx.VersionSpec("25.0"):
         result.append('-H:-IncludeLanguageResources')
-    if mx.is_linux() and mx.get_os_variant() != "musl":
+    if mx.is_linux() and (mx.get_os_variant() != "musl" and mx_subst.path_substitutions.substitute("<multitarget_libc_selection>") == "glibc"):
+        # Currently only enabled if the native image build runs on glibc and also targets glibc.
+        # In practice it's enough that host and target are matching, but we do not get this info out of mx.
         result += [
             '-Dpolyglot.image-build-time.PreinitializeContexts=java',
             '-Dpolyglot.image-build-time.PreinitializeContextsWithNative=true',
@@ -210,6 +212,8 @@ def _run_verify_imports(s):
     # Find invalid files
     invalid_files = []
     for project in s.projects:
+        if getattr(project, "skipVerifyImports", False):
+            continue
         output_root = project.get_output_root()
         for src_dir in project.source_dirs():
             if src_dir.startswith(output_root):
@@ -579,6 +583,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}{dist_suffix}',
         enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}{dist_suffix}'))
 
+    mx_espresso_benchmarks.mx_register_dynamic_suite_constituents(register_project, register_distribution)
+
 
 def espresso_resources_suite(java_home_dep=None):
     # Espresso resources are in the CE/EE suite depending on espresso java home type
@@ -588,6 +594,10 @@ def espresso_resources_suite(java_home_dep=None):
         return 'espresso-tests'
     else:
         return 'espresso'
+
+
+def espresso_runtime_resources_distribution(java_home_dep=None):
+    return espresso_resources_suite(java_home_dep=java_home_dep) + ':ESPRESSO_RUNTIME_RESOURCES'
 
 
 def register_espresso_runtime_resources(register_project, register_distribution, suite):

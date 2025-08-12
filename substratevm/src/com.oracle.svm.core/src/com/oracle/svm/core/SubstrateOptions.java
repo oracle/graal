@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.DeprecatedOptions.TearDownFailureNanos;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
@@ -168,7 +167,7 @@ public class SubstrateOptions {
     public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
     public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
     // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build a Native Image layer.")//
+    @Option(help = "Experimental: Build a Native Image layer. See NativeImageLayers.md for more info.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
@@ -618,17 +617,13 @@ public class SubstrateOptions {
             }
         };
 
-        public static final String TEAR_DOWN_WARNING_NANOS_ERROR = "Can't set both TearDownWarningSeconds and TearDownWarningNanos at the same time. Use TearDownWarningSeconds.";
-        @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.", //
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.", //
                         deprecated = true, deprecationMessage = "Use -XX:TearDownWarningSeconds=<secs> instead")//
-        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L,
-                        (key) -> UserError.guarantee(!(key.hasBeenSet() && TearDownWarningSeconds.hasBeenSet()), TEAR_DOWN_WARNING_NANOS_ERROR),
-                        RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
-        @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message and returns from a tear-down call. 0 implies no message.", //
-                        deprecated = true, deprecationMessage = "This call leaks resources. Instead, terminate java threads cooperatively, or use System#exit")//
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.", //
+                        deprecated = true, deprecationMessage = "Use -XX:TearDownFailureSeconds=<secs> instead")//
         public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
     }
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
@@ -870,24 +865,18 @@ public class SubstrateOptions {
         }
     }
 
-    /*
-     * Isolate tear down options.
-     */
-    @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
     public static long getTearDownWarningNanos() {
-        if (TearDownWarningSeconds.hasBeenSet() && DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
-            throw new IllegalArgumentException(DeprecatedOptions.TEAR_DOWN_WARNING_NANOS_ERROR);
+        if (ConcealedOptions.TearDownWarningSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownWarningSeconds.getValue());
         }
-        if (DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
-            return DeprecatedOptions.TearDownWarningNanos.getValue();
-        }
-        return TearDownWarningSeconds.getValue() * TimeUtils.nanosPerSecond;
+        return DeprecatedOptions.TearDownWarningNanos.getValue();
     }
 
     public static long getTearDownFailureNanos() {
-        return TearDownFailureNanos.getValue();
+        if (ConcealedOptions.TearDownFailureSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownFailureSeconds.getValue());
+        }
+        return DeprecatedOptions.TearDownFailureNanos.getValue();
     }
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
@@ -912,6 +901,9 @@ public class SubstrateOptions {
     @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "file:doc-files/NeverInlineHelp.txt")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInlineTrivial = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -1264,6 +1256,15 @@ public class SubstrateOptions {
         @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
         @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
         public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
+
+        /** Use {@link SubstrateOptions#getTearDownWarningNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        /** Use {@link SubstrateOptions#getTearDownFailureNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownFailureSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1455,8 +1456,6 @@ public class SubstrateOptions {
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
-    @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
-    public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true);

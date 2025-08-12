@@ -148,6 +148,11 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         return getId();
     }
 
+    @Override
+    public String toString() {
+        return String.format("%d - %s -> %d", source.getId(), codePointSet, target.getId());
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {

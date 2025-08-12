@@ -25,28 +25,21 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-public record LocalEntry(String name, TypeEntry type, int slot, AtomicInteger line) {
-
-    public LocalEntry(String name, TypeEntry type, int slot, int line) {
-        /*
-         * Use a AtomicInteger for the line number as it might change if we encounter the same local
-         * variable in a different frame state with a lower line number
-         */
-        this(name, type, slot, new AtomicInteger(line));
+public record LocalEntry(String name, TypeEntry type, int slot) implements Comparable<LocalEntry> {
+    @Override
+    public String toString() {
+        return String.format("Local(%s type=%s slot=%d)", name, type.getTypeName(), slot);
     }
 
     @Override
-    public String toString() {
-        return String.format("Local(%s type=%s slot=%d line=%d)", name, type.getTypeName(), slot, getLine());
-    }
-
-    public void setLine(int newLine) {
-        this.line.set(newLine);
-    }
-
-    public int getLine() {
-        return line.get();
+    public int compareTo(LocalEntry o) {
+        int cmp = Integer.compare(slot, o.slot);
+        if (cmp == 0) {
+            cmp = name.compareTo(o.name);
+        }
+        if (cmp == 0) {
+            return Long.compare(type.typeSignature, o.type.typeSignature);
+        }
+        return cmp;
     }
 }

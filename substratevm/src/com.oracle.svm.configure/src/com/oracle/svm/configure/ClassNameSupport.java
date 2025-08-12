@@ -124,6 +124,13 @@ public class ClassNameSupport {
         return reflectionName.replace('.', '/');
     }
 
+    public static String getArrayReflectionName(String componentReflectionName) {
+        if (!isValidReflectionName(componentReflectionName)) {
+            return componentReflectionName;
+        }
+        return "[" + (wrappingArrayDimension(componentReflectionName) > 0 ? componentReflectionName : typeNameToArrayElementType(componentReflectionName));
+    }
+
     private static String arrayElementTypeToTypeName(String arrayElementType, int startIndex) {
         char typeChar = arrayElementType.charAt(startIndex);
         return switch (typeChar) {

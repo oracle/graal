@@ -54,30 +54,9 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
     local table = [ ["name", "variant", task_details_title] + platform_titles] + cols;
     table
   ,
-  // Removes the 'timelimit' property from an object.
-  // Usually, this is used to remove hard-coded (default) timelimits defined in `ci/ci_common/common.jsonnet`.
-  // These definitions assume that the os/arch definition comes first and will be refined later.
-  // With run-spec, however, this is not true in general because the os/arch is only fixed later
-  // in the pipeline. Thus, hard-coded timelimits would override any previous settings. To resolve
-  // this, we delete the default value altogether and explicitly set the timelimits for all jobs.
-  //
-  // Implementation note: we cannot set the value to `null` and use `std.prune` because that deletes hidden fields.
-  delete_timelimit(b)::
-    local public_fields = std.objectFields(b);
-    std.foldl(function(acc, k) acc +
-      local value = b[k];
-      if std.member(public_fields, k) then
-        if std.type(value) == "string" then
-          { [k]: value }
-        else
-          { [k]+: value }
-      else
-        if std.type(value) == "string" then
-          { [k]:: value }
-        else
-          { [k]+:: value }
-      ,
-      [k for k in std.objectFieldsAll(b) if k != "timelimit"],
-      {}
-    ),
+  // Check there is no 'timelimit' property on an object,
+  // so that it is safe to add the timelimit later and ordering won't matter.
+  check_no_timelimit(b)::
+    assert !std.objectHasAll(b, "timelimit") : "b";
+    b,
 }

@@ -92,6 +92,25 @@ public class BuiltinTraits {
     }
 
     /**
+     * Trait indicating nothing should be persisted for this singleton and that a singleton cannot
+     * be linked to this key in a subsequent image layer. This limits the singleton to being
+     * installed in a single layer.
+     */
+    public static final SingletonTrait SINGLE_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+        @Override
+        public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+            return LayeredImageSingleton.PersistFlags.FORBIDDEN;
+        }
+    });
+
+    public static class SingleLayer extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return SINGLE_LAYER;
+        }
+    }
+
+    /**
      * Trait indicating this singleton can be made more layer-aware in the future. See
      * {@link SingletonTraitKind#DUPLICABLE} for more information.
      */

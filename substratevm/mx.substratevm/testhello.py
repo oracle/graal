@@ -197,7 +197,7 @@ def test():
         fr"#4{spaces_pattern}{address_pattern} in com\.oracle\.svm\.core\.JavaMainWrapper::runCore{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#5{spaces_pattern}com\.oracle\.svm\.core\.JavaMainWrapper::doRun{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#6{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::run{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
-        fr"#7{spaces_pattern}com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_{varname_pattern}{param_types_pattern} {arg_values_pattern}"
+        fr"#7{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_{varname_pattern}{param_types_pattern} {arg_values_pattern}"
     ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -408,7 +408,7 @@ def test():
         fr"#5{spaces_pattern}{address_pattern} in com\.oracle\.svm\.core\.JavaMainWrapper::runCore{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#6{spaces_pattern}com\.oracle\.svm\.core\.JavaMainWrapper::doRun{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#7{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::run{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
-        fr"#8{spaces_pattern}com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_{varname_pattern}{param_types_pattern} {arg_values_pattern}"
+        fr"#8{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_{varname_pattern}{param_types_pattern} {arg_values_pattern}"
     ]
     if musl:
         # musl has a different entry point - drop the last two frames

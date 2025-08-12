@@ -37,6 +37,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.ConstantValueEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.LocalValueEntry;
@@ -120,42 +121,46 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private int generateContent(DebugContext context, byte[] buffer) {
-        Cursor cursor = new Cursor();
+        int pos = 0;
 
-        // n.b. We could do this by iterating over the compiled methods sequence. the
-        // reason for doing it in class entry order is to because it mirrors the
-        // order in which entries appear in the info section. That stops objdump
-        // posting spurious messages about overlaps and holes in the var ranges.
-        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
+        /*
+         * n.b. We could do this by iterating over the compiled methods sequence. the reason for
+         * doing it in class entry order is to because it mirrors the order in which entries appear
+         * in the info section. That stops objdump posting spurious messages about overlaps and
+         * holes in the var ranges.
+         */
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
             List<LocationListEntry> locationListEntries = getLocationListEntries(classEntry);
             if (locationListEntries.isEmpty()) {
-                // no need to emit empty location list
-                // location list index can never be 0 as there is at least a header before
+                /*
+                 * No need to emit empty location list. The location list index can never be 0 as
+                 * there is at least a header before.
+                 */
                 setLocationListIndex(classEntry, 0);
             } else {
                 int entryCount = locationListEntries.size();
 
-                int lengthPos = cursor.get();
-                cursor.set(writeLocationListsHeader(entryCount, buffer, cursor.get()));
+                int lengthPos = pos;
+                pos = writeLocationListsHeader(entryCount, buffer, pos);
 
-                int baseOffset = cursor.get();
+                int baseOffset = pos;
                 setLocationListIndex(classEntry, baseOffset);
-                cursor.add(entryCount * 4);  // space for offset array
+                pos += entryCount * 4;  // space for offset array
 
                 int index = 0;
                 for (LocationListEntry entry : locationListEntries) {
                     setRangeLocalIndex(entry.range(), entry.local(), index);
-                    writeInt(cursor.get() - baseOffset, buffer, baseOffset + index * 4);
+                    writeInt(pos - baseOffset, buffer, baseOffset + index * 4);
                     index++;
-                    cursor.set(writeVarLocations(context, entry.local(), entry.base(), entry.rangeList(), buffer, cursor.get()));
+                    pos = writeVarLocations(context, entry.local(), entry.base(), entry.rangeList(), buffer, pos);
                 }
 
                 /* Fix up location list length */
-                patchLength(lengthPos, buffer, cursor.get());
+                patchLength(lengthPos, buffer, pos);
             }
-        });
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writeLocationListsHeader(int offsetEntries, byte[] buffer, int p) {
@@ -178,7 +183,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private static List<LocationListEntry> getLocationListEntries(ClassEntry classEntry) {
         List<LocationListEntry> locationListEntries = new ArrayList<>();
 
-        classEntry.compiledMethods().forEach(compiledEntry -> {
+        for (CompiledMethodEntry compiledEntry : classEntry.compiledMethods()) {
             Range primary = compiledEntry.primary();
             /*
              * Note that offsets are written relative to the primary range base. This requires
@@ -196,7 +201,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             if (!primary.isLeaf()) {
                 compiledEntry.callRangeStream().forEach(subrange -> locationListEntries.addAll(getRangeLocationListEntries(subrange, base)));
             }
-        });
+        }
         return locationListEntries;
     }
 

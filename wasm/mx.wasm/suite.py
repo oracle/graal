@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
 suite = {
   "mxversion": "7.55.2",
   "name" : "wasm",
@@ -89,7 +90,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyleVersion" : "10.21.0",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
@@ -121,7 +122,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "license" : "UPL",
     },
 
@@ -134,7 +135,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -151,7 +152,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -177,7 +178,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
@@ -203,7 +204,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "workingSets" : "WebAssembly",
       "testProject" : True,
@@ -218,9 +219,16 @@ suite = {
         "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
+    },
+
+    "org.graalvm.wasm.polybench": {
+      "subDir": "benchmarks",
+      "class": "GraalVmWatProject",
+      "defaultBuild": False,
+      "testProject": True,
     },
 
     "org.graalvm.wasm.memory" : {
@@ -231,7 +239,7 @@ suite = {
         "JOL",
       ],
       "workingSets": "WebAssembly",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "17+",
       "defaultBuild": False,
     },
 
@@ -457,6 +465,17 @@ suite = {
       "platformDependent" : True,
       "maven" : False,
       "testDistribution" : True,
+    },
+
+    "WASM_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for Wasm polybench benchmarks",
+      "layout": {
+        "./": [
+          "dependency:org.graalvm.wasm.polybench/*",
+        ],
+      },
+      "defaultBuild": False,
+      "testDistribution": True,
     },
 
     "WASM_GRAALVM_SUPPORT": {
