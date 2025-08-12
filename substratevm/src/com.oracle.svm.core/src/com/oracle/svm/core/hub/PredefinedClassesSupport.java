@@ -25,7 +25,21 @@
  */
 package com.oracle.svm.core.hub;
 
+import static java.lang.classfile.ClassFile.ConstantPoolSharingOption.NEW_POOL;
+
 import java.io.Serializable;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.ClassTransform;
+import java.lang.classfile.MethodTransform;
+import java.lang.classfile.constantpool.ClassEntry;
+import java.lang.classfile.instruction.FieldInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.classfile.instruction.NewMultiArrayInstruction;
+import java.lang.classfile.instruction.NewObjectInstruction;
+import java.lang.classfile.instruction.NewReferenceArrayInstruction;
+import java.lang.classfile.instruction.TypeCheckInstruction;
+import java.lang.constant.ClassDesc;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.HashSet;
@@ -44,11 +58,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassReader;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
-import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
-import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -332,41 +341,32 @@ public final class PredefinedClassesSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static byte[] changeLambdaClassName(byte[] data, String oldName, String newName) {
-        ClassReader cr = new ClassReader(data);
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        ClassDesc oldDesc = ClassDesc.ofInternalName(oldName);
+        ClassDesc newDesc = ClassDesc.ofInternalName(newName);
 
-        cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
-            // Change lambda class name in the bytecode
-            @Override
-            public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-                super.visit(version, access, newName, signature, superName, interfaces);
-            }
+        ClassFile classFile = ClassFile.of(NEW_POOL);
+        ClassModel original = classFile.parse(data);
 
-            // Change all class references in the lambda class bytecode
-            @Override
-            public MethodVisitor visitMethod(int access, String originalName, String desc, String signature, String[] exceptions) {
-                return new MethodVisitor(Opcodes.ASM5, super.visitMethod(access, originalName, desc, signature, exceptions)) {
-                    @Override
-                    public void visitTypeInsn(int opcode, String type) {
-                        String name = type.equals(oldName) ? newName : type;
-                        super.visitTypeInsn(opcode, name);
-                    }
-
-                    @Override
-                    public void visitMethodInsn(int opcode, String owner, String methodName, String descriptor, boolean isInterface) {
-                        String name = owner.equals(oldName) ? newName : owner;
-                        super.visitMethodInsn(opcode, name, methodName, descriptor, isInterface);
-                    }
-
-                    @Override
-                    public void visitFieldInsn(int opcode, String owner, String fieldName, String descriptor) {
-                        String name = owner.equals(oldName) ? newName : owner;
-                        super.visitFieldInsn(opcode, name, fieldName, descriptor);
-                    }
-                };
-            }
-        }, ClassReader.EXPAND_FRAMES);
-
-        return cw.toByteArray();
+        return classFile.transformClass(original, newDesc,
+                        ClassTransform.transformingMethods(
+                                        MethodTransform.transformingCode((builder, element) -> {
+                                            ClassEntry newClassEntry = builder.constantPool().classEntry(newDesc);
+                                            // Pass through any unhandled elements unchanged
+                                            if (element instanceof TypeCheckInstruction ti && ti.type().asSymbol().equals(oldDesc)) {
+                                                builder.with(TypeCheckInstruction.of(ti.opcode(), newClassEntry));
+                                            } else if (element instanceof NewObjectInstruction ti && ti.className().asSymbol().equals(oldDesc)) {
+                                                builder.with(NewObjectInstruction.of(newClassEntry));
+                                            } else if (element instanceof NewReferenceArrayInstruction ti && ti.componentType().asSymbol().equals(oldDesc)) {
+                                                builder.with(NewReferenceArrayInstruction.of(newClassEntry));
+                                            } else if (element instanceof NewMultiArrayInstruction ti && ti.arrayType().asSymbol().equals(oldDesc)) {
+                                                builder.with(NewMultiArrayInstruction.of(newClassEntry, ti.dimensions()));
+                                            } else if (element instanceof InvokeInstruction mi && mi.owner().asSymbol().equals(oldDesc)) {
+                                                builder.with(InvokeInstruction.of(mi.opcode(), newClassEntry, mi.name(), mi.type(), mi.isInterface()));
+                                            } else if (element instanceof FieldInstruction fi && fi.owner().asSymbol().equals(oldDesc)) {
+                                                builder.with(FieldInstruction.of(fi.opcode(), newClassEntry, fi.name(), fi.type()));
+                                            } else {
+                                                builder.with(element);
+                                            }
+                                        })));
     }
 }
