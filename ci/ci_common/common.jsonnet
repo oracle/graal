@@ -131,7 +131,7 @@ common + common.frequencies + {
   },
   local linux_deps_extras = {
     packages+: {
-      "apache/ant": ">=1.9.4",
+      "apache/ant": "==1.10.1",
     },
   },
 

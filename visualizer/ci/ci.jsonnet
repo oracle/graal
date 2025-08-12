@@ -36,7 +36,7 @@
 
   linux_maven: {
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.9.10',
     },
   },
 
