@@ -57,7 +57,7 @@ final class TrampolineSet {
     }
 
     private static UnsignedWord alignment() {
-        return Word.unsigned(SubstrateOptions.codeAlignment());
+        return Word.unsigned(SubstrateOptions.runtimeCodeAlignment());
     }
 
     private static int maxTrampolineCount() {
@@ -145,7 +145,7 @@ final class TrampolineSet {
     private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = CommittedMemoryProvider.get().allocateExecutableMemory(pageSize, Word.unsigned(SubstrateOptions.codeAlignment()));
+        Pointer page = CommittedMemoryProvider.get().allocateExecutableMemory(pageSize, Word.unsigned(SubstrateOptions.runtimeCodeAlignment()));
         if (page.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }

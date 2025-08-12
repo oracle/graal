@@ -1335,7 +1335,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         if (SubstrateUtil.HOSTED) {
             var sharedCompilationResult = (SharedCompilationResult) compilationResult;
-            sharedCompilationResult.setCodeAlignment(SubstrateOptions.codeAlignment(options));
+            sharedCompilationResult.setCodeAlignment(SubstrateOptions.buildTimeCodeAlignment(options));
         }
         return crb;
     }

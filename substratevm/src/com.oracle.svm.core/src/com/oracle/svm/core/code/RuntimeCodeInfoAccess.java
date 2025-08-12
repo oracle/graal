@@ -218,12 +218,12 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {
-        return (CodePointer) CommittedMemoryProvider.get().allocateExecutableMemory(size, Word.unsigned(SubstrateOptions.codeAlignment()));
+        return (CodePointer) CommittedMemoryProvider.get().allocateExecutableMemory(size, Word.unsigned(SubstrateOptions.runtimeCodeAlignment()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
-        CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, Word.unsigned(SubstrateOptions.codeAlignment()));
+        CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, Word.unsigned(SubstrateOptions.runtimeCodeAlignment()));
     }
 
     public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {

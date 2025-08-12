@@ -1902,7 +1902,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         var substrateAMD64FrameMap = (SubstrateAMD64FrameMap) frameMap;
         sharedCompilationResult.setFrameSize(substrateAMD64FrameMap.frameSize());
         if (SubstrateUtil.HOSTED) {
-            sharedCompilationResult.setCodeAlignment(SubstrateOptions.codeAlignment(options));
+            sharedCompilationResult.setCodeAlignment(SubstrateOptions.buildTimeCodeAlignment(options));
         }
         if (substrateAMD64FrameMap.needsFramePointer()) {
             sharedCompilationResult.setFramePointerSaveAreaOffset(substrateAMD64FrameMap.getFramePointerSaveAreaOffset());
