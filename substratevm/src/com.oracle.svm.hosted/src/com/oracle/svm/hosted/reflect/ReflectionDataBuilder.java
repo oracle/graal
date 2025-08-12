@@ -998,7 +998,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             /*
              * Reflection signature parsing will try to instantiate classes via Class.forName().
              */
-            classForNameSupport.registerClass(clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()));
+            // GR-68706: this registration is marked as preserved to avoid clobbering "preserved"
+            // metadata. it should use a scoped condition once they are supported.
+            classForNameSupport.registerClass(AccessCondition.unconditional(), clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()), true);
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
             registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);
