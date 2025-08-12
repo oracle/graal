@@ -181,7 +181,7 @@ public final class ConfigurationFiles {
             if (TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
                 result.add(ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
             }
-            if (TreatAllNameEntriesAsType.getValue() || FutureDefaultsOptions.treatNameAsType()) {
+            if (TreatAllNameEntriesAsType.getValue() || FutureDefaultsOptions.completeReflectionTypes()) {
                 result.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
             }
             return result;

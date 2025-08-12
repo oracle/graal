@@ -57,7 +57,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class FrameDescriptorTest {
 
-    private static final boolean NULL_TAGS_SUPPORTED = Runtime.version().feature() >= 24;
+    private static final boolean NULL_TAGS_SUPPORTED = Runtime.version().feature() >= 25;
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {

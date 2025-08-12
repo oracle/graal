@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  *      Spec - The CONSTANT_Utf8_info Structure</a>
  */
 public sealed class ModifiedUTF8 permits Descriptor, Name {
+    private static final char REPLACEMENT_CHARACTER = 0xfffd;
 
     /**
      * Type-safe cast from Symbol with ModifiedUTF8 bound to Symbol<ModifiedUTF8>.
@@ -146,6 +147,12 @@ public sealed class ModifiedUTF8 permits Descriptor, Name {
         return toJavaString(ByteBuffer.wrap(bytearr, offset, utflen));
     }
 
+    /**
+     * Creates a String from the contents of the buffer, interpreted as modified utf8. if the
+     * contents is not valid modified utf8, {@link UTFDataFormatException} will be thrown.
+     *
+     * @throws UTFDataFormatException if the data is not valid modified utf8.
+     */
     public static String toJavaString(ByteBuffer buffer) throws IOException {
         char[] chararr = new char[buffer.remaining()];
 
@@ -209,7 +216,87 @@ public sealed class ModifiedUTF8 permits Descriptor, Name {
                     throw throwUTFDataFormatException(malformedInputMessage(buffer.position()));
             }
         }
-        // The number of chars produced may be less than utflen
+        // The number of chars produced may be less than the size of the buffer
+        return new String(chararr, 0, chararrCount);
+    }
+
+    /**
+     * Creates a String from the contents of the buffer, interpreted as modified utf8. If some bytes
+     * cannot be decoded, the Unicode replacement character (0xfffd) is used.
+     */
+    public static String toJavaStringSafe(ByteBuffer buffer) {
+        char[] chararr = new char[buffer.remaining()];
+
+        int c;
+        int char2;
+        int char3;
+        int chararrCount = 0;
+
+        while (buffer.hasRemaining()) {
+            c = buffer.get() & 0xff;
+            if (c > 127) {
+                buffer.position(buffer.position() - 1);
+                break;
+            }
+            chararr[chararrCount++] = (char) c;
+        }
+
+        while (buffer.hasRemaining()) {
+            c = buffer.get() & 0xff;
+            switch (c >> 4) {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                    /* 0xxxxxxx */
+                    chararr[chararrCount++] = (char) c;
+                    break;
+                case 12:
+                case 13:
+                    /* 110x xxxx 10xx xxxx */
+                    if (!buffer.hasRemaining()) {
+                        if (chararrCount < chararr.length) {
+                            chararr[chararrCount] = REPLACEMENT_CHARACTER;
+                            break;
+                        }
+                    }
+                    char2 = buffer.get();
+                    if ((char2 & 0xC0) != 0x80) {
+                        chararr[chararrCount++] = REPLACEMENT_CHARACTER;
+                        break;
+                    }
+                    chararr[chararrCount++] = (char) (((c & 0x1F) << 6) |
+                                    (char2 & 0x3F));
+                    break;
+                case 14:
+                    /* 1110 xxxx 10xx xxxx 10xx xxxx */
+                    if (buffer.remaining() < 2) {
+                        if (chararrCount < chararr.length) {
+                            chararr[chararrCount] = REPLACEMENT_CHARACTER;
+                            break;
+                        }
+                    }
+                    char2 = buffer.get();
+                    char3 = buffer.get();
+                    if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
+                        chararr[chararrCount++] = REPLACEMENT_CHARACTER;
+                        break;
+                    }
+                    chararr[chararrCount++] = (char) (((c & 0x0F) << 12) |
+                                    ((char2 & 0x3F) << 6) |
+                                    ((char3 & 0x3F) << 0));
+                    break;
+                default:
+                    /* 10xx xxxx, 1111 xxxx */
+                    chararr[chararrCount++] = REPLACEMENT_CHARACTER;
+                    break;
+            }
+        }
+        // The number of chars produced may be less than the size of the buffer
         return new String(chararr, 0, chararrCount);
     }
 

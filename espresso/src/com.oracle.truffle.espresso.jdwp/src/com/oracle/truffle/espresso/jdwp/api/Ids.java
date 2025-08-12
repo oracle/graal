@@ -47,7 +47,7 @@ public final class Ids<T> {
      * All entities stored while communicating with the debugger. The array will be expanded
      * whenever an ID for a new entity is requested.
      */
-    private WeakReference<T>[] objects;
+    private volatile WeakReference<T>[] objects;
 
     /**
      * A special object representing the null value. This object must be passed on by the

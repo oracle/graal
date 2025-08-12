@@ -57,12 +57,12 @@ public class WebImageSystemPropertiesSupport extends SystemPropertiesSupport {
 
     @Override
     protected String osNameValue() {
-        return "Unknown";
+        return "Web Image";
     }
 
     @Override
     protected String osVersionValue() {
-        return "Unknown";
+        return "0.0";
     }
 
 }

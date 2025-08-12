@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
@@ -51,6 +52,8 @@ import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FloatingGuardedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.IfNode;
@@ -156,8 +159,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 }
                 FixedAccessNode fixedAccess = floatingAccessNode.asFixedNode();
                 replaceCurrent(fixedAccess);
-            } else if (node instanceof PiNode) {
-                PiNode piNode = (PiNode) node;
+            } else if (node instanceof PiNode piNode) {
+                // incompatible stamps can result from unreachable code with empty stamps missed by
+                // control flow optimizations
                 if (piNode.stamp(NodeView.DEFAULT).isCompatible(piNode.getOriginalNode().stamp(NodeView.DEFAULT))) {
                     // Pi nodes are no longer necessary at this point. Make sure to infer stamps
                     // for all usages to clear out the stamp information added by the pi node.
@@ -686,6 +690,31 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions()) && GraalOptions.EnableFixReadsConditionalElimination.getValue(graph.getOptions())) {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
         }
+
+        assert verifyPiRemovalInvariants(graph);
+    }
+
+    /**
+     * Run verifications to test invariants that need to hold after removing {@link PiNode} from a
+     * graph.
+     */
+    public static boolean verifyPiRemovalInvariants(StructuredGraph graph) {
+        if (Assertions.assertionsEnabled()) {
+            for (Node n : graph.getNodes()) {
+                final boolean isFloatingGuardedNode = n instanceof FloatingGuardedNode;
+                if (isFloatingGuardedNode) {
+                    // floating guarded nodes without a guard are "universally" true meaning they
+                    // can be executed everywhere
+                    final GuardingNode guard = ((FloatingGuardedNode) n).getGuard();
+                    final boolean isUniversallyTrue = guard == null;
+                    if (!isUniversallyTrue) {
+                        assert guard instanceof FixedNode : Assertions.errorMessage(
+                                        "Should not have floating guarded nodes without fixed guards left after removing pis, they could float uncontrolled now", n);
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     @Override

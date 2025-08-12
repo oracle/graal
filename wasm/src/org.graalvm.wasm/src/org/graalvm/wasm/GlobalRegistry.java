@@ -192,9 +192,7 @@ public final class GlobalRegistry {
             other.storeLong(address, value);
             other.storeObject(address, objectValue);
         }
-        for (int i = 0; i < externalGlobals.length; i++) {
-            other.externalGlobals[i] = this.externalGlobals[i];
-        }
+        System.arraycopy(this.externalGlobals, 0, other.externalGlobals, 0, externalGlobals.length);
         return other;
     }
 

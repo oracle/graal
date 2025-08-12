@@ -116,6 +116,10 @@ public class ReadNode extends FloatableAccessNode
         this(c, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, memoryOrder, usedAsNullCheck, stateBefore, null, null, false);
     }
 
+    public ReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        this(TYPE, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, MemoryOrderMode.PLAIN, false, null, lastLocationAccess, null, false);
+    }
+
     private static Stamp generateStamp(Stamp stamp, MemoryExtendKind extendKind) {
         if (extendKind.isNotExtended()) {
             return stamp;

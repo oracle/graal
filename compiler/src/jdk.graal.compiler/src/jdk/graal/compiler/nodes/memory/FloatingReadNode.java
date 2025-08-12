@@ -263,4 +263,5 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
     public boolean potentialAntiDependency() {
         return !noAntiDependency;
     }
+
 }

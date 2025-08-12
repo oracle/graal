@@ -211,14 +211,23 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes) : Assertions.errorMessage("obsolete nodes should not be reachable: ", obsoleteNodes);
+
+        final NodeBitMap unnusedNodes = new NodeBitMap(graph);
+
         for (Node node : obsoleteNodes) {
             if (node.isAlive() && node.hasNoUsages()) {
                 if (node instanceof FixedWithNextNode) {
                     assert ((FixedWithNextNode) node).next() == null;
                 }
                 node.replaceAtUsages(null);
-                GraphUtil.killWithUnusedFloatingInputs(node);
+                if (GraphUtil.shouldKillUnused(node)) {
+                    unnusedNodes.mark(node);
+                }
             }
+        }
+
+        if (unnusedNodes.isNotEmpty()) {
+            GraphUtil.killAllWithUnusedFloatingInputs(unnusedNodes, false);
         }
     }
 

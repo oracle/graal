@@ -624,7 +624,7 @@ public final class Instructions {
     public static final int VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S = 0x112;
     public static final int VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S = 0x113;
 
-    private static String[] decodingTable = new String[256];
+    private static final String[] DECODING_TABLE = new String[256];
 
     private Instructions() {
     }
@@ -643,7 +643,7 @@ public final class Instructions {
                     if (representation.startsWith("atomic") || representation.startsWith("vector")) {
                         continue;
                     }
-                    decodingTable[code] = representation;
+                    DECODING_TABLE[code] = representation;
                 }
             }
         } catch (IllegalAccessException e) {
@@ -661,7 +661,7 @@ public final class Instructions {
                 result.append("   ");
             }
             final int opcode = Byte.toUnsignedInt(instructions[i]);
-            String representation = decodingTable[opcode];
+            String representation = DECODING_TABLE[opcode];
             result.append(String.format("%03d", opcode)).append(" ").append(representation).append("\n");
         }
         return result.toString();

@@ -189,14 +189,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     // region OSR support
-    private static final class WasmOSRInterpreterState {
-        final int stackPointer;
-        final int line;
-
-        WasmOSRInterpreterState(int stackPointer, int line) {
-            this.stackPointer = stackPointer;
-            this.line = line;
-        }
+    private record WasmOSRInterpreterState(int stackPointer, int line) {
     }
 
     @Override
@@ -372,9 +365,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
                             Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
                             if (result != null) {
-                                if (backEdgeCounter.count > 0) {
-                                    LoopNode.reportLoopCount(this, backEdgeCounter.count);
-                                }
                                 return result;
                             }
                         }

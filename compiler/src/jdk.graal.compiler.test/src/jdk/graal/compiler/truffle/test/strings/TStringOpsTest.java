@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,6 +98,20 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         testWithNativeExcept(method, receiver, 0, args);
     }
 
+    /**
+     * Runs the given test once as-is and once replacing all argument pairs of
+     * {@code (byte[], long)} with {@code (null, native-pointer)}.
+     * <p>
+     * In most TruffleString operations, {@code (byte[] array, long offset)} stands for a string's
+     * managed or native contents, where in the managed case, the byte array is a regular Java
+     * array, and the offset is a byte offset into the byte array. In the native case, the byte
+     * array is {@code null}, and the offset a pointer into native (off-heap) memory.
+     * <p>
+     * This test helper covers the native case for all {@code (byte[], long)} pairs, except for
+     * parameters that have been marked as excluded by setting their corresponding bit in the
+     * {@code ignore}-parameter: If e.g. {@code ignore == (1 << 3)}, the fourth parameter will not
+     * be replaced by a native pointer.
+     */
     protected void testWithNativeExcept(ResolvedJavaMethod method, Object receiver, long ignore, Object... args) {
         test(method, receiver, args);
         Object[] argsWithNative = Arrays.copyOf(args, args.length);
@@ -107,9 +121,8 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
             ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
             Assert.assertTrue(parameters.length <= 64);
             for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].getType().getName().equals("[B") && (ignore & (1L << i)) == 0) {
+                if (parameters[i].getType().getName().equals("[B") && (ignore & (1L << i)) == 0 && i + 1 < parameters.length && parameters[i + 1].getType().getName().equals("J")) {
                     Assert.assertTrue(argsWithNative[i].toString(), argsWithNative[i] instanceof byte[]);
-                    Assert.assertEquals("J", parameters[i + 1].getType().getName());
                     byte[] array = (byte[]) argsWithNative[i];
                     byteBuffers[nByteBuffers] = ByteBuffer.allocateDirect(array.length);
                     long bufferAddress = getBufferAddress(byteBuffers[nByteBuffers++]);
@@ -142,6 +155,18 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         return getTStringOpsMethod("arraycopyWithStrideIB",
                         int[].class, long.class,
                         byte[].class, long.class, int.class, int.class);
+    }
+
+    protected ResolvedJavaMethod getByteSwapS1() {
+        return getTStringOpsMethod("byteSwapS1",
+                        byte[].class, long.class,
+                        byte[].class, long.class, int.class);
+    }
+
+    protected ResolvedJavaMethod getByteSwapS2() {
+        return getTStringOpsMethod("byteSwapS2",
+                        byte[].class, long.class,
+                        byte[].class, long.class, int.class);
     }
 
     protected ResolvedJavaMethod getMemcmpWithStrideIntl() {

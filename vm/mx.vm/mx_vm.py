@@ -28,7 +28,6 @@ from __future__ import print_function
 
 import mx
 import mx_gate
-import mx_jardistribution
 import mx_pomdistribution
 import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
@@ -37,7 +36,7 @@ import mx_vm_gate
 from argparse import ArgumentParser
 import os
 import pathlib
-from os.path import basename, isdir, join, relpath
+from os.path import join, relpath
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -66,55 +65,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
 ))
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='PolyBench Launcher',
-    short_name='pbm',
-    license_files=[],
-    third_party_license_files=[],
-    dir_name='polybench',
-    launcher_configs=[mx_sdk_vm.LauncherConfig(
-        destination='bin/<exe:polybench>',
-        jar_distributions=['vm:POLYBENCH'],
-        main_class='org.graalvm.polybench.PolyBenchLauncher',
-        build_args=[
-            '--features=org.graalvm.launcher.PolyglotLauncherFeature',
-            '--initialize-at-build-time=org.graalvm.polybench',
-            '--tool:all',
-        ] + mx_sdk_vm_impl.svm_experimental_options([
-            '-H:-ParseRuntimeOptions',
-        ]),
-        is_main_launcher=True,
-        default_symlinks=True,
-        is_sdk_launcher=True,
-        is_polyglot=True,
-    )],
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
-    suite=_suite,
-    name='PolyBench Instruments',
-    short_name='pbi',
-    dir_name='pbi',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle', 'PolyBench Launcher'],
-    truffle_jars=['vm:POLYBENCH_INSTRUMENTS'],
-    support_distributions=['vm:POLYBENCH_INSTRUMENTS_SUPPORT'],
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='Polyglot Microbenchmark Harness',
-    short_name='pmh',
-    dir_name='pmh',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle', 'PolyBench Launcher'],
-    truffle_jars=['vm:PMH'],
-    support_distributions=['vm:PMH_SUPPORT'],
-))
-
 if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', fatalIfMissing=False) is not None:
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
         suite=_suite,
@@ -129,8 +79,6 @@ if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', 
         stability="supported",
     ))
 
-polybench_benchmark_methods = ["_run"]
-
 
 llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld']
 
@@ -138,7 +86,8 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 ce_unchained_components = ['bnative-image-configure', 'cmp', 'gvm', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'ssvmjdwp', 'svm', 'svmjdwp', 'svmsl', 'svmt', 'tflc', 'tflsm']
 ce_components_minimal = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl']
-ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'cmp', 'cov', 'dap', 'dis', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
+ce_python_components = ['antlr4', 'sllvmvm', 'cmp', 'cov', 'dap', 'dis', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'pyn', 'pynl', 'rgx', 'sdk',
+                        'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'sRvm', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
 ce_no_native_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 
@@ -152,15 +101,10 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'xz', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent', 'tflsm'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm', 'swasmvm', 'tflsm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
-mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['cmp', 'lg', 'sdkc', 'tflc'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', llvm_components + ['antlr4', 'sjsvm', 'sllvmvm', 'bnative-image', 'srubyvm', 'pynl', 'spythonvm', 'pyn', 'cmp', 'gwa', 'gwal', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'lg', 'llp', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pmh', 'pbi', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'llrc', 'llrn', 'llrl', 'llrlf', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'swasmvm', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='polybench-ce')
-mx_sdk_vm.register_vm_config('ce', ['bnative-image', 'bpolybench', 'cmp', 'icu4j', 'xz', 'lg', 'nfi', 'ni', 'nil', 'pbi', 'pbm', 'pmh', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, dist_name='ce', env_file='polybench-ctw-ce')
-mx_sdk_vm.register_vm_config('ce', ['pbm', 'pmh', 'pbi', 'ni', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'lg', 'nfi-libffi', 'nfi', 'tfl', 'tfla', 'tflc', 'svm', 'svmt', 'nil', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'cmp', 'tflm', 'svmnfi', 'svmsl', 'bnative-image', 'sjsvm', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, env_file='polybench-nfi-ce')
-mx_sdk_vm.register_vm_config('ce', llvm_components + ['antlr4', 'sllvmvm', 'bnative-image', 'cmp', 'lg', 'llrc', 'llrl', 'llrlf', 'llrn', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pbi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='polybench-sulong-ce')
 
 if mx.get_os() == 'windows':
     mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'cmp', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'nic', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
@@ -423,127 +367,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                       'For local development, you may also want to disable recommended packages build (FASTR_NO_RECOMMENDED=true) and '
                       'capturing of system libraries (export FASTR_CAPTURE_DEPENDENCIES set to an empty value). '
                       'See building.md in FastR documentation for more details.').format(fastr_release_env))
-    if register_project:
-        register_project(GraalVmSymlinks())
 
-        benchmark_dist = _suite.dependency("POLYBENCH_BENCHMARKS")
-
-        def _add_project_to_dist(destination, name, source='dependency:{name}/*'):
-            if destination not in benchmark_dist.layout:
-                benchmark_dist.layout[destination] = []
-            benchmark_dist.layout[destination].append(source.format(name=name))
-            benchmark_dist.buildDependencies.append(name)
-
-        if mx_sdk_vm_impl.has_component('GraalWasm'):
-            import mx_wasm
-
-            class GraalVmWatProject(mx_wasm.WatProject):
-                def getSourceDir(self):
-                    return self.subDir
-
-                def isBenchmarkProject(self):
-                    return self.name.startswith("benchmarks.")
-
-            register_project(GraalVmWatProject(
-                suite=_suite,
-                name='benchmarks.interpreter.wasm',
-                deps=[],
-                workingSets=None,
-                subDir=join(_suite.dir, 'benchmarks', 'interpreter'),
-                theLicense=None,
-                testProject=True,
-                defaultBuild=False,
-            ))
-            # add wasm to the layout of the benchmark distribution
-            _add_project_to_dist('./interpreter/', 'benchmarks.interpreter.wasm')
-
-            register_project(GraalVmWatProject(
-                suite=_suite,
-                name='benchmarks.wasm-simd.wasm',
-                deps=[],
-                workingSets=None,
-                subDir=join(_suite.dir, 'benchmarks', 'wasm-simd'),
-                theLicense=None,
-                testProject=True,
-                defaultBuild=False,
-            ))
-            # add wasm to the layout of the benchmark distribution
-            _add_project_to_dist('./wasm-simd/', 'benchmarks.wasm-simd.wasm')
-
-        if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
-            register_project(mx.NativeProject(
-                suite=_suite,
-                name='benchmarks.interpreter.llvm.native',
-                results=['interpreter/'],
-                buildEnv={
-                    'NATIVE_LLVM_CC': '<toolchainGetToolPath:native,CC>',
-                },
-                buildDependencies=[
-                    'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
-                ],
-                vpath=True,
-                deps=[],
-                workingSets=None,
-                d=join(_suite.dir, 'benchmarks', 'interpreter'),
-                subDir=None,
-                srcDirs=[''],
-                output=None,
-                theLicense=None,
-                testProject=True,
-                defaultBuild=False,
-            ))
-            # add bitcode to the layout of the benchmark distribution
-            _add_project_to_dist('./', 'benchmarks.interpreter.llvm.native')
-
-        if mx_sdk_vm_impl.has_component('Java on Truffle'):
-            java_benchmarks = join(_suite.dir, 'benchmarks', 'interpreter', 'java')
-            for f in os.listdir(java_benchmarks):
-                if isdir(join(java_benchmarks, f)) and not f.startswith("."):
-                    main_class = basename(f)
-                    simple_name = main_class.split(".")[-1]
-
-                    project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()
-                    register_project(mx.JavaProject(
-                        suite=_suite,
-                        subDir=None,
-                        srcDirs=[join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class)],
-                        deps=[],
-                        name=project_name,
-                        d=join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class),
-                        javaCompliance='11+',
-                        checkstyleProj=project_name,
-                        workingSets=None,
-                        theLicense=None,
-                        testProject=True,
-                        defaultBuild=False,
-                    ))
-
-                    dist_name = 'POLYBENCH_ESPRESSO_' + simple_name.upper()
-                    attrs = {
-                        'maven': False,
-                    }
-                    register_distribution(mx_jardistribution.JARDistribution(
-                        suite=_suite,
-                        subDir=None,
-                        srcDirs=[''],
-                        sourcesPath=[],
-                        deps=[project_name],
-                        mainClass=main_class,
-                        name=dist_name,
-                        path=simple_name + '.jar',
-                        platformDependent=False,
-                        distDependencies=[],
-                        javaCompliance='11+',
-                        excludedLibs=[],
-                        workingSets=None,
-                        theLicense=None,
-                        testProject=True,
-                        defaultBuild=False,
-                        **attrs
-                    ))
-                    # add jars to the layout of the benchmark distribution
-                    _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
-                        source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
     if register_distribution and _suite.primary:
         # Only primary suite can register languages and tools distributions.
         # If the suite is not a primary suite, languages and tools distributions might not have been loaded yet.

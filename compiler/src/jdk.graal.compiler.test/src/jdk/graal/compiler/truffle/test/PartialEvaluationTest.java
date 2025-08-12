@@ -43,6 +43,7 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -265,6 +266,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return partialEval(compilable, arguments, listener);
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, Graph.NodeEventListener nodeEventListener) {
         // Executed AST so that all classes are loaded and initialized.
         if (!preventProfileCalls) {
@@ -298,7 +300,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
                 try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
-                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable));
+                                CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
                     final TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                                     compiler.getOrCreateCompilerOptions(compilable),
                                     debug, compilable,

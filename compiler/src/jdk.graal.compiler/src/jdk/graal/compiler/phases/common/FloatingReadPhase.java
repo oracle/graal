@@ -86,6 +86,7 @@ import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
     private final boolean createMemoryMapNodes;
+    private final boolean createFloatingReads;
 
     public static class MemoryMapImpl implements MemoryMap {
 
@@ -138,8 +139,13 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
      * @param canonicalizer
      */
     public FloatingReadPhase(boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
+        this(createMemoryMapNodes, true, canonicalizer);
+    }
+
+    public FloatingReadPhase(boolean createMemoryMapNodes, boolean createFloatingReads, CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
         this.createMemoryMapNodes = createMemoryMapNodes;
+        this.createFloatingReads = createFloatingReads;
     }
 
     @Override
@@ -240,7 +246,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
 
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, true, createMemoryMapNodes, initMemory), graph.start(), new MemoryMapImpl(graph.start()));
+            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, createFloatingReads, createMemoryMapNodes, initMemory), graph.start(), new MemoryMapImpl(graph.start()));
         }
 
         for (Node n : removeExternallyUsedNodes(listener.getNodes())) {

@@ -935,5 +935,12 @@ suite = {
             "dynamicDistDependencies": "jvm_standalone_deps",
             "maven": False,
         },
+
+        "ESPRESSO_POLYBENCH_BENCHMARKS": {
+            "description": "Distribution for Espresso polybench benchmarks",
+            "layout": {
+                # Layout is dynamically populated in mx_register_dynamic_suite_constituents
+            },
+        },
     }
 }

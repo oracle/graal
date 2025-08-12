@@ -58,7 +58,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 
@@ -298,7 +297,7 @@ final class InternalResourceRoots {
         } else if (ImageInfo.isSharedLibrary()) {
             path = ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL);
         } else {
-            throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
+            throw new AssertionError("Should only be invoked within native image runtime code.");
         }
         return path == null ? null : Path.of(path);
     }
@@ -311,7 +310,7 @@ final class InternalResourceRoots {
         }
         String userHomeValue = System.getProperty("user.home");
         if (userHomeValue == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
+            throw new AssertionError("The 'user.home' system property is not set.");
         }
         Path userHome = Paths.get(userHomeValue);
         ResolvedCacheFolder container = switch (InternalResource.OS.getCurrent()) {

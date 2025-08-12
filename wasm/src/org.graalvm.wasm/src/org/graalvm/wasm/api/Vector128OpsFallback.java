@@ -568,7 +568,7 @@ public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
                 case Bytecode.VECTOR_I64X2_LE_S -> x <= y;
                 case Bytecode.VECTOR_I64X2_GE_S -> x >= y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
-            } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000l;
+            } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
             byteArraySupport.putLong(vecResult, i * Long.BYTES, result);
         }
         return vecResult;

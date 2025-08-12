@@ -32,6 +32,7 @@ import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
 import jdk.graal.compiler.phases.common.BarrierSetVerificationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.EconomyPiRemovalPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
 import jdk.graal.compiler.phases.common.InitMemoryVerificationPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
@@ -48,11 +49,12 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
         if (Graph.Options.VerifyGraalGraphs.getValue(options)) {
             appendPhase(new InitMemoryVerificationPhase());
         }
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.createSingleShot();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));
 
         appendPhase(new WriteBarrierAdditionPhase(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION));
+        appendPhase(new EconomyPiRemovalPhase(canonicalizer));
 
         if (Assertions.assertionsEnabled()) {
             appendPhase(new BarrierSetVerificationPhase());

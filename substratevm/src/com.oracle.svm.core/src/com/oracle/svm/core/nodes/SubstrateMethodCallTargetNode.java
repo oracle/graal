@@ -43,6 +43,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     public static final NodeClass<SubstrateMethodCallTargetNode> TYPE = NodeClass.create(SubstrateMethodCallTargetNode.class);
 
+    /**
+     * Method profile inferred from a static type profile.
+     */
+    private JavaMethodProfile staticMethodProfile;
+    /**
+     * Either the static method profile, or a dynamic method profile inferred from, for example,
+     * sampling data.
+     */
     private JavaMethodProfile methodProfile;
 
     /*
@@ -59,27 +67,68 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
         super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
 
-    public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
-        this.typeProfile = typeProfile;
-        this.methodProfile = methodProfile;
-        this.staticTypeProfile = typeProfile;
-    }
-
-    public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
-        this.typeProfile = typeProfile;
-        this.methodProfile = methodProfile;
+    public void setProfiles(JavaTypeProfile dynamicTypeProfile, JavaTypeProfile staticTypeProfile, JavaMethodProfile dynamicMethodProfile, JavaMethodProfile staticMethodProfile) {
+        this.typeProfile = dynamicTypeProfile;
+        this.methodProfile = dynamicMethodProfile;
         this.staticTypeProfile = staticTypeProfile;
+        this.staticMethodProfile = staticMethodProfile;
     }
 
+    public void setDynamicProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
+        this.typeProfile = typeProfile;
+        this.methodProfile = methodProfile;
+    }
+
+    /**
+     * Returns a dynamic method profile if one exists. Otherwise, returns a static method profile if
+     * one exists. If neither exist, returns null.
+     */
     public JavaMethodProfile getMethodProfile() {
         return methodProfile;
     }
 
+    /**
+     * Returns a static type profile if one exists. Otherwise, returns null.
+     */
     public JavaTypeProfile getStaticTypeProfile() {
         return staticTypeProfile;
     }
 
+    /**
+     * Returns a static method profile if one exists. Otherwise, returns null.
+     */
+    public JavaMethodProfile getStaticMethodProfile() {
+        return staticMethodProfile;
+    }
+
+    /**
+     * Set a dynamic method profile.
+     */
     public void setJavaMethodProfile(JavaMethodProfile profile) {
         methodProfile = profile;
+    }
+
+    /**
+     * Returns true iff {@code this} has a dynamic type profile. A dynamic type profile can be
+     * gathered by, for example, instrumentation. A static type profile (as produced by the static
+     * analysis) does not count as a dynamic profile.
+     */
+    public boolean hasDynamicTypeProfile() {
+        if (typeProfile == null) {
+            return false;
+        }
+        return !typeProfile.equals(staticTypeProfile);
+    }
+
+    /**
+     * Returns true iff {@code this} has a dynamic method profile. A dynamic method profile can be
+     * gathered by, for example, instrumentation or perf samples. A static method profile (as
+     * produced by the static analysis) does not count as a dynamic profile.
+     */
+    public boolean hasDynamicMethodProfile() {
+        if (methodProfile == null) {
+            return false;
+        }
+        return !methodProfile.equals(staticMethodProfile);
     }
 }

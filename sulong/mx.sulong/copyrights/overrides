@@ -1,2 +1,6 @@
 mx.sulong/suite.py,no.copyright
 projects/com.oracle.truffle.llvm.libraries.bitcode/src/qsort.c,qsort
+benchmarks/interpreter/fibonacci.c,no.copyright
+benchmarks/interpreter/deltablue.c,no.copyright
+benchmarks/interpreter/richards.c,no.copyright
+benchmarks/interpreter/sieve.c,no.copyright

@@ -81,7 +81,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
@@ -176,7 +175,7 @@ final class InternalResourceCache {
                 case RESOURCE -> InternalResourceRoots.overriddenResourceRootProperty(id, resourceId) + " system property";
                 case COMPONENT -> InternalResourceRoots.overriddenComponentRootProperty(id) + " system property";
                 case UNVERSIONED -> "internal resource cache root directory";
-                default -> throw CompilerDirectives.shouldNotReachHere(root.kind().name());
+                default -> throw new AssertionError(root.kind().name());
             };
             InternalResourceRoots.logInternalResourceEvent("Resolved a pre-created directory for the internal resource %s::%s to: %s, determined by the %s with the value %s.",
                             id, resourceId, path, hint, root.path());
@@ -231,7 +230,7 @@ final class InternalResourceCache {
             newEnv.setAccessible(true);
             return newEnv.newInstance(resource, (BooleanSupplier) () -> TruffleOptions.AOT);
         } catch (ReflectiveOperationException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
+            throw new AssertionError("Failed to instantiate InternalResource.Env", e);
         }
     }
 
@@ -252,7 +251,7 @@ final class InternalResourceCache {
             InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
             Path parent = target.getParent();
             if (parent == null) {
-                throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
+                throw new AssertionError("Target must have a parent directory but was " + target);
             }
             Path owner = Files.createDirectories(Objects.requireNonNull(parent));
             Path tmpDir = Files.createTempDirectory(owner, null);

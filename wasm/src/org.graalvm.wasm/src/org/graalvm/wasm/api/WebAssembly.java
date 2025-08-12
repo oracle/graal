@@ -432,13 +432,12 @@ public class WebAssembly extends Dictionary {
 
     private static Object tableGrow(Object[] args) {
         checkArgumentCount(args, 2);
-        if (!(args[0] instanceof WasmTable)) {
+        if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
         if (!(args[1] instanceof Integer)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
         }
-        WasmTable table = (WasmTable) args[0];
         int delta = (Integer) args[1];
         if (args.length > 2) {
             return tableGrow(table, delta, args[2]);
@@ -456,13 +455,12 @@ public class WebAssembly extends Dictionary {
 
     private static Object tableRead(Object[] args) {
         checkArgumentCount(args, 2);
-        if (!(args[0] instanceof WasmTable)) {
+        if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
         if (!(args[1] instanceof Integer)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
         }
-        WasmTable table = (WasmTable) args[0];
         int index = (Integer) args[1];
         return tableRead(table, index);
     }
@@ -477,13 +475,12 @@ public class WebAssembly extends Dictionary {
 
     private Object tableWrite(Object[] args) {
         checkArgumentCount(args, 3);
-        if (!(args[0] instanceof WasmTable)) {
+        if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
         if (!(args[1] instanceof Integer)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
         }
-        WasmTable table = (WasmTable) args[0];
         int index = (Integer) args[1];
         return tableWrite(table, index, args[2]);
     }
@@ -515,10 +512,9 @@ public class WebAssembly extends Dictionary {
 
     private static Object tableSize(Object[] args) {
         checkArgumentCount(args, 1);
-        if (!(args[0] instanceof WasmTable)) {
+        if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        WasmTable table = (WasmTable) args[0];
         return tableSize(table);
     }
 
@@ -613,13 +609,12 @@ public class WebAssembly extends Dictionary {
 
     private static Object memGrow(Object[] args) {
         checkArgumentCount(args, 2);
-        if (!(args[0] instanceof WasmMemory)) {
+        if (!(args[0] instanceof WasmMemory memory)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
         }
         if (!(args[1] instanceof Integer)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
         }
-        WasmMemory memory = (WasmMemory) args[0];
         int delta = (Integer) args[1];
         return memGrow(memory, delta);
     }
@@ -818,10 +813,9 @@ public class WebAssembly extends Dictionary {
 
     private static Object globalRead(Object[] args) {
         checkArgumentCount(args, 1);
-        if (!(args[0] instanceof WasmGlobal)) {
+        if (!(args[0] instanceof WasmGlobal global)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global");
         }
-        WasmGlobal global = (WasmGlobal) args[0];
         return globalRead(global);
     }
 
@@ -845,10 +839,9 @@ public class WebAssembly extends Dictionary {
 
     private Object globalWrite(Object[] args) {
         checkArgumentCount(args, 2);
-        if (!(args[0] instanceof WasmGlobal)) {
+        if (!(args[0] instanceof WasmGlobal global)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global");
         }
-        WasmGlobal global = (WasmGlobal) args[0];
         return globalWrite(global, args[1]);
     }
 
@@ -904,14 +897,12 @@ public class WebAssembly extends Dictionary {
 
     private static Object instanceExport(Object[] args) {
         checkArgumentCount(args, 2);
-        if (!(args[0] instanceof WasmInstance)) {
+        if (!(args[0] instanceof WasmInstance instance)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm instance");
         }
-        if (!(args[1] instanceof String)) {
+        if (!(args[1] instanceof String name)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be string");
         }
-        WasmInstance instance = (WasmInstance) args[0];
-        String name = (String) args[1];
         return instanceExport(instance, name);
     }
 

@@ -257,7 +257,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             OptionValues graalOptions = getGraalOptions();
             Map<String, String> options = compilable.getCompilerOptions();
             EconomicMap<OptionKey<?>, Object> map = parseOptions(options);
-            graalOptions = TruffleCompilerOptions.updateValues(graalOptions);
+            graalOptions = TruffleCompilerOptions.updateValues(graalOptions, map);
             map.putAll(graalOptions.getMap());
             return new OptionValues(map);
         });

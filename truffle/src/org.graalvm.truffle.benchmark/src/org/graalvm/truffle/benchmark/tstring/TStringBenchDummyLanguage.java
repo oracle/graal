@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -194,10 +194,32 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
                         return benchNode.execute(args[0], (int) args[1]);
                     }
                 };
+            case "fromByteArrayUTF16FESwitch":
+                return new RootNode(this) {
+
+                    @Child FromByteArrayUTF16FESwitchNode benchNode = TStringBenchDummyLanguageFactory.FromByteArrayUTF16FESwitchNodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], (int) args[1]);
+                    }
+                };
             case "fromByteArrayUTF32FE":
                 return new RootNode(this) {
 
                     @Child FromByteArrayUTF32FENode benchNode = TStringBenchDummyLanguageFactory.FromByteArrayUTF32FENodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], (int) args[1]);
+                    }
+                };
+            case "fromByteArrayUTF32FESwitch":
+                return new RootNode(this) {
+
+                    @Child FromByteArrayUTF32FESwitchNode benchNode = TStringBenchDummyLanguageFactory.FromByteArrayUTF32FESwitchNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -351,6 +373,18 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         @Specialization
         TruffleString bench(Object hostObject, int length,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode) {
+            byte[] input = (byte[]) DummyLanguageContext.get(this).getEnv().asHostObject(hostObject);
+            return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_16BE, false);
+        }
+    }
+
+    abstract static class FromByteArrayUTF16FESwitchNode extends Node {
+
+        abstract TruffleString execute(Object hostObject, int length);
+
+        @Specialization
+        TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
             byte[] input = (byte[]) DummyLanguageContext.get(this).getEnv().asHostObject(hostObject);
@@ -359,6 +393,18 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
     }
 
     abstract static class FromByteArrayUTF32FENode extends Node {
+
+        abstract TruffleString execute(Object hostObject, int length);
+
+        @Specialization
+        TruffleString bench(Object hostObject, int length,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode) {
+            byte[] input = (byte[]) DummyLanguageContext.get(this).getEnv().asHostObject(hostObject);
+            return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_32BE, false);
+        }
+    }
+
+    abstract static class FromByteArrayUTF32FESwitchNode extends Node {
 
         abstract TruffleString execute(Object hostObject, int length);
 

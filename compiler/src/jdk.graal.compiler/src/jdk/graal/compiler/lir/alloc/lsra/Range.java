@@ -24,9 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra;
 
-import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.lir.LIR;
 
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
@@ -48,8 +46,6 @@ public final class Range {
      */
     public Range next;
 
-    public LIR lir;
-
     boolean intersects(Range r) {
         return intersectsAt(r) != -1;
     }
@@ -61,11 +57,10 @@ public final class Range {
      * @param to the end of the range, exclusive
      * @param next link to the next range in a linked list
      */
-    Range(int from, int to, Range next, LIR lir) {
+    Range(int from, int to, Range next) {
         this.from = from;
         this.to = to;
         this.next = next;
-        this.lir = lir;
     }
 
     public boolean isEndMarker() {
@@ -81,7 +76,6 @@ public final class Range {
         assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
 
         do {
-            CompilationAlarm.checkProgress(lir.getOptions(), lir);
             if (r1.from < r2.from) {
                 if (r1.to <= r2.from) {
                     r1 = r1.next;

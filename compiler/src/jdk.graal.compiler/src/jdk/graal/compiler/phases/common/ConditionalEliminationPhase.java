@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases.common;
 import static jdk.graal.compiler.nodes.StaticDeoptimizingNode.mergeActions;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -35,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -428,6 +430,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
         private final boolean processFieldAccess;
+        private final List<RebuildPiData> piCache = new ArrayList<>(8);
+        private final EconomicSet<Pair<Stamp, Stamp>> joinedStamps = EconomicSet.create();
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -625,28 +629,54 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             }
         }
 
+        record RebuildPiData(PiNode piNode, boolean differentCheckedStamp,
+                        boolean differentObject) {
+        }
+
         private void rebuildPiNodes(GuardingNode guard, LogicNode condition) {
+            piCache.clear();
             LogicNode newCondition = condition;
             if (newCondition instanceof InstanceOfNode) {
                 InstanceOfNode inst = (InstanceOfNode) newCondition;
                 ValueNode originalValue = GraphUtil.skipPi(inst.getValue());
                 PiNode pi = null;
-                // Ensure that any Pi that's weaker than what the instanceof proves is
-                // replaced by one derived from the instanceof itself.
-                for (PiNode existing : guard.asNode().usages().filter(PiNode.class).snapshot()) {
+
+                for (PiNode existing : guard.asNode().usages().filter(PiNode.class)) {
                     if (!existing.isAlive()) {
                         continue;
                     }
-                    if (originalValue != GraphUtil.skipPi(existing.object())) {
-                        // Somehow these are unrelated values so leave it alone
-                        continue;
-                    }
-                    // If the pi has a weaker stamp or the same stamp but a different input
-                    // then replace it.
-                    boolean strongerStamp = !existing.piStamp().join(inst.getCheckedStamp()).equals(inst.getCheckedStamp());
                     boolean differentCheckedStamp = !existing.piStamp().equals(inst.getCheckedStamp());
                     boolean differentObject = existing.object() != inst.getValue();
-                    if (!strongerStamp && (differentCheckedStamp || differentObject)) {
+                    if (differentObject || differentCheckedStamp) {
+                        // only call out to skipPi which can be expensive if we would try to
+                        // optimize this pi
+                        if (originalValue != GraphUtil.skipPi(existing.object())) {
+                            // Somehow these are unrelated values so leave it alone
+                            continue;
+                        }
+                        piCache.add(new RebuildPiData(existing, differentCheckedStamp, differentObject));
+                    }
+                }
+                if (piCache.isEmpty()) {
+                    return;
+                }
+                // Ensure that any Pi that's weaker than what the instanceof proves is
+                // replaced by one derived from the instanceof itself.
+                for (RebuildPiData piData : piCache) {
+                    PiNode existing = piData.piNode;
+
+                    Pair<Stamp, Stamp> strongerStampPairKey = Pair.create(existing.piStamp(), inst.getCheckedStamp());
+
+                    // If the pi has a weaker stamp or the same stamp but a different input
+                    // then replace it.
+                    final boolean previouslyJoined = joinedStamps.contains(strongerStampPairKey);
+                    boolean weakerOrSame = previouslyJoined;
+                    if (!previouslyJoined) {
+                        weakerOrSame = existing.piStamp().join(inst.getCheckedStamp()).equals(inst.getCheckedStamp());
+                    }
+                    if (weakerOrSame) {
+                        assert piData.differentCheckedStamp || piData.differentObject : Assertions.errorMessage("Cache should only be filled if we have a reason ", piData);
+                        joinedStamps.add(strongerStampPairKey);
                         if (pi == null) {
                             pi = graph.unique(new PiNode(inst.getValue(), inst.getCheckedStamp(), (ValueNode) guard));
                         }
@@ -658,7 +688,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                              * but consuming the output Pi from the type check check. In this case
                              * we should still canonicalize the checked stamp for consistency.
                              */
-                            if (differentCheckedStamp) {
+                            if (piData.differentCheckedStamp) {
                                 PiNode alternatePi = graph.unique(new PiNode(existing.object(), inst.getCheckedStamp(), (ValueNode) guard));
                                 /*
                                  * If the resulting stamp is as good or better then do the

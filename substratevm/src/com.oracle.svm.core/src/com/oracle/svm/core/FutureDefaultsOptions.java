@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -54,25 +55,35 @@ import jdk.graal.compiler.options.OptionType;
  * rolled back. The changes must be aligning native image with the Java spec and must be thoroughly
  * reviewed.
  * </p>
- * Note 2: future defaults can not be simply removed as user code can depend on the system property
+ * Note 2: future defaults can depend on each other. For example, if some functionality depends on
+ * <code>run-time-security-providers</code> it can enable it similarly to <code>all</code> that
+ * enables all future defaults.
+ * </p>
+ * Note 3: future defaults can not be simply removed as user code can depend on the system property
  * values that are set by the option. When removing a future-default option, one has to leave the
  * system property both a build time and at run time set to <code>true</code>.
  */
 public class FutureDefaultsOptions {
     private static final String OPTION_NAME = "future-defaults";
 
-    private static final String DEFAULT_NAME = "<default-value>";
     private static final String ALL_NAME = "all";
+    private static final String RUN_TIME_INITIALIZE_JDK = "run-time-initialize-jdk";
     private static final String NONE_NAME = "none";
-    private static final String RUN_TIME_INITIALIZE_JDK_NAME = "run-time-initialized-jdk";
-    private static final String TREAT_NAME_AS_TYPE_NAME = "treat-name-as-type";
+    /**
+     * Macro commands: They enable or disable other defaults, but they are not future defaults
+     * themselves.
+     */
+    private static final Set<String> ALL_COMMANDS = Set.of(ALL_NAME, RUN_TIME_INITIALIZE_JDK, NONE_NAME);
 
-    public static final String RUN_TIME_INITIALIZE_JDK_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_JDK_NAME + ")";
+    private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
+    private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
+    private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
+    private static final Set<String> ALL_FUTURE_DEFAULTS = Set.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, COMPLETE_REFLECTION_TYPES);
 
+    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
+    public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS + ")";
+    private static final String DEFAULT_NAME = "<default-value>";
     public static final String SYSTEM_PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + OPTION_NAME + ".";
-
-    private static final Set<String> ALL_FUTURE_DEFAULTS = Set.of(RUN_TIME_INITIALIZE_JDK_NAME, TREAT_NAME_AS_TYPE_NAME);
-    private static final Set<String> ALL_COMMANDS = Set.of(ALL_NAME, NONE_NAME);
 
     private static String futureDefaultsAllValues() {
         return StringUtil.joinSingleQuoted(getAllValues());
@@ -128,6 +139,8 @@ public class FutureDefaultsOptions {
 
             if (value.equals(ALL_NAME)) {
                 futureDefaults.addAll(ALL_FUTURE_DEFAULTS);
+            } else if (value.equals(RUN_TIME_INITIALIZE_JDK)) {
+                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS));
             } else {
                 futureDefaults.add(value);
             }
@@ -143,15 +156,31 @@ public class FutureDefaultsOptions {
         return Collections.unmodifiableSet(Objects.requireNonNull(futureDefaults, "must be initialized before usage"));
     }
 
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
     public static boolean allFutureDefaults() {
         return getFutureDefaults().containsAll(ALL_FUTURE_DEFAULTS);
     }
 
-    public static boolean isJDKInitializedAtRunTime() {
-        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_JDK_NAME);
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean completeReflectionTypes() {
+        return getFutureDefaults().contains(COMPLETE_REFLECTION_TYPES);
     }
 
-    public static boolean treatNameAsType() {
-        return getFutureDefaults().contains(TREAT_NAME_AS_TYPE_NAME);
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean securityProvidersInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS);
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean fileSystemProvidersInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS);
     }
 }
