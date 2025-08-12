@@ -280,8 +280,8 @@ local devkits = graal_common.devkits;
     # 2. Ensure the language is either:
     #    - already included in `ee_suites`, or
     #    - its suite is listed in `polyglot_isolate_ce_suites`.
-    local polyglot_isolate_languages = ['js', 'python'],
-    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython'],
+    local polyglot_isolate_languages = ['js', 'python', 'wasm'],
+    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython', 'wasm'],
     local polyglot_isolate_mx_args = std.flattenArrays([['--suite', s] for s in polyglot_isolate_ce_suites]),
 
     legacy_mx_args:: [],  # `['--force-bash-launcher=true', '--skip-libraries=true']` have been replaced by arguments from `vm.maven_deploy_base_functions.mx_args(os, arch)`
