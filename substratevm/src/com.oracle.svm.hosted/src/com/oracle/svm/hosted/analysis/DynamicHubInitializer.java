@@ -29,8 +29,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
-import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -45,6 +43,8 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -81,6 +82,7 @@ public class DynamicHubInitializer {
     private final Field hubCompanionInterfacesEncoding;
     private final Field hubCompanionAnnotationsEnumConstantsReference;
     private final Field hubCompanionInterpreterType;
+    private final SVMImageLayerLoader layerLoader;
 
     public DynamicHubInitializer(BigBang bb) {
         this.bb = bb;
@@ -96,6 +98,7 @@ public class DynamicHubInitializer {
         hubCompanionInterfacesEncoding = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interfacesEncoding");
         hubCompanionAnnotationsEnumConstantsReference = ReflectionUtil.lookupField(DynamicHubCompanion.class, "enumConstantsReference");
         hubCompanionInterpreterType = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interpreterType");
+        layerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
     }
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
@@ -242,18 +245,19 @@ public class DynamicHubInitializer {
 
     private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub, boolean rescan) {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
-        boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
+        boolean initializedOrSimulated = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
         if (type.getWrapped() instanceof BaseLayerType) {
-            info = HostedImageLayerBuildingSupport.singleton().getLoader().getClassInitializationInfo(type);
+            info = layerLoader.getClassInitializationInfo(type);
         } else {
             boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
-            if (initializedAtBuildTime) {
+            if (initializedOrSimulated) {
                 info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
                                 : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
             } else {
                 info = buildRuntimeInitializationInfo(type, typeReachedTracked);
             }
+            VMError.guarantee(!type.isInBaseLayer() || layerLoader.isInitializationInfoStable(type, info));
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {

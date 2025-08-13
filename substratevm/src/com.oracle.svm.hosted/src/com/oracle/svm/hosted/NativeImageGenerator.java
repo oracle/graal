@@ -1011,8 +1011,9 @@ public class NativeImageGenerator {
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, annotationSubstitutions, cEnumProcessor,
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions), missingRegistrationSupport);
 
+                SVMImageLayerWriter imageLayerWriter = null;
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    SVMImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
+                    imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
                     aUniverse.setImageLayerWriter(imageLayerWriter);
                     imageLayerWriter.setAnalysisUniverse(aUniverse);
                 }
@@ -1039,7 +1040,11 @@ public class NativeImageGenerator {
                 HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess, classInitializationSupport);
                 aUniverse.hostVM().initializeProviders(aProviders);
 
-                ImageSingletons.add(SimulateClassInitializerSupport.class, (hostVM).createSimulateClassInitializerSupport(aMetaAccess));
+                SimulateClassInitializerSupport simulateClassInitializerSupport = hostVM.createSimulateClassInitializerSupport(aMetaAccess);
+                ImageSingletons.add(SimulateClassInitializerSupport.class, simulateClassInitializerSupport);
+                if (imageLayerWriter != null) {
+                    imageLayerWriter.setSimulateClassInitializerSupport(simulateClassInitializerSupport);
+                }
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
@@ -1058,8 +1063,8 @@ public class NativeImageGenerator {
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
                 aUniverse.setHeapScanner(heapScanner);
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeap(imageHeap);
+                if (imageLayerWriter != null) {
+                    imageLayerWriter.setImageHeap(imageHeap);
                 }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {

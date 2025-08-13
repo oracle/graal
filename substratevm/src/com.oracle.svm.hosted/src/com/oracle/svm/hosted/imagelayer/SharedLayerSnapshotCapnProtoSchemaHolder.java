@@ -175,11 +175,25 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(99, value);
       }
 
-      public final boolean getIsLinked() {
+      public final boolean getIsSuccessfulSimulation() {
         return _getBooleanField(100);
       }
-      public final void setIsLinked(boolean value) {
+      public final void setIsSuccessfulSimulation(boolean value) {
         _setBooleanField(100, value);
+      }
+
+      public final boolean getIsFailedSimulation() {
+        return _getBooleanField(101);
+      }
+      public final void setIsFailedSimulation(boolean value) {
+        _setBooleanField(101, value);
+      }
+
+      public final boolean getIsLinked() {
+        return _getBooleanField(102);
+      }
+      public final void setIsLinked(boolean value) {
+        _setBooleanField(102, value);
       }
 
       public final boolean hasSourceFileName() {
@@ -219,24 +233,24 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsInstantiated() {
-        return _getBooleanField(101);
+        return _getBooleanField(103);
       }
       public final void setIsInstantiated(boolean value) {
-        _setBooleanField(101, value);
+        _setBooleanField(103, value);
       }
 
       public final boolean getIsUnsafeAllocated() {
-        return _getBooleanField(102);
+        return _getBooleanField(104);
       }
       public final void setIsUnsafeAllocated(boolean value) {
-        _setBooleanField(102, value);
+        _setBooleanField(104, value);
       }
 
       public final boolean getIsReachable() {
-        return _getBooleanField(103);
+        return _getBooleanField(105);
       }
       public final void setIsReachable(boolean value) {
-        _setBooleanField(103, value);
+        _setBooleanField(105, value);
       }
 
       public final boolean hasInterfaces() {
@@ -309,10 +323,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.factory,10, 0);
       }
       public final boolean getHasArrayType() {
-        return _getBooleanField(104);
+        return _getBooleanField(106);
       }
       public final void setHasArrayType(boolean value) {
-        _setBooleanField(104, value);
+        _setBooleanField(106, value);
+      }
+
+      public final boolean getHasClassInitInfo() {
+        return _getBooleanField(107);
+      }
+      public final void setHasClassInitInfo(boolean value) {
+        _setBooleanField(107, value);
       }
 
       public final boolean hasSubTypes() {
@@ -328,10 +349,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 11, size);
       }
       public final boolean getIsAnySubtypeInstantiated() {
-        return _getBooleanField(105);
+        return _getBooleanField(108);
       }
       public final void setIsAnySubtypeInstantiated(boolean value) {
-        _setBooleanField(105, value);
+        _setBooleanField(108, value);
       }
 
       public final WrappedType.Builder getWrappedType() {
@@ -407,8 +428,16 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(99);
       }
 
-      public final boolean getIsLinked() {
+      public final boolean getIsSuccessfulSimulation() {
         return _getBooleanField(100);
+      }
+
+      public final boolean getIsFailedSimulation() {
+        return _getBooleanField(101);
+      }
+
+      public final boolean getIsLinked() {
+        return _getBooleanField(102);
       }
 
       public boolean hasSourceFileName() {
@@ -431,15 +460,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsInstantiated() {
-        return _getBooleanField(101);
+        return _getBooleanField(103);
       }
 
       public final boolean getIsUnsafeAllocated() {
-        return _getBooleanField(102);
+        return _getBooleanField(104);
       }
 
       public final boolean getIsReachable() {
-        return _getBooleanField(103);
+        return _getBooleanField(105);
       }
 
       public final boolean hasInterfaces() {
@@ -485,7 +514,11 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getHasArrayType() {
-        return _getBooleanField(104);
+        return _getBooleanField(106);
+      }
+
+      public final boolean getHasClassInitInfo() {
+        return _getBooleanField(107);
       }
 
       public final boolean hasSubTypes() {
@@ -496,7 +529,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsAnySubtypeInstantiated() {
-        return _getBooleanField(105);
+        return _getBooleanField(108);
       }
 
       public WrappedType.Reader getWrappedType() {
@@ -2051,7 +2084,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class PersistedAnalysisField {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)3);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)4);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -2232,6 +2265,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(8, value);
       }
 
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder getSimulatedFieldValue() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory, 3, null, 0);
+      }
+      public final void setSimulatedFieldValue(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3, value);
+      }
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder initSimulatedFieldValue() {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3, 0);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2322,6 +2364,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public final int getAssignmentStatus() {
         return _getIntField(8);
+      }
+
+      public boolean hasSimulatedFieldValue() {
+        return !_pointerFieldIsNull(3);
+      }
+      public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader getSimulatedFieldValue() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3,null, 0);
       }
 
     }

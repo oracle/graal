@@ -124,6 +124,7 @@ import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -210,6 +211,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
     private final ClassInitializationSupport classInitializationSupport;
+    private SimulateClassInitializerSupport simulateClassInitializerSupport;
 
     private boolean polymorphicSignatureSealed = false;
 
@@ -290,6 +292,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
         this.aUniverse = aUniverse;
+    }
+
+    public void setSimulateClassInitializerSupport(SimulateClassInitializerSupport simulateClassInitializerSupport) {
+        this.simulateClassInitializerSupport = simulateClassInitializerSupport;
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
@@ -428,7 +434,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setHasArrayType(hub.getArrayHub() != null);
 
         ClassInitializationInfo info = hub.getClassInitializationInfo();
-        if (info != null) {
+        if (info == null) {
+            /* Type metadata was not initialized. */
+            assert !type.isReachable();
+            builder.setHasClassInitInfo(false);
+        } else {
+            builder.setHasClassInitInfo(true);
             Builder b = builder.initClassInitializationInfo();
             b.setIsNoInitializerNoTracking(info == ClassInitializationInfo.forNoInitializerInfo(false));
             b.setIsInitializedNoTracking(info == ClassInitializationInfo.forInitializedInfo(false));
@@ -457,6 +468,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
         builder.setIsInitialized(type.isInitialized());
+        boolean successfulSimulation = simulateClassInitializerSupport.isSuccessfulSimulation(type);
+        boolean failedSimulation = simulateClassInitializerSupport.isFailedSimulation(type);
+        VMError.guarantee(!(successfulSimulation && failedSimulation), "Class init simulation cannot be both successful and failed.");
+        builder.setIsSuccessfulSimulation(successfulSimulation);
+        builder.setIsFailedSimulation(failedSimulation);
         builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type.getJavaClass()));
         builder.setIsLinked(type.isLinked());
         if (type.getSourceFileName() != null) {
@@ -701,6 +717,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
         persistAnnotations(field, builder::initAnnotationList);
+
+        JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
+        writeConstant(simulatedFieldValue, builder.initSimulatedFieldValue());
     }
 
     private void persistAnnotations(AnnotatedElement annotatedElement, IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
