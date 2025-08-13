@@ -82,7 +82,8 @@ public class EnvVariableUtils {
         }
 
         public static boolean isKeyRequired(String key) {
-            return isKeyRequiredCondition(mapKey(key));
+            mapKey(key);
+            return isKeyRequiredCondition(key);
         }
 
         private static String mapKey(String key) {
