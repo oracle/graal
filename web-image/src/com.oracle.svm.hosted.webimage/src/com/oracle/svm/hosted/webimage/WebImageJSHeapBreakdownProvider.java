@@ -47,7 +47,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
      * of bytes used if they were laid out in binary without alignment gaps.
      */
     @Override
-    protected void calculate(FeatureImpl.BeforeImageWriteAccessImpl access) {
+    protected void calculate(FeatureImpl.BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
         long totalByteSize = 0;
         WebImageJSProviders providers = (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
         ConstantIdentityMapping identityMapping = providers.typeControl().getConstantMap().identityMapping;
