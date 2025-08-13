@@ -225,4 +225,16 @@ public interface VersionFilter extends LanguageFilter {
             return version.java25OrLater();
         }
     }
+
+    final class Java25OrEarlier implements VersionFilter {
+        public static final Java25OrEarlier INSTANCE = new Java25OrEarlier();
+
+        private Java25OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java25OrEarlier();
+        }
+    }
 }
