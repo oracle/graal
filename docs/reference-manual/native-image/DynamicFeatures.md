@@ -18,6 +18,7 @@ The reference information here explains how Native Image handles some dynamic fe
 - [Accessing Resources](ReachabilityMetadata.md#resources)
 - [Certificate Management](CertificateManagement.md)
 - [Java Native Interface (JNI)](ReachabilityMetadata.md#java-native-interface)
+* [Foreign Function and Memory API in Native Image](FFM-API.md)
 - [JCA Security Services](JCASecurityServices.md)
 - [Reflection](ReachabilityMetadata.md#reflection)
 - [URL Protocols](URLProtocols.md)
