@@ -35,6 +35,8 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
+import jdk.graal.compiler.debug.Assertions;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -54,6 +56,8 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     protected int location;
     private int installedLayerNum;
+
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     public HostedField(AnalysisField wrapped, HostedType holder, HostedType type) {
         this.wrapped = wrapped;
@@ -144,8 +148,13 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped.isWritten();
     }
 
-    public boolean isValueAvailable() {
-        return FieldValueInterceptionSupport.singleton().isValueAvailable(wrapped);
+    /**
+     * Returns true if the field's value is available at the time of querying. For unknown fields
+     * this depends on the image build stage when the value is computed.
+     */
+    public boolean isValueAvailable(JavaConstant receiver) {
+        assert (receiver == null) == isStatic() : Assertions.errorMessage("The receiver should be null iff this is a static field", this, receiver);
+        return fieldValueInterceptionSupport.isValueAvailable(wrapped, receiver);
     }
 
     @Override

@@ -156,6 +156,7 @@ struct PersistedAnalysisField {
   priorInstalledLayerNum @17 :Int32;
   assignmentStatus @18 :Int32;
   simulatedFieldValue @19 :ConstantReference;
+  updatableReceivers @20 :List(ConstantId);
 }
 
 struct CEntryPointLiteralReference {

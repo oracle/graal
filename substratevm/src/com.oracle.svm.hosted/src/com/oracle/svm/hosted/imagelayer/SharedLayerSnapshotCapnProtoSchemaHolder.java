@@ -2062,7 +2062,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class PersistedAnalysisField {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)4);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)5);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -2252,6 +2252,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder initSimulatedFieldValue() {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3, 0);
       }
+      public final boolean hasUpdatableReceivers() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder getUpdatableReceivers() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, null, 0);
+      }
+      public final void setUpdatableReceivers(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initUpdatableReceivers(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, size);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2349,6 +2361,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader getSimulatedFieldValue() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3,null, 0);
+      }
+
+      public final boolean hasUpdatableReceivers() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getUpdatableReceivers() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, null, 0);
       }
 
     }

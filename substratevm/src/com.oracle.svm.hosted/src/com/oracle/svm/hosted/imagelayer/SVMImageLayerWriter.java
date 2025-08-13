@@ -732,6 +732,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setPriorInstalledLayerNum(fieldInstalledNum);
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
+        var updatableReceivers = LayeredFieldValueTransformerSupport.singleton().getUpdatableReceivers(field);
+        var receivers = builder.initUpdatableReceivers(updatableReceivers.size());
+        int idx = 0;
+        for (var receiver : updatableReceivers) {
+            receivers.set(idx, ImageHeapConstant.getConstantID(receiver));
+            idx++;
+        }
+
         persistAnnotations(field, builder::initAnnotationList);
 
         JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
