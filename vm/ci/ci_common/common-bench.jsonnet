@@ -216,20 +216,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'espresso:benchmark']),
       ],
     }
-  /* TODO (GR-64439): re-enable NFI jobs once js is unchained.
-  ] + [
-       # NFI polybench jobs
-       self.polybench_vm_gate('linux', 'amd64', 'nfi') + {
-         run+: [
-           self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
-         ],
-       },
-       self.polybench_vm_daily('linux', 'amd64', 'nfi') + {
-         run+: [
-           self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
-         ],
-       }
-  */
   ] + [
     # TruffleRuby polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
@@ -270,6 +256,42 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ],
       run+: [
         self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:benchmark']),
+      ],
+    }
+  ] + [
+    # NFI polybench jobs
+    self.polybench_vm_gate('linux', 'amd64', 'nfi') + {
+      setup+: [
+        ['mx', '--dy', 'graal-js', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'nfi') + {
+      setup+: [
+        ['mx', '--dy', 'graal-js', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
+      ],
+    }
+ ] + [
+    # Graal.js polybench jobs
+    self.polybench_vm_gate('linux', 'amd64', 'js') + {
+      setup+: [
+        ['mx', '--dy', 'graal-js', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'js') + {
+      setup+: [
+        ['mx', '--dy', 'graal-js', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:benchmark']),
       ],
     }
   ],
