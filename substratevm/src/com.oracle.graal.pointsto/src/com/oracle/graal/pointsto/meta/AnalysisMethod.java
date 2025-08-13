@@ -53,7 +53,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.ImageLayerWriter;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
@@ -269,10 +268,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         this.multiMethodMap = multiMethodMap;
 
-        if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
+        if (universe.analysisPolicy().trackAccessChain()) {
             startTrackInvocations();
         }
-        parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
+        parsingContextMaxDepth = universe.analysisPolicy().parsingContextMaxDepth();
 
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
     }
@@ -300,7 +299,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         multiMethodMap = original.multiMethodMap;
         hasOpaqueReturn = original.hasOpaqueReturn;
 
-        if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
+        if (original.getUniverse().analysisPolicy().trackAccessChain()) {
             startTrackInvocations();
         }
 

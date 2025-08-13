@@ -216,11 +216,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /**
      * Force update of the unsafe loads and unsafe store type flows when a field is registered as
      * unsafe accessed 'on the fly', i.e., during the analysis.
-     *
-     * @param field the newly unsafe registered field. We use its declaring type to filter the
-     *            unsafe access flows that need to be updated.
      */
-    public void forceUnsafeUpdate(AnalysisField field) {
+    public void forceUnsafeUpdate() {
         if (analysisPolicy.useConservativeUnsafeAccess()) {
             return;
         }
@@ -239,7 +236,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * update; an update of the receiver object flow will trigger an updated of the
              * observers, i.e., of the unsafe load.
              */
-            if (unsafeLoad.receiver().isFlowEnabled()) {
+            if (unsafeLoad.receiver().isActive()) {
                 this.postFlow(unsafeLoad.receiver());
             }
         }
@@ -254,7 +251,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * update; an update of the receiver object flow will trigger an updated of the
              * observers, i.e., of the unsafe store.
              */
-            if (unsafeStore.receiver().isFlowEnabled()) {
+            if (unsafeStore.receiver().isActive()) {
                 this.postFlow(unsafeStore.receiver());
             }
         }

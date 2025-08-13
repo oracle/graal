@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -123,7 +122,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         this.wrapped = wrappedField;
 
-        boolean trackAccessChain = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options());
+        boolean trackAccessChain = universe.analysisPolicy().trackAccessChain();
         readBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
         writtenBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
 
