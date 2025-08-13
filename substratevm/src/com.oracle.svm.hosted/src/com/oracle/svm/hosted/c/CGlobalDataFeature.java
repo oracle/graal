@@ -198,7 +198,7 @@ public class CGlobalDataFeature implements InternalFeature {
                     AbstractMergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(thenEnd);
                     merge.addForwardEnd(elseEnd);
-                    ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, new ValueNode[]{address, readValue});
+                    ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, address, readValue);
                     phiNode.inferStamp();
                     b.push(targetMethod.getSignature().getReturnKind(), b.getGraph().addOrUnique(phiNode));
                     b.setStateAfter(merge);
@@ -296,7 +296,8 @@ public class CGlobalDataFeature implements InternalFeature {
                             info.assignOffset(currentOffset);
 
                             int nextOffset = currentOffset + info.getSize();
-                            return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
+                            int alignmentMask = -wordSize;
+                            return (nextOffset + (wordSize - 1)) & alignmentMask;
                         }, Integer::sum);
         assert isLaidOut();
     }

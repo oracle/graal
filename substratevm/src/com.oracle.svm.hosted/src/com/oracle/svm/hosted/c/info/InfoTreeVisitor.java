@@ -49,7 +49,7 @@ public abstract class InfoTreeVisitor {
     static {
         /* Defining the comparator chain on multiple lines requires less type annotations. */
         Comparator<ElementInfo> classNameComparator = Comparator.comparing(e -> e.getClass().getName());
-        Comparator<ElementInfo> nameComparator = classNameComparator.thenComparing(e -> e.getName());
+        Comparator<ElementInfo> nameComparator = classNameComparator.thenComparing(ElementInfo::getName);
         elementInfoComparator = nameComparator.thenComparing(e -> asString(e.getAnnotatedElement()));
     }
 

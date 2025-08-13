@@ -242,7 +242,7 @@ public abstract class NativeImage extends AbstractImage {
             writer.appendln(line);
         }
 
-        if (methods.size() > 0) {
+        if (!methods.isEmpty()) {
             writer.appendln();
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("extern \"C\" {");
@@ -575,9 +575,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private boolean hasDuplicatedObjects(Collection<ObjectInfo> objects) {
         Set<ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (ObjectInfo info : objects) {
-            deduplicated.add(info);
-        }
+        deduplicated.addAll(objects);
         return deduplicated.size() != heap.getObjectCount();
     }
 
@@ -733,10 +731,9 @@ public abstract class NativeImage extends AbstractImage {
             long addend = ((DataSectionReference) target).getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
             sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), addend);
-        } else if (target instanceof CGlobalDataReference) {
+        } else if (target instanceof CGlobalDataReference ref) {
             validateNoDirectRelocationsInTextSection(info);
 
-            CGlobalDataReference ref = (CGlobalDataReference) target;
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
             long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getAddend();
@@ -992,7 +989,7 @@ public abstract class NativeImage extends AbstractImage {
 
         @SuppressWarnings("try")
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
-            try (Indent indent = debug.logAndIndent("TextImpl.writeTextSection")) {
+            try (Indent ignored = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
                  * Write the text content. For slightly complicated reasons, we now call
                  * patchMethods in two places -- but it only happens once for any given image build.
