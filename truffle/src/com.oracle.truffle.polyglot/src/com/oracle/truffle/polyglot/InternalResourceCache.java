@@ -71,7 +71,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -520,17 +519,19 @@ final class InternalResourceCache {
             if (loader == null) {
                 continue;
             }
-            StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
-                JDKSupport.exportTransitivelyTo(p.getClass().getModule());
-                String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
-                String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
-                var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
-                var resourceSupplier = new OptionalResourceSupplier(p);
-                var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
-                if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
-                    throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+            for (InternalResourceProvider p : ServiceLoader.load(InternalResourceProvider.class, loader)) {
+                if (supplier.accepts(p.getClass())) {
+                    JDKSupport.exportTransitivelyTo(p.getClass().getModule());
+                    String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
+                    String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
+                    var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
+                    var resourceSupplier = new OptionalResourceSupplier(p);
+                    var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
+                    if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
+                        throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+                    }
                 }
-            });
+            }
         }
         return cache;
     }
