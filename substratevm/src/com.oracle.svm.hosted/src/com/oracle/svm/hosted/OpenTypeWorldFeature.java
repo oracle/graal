@@ -194,6 +194,10 @@ public class OpenTypeWorldFeature implements InternalFeature {
         return result;
     }
 
+    public static boolean matchingSignature(HostedMethod o1, HostedMethod o2) {
+        return matchingSignature(o1.wrapped, o2.wrapped);
+    }
+
     private static boolean matchingSignature(AnalysisMethod o1, AnalysisMethod o2) {
         if (o1.equals(o2)) {
             return true;
