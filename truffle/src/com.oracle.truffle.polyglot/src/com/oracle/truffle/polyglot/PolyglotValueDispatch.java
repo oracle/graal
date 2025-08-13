@@ -162,10 +162,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     private static final String TRUNCATION_SUFFIX = "...";
-
     private static final String UNKNOWN = "Unknown";
-
-    static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
     final PolyglotImpl impl;
     final PolyglotLanguageInstance languageInstance;
@@ -746,7 +743,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     private static boolean isNullUncached(Object receiver) {
-        return InteropLibrary.getFactory().getUncached().isNull(receiver);
+        return InteropLibrary.getUncached().isNull(receiver);
     }
 
     protected static boolean asBooleanUnsupported(PolyglotLanguageContext context, Object receiver) {
@@ -1256,7 +1253,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     protected Object getMetaObjectImpl(PolyglotLanguageContext context, Object receiver) {
-        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+        InteropLibrary lib = InteropLibrary.getUncached(receiver);
         if (lib.hasMetaObject(receiver)) {
             try {
                 return asValue(impl, context, lib.getMetaObject(receiver));
@@ -1316,8 +1313,6 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     private static final int CHARACTER_LIMIT = 140;
 
-    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
-
     @TruffleBoundary
     static String getValueInfo(Object languageContext, Object receiver) {
         PolyglotContextImpl context = languageContext != null ? ((PolyglotLanguageContext) languageContext).context : null;
@@ -1344,12 +1339,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         String valueToString;
         String metaObjectToString = UNKNOWN;
         try {
-            InteropLibrary uncached = InteropLibrary.getFactory().getUncached(view);
+            InteropLibrary uncached = InteropLibrary.getUncached(view);
             if (uncached.hasMetaObject(view)) {
-                Object qualifiedName = INTEROP.getMetaQualifiedName(uncached.getMetaObject(view));
-                metaObjectToString = truncateString(INTEROP.asString(qualifiedName), CHARACTER_LIMIT);
+                Object qualifiedName = InteropLibrary.getUncached().getMetaQualifiedName(uncached.getMetaObject(view));
+                metaObjectToString = truncateString(InteropLibrary.getUncached().asString(qualifiedName), CHARACTER_LIMIT);
             }
-            valueToString = truncateString(INTEROP.asString(uncached.toDisplayString(view)), CHARACTER_LIMIT);
+            valueToString = truncateString(InteropLibrary.getUncached().asString(uncached.toDisplayString(view)), CHARACTER_LIMIT);
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
@@ -1359,7 +1354,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             languageName = "Java"; // java is our host language for now
 
             // hide meta objects of null
-            if (UNKNOWN.equals(metaObjectToString) && INTEROP.isNull(receiver)) {
+            if (UNKNOWN.equals(metaObjectToString) && InteropLibrary.getUncached().isNull(receiver)) {
                 hideType = true;
             }
         } else {
@@ -1596,7 +1591,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
-            InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+            InteropLibrary lib = InteropLibrary.getUncached(receiver);
             com.oracle.truffle.api.source.SourceSection result = null;
             if (lib.hasSourceLocation(receiver)) {
                 try {
@@ -1710,7 +1705,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
         addDefaultValue(polyglot, languageInstance, valueCache, false);
         addDefaultValue(polyglot, languageInstance, valueCache, "");
-        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("",
+                        TruffleString.Encoding.UTF_16));
         addDefaultValue(polyglot, languageInstance, valueCache, 'a');
         addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
         addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);
@@ -1735,7 +1731,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
              */
-            this.interop = InteropLibrary.getFactory().getUncached(primitiveValue);
+            this.interop = InteropLibrary.getUncached(primitiveValue);
             this.language = instance != null ? instance.language : null;
         }
 
@@ -2703,7 +2699,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.isNumber(receiver);
+                return InteropLibrary.getUncached().isNumber(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2716,7 +2712,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInByte(receiver);
+                return InteropLibrary.getUncached().fitsInByte(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2730,7 +2726,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asByte(receiver);
+                    return InteropLibrary.getUncached().asByte(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asByteUnsupported(context, receiver);
                 }
@@ -2746,7 +2742,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.isString(receiver);
+                return InteropLibrary.getUncached().isString(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2763,7 +2759,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     if (isNullUncached(receiver)) {
                         return null;
                     }
-                    return UNCACHED_INTEROP.asString(receiver);
+                    return InteropLibrary.getUncached().asString(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asStringUnsupported(context, receiver);
                 }
@@ -2783,7 +2779,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     if (isNullUncached(receiver)) {
                         return null;
                     }
-                    TruffleString s = UNCACHED_INTEROP.asTruffleString(receiver);
+                    TruffleString s = InteropLibrary.getUncached().asTruffleString(receiver);
                     TruffleString.Encoding e = PolyglotImpl.mapStringEncoding(encoding);
                     return s.switchEncodingUncached(e).copyToByteArrayUncached(e);
                 } catch (UnsupportedMessageException e) {
@@ -2801,7 +2797,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInInt(receiver);
+                return InteropLibrary.getUncached().fitsInInt(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2815,7 +2811,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asInt(receiver);
+                    return InteropLibrary.getUncached().asInt(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asIntUnsupported(context, receiver);
                 }
@@ -2831,7 +2827,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return InteropLibrary.getFactory().getUncached().isBoolean(receiver);
+                return InteropLibrary.getUncached().isBoolean(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2845,7 +2841,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return InteropLibrary.getFactory().getUncached().asBoolean(receiver);
+                    return InteropLibrary.getUncached().asBoolean(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asBooleanUnsupported(context, receiver);
                 }
@@ -2861,7 +2857,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return InteropLibrary.getFactory().getUncached().fitsInFloat(receiver);
+                return InteropLibrary.getUncached().fitsInFloat(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2875,7 +2871,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asFloat(receiver);
+                    return InteropLibrary.getUncached().asFloat(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asFloatUnsupported(context, receiver);
                 }
@@ -2891,7 +2887,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInDouble(receiver);
+                return InteropLibrary.getUncached().fitsInDouble(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2905,7 +2901,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asDouble(receiver);
+                    return InteropLibrary.getUncached().asDouble(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asDoubleUnsupported(context, receiver);
                 }
@@ -2921,7 +2917,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInLong(receiver);
+                return InteropLibrary.getUncached().fitsInLong(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2935,7 +2931,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asLong(receiver);
+                    return InteropLibrary.getUncached().asLong(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asLongUnsupported(context, receiver);
                 }
@@ -2951,7 +2947,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInBigInteger(receiver);
+                return InteropLibrary.getUncached().fitsInBigInteger(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2965,7 +2961,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asBigInteger(receiver);
+                    return InteropLibrary.getUncached().asBigInteger(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asBigIntegerUnsupported(context, receiver);
                 }
@@ -2981,7 +2977,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object c = hostEnter(context);
             try {
-                return UNCACHED_INTEROP.fitsInShort(receiver);
+                return InteropLibrary.getUncached().fitsInShort(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2995,7 +2991,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             Object c = hostEnter(context);
             try {
                 try {
-                    return UNCACHED_INTEROP.asShort(receiver);
+                    return InteropLibrary.getUncached().asShort(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asShortUnsupported(context, receiver);
                 }
