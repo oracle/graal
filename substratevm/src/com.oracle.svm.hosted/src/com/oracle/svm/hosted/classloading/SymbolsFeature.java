@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.classloading;
 
 import java.lang.reflect.Field;
 
@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.hosted.FeatureImpl;
 
 public class SymbolsFeature implements InternalFeature {
 

@@ -92,6 +92,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.NeverInline;
@@ -114,6 +116,9 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -356,12 +361,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute //
     private final DynamicHub componentType;
 
-    /**
-     * Reference map information for this hub. The byte[] array encoding data is available via
-     * {@link DynamicHubSupport#getReferenceMapEncoding()}.
-     */
-    @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
+    /** Index into the current layer's instance reference map {@code byte[]}. */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private int referenceMapIndex;
+
+    /**
+     * A compressed offset, relative to the heap base, that points to the
+     * {@link InstanceReferenceMap} for this hub (see
+     * {@link DynamicHubSupport#getInstanceReferenceMap}).
+     */
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class)//
+    private int compressedReferenceMapOffset = -1;
 
     private final byte layerId;
 
@@ -541,8 +551,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-61330: only write if the field exists according to analysis
         // companion.metaType = null;
 
-        // GR-60080: Proper referenceMap needed.
-        int referenceMapIndex = DynamicHub.fromClass(Object.class).referenceMapIndex;
+        int compressedReferenceMapOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
 
         // GR-57813
         companion.hubMetadata = null;
@@ -575,7 +584,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
 
-        writeInt(hub, dynamicHubOffsets.getReferenceMapIndexOffset(), referenceMapIndex);
+        writeInt(hub, dynamicHubOffsets.getCompressedReferenceMapOffsetOffset(), compressedReferenceMapOffset);
         writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
         // skip vtable (special treatment)
@@ -643,8 +652,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated) {
+    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex, boolean isInstantiated) {
         VMError.guarantee(monitorOffset == -1 || monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == -1 || identityHashOffset == (char) identityHashOffset,
                         "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
@@ -653,9 +661,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.monitorOffset = monitorOffset == -1 ? 0 : (char) monitorOffset;
         this.identityHashOffset = identityHashOffset == -1 ? 0 : (char) identityHashOffset;
 
-        if ((int) referenceMapIndex != referenceMapIndex) {
-            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
-        }
+        VMError.guarantee(NumUtil.isInt(referenceMapIndex), "Reference map index not within integer range");
         this.referenceMapIndex = (int) referenceMapIndex;
 
         assert companion.additionalFlags == 0;
@@ -934,9 +940,23 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.arrayHub;
     }
 
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getReferenceMapIndex() {
-        return referenceMapIndex;
+    public int getCompressedReferenceMapOffset() {
+        assert compressedReferenceMapOffset >= 0;
+        return compressedReferenceMapOffset;
+    }
+
+    /**
+     * Initializes the {@link #compressedReferenceMapOffset} based on the
+     * {@link #referenceMapIndex}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initializeCompressedReferenceMapOffset(long currentLayerRefMapDataStart) {
+        assert compressedReferenceMapOffset == -1;
+        assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
+
+        this.compressedReferenceMapOffset = InstanceReferenceMapEncoder.computeCompressedReferenceMapOffset(currentLayerRefMapDataStart, referenceMapIndex);
     }
 
     /**

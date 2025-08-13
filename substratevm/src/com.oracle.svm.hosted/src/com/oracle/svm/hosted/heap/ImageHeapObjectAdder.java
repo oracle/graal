@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.imagelayer;
+package com.oracle.svm.hosted.heap;
 
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -32,7 +32,6 @@ import java.util.function.BiConsumer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.util.VMError;
@@ -40,21 +39,17 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 /**
- * When building layered images, sometimes we know an object will be needed by a subsequent layer.
- * In these cases it is necessary to manually add the object to the image heap.
- * </p>
  * Object adders are executed late, after the analysis has completed and after the shadow heap has
  * been sealed. The code using this feature must ensure that the object has been seen by the static
  * analysis, and it has been added to the shadow heap, e.g., by triggering a shadow heap re-scan.
  */
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-public class LayeredImageHeapObjectAdder implements UnsavedSingleton {
-
+@AutomaticallyRegisteredImageSingleton
+public class ImageHeapObjectAdder implements UnsavedSingleton {
     private final Set<BiConsumer<NativeImageHeap, HostedUniverse>> objectAdders = new HashSet<>();
     private boolean sealed = false;
 
-    public static LayeredImageHeapObjectAdder singleton() {
-        return ImageSingletons.lookup(LayeredImageHeapObjectAdder.class);
+    public static ImageHeapObjectAdder singleton() {
+        return ImageSingletons.lookup(ImageHeapObjectAdder.class);
     }
 
     public void registerObjectAdder(BiConsumer<NativeImageHeap, HostedUniverse> adder) {

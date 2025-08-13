@@ -81,7 +81,7 @@ public class DynamicHubOffsets {
     private int componentTypeOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int referenceMapIndexOffset = UNINITIALIZED;
+    private int compressedReferenceMapOffsetOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int layerIdOffset = UNINITIALIZED;
 
@@ -185,8 +185,8 @@ public class DynamicHubOffsets {
         return componentTypeOffset;
     }
 
-    public int getReferenceMapIndexOffset() {
-        return referenceMapIndexOffset;
+    public int getCompressedReferenceMapOffsetOffset() {
+        return compressedReferenceMapOffsetOffset;
     }
 
     public int getLayerIdOffset() {

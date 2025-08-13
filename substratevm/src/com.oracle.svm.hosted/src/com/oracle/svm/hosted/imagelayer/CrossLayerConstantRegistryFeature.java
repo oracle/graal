@@ -52,6 +52,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
@@ -117,7 +118,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     public void duringSetup(DuringSetupAccess access) {
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         loader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+        ImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         config.registerObjectToConstantReplacer(obj -> replacePriorMarkersWithConstant(registry, obj));
     }
