@@ -366,9 +366,10 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
                 masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], YMM);
             }
             // result += vresult.reduceLanes(ADD);
-            for (int idx = 0; idx < 4; idx++) {
-                reduceI(masm, YMM.getBytes() / JavaKind.Int.getByteCount(), result, result, vresult[idx], vtmp[(idx * 2 + 0) % 4], vtmp[(idx * 2 + 1) % 4]);
-            }
+            reduce(masm, YMM, JavaKind.Int, vtmp[0], vresult[0], vresult[1]);
+            reduce(masm, YMM, JavaKind.Int, vtmp[1], vresult[2], vresult[3]);
+            reduce(masm, YMM, JavaKind.Int, vresult[0], vtmp[0], vtmp[1]);
+            reduceI(masm, YMM.getBytes() / JavaKind.Int.getByteCount(), result, result, vresult[0], vtmp[2], vtmp[3]);
         }
         // } else if (cnt1 < 32) {
 
