@@ -80,7 +80,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     polybench_wrap(command)::
       super.polybench_wrap(command) + [
         '--mx-benchmark-args',
-        '--fork-count-file', 'ci/ci_includes/polybench-hpc.json',
         '--machine-name', 'gate-' + self.machine_name
       ],
     teardown: [self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!']],
