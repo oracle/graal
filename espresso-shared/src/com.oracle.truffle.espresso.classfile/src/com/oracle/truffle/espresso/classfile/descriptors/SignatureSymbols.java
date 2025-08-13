@@ -106,6 +106,17 @@ public final class SignatureSymbols {
     }
 
     /**
+     * Creates or retrieves a valid method signature symbol from a String.
+     *
+     * @return The signature Symbol if valid, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> getOrCreateValidSignature(String signatureString) {
+        return getOrCreateValidSignature(ByteSequence.create(signatureString), false);
+    }
+
+    /**
      * Creates or retrieves a valid method signature symbol from a byte sequence.
      *
      * @param ensureStrongReference if {@code true}, the returned symbol is guaranteed to be
