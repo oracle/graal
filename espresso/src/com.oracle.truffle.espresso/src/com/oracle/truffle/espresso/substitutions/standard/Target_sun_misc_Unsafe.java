@@ -450,6 +450,7 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long allocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long length, @Inject Meta meta) {
+
         if (length < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }

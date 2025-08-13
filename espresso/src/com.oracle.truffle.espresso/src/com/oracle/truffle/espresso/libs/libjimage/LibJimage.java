@@ -20,44 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.libs;
-
-import org.graalvm.collections.EconomicMap;
+package com.oracle.truffle.espresso.libs.libjimage;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.NoNativeAccess;
+import com.oracle.truffle.espresso.libs.Lib;
+import com.oracle.truffle.espresso.libs.Libs;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
-/**
- * A collection of known boot libraries.
- * 
- * @implNote Even though the underlying mechanism for registering native method implementations
- *           re-uses the {@link com.oracle.truffle.espresso.substitutions.Substitution} annotation,
- *           it differs from regulars substitution in that these methods will not eagerly replace
- *           non-native methods.
- * 
- * @see Lib
- */
-public final class Libs {
-
-    private final EconomicMap<String, Lib.Factory> knownLibs = EconomicMap.create();
-
-    public Libs(EspressoLanguage lang) {
-        for (Lib.Factory lib : LibsCollector.getInstances(Lib.Factory.class)) {
-            if (lib.isValidfor(lang)) {
-                knownLibs.put(lib.name(), lib);
-            }
-        }
+@Collect(Libs.class)
+public final class LibJimage implements Lib.Factory {
+    @Override
+    public String name() {
+        return "jimage";
     }
 
-    public Lib loadLibrary(EspressoContext ctx, String name) {
-        Lib.Factory factory = knownLibs.get(name);
-        if (factory != null) {
-            return factory.create(ctx);
-        }
-        return null;
+    @Override
+    public Lib create(EspressoContext ctx) {
+        return new Lib(ctx, LibJimageCollector.getInstances(JavaSubstitution.Factory.class),
+                        name());
     }
 
-    public boolean isKnown(String name) {
-        return knownLibs.containsKey(name);
+    @Override
+    public boolean isValidfor(EspressoLanguage language) {
+        return language.useEspressoLibs() && language.nativeBackendId().equals(NoNativeAccess.Provider.ID);
     }
 }

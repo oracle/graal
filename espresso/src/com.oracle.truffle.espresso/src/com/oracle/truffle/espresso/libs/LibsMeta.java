@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.libs;
 
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
@@ -70,6 +71,12 @@ public final class LibsMeta implements ContextAccess {
     public final ObjectKlass java_net_NetworkInterface;
     public final LibNetMeta net;
 
+    // libextnet
+    @CompilerDirectives.CompilationFinal public ObjectKlass jdk_net_ExtendedSocketOptions$PlatformSocketOptions;
+    @CompilerDirectives.CompilationFinal public Method jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init;
+
+    // libmanagement
+    public final LibManagementMeta management;
     // Checkstyle: resume field name check
 
     @Override
@@ -122,6 +129,22 @@ public final class LibsMeta implements ContextAccess {
         // libnet
         java_net_NetworkInterface = knownKlass(EspressoSymbols.Types.java_net_NetworkInterface);
         this.net = context.getLanguage().enableNetworking() ? new LibNetMeta() : null;
+
+        // libmanagement
+        this.management = context.getEspressoEnv().EnableManagement ? new LibManagementMeta() : null;
+    }
+
+    /**
+     * same idea as {@link Meta#postSystemInit()}.
+     */
+    public void postSystemInit() {
+        // libextnet
+        jdk_net_ExtendedSocketOptions$PlatformSocketOptions = knownKlass(EspressoSymbols.Types.jdk_net_ExtendedSocketOptions$PlatformSocketOptions);
+        jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init = jdk_net_ExtendedSocketOptions$PlatformSocketOptions.lookupDeclaredMethod(EspressoSymbols.Names._init_,
+                        EspressoSymbols.Signatures._void);
+        if (management != null) {
+            management.postSystemInit();
+        }
     }
 
     public ObjectKlass knownKlass(Symbol<Type> type) {
@@ -202,5 +225,40 @@ public final class LibsMeta implements ContextAccess {
             java_net_InetSocketAddress_init = java_net_InetSocketAddress.lookupDeclaredMethod(EspressoSymbols.Names._init_, EspressoSymbols.Signatures.java_net_InetSocketAddress_init_signature);
         }
 
+    }
+
+    public final class LibManagementMeta {
+        // Checkstyle: stop field name check
+        @CompilerDirectives.CompilationFinal public ObjectKlass sun_management_VMManagementImpl;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_compTimeMonitoringSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_threadContentionMonitoringSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_currentThreadCpuTimeSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_otherThreadCpuTimeSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_threadAllocatedMemorySupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_remoteDiagnosticCommandsSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_objectMonitorUsageSupport;
+        @CompilerDirectives.CompilationFinal public Field sun_management_VMManagementImpl_synchronizerUsageSupport;
+        // Checkstyle: resume field name check
+
+        public void postSystemInit() {
+            sun_management_VMManagementImpl = knownKlass(EspressoSymbols.Types.sun_management_VMManagementImpl);
+            sun_management_VMManagementImpl_compTimeMonitoringSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.compTimeMonitoringSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_threadContentionMonitoringSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.threadContentionMonitoringSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_currentThreadCpuTimeSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.currentThreadCpuTimeSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_otherThreadCpuTimeSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.otherThreadCpuTimeSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_threadAllocatedMemorySupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.threadAllocatedMemorySupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_remoteDiagnosticCommandsSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.remoteDiagnosticCommandsSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_objectMonitorUsageSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.objectMonitorUsageSupport,
+                            EspressoSymbols.Types._boolean);
+            sun_management_VMManagementImpl_synchronizerUsageSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.synchronizerUsageSupport,
+                            EspressoSymbols.Types._boolean);
+
+        }
     }
 }

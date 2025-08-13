@@ -37,7 +37,9 @@ import java.util.Optional;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.io.Throw;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.vm.Management;
 
 /**
  * In the context of the EspressoLibs project, this class is designed to aggregate methods and
@@ -126,4 +128,18 @@ public class InformationLeak {
             throw Throw.throwSocketException(e, context);
         }
     }
+
+    @TruffleBoundary
+    public Management checkAndGetManagement(EspressoContext context) {
+        if (!context.getEspressoEnv().EnableManagement) {
+            throw Throw.throwIllegalStateException("You are accessing LibManagement classes even though management is disabled", context);
+        }
+        Management management = context.getVM().getManagement();
+        if (management == null) {
+            // management is only null if Management is disabled
+            throw EspressoError.shouldNotReachHere();
+        }
+        return management;
+    }
+
 }

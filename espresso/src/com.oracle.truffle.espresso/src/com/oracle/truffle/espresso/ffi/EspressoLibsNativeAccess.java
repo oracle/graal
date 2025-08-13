@@ -62,7 +62,7 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     public EspressoLibsNativeAccess(EspressoContext ctx, NativeAccess delegate) {
         super(ctx);
         this.delegate = delegate;
-        this.libs = new Libs();
+        this.libs = new Libs(ctx.getLanguage());
     }
 
     @Override

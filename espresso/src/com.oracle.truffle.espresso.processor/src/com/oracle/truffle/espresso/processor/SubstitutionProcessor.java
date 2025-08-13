@@ -313,9 +313,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
+            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
+            byte flags = 0;
+            for (Byte flag : flagsList) {
+                flags |= flag;
+            }
 
-            // Sanity check.
-            checkSubstitutionElement(element);
+            if (!isFlag(flags, SubstitutionFlag.relaxTypeChecks)) {
+                // Sanity check.
+                checkSubstitutionElement(element);
+            }
 
             // Obtain the name of the element to be substituted in.
             String targetMethodName = getSubstutitutedMethodName(element);
@@ -346,12 +353,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
             TypeMirror languageFilter = getLanguageFilter(subst);
-
-            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
-            byte flags = 0;
-            for (Byte flag : flagsList) {
-                flags |= flag;
-            }
 
             TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
             boolean inlineInBytecode = encodedInlineGuard != null ||
@@ -625,6 +626,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
+        }
+        if (parameterTypeName.contains("TruffleObject")) {
+            expectedImports.add(IMPORT_TRUFFLE_OBJECT);
         }
         if (helper.isNodeTarget()) {
             expectedImports.add(helper.getNodeTarget().getQualifiedName().toString());

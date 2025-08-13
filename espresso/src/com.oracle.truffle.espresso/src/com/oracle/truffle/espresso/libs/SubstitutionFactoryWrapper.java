@@ -22,7 +22,13 @@
  */
 package com.oracle.truffle.espresso.libs;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 /**
@@ -31,6 +37,7 @@ import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
  * substitutions to be used as the result of a call to
  * {@link com.oracle.truffle.espresso.ffi.NativeAccess#lookupSymbol(TruffleObject, String)}.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class SubstitutionFactoryWrapper implements TruffleObject {
     private final JavaSubstitution.Factory subst;
 
@@ -40,5 +47,17 @@ public final class SubstitutionFactoryWrapper implements TruffleObject {
 
     public JavaSubstitution.Factory getSubstitution() {
         return subst;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public Object execute(Object[] args) throws ArityException, UnsupportedTypeException {
+        return getSubstitution().create().invoke(args);
     }
 }
