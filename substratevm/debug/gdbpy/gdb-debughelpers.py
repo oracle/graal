@@ -1736,8 +1736,17 @@ class SVMFrame(FrameDecorator):
         else:
             eclipse_filename = ''
 
+        sal = frame.find_sal()
+        objfile_filename = ''
+        if sal and sal.symtab and sal.symtab.objfile:
+            objfile = sal.symtab.objfile
+            if objfile.owner:
+                # avoid showing the '.debug' file
+                objfile = objfile.owner
+            objfile_filename = ' in ' + os.path.basename(objfile.filename)
+
         prefix = '[LAZY DEOPT FRAME] ' if self.__lazy_deopt else ''
-        return prefix + func_name + eclipse_filename
+        return prefix + func_name + eclipse_filename + objfile_filename
 
 
 class SymValueWrapper:
