@@ -28,8 +28,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
 
-import com.oracle.svm.core.c.CIsolateDataStorage;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.c.CIsolateData;
+import com.oracle.svm.core.c.CIsolateDataStorage;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
@@ -37,7 +39,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.UnsignedWord;
 
 @AutomaticallyRegisteredFeature
 public class CIsolateDataFeature implements InternalFeature {
@@ -50,8 +51,7 @@ public class CIsolateDataFeature implements InternalFeature {
     }
 
     private Object replaceObject(Object obj) {
-        if (obj instanceof CIsolateData<?>) {
-            CIsolateData<?> entry = (CIsolateData<?>) obj;
+        if (obj instanceof CIsolateData<?> entry) {
             usedEntries.compute(entry.getName(), (key, old) -> {
                 VMError.guarantee(old == null || old == entry, "The isolate data section already contains an entry for %s", key);
                 return entry;

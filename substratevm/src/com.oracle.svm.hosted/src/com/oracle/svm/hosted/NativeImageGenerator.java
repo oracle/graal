@@ -1411,7 +1411,6 @@ public class NativeImageGenerator {
         }
     }
 
-    @SuppressWarnings("deprecation")
     protected void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {
