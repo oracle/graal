@@ -582,6 +582,7 @@ local devkits = graal_common.devkits;
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
      name: 'gate-vm-style-' + self.jdk_name + "-linux-amd64",
+     timelimit: '30:00',
     },
 
     vm.vm_java_Latest + sulong_vm_tests,
