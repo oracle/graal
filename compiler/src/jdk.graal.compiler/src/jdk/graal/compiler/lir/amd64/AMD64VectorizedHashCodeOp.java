@@ -204,36 +204,53 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static void reduce2I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
-        if (!vtmp1.equals(src2)) {
-            masm.movdqu(vtmp1, src2);
+    private static void reduce2I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2, boolean useHorizontalAdd) {
+        if (useHorizontalAdd) {
+            if (!vtmp1.equals(src2)) {
+                masm.movdqu(vtmp1, src2);
+            }
+            masm.emit(VPHADDD, vtmp1, vtmp1, vtmp1, XMM);
+        } else {
+            masm.vpshufd(vtmp1, src2, 0x1, XMM);
+            reduce(masm, XMM, JavaKind.Int, vtmp1, vtmp1, src2);
         }
-        masm.emit(VPHADDD, vtmp1, vtmp1, vtmp1, XMM);
         masm.movdl(vtmp2, src1);
         reduce(masm, XMM, JavaKind.Int, vtmp1, vtmp1, vtmp2);
         masm.movdl(dst, vtmp1);
     }
 
-    private static void reduce4I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
-        if (!vtmp1.equals(src2)) {
-            masm.movdqu(vtmp1, src2);
+    private static void reduce4I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2, boolean useHorizontalAdd) {
+        if (useHorizontalAdd) {
+            if (!vtmp1.equals(src2)) {
+                masm.movdqu(vtmp1, src2);
+            }
+            masm.emit(VPHADDD, vtmp1, vtmp1, src2, XMM);
+            reduce2I(masm, dst, src1, vtmp1, vtmp1, vtmp2, useHorizontalAdd);
+        } else {
+            masm.vpshufd(vtmp2, src2, 0xe, XMM);
+            reduce(masm, XMM, JavaKind.Int, vtmp2, vtmp2, src2);
+            reduce2I(masm, dst, src1, vtmp2, vtmp1, vtmp2, useHorizontalAdd);
         }
-        masm.emit(VPHADDD, vtmp1, vtmp1, src2, XMM);
-        reduce2I(masm, dst, src1, vtmp1, vtmp1, vtmp2);
     }
 
-    private static void reduce8I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
-        masm.emit(VPHADDD, vtmp1, src2, src2, YMM);
-        masm.emit(VEXTRACTI128, vtmp2, vtmp1, 1, YMM);
-        masm.emit(VPADDD, vtmp1, vtmp1, vtmp2, XMM);
-        reduce2I(masm, dst, src1, vtmp1, vtmp1, vtmp2);
+    private static void reduce8I(AMD64MacroAssembler masm, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2, boolean useHorizontalAdd) {
+        if (useHorizontalAdd) {
+            masm.emit(VPHADDD, vtmp1, src2, src2, YMM);
+            masm.emit(VEXTRACTI128, vtmp2, vtmp1, 1, YMM);
+            masm.emit(VPADDD, vtmp1, vtmp1, vtmp2, XMM);
+            reduce2I(masm, dst, src1, vtmp1, vtmp1, vtmp2, useHorizontalAdd);
+        } else {
+            masm.emit(VEXTRACTI128, vtmp1, src2, 1, YMM);
+            reduce(masm, XMM, JavaKind.Int, vtmp1, vtmp1, src2);
+            reduce4I(masm, dst, src1, vtmp1, vtmp1, vtmp2, useHorizontalAdd);
+        }
     }
 
-    private static void reduceI(AMD64MacroAssembler masm, int vlen, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2) {
+    private static void reduceI(AMD64MacroAssembler masm, int vlen, Register dst, Register src1, Register src2, Register vtmp1, Register vtmp2, boolean useHorizontalAdd) {
         switch (vlen) {
-            case 2 -> reduce2I(masm, dst, src1, src2, vtmp1, vtmp2);
-            case 4 -> reduce4I(masm, dst, src1, src2, vtmp1, vtmp2);
-            case 8 -> reduce8I(masm, dst, src1, src2, vtmp1, vtmp2);
+            case 2 -> reduce2I(masm, dst, src1, src2, vtmp1, vtmp2, useHorizontalAdd);
+            case 4 -> reduce4I(masm, dst, src1, src2, vtmp1, vtmp2, useHorizontalAdd);
+            case 8 -> reduce8I(masm, dst, src1, src2, vtmp1, vtmp2, useHorizontalAdd);
             default -> throw GraalError.shouldNotReachHere("Unsupported vector length " + vlen);
         }
     }
@@ -379,7 +396,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             reduce(masm, avxSize, JavaKind.Int, vtmp[0], vresult[0], vresult[1]);
             reduce(masm, avxSize, JavaKind.Int, vtmp[1], vresult[2], vresult[3]);
             reduce(masm, avxSize, JavaKind.Int, vresult[0], vtmp[0], vtmp[1]);
-            reduceI(masm, elementsPerVector, result, result, vresult[0], vtmp[2], vtmp[3]);
+            reduceI(masm, elementsPerVector, result, result, vresult[0], vtmp[2], vtmp[3], false);
         }
         // } else if (cnt1 < elementsPerLoop) {
 
