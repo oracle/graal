@@ -42,7 +42,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 public class SubstrateDebugInfoFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.RuntimeDebugInfo.getValue();
+        return Platform.includedIn(Platform.LINUX.class) &&
+                        ((SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.RuntimeDebugInfo.getValue()) || SubstrateOptions.WriteRuntimeCompilationPerfMap.getValue());
     }
 
     @Override
@@ -52,9 +53,13 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
 
     @Override
     public void registerCodeObserver(RuntimeConfiguration runtimeConfig) {
-        // This is called at image build-time -> the factory then creates a RuntimeDebugInfoProvider
-        // at runtime
-        ImageSingletons.lookup(InstalledCodeObserverSupport.class).addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig.getProviders().getMetaAccess(), runtimeConfig));
-        ImageSingletons.add(SubstrateDebugInfoInstaller.GdbJitAccessor.class, new SubstrateDebugInfoInstaller.GdbJitAccessor());
+        InstalledCodeObserverSupport installedCodeObserverSupport = ImageSingletons.lookup(InstalledCodeObserverSupport.class);
+        if (SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.RuntimeDebugInfo.getValue()) {
+            installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig.getProviders().getMetaAccess(), runtimeConfig));
+            ImageSingletons.add(SubstrateDebugInfoInstaller.GdbJitAccessor.class, new SubstrateDebugInfoInstaller.GdbJitAccessor());
+        }
+        if (SubstrateOptions.WriteRuntimeCompilationPerfMap.getValue()) {
+            installedCodeObserverSupport.addObserverFactory(new SubstratePerfMapWriter.Factory());
+        }
     }
 }

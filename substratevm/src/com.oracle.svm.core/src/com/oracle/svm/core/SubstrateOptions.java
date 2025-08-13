@@ -547,6 +547,9 @@ public class SubstrateOptions {
         }
     }
 
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> WriteRuntimeCompilationPerfMap = new HostedOptionKey<>(false);
+
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
