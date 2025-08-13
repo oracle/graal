@@ -231,7 +231,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             MethodInfo methodInfo = getMethodInfo(callTarget.targetMethod());
 
             if (methodInfo != null && sourceEntry != null) {
-                NodeSourcePosition nspToShow = getRootSourcePosition(callTarget.getNodeSourcePosition());
+                NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null && !dynamicAccessDetectionFeature.containsFoldEntry(nspToShow.getBCI(), nspToShow.getMethod())) {
                     String callLocation = nspToShow.getMethod().asStackTraceElement(nspToShow.getBCI()).toString();
                     dynamicAccessDetectionFeature.addCall(sourceEntry, methodInfo.accessKind(), methodInfo.signature(), callLocation);
@@ -315,14 +315,6 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static NodeSourcePosition getRootSourcePosition(NodeSourcePosition nodeSourcePosition) {
-        NodeSourcePosition rootNodeSourcePosition = nodeSourcePosition;
-        while (rootNodeSourcePosition != null && rootNodeSourcePosition.getCaller() != null) {
-            rootNodeSourcePosition = rootNodeSourcePosition.getCaller();
-        }
-        return rootNodeSourcePosition;
     }
 
     public static void clearMethodSignatures() {
