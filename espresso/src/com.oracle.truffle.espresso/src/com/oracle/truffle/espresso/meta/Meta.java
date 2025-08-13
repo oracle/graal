@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_TO_23;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_24_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_26_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
@@ -117,6 +118,9 @@ public final class Meta extends ContextAccessImpl
         java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Names.classLoader, Types.java_lang_ClassLoader);
         java_lang_Class_modifiers = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.modifiers, Types._char) //
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classFileAccessFlags = diff() //
+                        .field(VERSION_26_OR_HIGHER, Names.classFileAccessFlags, Types._char) //
                         .notRequiredField(java_lang_Class);
         java_lang_Class_primitive = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.primitive, Types._boolean) //
@@ -1391,6 +1395,7 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_Class_module;
     public final Field java_lang_Class_classLoader;
     public final Field java_lang_Class_modifiers;
+    public final Field java_lang_Class_classFileAccessFlags;
     public final Field java_lang_Class_primitive;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;

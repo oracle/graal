@@ -289,7 +289,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, target.arch);
                 registerContinuationPlugins(invocationPlugins, config);
                 registerCallSitePlugins(invocationPlugins);
-                registerReflectionPlugins(invocationPlugins, config);
+                registerReflectionPlugins(invocationPlugins);
                 registerAESPlugins(invocationPlugins, config);
                 registerAdler32Plugins(invocationPlugins, config);
                 registerCRC32Plugins(invocationPlugins, config);
@@ -508,26 +508,12 @@ public class HotSpotGraphBuilderPlugins {
         plugins.register(VolatileCallSite.class, plugin);
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerReflectionPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection");
         r.register(new InlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("getClassAccessFlags", Class.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(b.nullCheckedValue(arg));
-                    // Primitive Class case
-                    ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // Return (Klass::_access_flags & jvmAccWrittenFlags)
-                    ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
-                    helper.emitFinalReturn(JavaKind.Int, accessFlags);
-                }
                 return true;
             }
         });
