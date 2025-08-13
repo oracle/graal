@@ -434,7 +434,7 @@ public abstract class PartialEvaluator {
                         new TruffleSourceLanguagePositionProvider(context.task),
                         graphCache, getCreateCachedGraphScope());
 
-        if (TruffleCompilerOptions.maximumGraalGraphSiteEnabled(context.compilerOptions)) {
+        if (TruffleCompilerOptions.maximumGraalGraphSizeEnabled(context.compilerOptions)) {
             GraphSizeListener listener = new GraphSizeListener(context.compilerOptions, context.graph);
             try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
                 assert !context.graph.isSubstitution();
