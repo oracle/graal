@@ -75,19 +75,20 @@ public final class StackWalk {
         return (mode & FILL_CLASS_REFS_ONLY) == 0;
     }
 
-    private static boolean synchronizedConstants(Meta meta) {
+    public static boolean synchronizedConstants(Meta meta) {
+        boolean check = true;
         Klass stackStreamFactory = meta.java_lang_StackStreamFactory;
         StaticObject statics = stackStreamFactory.tryInitializeAndGetStatics();
-        assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, "DEFAULT_MODE", meta);
+        check &= DEFAULT_MODE == getConstantField(stackStreamFactory, statics, "DEFAULT_MODE", meta);
         if (meta.getJavaVersion().java21OrEarlier()) {
-            assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "FILL_CLASS_REFS_ONLY", meta);
-            assert GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, "GET_CALLER_CLASS", meta);
+            check &= FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "FILL_CLASS_REFS_ONLY", meta);
+            check &= GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, "GET_CALLER_CLASS", meta);
         } else {
-            assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "CLASS_INFO_ONLY", meta);
+            check &= FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "CLASS_INFO_ONLY", meta);
         }
-        assert SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, "SHOW_HIDDEN_FRAMES", meta);
-        assert FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, "FILL_LIVE_STACK_FRAMES", meta);
-        return true;
+        check &= SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, "SHOW_HIDDEN_FRAMES", meta);
+        check &= FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, "FILL_LIVE_STACK_FRAMES", meta);
+        return check;
     }
 
     private static int getConstantField(Klass stackStreamFactory, StaticObject statics, String name, Meta meta) {

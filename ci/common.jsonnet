@@ -239,6 +239,14 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    espresso:: {
+      downloads+: {
+       EXTRA_JAVA_HOMES+: {
+                pathlist+: [jdks_data["oraclejdk21"], jdks_data["oraclejdk25"]],
+           }
+       }
+    },
+
     sulong:: self.cmake + {
       packages+: if self.os == "windows" then {
         msvc_source: "==14.0",

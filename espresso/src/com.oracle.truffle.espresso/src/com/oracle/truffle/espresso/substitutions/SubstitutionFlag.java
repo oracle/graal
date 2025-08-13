@@ -59,6 +59,12 @@ public final class SubstitutionFlag {
      */
     public static final byte needsSignatureMangle = 0b00000100;
 
+    /**
+     * Whether to relax type checks in the substitution processor. Used for substitutions in
+     * libnespresso.
+     */
+    public static final byte relaxTypeChecks = 0b00001000;
+
     private SubstitutionFlag() {
     }
 }

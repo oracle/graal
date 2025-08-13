@@ -68,6 +68,10 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
+import com.oracle.truffle.espresso.ffi.NoNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -145,7 +149,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
+    @CompilationFinal private boolean enableNetworking;
     @CompilationFinal private boolean continuum;
+    @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;
     @CompilationFinal private int maxStackTraceDepth;
     // endregion Options
@@ -261,6 +267,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
         this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        boolean userEnableNetworking = env.getOptions().get((EspressoOptions.enableNetworking));
+        if (userEnableNetworking && !env.isSocketIOAllowed()) {
+            throw EspressoError.shouldNotReachHere("Socket IO is not allowed, but Espresso networking is enabled.");
+        }
+        this.enableNetworking = userEnableNetworking;
+        this.nativeBackendId = setNativeBackendId(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -321,6 +333,33 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         languageCache.importFrom(other.getLanguageCache());
     }
 
+    private static String setNativeBackendId(final TruffleLanguage.Env env) {
+        boolean isAllowed = env.isNativeAccessAllowed();
+        // if the Env allows, this might be overwritten.
+        String nativeBackend = NoNativeAccess.Provider.ID;
+        if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
+            String userNativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
+            if (!isAllowed && !userNativeBackend.equals(nativeBackend)) {
+                throw EspressoError.fatal("trying to set NativeBackend even though NativeAccess is disabled");
+            }
+            return userNativeBackend;
+
+        } else if (isAllowed) {
+            // Pick a sane "default" native backend depending on the platform.
+            boolean isInPreInit = (boolean) env.getConfig().getOrDefault("preinit", false);
+            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
+                if (OS.getCurrent() == OS.Linux) {
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else {
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
+                }
+            } else {
+                nativeBackend = NFINativeAccess.Provider.ID;
+            }
+        }
+        return nativeBackend;
+    }
+
     @Override
     protected boolean patchContext(EspressoContext context, Env newEnv) {
         // This check has to be done manually as long as language uses exclusive context sharing
@@ -354,6 +393,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.NativeBackend) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
 
@@ -598,6 +638,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean useEspressoLibs() {
         return useEspressoLibs;
+    }
+
+    public String nativeBackendId() {
+        return nativeBackendId;
+    }
+
+    public boolean enableNetworking() {
+        return enableNetworking;
     }
 
     public boolean isContinuumEnabled() {

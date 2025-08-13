@@ -22,12 +22,16 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -133,6 +137,40 @@ public final class Target_java_lang_ClassLoader {
         System.arraycopy(bytes, off, buf, 0, len);
 
         return ctx.getVM().defineClass(type, loader, pd, buf);
+    }
+
+    @Substitution
+    @TruffleBoundary
+    public static @JavaType(Class.class) StaticObject defineClass2(@JavaType(ClassLoader.class) StaticObject loader, @JavaType(String.class) StaticObject name,
+                    @JavaType(ByteBuffer.class) StaticObject data, int off, int len,
+                    @JavaType(ProtectionDomain.class) StaticObject pd,
+                    // TODO: source unused
+                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject source,
+                    @Inject EspressoContext ctx) {
+        if (StaticObject.isNull(data)) {
+            throw ctx.getMeta().throwNullPointerException();
+        }
+        if (len < 0) {
+            throw ctx.getMeta().throwArrayIndexOutOfBounds(len);
+        }
+        if (off < 0) {
+            throw ctx.getMeta().throwArrayIndexOutOfBounds(off);
+        }
+        // retrieve the GuestBuffer as Array
+        @Pointer
+        TruffleObject dataAddrPointer = ctx.getJNI().GetDirectBufferAddress(data);
+        long rawDataPtr = NativeUtils.interopAsPointer(dataAddrPointer);
+        byte[] buf = new byte[len];
+        // reads the memory in the buffer
+        ctx.getNativeAccess().nativeMemory().readMemory(rawDataPtr + off, len, buf);
+
+        Symbol<Type> type = null;
+        if (StaticObject.notNull(name)) {
+            type = ctx.getVM().nameToInternal(toSlashName(ctx.getMeta().toHostString(name)));
+        }
+
+        return ctx.getVM().defineClass(type, loader, pd, buf);
+
     }
 
     private static String toSlashName(String name) {

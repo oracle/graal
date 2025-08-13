@@ -29,6 +29,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.io.TruffleIO;
+import com.oracle.truffle.espresso.libs.JNU;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -77,7 +79,7 @@ public final class Target_java_lang_System {
 
         @Substitution
         @TruffleBoundary
-        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx) {
+        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io, @Inject JNU jnu) {
             // Import properties from host.
             Props props = new Props(ctx);
             String[] known = new String[props.fixedLength];
@@ -85,9 +87,13 @@ public final class Target_java_lang_System {
             known[props.userDirNdx] = java.lang.System.getProperty("user.dir");
             known[props.userNameNdx] = java.lang.System.getProperty("user.name");
 
-            known[props.sunJnuEncodingNdx] = java.lang.System.getProperty("sun.jnu.encoding");
-            known[props.fileEncodingNdx] = java.lang.System.getProperty("file.encoding");
-
+            known[props.sunJnuEncodingNdx] = jnu.getCharSet().toString();
+            if (ctx.getJavaVersion().java21OrEarlier()) {
+                known[props.fileEncodingNdx] = java.lang.System.getProperty("file.encoding");
+            }
+            if (ctx.getJavaVersion().java25OrLater()) {
+                known[props.nativeEncodingNDX] = java.lang.System.getProperty("native.encoding");
+            }
             known[props.stdoutEncodingNdx] = java.lang.System.getProperty("stdout.encoding");
             known[props.stderrEncodingNdx] = java.lang.System.getProperty("stderr.encoding");
 
@@ -95,8 +101,8 @@ public final class Target_java_lang_System {
             known[props.osArchNdx] = java.lang.System.getProperty("os.arch");
             known[props.osVersionNdx] = java.lang.System.getProperty("os.version");
             known[props.lineSeparatorNdx] = java.lang.System.getProperty("line.separator");
-            known[props.fileSeparatorNdx] = java.lang.System.getProperty("file.separator");
-            known[props.pathSeparatorNdx] = java.lang.System.getProperty("path.separator");
+            known[props.fileSeparatorNdx] = String.valueOf(io.getFileSeparator());
+            known[props.pathSeparatorNdx] = String.valueOf(io.getPathSeparator());
 
             known[props.javaIoTmpdirNdx] = java.lang.System.getProperty("java.io.tmpdir");
             known[props.httpProxyHostNdx] = java.lang.System.getProperty("http.proxyHost");
@@ -143,6 +149,7 @@ public final class Target_java_lang_System {
             private final int displayLanguageNdx;
             private final int displayScriptNdx;
             private final int displayVariantNdx;
+            // only in 21-
             private final int fileEncodingNdx;
             private final int fileSeparatorNdx;
             private final int formatCountryNdx;
@@ -163,6 +170,8 @@ public final class Target_java_lang_System {
             private final int osNameNdx;
             private final int osVersionNdx;
             private final int pathSeparatorNdx;
+            // only in 25+
+            private final int nativeEncodingNDX;
             private final int socksNonProxyHostsNdx;
             private final int socksProxyHostNdx;
             private final int socksProxyPortNdx;
@@ -186,7 +195,16 @@ public final class Target_java_lang_System {
                 displayLanguageNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_display_language_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 displayScriptNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_display_script_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 displayVariantNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_display_variant_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
-                fileEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_file_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
+                if (ctx.getJavaVersion().java21OrEarlier()) {
+                    fileEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_file_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
+                } else {
+                    fileEncodingNdx = -1;
+                }
+                if (ctx.getJavaVersion().java25OrLater()) {
+                    nativeEncodingNDX = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_native_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
+                } else {
+                    nativeEncodingNDX = -1;
+                }
                 fileSeparatorNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_file_separator_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 formatCountryNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_format_country_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 formatLanguageNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_format_language_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());

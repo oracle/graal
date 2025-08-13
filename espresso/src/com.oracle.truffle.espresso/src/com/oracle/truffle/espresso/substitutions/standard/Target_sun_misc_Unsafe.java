@@ -40,9 +40,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -52,8 +49,8 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.ffi.Buffer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
@@ -87,7 +84,9 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions(nameProvider = Target_sun_misc_Unsafe.SharedUnsafe.class)
 public final class Target_sun_misc_Unsafe {
 
-    /** The value of {@code addressSize()}. */
+    /**
+     * The value of {@code addressSize()}.
+     */
     public static final int ADDRESS_SIZE;
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
@@ -441,32 +440,23 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see GetByte
      * @see PutByte
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long allocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long length, @Inject Meta meta) {
+
         if (length < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
-        @Buffer
-        TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
-        if (buffer == null && length > 0) {
+        long address = meta.getNativeAccess().nativeMemory().allocateMemory(length);
+        if (address == 0L && length > 0) {
             // malloc may return anything for 0-sized allocations.
             throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
         }
-        long ptr;
-        try {
-            ptr = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        return ptr;
+        return address;
     }
 
     /**
@@ -479,9 +469,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see #allocateMemory
      */
     @TruffleBoundary
@@ -490,17 +478,9 @@ public final class Target_sun_misc_Unsafe {
         if (newSize < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
-        @Buffer
-        TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
-        if (result == null) {
+        long newAddress = meta.getNativeAccess().nativeMemory().reallocateMemory(address, newSize);
+        if (newAddress == 0L) {
             throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
-        }
-        long newAddress;
-        try {
-            newAddress = InteropLibrary.getUncached().asPointer(result);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
         }
         return newAddress;
     }
@@ -515,7 +495,7 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void freeMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject Meta meta) {
-        meta.getNativeAccess().freeMemory(RawPointer.create(address));
+        meta.getNativeAccess().nativeMemory().freeMemory(address);
     }
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -541,11 +521,33 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void copyMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
-                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject EspressoLanguage language, @Inject Meta meta) {
+                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject EspressoLanguage language, @Inject Meta meta, @Inject EspressoContext context) {
         if (bytes == 0) {
             return;
         }
-        UnsafeAccess.getIfAllowed(meta).copyMemory(MetaUtil.unwrapArrayOrNull(language, srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(language, destBase), destOffset, bytes);
+        // If we are doing off-heap accesses use nativeMemory
+        Object src = MetaUtil.unwrapArrayOrNull(language, srcBase);
+        Object dest = MetaUtil.unwrapArrayOrNull(language, destBase);
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        if (src == null && dest == null) {
+            nativeMemory.copyMemory(srcOffset, destOffset, bytes, MemoryAccessMode.VOLATILE);
+            return;
+        }
+        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
+        int byteArrayBaseOffset = unsafe.arrayBaseOffset(byte[].class);
+        if (src == null) {
+            byte[] srcArray = new byte[Math.toIntExact(bytes)];
+            nativeMemory.readMemory(srcOffset, bytes, srcArray);
+            unsafe.copyMemory(srcArray, byteArrayBaseOffset, dest, destOffset, bytes);
+            return;
+        }
+        if (dest == null) {
+            byte[] buff = new byte[Math.toIntExact(bytes)];
+            unsafe.copyMemory(src, srcOffset, buff, byteArrayBaseOffset, bytes);
+            nativeMemory.writeMemory(destOffset, bytes, buff);
+            return;
+        }
+        unsafe.copyMemory(src, srcOffset, dest, destOffset, bytes);
     }
 
     @Substitution(hasReceiver = true)
@@ -590,17 +592,19 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void setMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
-                    @Inject Meta meta, @Inject EspressoLanguage language) {
+                    @Inject Meta meta, @Inject EspressoLanguage language, @Inject EspressoContext ctx) {
+        // If we are doing off-heap accesses use nativeMemory
         Object hostObject;
         if (StaticObject.isNull(o)) {
-            hostObject = null;
+            ctx.getNativeAccess().nativeMemory().setMemory(offset, bytes, value);
         } else if (o.getKlass().isArray()) {
+
             hostObject = o.unwrap(language);
+            UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
-        UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
     }
 
     /**
@@ -768,7 +772,6 @@ public final class Target_sun_misc_Unsafe {
      * calling from native code.
      *
      * @param thread the thread to unpark.
-     *
      */
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
@@ -865,7 +868,6 @@ public final class Target_sun_misc_Unsafe {
      *
      * @param loadavg an array of double of size nelems
      * @param nelems the number of samples to be retrieved and must be 1 to 3.
-     *
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -945,11 +947,24 @@ public final class Target_sun_misc_Unsafe {
             return StaticObject.isNull(object) || object.isArray(); // order matters
         }
 
+        protected static boolean isNull(StaticObject object) {
+            return StaticObject.isNull(object);
+        }
+
+        protected static boolean isArray(StaticObject object) {
+            return !StaticObject.isNull(object) && object.isArray(); // order matters
+        }
+
         protected static Object unwrapNullOrArray(EspressoLanguage language, StaticObject object) {
             assert isNullOrArray(object);
             if (StaticObject.isNull(object)) {
                 return null;
             }
+            return object.unwrap(language);
+        }
+
+        protected static Object unwrapArray(EspressoLanguage language, StaticObject object) {
+            assert isArray(object);
             return object.unwrap(language);
         }
     }
@@ -970,7 +985,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByte(address, value);
+            getNativeAccess().nativeMemory().putByte(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -982,7 +997,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putChar(address, value);
+            getNativeAccess().nativeMemory().putChar(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -994,11 +1009,13 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putShort(address, value);
+            getNativeAccess().nativeMemory().putShort(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class PutInt extends UnsafeAccessNode {
@@ -1007,7 +1024,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putInt(address, value);
+            getNativeAccess().nativeMemory().putInt(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -1019,7 +1036,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putFloat(address, value);
+            getNativeAccess().nativeMemory().putFloat(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -1031,7 +1048,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putDouble(address, value);
+            getNativeAccess().nativeMemory().putDouble(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -1043,7 +1060,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putLong(address, value);
+            getNativeAccess().nativeMemory().putLong(address, value, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -1063,9 +1080,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutByteWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByte(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+            getNativeAccess().nativeMemory().putByte(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putByte(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1143,9 +1165,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutBooleanWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putBoolean(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+            getNativeAccess().nativeMemory().putBoolean(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putBoolean(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1182,8 +1209,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutCharWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+            getNativeAccess().nativeMemory().putChar(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
             UnsafeAccess.getIfAllowed(getMeta()).putChar(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1221,8 +1253,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutShortWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+            getNativeAccess().nativeMemory().putShort(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
             UnsafeAccess.getIfAllowed(getMeta()).putShort(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1260,8 +1297,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutIntWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+            getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
             UnsafeAccess.getIfAllowed(getMeta()).putInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1299,8 +1341,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutFloatWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+            getNativeAccess().nativeMemory().putFloat(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
             UnsafeAccess.getIfAllowed(getMeta()).putFloat(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1338,8 +1385,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutDoubleWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+            getNativeAccess().nativeMemory().putDouble(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
             UnsafeAccess.getIfAllowed(getMeta()).putDouble(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1377,8 +1429,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutLongWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+            getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
             UnsafeAccess.getIfAllowed(getMeta()).putLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1422,8 +1479,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutOrderedInt extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+            getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.RELEASE_ACQUIRE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1461,8 +1523,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutOrderedLong extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+            getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.RELEASE_ACQUIRE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1501,8 +1568,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value) {
+            throw EspressoError.shouldNotReachHere("put*Object to native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
@@ -1552,8 +1625,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetByteWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        @Specialization(guards = "isNull(holder)")
+        byte doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getByte(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        byte doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getByte(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
@@ -1594,9 +1672,16 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetObjectWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        StaticObject doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset) {
+            throw EspressoError.shouldNotReachHere("get*Object from native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        @JavaType(Object.class)
+        StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObject(unwrapNullOrArray(getLanguage(), holder), offset);
         }
@@ -1638,8 +1723,13 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetBooleanWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        @Specialization(guards = "isNull(holder)")
+        boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getBoolean(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getBoolean(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
@@ -1680,9 +1770,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetCharWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getChar(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        char doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getChar(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        char doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getChar(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1722,9 +1817,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetShortWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShort(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        short doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getShort(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        short doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getShort(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1764,9 +1864,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetIntWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getInt(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        int doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getInt(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        int doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getInt(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1806,9 +1911,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetFloatWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        float doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getFloat(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        float doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1848,9 +1958,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetDoubleWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        double doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getDouble(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        double doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1890,9 +2005,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetLongWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLong(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        long doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getLong(offset, MemoryAccessMode.PLAIN);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        long doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getLong(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1936,9 +2056,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetByteVolatileWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        byte doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getByte(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        byte doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getByteVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1978,11 +2103,18 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetObjectVolatileWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        StaticObject doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
-            return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+            throw EspressoError.shouldNotReachHere("get*Object from native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        @JavaType(Object.class)
+        StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset) {
+            return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObjectVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2023,9 +2155,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getBoolean(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getBooleanVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2065,9 +2202,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetCharVolatileWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        char doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getChar(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        char doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getCharVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2107,9 +2249,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetShortVolatileWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        short doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getShort(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        short doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getShortVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2149,9 +2296,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetIntVolatileWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        int doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getInt(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        int doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getIntVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2191,9 +2343,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetFloatVolatileWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        float doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getFloat(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        float doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getFloatVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2233,9 +2390,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        double doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getDouble(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        double doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getDoubleVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2275,9 +2437,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetLongVolatileWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        long doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return getNativeAccess().nativeMemory().getLong(offset, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        long doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+            return UnsafeAccess.getIfAllowed(getMeta()).getLongVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2323,7 +2490,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         byte doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getByte(address);
+            return getNativeAccess().nativeMemory().getByte(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2335,7 +2502,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         char doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getChar(address);
+            return getNativeAccess().nativeMemory().getChar(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2347,11 +2514,13 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         short doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShort(address);
+            return getNativeAccess().nativeMemory().getShort(address, MemoryAccessMode.PLAIN);
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class GetInt extends UnsafeAccessNode {
@@ -2360,7 +2529,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         int doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getInt(address);
+            return getNativeAccess().nativeMemory().getInt(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2372,7 +2541,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         float doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(address);
+            return getNativeAccess().nativeMemory().getFloat(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2384,7 +2553,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         double doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(address);
+            return getNativeAccess().nativeMemory().getDouble(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2396,7 +2565,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization
         long doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLong(address);
+            return getNativeAccess().nativeMemory().getLong(address, MemoryAccessMode.PLAIN);
         }
     }
 
@@ -2410,9 +2579,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutByteVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+            getNativeAccess().nativeMemory().putByte(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putByteVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2450,10 +2624,16 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+            throw EspressoError.shouldNotReachHere("putObject* to native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putObjectVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2491,9 +2671,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+            getNativeAccess().nativeMemory().putBoolean(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putBooleanVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2530,9 +2715,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutCharVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+            getNativeAccess().nativeMemory().putChar(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putCharVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2569,9 +2759,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutShortVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+            getNativeAccess().nativeMemory().putShort(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putShortVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2608,9 +2803,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutIntVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+            getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putIntVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2647,9 +2847,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutFloatVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+            getNativeAccess().nativeMemory().putFloat(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putFloatVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2686,9 +2891,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+            getNativeAccess().nativeMemory().putDouble(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putDoubleVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2725,9 +2935,14 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutLongVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+            getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.VOLATILE);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+            UnsafeAccess.getIfAllowed(getMeta()).putLongVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2769,10 +2984,16 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapObject(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            throw EspressoError.shouldNotReachHere("CAS reference to native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
+            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2811,10 +3032,16 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            return getNativeAccess().nativeMemory().compareAndSetInt(offset, before, after);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after) {
+            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2861,10 +3088,16 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapLong(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            return getNativeAccess().nativeMemory().compareAndSetLong(offset, before, after);
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after) {
+            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapLong(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2926,13 +3159,21 @@ public final class Target_sun_misc_Unsafe {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        StaticObject doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
+            throw EspressoError.shouldNotReachHere("CAS reference on native memory");
+        }
+
+        @Specialization(guards = "isArray(holder)")
+        @JavaType(Object.class)
+        StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
             UnsafeAccess.checkAllowed(getMeta());
-            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2976,11 +3217,16 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
+        int doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after) {
+            return getNativeAccess().nativeMemory().compareAndExchangeInt(offset, before, after);
+        }
+
+        @Specialization(guards = "isArray(holder)")
         int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            return UnsafeSupport.compareAndExchangeInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")

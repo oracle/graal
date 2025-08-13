@@ -111,6 +111,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         }
     }
 
+    public Runtime.Version toRunTimeVersion() {
+        return Runtime.Version.parse(toString());
+    }
+
     private static JavaVersion forVersion(Runtime.Version version) {
         return forVersion(version.feature());
     }

@@ -89,9 +89,6 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
@@ -102,6 +99,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.JNU;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -203,6 +203,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
     @CompilationFinal private TruffleIO truffleIO = null;
     @CompilationFinal private LibsState libsState = null;
+    @CompilationFinal private LibsMeta libsMeta = null;
+    @CompilationFinal private JNU jnu = null;
+    @CompilationFinal private InformationLeak informationLeak = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -404,6 +407,18 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return libsState;
     }
 
+    public LibsMeta getLibsMeta() {
+        return libsMeta;
+    }
+
+    public JNU getJNU() {
+        return jnu;
+    }
+
+    public InformationLeak getInformationLeak() {
+        return informationLeak;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -435,6 +450,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                 }
             } else {
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
+            }
+
+            if (getJavaVersion().java20OrEarlier() && getLanguage().useEspressoLibs()) {
+                throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
             }
 
             // Spawn JNI first, then the VM.
@@ -480,8 +499,11 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
                 this.truffleIO = new TruffleIO(this);
-                this.libsState = new LibsState();
+                this.libsMeta = new LibsMeta(this);
+                this.libsState = new LibsState(this, libsMeta);
+                this.informationLeak = new InformationLeak(this);
             }
+            this.jnu = new JNU();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 initializeKnownClass(Types.java_lang_Object);
@@ -573,6 +595,13 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             meta.postSystemInit();
+            if (language.useEspressoLibs()) {
+                truffleIO.postSystemInit();
+                libsMeta.postSystemInit();
+            }
+            if (getLanguage().useEspressoLibs()) {
+                getLibsMeta().postSystemInit();
+            }
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
             // capable java agent is present
@@ -770,23 +799,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     }
 
     private NativeAccess spawnNativeAccess() {
-        String nativeBackend;
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
-            nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
-        } else {
-            // Pick a sane "default" native backend depending on the platform.
-            boolean isInPreInit = (boolean) getEnv().getConfig().getOrDefault("preinit", false);
-            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
-                if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
-                } else {
-                    nativeBackend = NFISulongNativeAccess.Provider.ID;
-                }
-            } else {
-                nativeBackend = NFINativeAccess.Provider.ID;
-            }
-        }
-
+        String nativeBackend = language.nativeBackendId();
         List<String> available = new ArrayList<>();
         for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());

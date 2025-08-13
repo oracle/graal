@@ -158,7 +158,7 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_standalones_dry_run(os)
   ],
 
-  full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm,
+  full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm + graal_common.deps.espresso,
 
   graalvm_complete_build_deps(edition, os, arch, java_version, espresso_java_version=25, espresso_extra_java_version=[21]):
       local java_deps(edition) = {

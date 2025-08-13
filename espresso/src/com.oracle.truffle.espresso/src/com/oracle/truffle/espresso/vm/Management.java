@@ -63,6 +63,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.NativeEnv;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -196,6 +197,19 @@ public final class Management extends NativeEnv {
             threadMXBean = ManagementFactory.getThreadMXBean();
         }
         return threadMXBean;
+    }
+
+    public void initOptionalSupportFields(LibsMeta libsMeta) {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        StaticObject staticObject = libsMeta.management.sun_management_VMManagementImpl.tryInitializeAndGetStatics();
+        libsMeta.management.sun_management_VMManagementImpl_compTimeMonitoringSupport.setBoolean(staticObject, false);
+        libsMeta.management.sun_management_VMManagementImpl_threadContentionMonitoringSupport.setBoolean(staticObject, false);
+        libsMeta.management.sun_management_VMManagementImpl_currentThreadCpuTimeSupport.setBoolean(staticObject, hostBean.isCurrentThreadCpuTimeSupported());
+        libsMeta.management.sun_management_VMManagementImpl_otherThreadCpuTimeSupport.setBoolean(staticObject, hostBean.isThreadCpuTimeSupported());
+        libsMeta.management.sun_management_VMManagementImpl_threadAllocatedMemorySupport.setBoolean(staticObject, false);
+        libsMeta.management.sun_management_VMManagementImpl_remoteDiagnosticCommandsSupport.setBoolean(staticObject, false);
+        libsMeta.management.sun_management_VMManagementImpl_objectMonitorUsageSupport.setBoolean(staticObject, false);
+        libsMeta.management.sun_management_VMManagementImpl_synchronizerUsageSupport.setBoolean(staticObject, false);
     }
 
     /**

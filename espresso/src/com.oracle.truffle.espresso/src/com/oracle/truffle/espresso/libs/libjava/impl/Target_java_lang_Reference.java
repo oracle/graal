@@ -53,4 +53,9 @@ public final class Target_java_lang_Reference {
     public static @JavaType(Reference.class) StaticObject getAndClearReferencePendingList(@Inject EspressoContext ctx) {
         return ctx.getVM().JVM_GetAndClearReferencePendingList();
     }
+
+    @Substitution(hasReceiver = true)
+    public static void clear0(@JavaType(Reference.class) StaticObject self, @Inject VM vm, @Inject SubstitutionProfiler profiler) {
+        vm.JVM_ReferenceClear(self, profiler);
+    }
 }
