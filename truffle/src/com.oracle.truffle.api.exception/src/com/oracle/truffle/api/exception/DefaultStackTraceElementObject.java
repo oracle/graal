@@ -43,6 +43,7 @@ package com.oracle.truffle.api.exception;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -52,12 +53,19 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(InteropLibrary.class)
 final class DefaultStackTraceElementObject implements TruffleObject {
 
+    private static final String BYTECODE_INDEX = "bytecode-index";
+    static final String HOST = "host";
+    private static final String INTERNAL = "internal";
+    private static final String LANGUAGE_ID = "language-id";
+
     private final RootNode rootNode;
     private final SourceSection sourceSection;
+    private final int byteCodeIndex;
 
-    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection, int byteCodeIndex) {
         this.rootNode = rootNode;
         this.sourceSection = sourceSection;
+        this.byteCodeIndex = byteCodeIndex;
     }
 
     @ExportMessage
@@ -101,5 +109,34 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     @SuppressWarnings("static-method")
     Object getDeclaringMetaObject() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method", "unused"})
+    Object getMembers(boolean includeInternal) {
+        return new InteropList(BYTECODE_INDEX, HOST, INTERNAL, LANGUAGE_ID);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String member) {
+        return BYTECODE_INDEX.equals(member) || HOST.equals(member) || INTERNAL.equals(member) || LANGUAGE_ID.equals(member);
+    }
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        return switch (member) {
+            case BYTECODE_INDEX -> byteCodeIndex;
+            case HOST -> false;
+            case INTERNAL -> rootNode.isInternal();
+            case LANGUAGE_ID -> rootNode.getLanguageInfo().getId();
+            default -> throw UnknownIdentifierException.create(member);
+        };
     }
 }

@@ -57,7 +57,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +67,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -156,7 +154,6 @@ final class EngineAccessor extends Accessor {
     static final StringsSupport STRINGS = ACCESSOR.stringsSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
-    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
     static final BytecodeSupport BYTECODE = ACCESSOR.bytecodeSupport();
@@ -1922,14 +1919,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
-            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(engine, hostStack, guestFrames, inHostLanguage, includeHostFrames,
-                            hostFrameConvertor, guestFrameConvertor);
-        }
-
-        @Override
         public boolean isHostToGuestRootNode(RootNode root) {
             return root instanceof HostToGuestRootNode;
         }
@@ -2396,6 +2385,30 @@ final class EngineAccessor extends Accessor {
             return context.getHostContext();
         }
 
+        public int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
+            if (engine.host == null) {
+                return -1;
+            }
+            return engine.host.findNextGuestToHostStackTraceElement(firstElement, hostStack, nextElementIndex);
+        }
+
+        @Override
+        public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
+            return PolyglotImpl.findInstance().getRootImpl().updateHostException(forException, hostException);
+        }
+
+        @Override
+        public void materializePolyglotException(RuntimeException polyglotException) {
+            PolyglotExceptionImpl impl = (PolyglotExceptionImpl) PolyglotImpl.findInstance().getAPIAccess().getPolyglotExceptionReceiver(polyglotException);
+            impl.materialize();
+        }
+
+        @Override
+        public boolean isGuestToHostRootNode(Object polyglotEngineImpl, RootNode rootNode) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
+            return engine.host != null && engine.host.isGuestToHostRootNode(rootNode);
+        }
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {

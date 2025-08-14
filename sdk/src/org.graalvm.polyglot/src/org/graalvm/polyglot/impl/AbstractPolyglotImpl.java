@@ -1060,8 +1060,7 @@ public abstract class AbstractPolyglotImpl {
             return allowsPublicAccess();
         }
 
-        public abstract Exception materializeHostException();
-
+        public abstract boolean isGuestToHostRootNode(Object rootNode);
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
@@ -1449,6 +1448,10 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public void validateVirtualThreadCreation(OptionValues engineOptions) {
+    }
+
+    public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
+        return getNext().updateHostException(forException, hostException);
     }
 
     /**

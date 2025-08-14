@@ -684,9 +684,6 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
-
         public abstract boolean isHostToGuestRootNode(RootNode root);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
@@ -849,6 +846,13 @@ public abstract class Accessor {
 
         public abstract Object getHostLanguageContext(Object internalContext);
 
+        public abstract int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
+        public abstract <T extends Throwable> T updateHostException(Throwable forException, T hostException);
+
+        public abstract void materializePolyglotException(RuntimeException exception);
+
+        public abstract boolean isGuestToHostRootNode(Object polyglotEngineImpl, RootNode rootNode);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -925,7 +929,7 @@ public abstract class Accessor {
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 
-        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t, boolean reserveElementsForLazyFrames);
+        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
         public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
 
@@ -990,8 +994,6 @@ public abstract class Accessor {
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
         public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck, boolean forNativeImageBuild);
-
-        public abstract void fillInForeignException(Throwable truffleException, StackTraceElement[] hostStack);
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -1125,7 +1127,7 @@ public abstract class Accessor {
 
         public abstract void setLazyStackTrace(Throwable exception, Throwable stackTrace);
 
-        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
+        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection, int byteCodeIndex);
 
         public abstract boolean isException(Object receiver);
 
@@ -1149,6 +1151,10 @@ public abstract class Accessor {
 
         public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
+        public abstract boolean hasInternalExceptionStackTrace(Object receiver);
+
+        public abstract Object getExceptionInternalStackTrace(Object receiver, Object polyglotContext);
+
         public abstract boolean hasSourceLocation(Object receiver);
 
         public abstract SourceSection getSourceLocation(Object receiver);
@@ -1159,6 +1165,8 @@ public abstract class Accessor {
 
         public abstract boolean assertGuestObject(Object guestObject);
 
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
     }
 
     public abstract static class IOSupport extends Support {

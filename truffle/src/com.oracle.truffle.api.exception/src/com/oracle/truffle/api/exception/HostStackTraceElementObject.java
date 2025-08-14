@@ -45,6 +45,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -128,5 +129,32 @@ final class HostStackTraceElementObject implements TruffleObject {
             return instance == HostStackTraceElementObject.this;
         }
 
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method", "unused"})
+    Object getMembers(boolean includeInternal) {
+        return new InteropList(DefaultStackTraceElementObject.HOST);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String member) {
+        return DefaultStackTraceElementObject.HOST.equals(member);
+    }
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (DefaultStackTraceElementObject.HOST.equals(member)) {
+            return true;
+        } else {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 }

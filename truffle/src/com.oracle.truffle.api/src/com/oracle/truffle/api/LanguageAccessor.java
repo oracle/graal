@@ -121,12 +121,12 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public StackTraceElement[] getInternalStackTraceElements(Throwable t, boolean reserveElementsForLazyFrames) {
+        public StackTraceElement[] getInternalStackTraceElements(Throwable t) {
             TruffleStackTrace trace = ((TruffleStackTrace.LazyStackTrace) t).getInternalStackTrace();
             if (trace == null) {
                 return new StackTraceElement[0];
             } else {
-                return trace.getInternalStackTrace(reserveElementsForLazyFrames);
+                return trace.getInternalStackTrace();
             }
         }
 
@@ -590,11 +590,6 @@ final class LanguageAccessor extends Accessor {
         @Override
         public InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck, boolean forNativeImageBuild) {
             return new InternalResource.Env(resource, contextPreinitializationCheck, forNativeImageBuild);
-        }
-
-        @Override
-        public void fillInForeignException(Throwable truffleException, StackTraceElement[] hostStack) {
-            TruffleStackTrace.fillInForeign(truffleException, hostStack);
         }
     }
 

@@ -316,6 +316,14 @@ public final class JNIExceptionWrapper extends RuntimeException {
                     StackTraceElement[] hotSpotStackTrace,
                     StackTraceElement[] nativeStackTrace,
                     boolean originatedInHotSpot) {
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, ExceptionKind.THROWN, originatedInHotSpot);
+    }
+
+    public static StackTraceElement[] mergeStackTraces(
+                    StackTraceElement[] hotSpotStackTrace,
+                    StackTraceElement[] nativeStackTrace,
+                    ExceptionKind exceptionKind,
+                    boolean originatedInHotSpot) {
         if (originatedInHotSpot) {
             if (containsJNIHostCall(hotSpotStackTrace)) {
                 // Already merged
@@ -327,8 +335,12 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 return nativeStackTrace;
             }
         }
-        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, originatedInHotSpot ? 0 : getIndexOfTransitionToNativeFrame(hotSpotStackTrace),
-                        getIndexOfPropagateJNIExceptionFrame(nativeStackTrace), originatedInHotSpot);
+        int hotSpotStackStartIndex = originatedInHotSpot ? 0 : getIndexOfTransitionToNativeFrame(hotSpotStackTrace);
+        int nativeStackStartIndex = switch (exceptionKind) {
+            case THROWN -> getIndexOfPropagateJNIExceptionFrame(nativeStackTrace);
+            case RETURNED -> 0;
+        };
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, hotSpotStackStartIndex, nativeStackStartIndex, originatedInHotSpot);
     }
 
     /**
@@ -483,6 +495,20 @@ public final class JNIExceptionWrapper extends RuntimeException {
             if (isStackFrame(stackTrace[i], JNIExceptionWrapper.class, "wrapAndThrowPendingJNIException")) {
                 state = 1;
             } else if (state == 1) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Gets the index of the first frame of JNI call to host method.
+     *
+     * @return {@code 0} if no caller found
+     */
+    private static int getIndexOfJNIHostCall(StackTraceElement[] stackTrace) {
+        for (int i = 0; i < stackTrace.length - 1; i++) {
+            if (isJNIAPICall(stackTrace[i]) && isJNIHostCall(stackTrace[i + 1])) {
                 return i;
             }
         }
@@ -660,5 +686,22 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNI_TRANSITION_CLASS = JNICalls.class.getName();
         JNI_TRANSITION_METHODS = Set.copyOf(entryPoints.keySet());
         JNI_FUNCTION_POINTER_CLASS_PREFIX = JNI.class.getName() + '$';
+    }
+
+    /**
+     * Describes how an exception was delivered to the caller.
+     * <p>
+     * An exception may either be:
+     * <ul>
+     * <li>{@link #THROWN} - the exception is propagated using the Java {@code throw} statement and
+     * normal exception-handling semantics.</li>
+     * <li>{@link #RETURNED} - the exception is not thrown but instead returned as a regular
+     * value.</li>
+     * </ul>
+     * <p>
+     */
+    public enum ExceptionKind {
+        RETURNED,
+        THROWN
     }
 }
