@@ -44,6 +44,7 @@ package com.oracle.truffle.api.test.memory;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -55,6 +56,11 @@ public class ByteArraySupportTest {
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        // combination currently broken GR-68403
+        Assume.assumeFalse(TruffleTestAssumptions.isAOT() && TruffleTestAssumptions.isAarch64());
+
+        TruffleTestAssumptions.assumeNotAOT();
     }
 
     @Test
