@@ -404,19 +404,15 @@ public abstract class NativeImage extends AbstractImage {
         return data instanceof CEntryPointData && ((CEntryPointData) data).getPublishAs() == Publish.SymbolAndHeader;
     }
 
-    private ObjectFile.Symbol defineDataSymbol(String name, Element section, long position) {
-        return objectFile.createDefinedSymbol(name, section, position, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+    private void defineDataSymbol(String name, Element section, long position) {
+        objectFile.createDefinedSymbol(name, section, position, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
     }
 
-    private ObjectFile.Symbol defineRelocationForSymbol(String name, long position) {
-        ObjectFile.Symbol symbol = null;
-        if (objectFile.getSymbolTable().getSymbol(name) == null) {
-            symbol = objectFile.createUndefinedSymbol(name, 0, true);
-        }
+    private void defineRelocationForSymbol(String name, long position) {
+        objectFile.createUndefinedSymbol(name, true);
         ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
         int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + position);
         baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, 0L);
-        return symbol;
     }
 
     public static String getTextSectionStartSymbol() {
@@ -741,7 +737,7 @@ public abstract class NativeImage extends AbstractImage {
             sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), addend);
             if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
                 if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
-                    objectFile.createUndefinedSymbol(data.symbolName, 0, true);
+                    objectFile.createUndefinedSymbol(data.symbolName, true);
                 }
                 ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
                 int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
