@@ -318,12 +318,23 @@ public class GraalTest {
      * @see "https://bugs.openjdk.java.net/browse/JDK-8076557"
      */
     public static void assumeManagementLibraryIsLoadable() {
+        Throwable unloadableReason = isManagementLibraryIsLoadable();
+        if (unloadableReason != null) {
+            throw new AssumptionViolatedException("Management interface is unavailable: " + unloadableReason);
+        }
+    }
+
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8076557"
+     */
+    public static Throwable isManagementLibraryIsLoadable() {
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             GraalServices.getCurrentThreadAllocatedBytes();
         } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
-            throw new AssumptionViolatedException("Management interface is unavailable: " + e);
+            return e;
         }
+        return null;
     }
 
     /**
