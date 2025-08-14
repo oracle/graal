@@ -439,13 +439,18 @@ class PolybenchBenchmarkSuite(
         polybench_args = ["--path=" + resolved_benchmark.absolute_path] + self.runArgs(bmSuiteArgs)
         return vm_args + [PolybenchBenchmarkSuite.POLYBENCH_MAIN] + polybench_args
 
+    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        """Delegates to the super implementation then injects engine.config into every datapoint."""
+        ret_code, out, dims = super().runAndReturnStdOut(benchmarks, bmSuiteArgs)
+        dims["engine.config"] = self._get_mode(bmSuiteArgs)
+        return ret_code, out, dims
+
     def rules(self, output, benchmarks, bmSuiteArgs):
         metric_name = PolybenchBenchmarkSuite._get_metric_name(output)
         if metric_name is None:
             return []
         rules = []
         benchmark_name = benchmarks[0]
-        mode = self._get_mode(bmSuiteArgs)
         if metric_name == "time":
             # For metric "time", two metrics are reported:
             # - "warmup" (per-iteration data for "warmup" and "run" iterations)
@@ -462,7 +467,6 @@ class PolybenchBenchmarkSuite(
                         "metric.type": "numeric",
                         "metric.score-function": "id",
                         "metric.iteration": ("$iteration", int),
-                        "engine.config": mode,
                     },
                 ),
                 ExcludeWarmupRule(
@@ -476,7 +480,6 @@ class PolybenchBenchmarkSuite(
                         "metric.type": "numeric",
                         "metric.score-function": "id",
                         "metric.iteration": ("<iteration>", int),
-                        "engine.config": mode,
                     },
                     startPattern=r"::: Running :::",
                 ),
@@ -494,7 +497,6 @@ class PolybenchBenchmarkSuite(
                         "metric.type": "numeric",
                         "metric.score-function": "id",
                         "metric.iteration": ("<iteration>", int),
-                        "engine.config": mode,
                     },
                     startPattern=r"::: Running :::",
                 )
@@ -512,7 +514,6 @@ class PolybenchBenchmarkSuite(
                         "metric.type": "numeric",
                         "metric.score-function": "id",
                         "metric.iteration": 0,
-                        "engine.config": mode,
                     },
                 )
             ]
@@ -531,7 +532,6 @@ class PolybenchBenchmarkSuite(
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": 0,
-                    "engine.config": mode,
                 },
             ),
             mx_benchmark.StdOutRule(
@@ -545,7 +545,6 @@ class PolybenchBenchmarkSuite(
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": 0,
-                    "engine.config": mode,
                 },
             ),
         ]
