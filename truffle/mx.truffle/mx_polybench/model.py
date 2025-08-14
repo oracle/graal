@@ -61,10 +61,35 @@ _validation_complete = False
 
 
 def validate_polybench_registrations():
-    for language in _polybench_language_registry.values():
-        language.validate()
-    for suite in _polybench_benchmark_suite_registry.values():
-        suite.validate()
+    """
+    Validates the static correctness of language and suite specifications.
+    If a language/suite specification is invalid (e.g., it refers to an
+    unresolved distribution), it will be ignored and made unavailable.
+
+    During registration, the `suppress_validation_warnings` argument can be
+    used to suppress warning messages.
+
+    Emitting suppressable warnings instead of aborting allows to register
+    languages and suites that cannot always run (e.g., you can register a
+    suite that is only available when a particular language is dynamically
+    imported).
+    """
+    for language_name, language in list(_polybench_language_registry.items()):
+        if invalid_reason := language.validate():
+            if not language.suppress_validation_warnings:
+                mx.warn(
+                    f'Validation of polybench language "{language.language}" failed, so it will be ignored. Reason: {invalid_reason}'
+                )
+            _polybench_language_registry.pop(language_name)
+
+    for suite_name, suite in list(_polybench_benchmark_suite_registry.items()):
+        if invalid_reason := suite.validate():
+            if not suite.suppress_validation_warnings:
+                mx.warn(
+                    f'Validation of polybench suite "{suite.name}" failed, so it will be ignored. Reason: {invalid_reason}'
+                )
+            _polybench_benchmark_suite_registry.pop(suite_name)
+
     global _validation_complete
     _validation_complete = True
 
@@ -85,23 +110,27 @@ class PolybenchLanguageEntry(NamedTuple):
     language: str
     distributions: List[str]
     native_distributions: List[str]
+    suppress_validation_warnings: bool
 
     def all_distributions(self):
         return self.distributions + self.native_distributions
 
-    def validate(self):
+    def validate(self) -> Optional[str]:
+        """Ensures this language can run. Returns an error string otherwise."""
         for distribution in self.all_distributions():
             resolved_distribution = mx.dependency(distribution, fatalIfMissing=False)
             if not resolved_distribution:
-                mx.abort(f"Distribution {distribution} declared by {self.language} could not be resolved.")
+                return f'distribution "{distribution}" could not be resolved.'
 
         for distribution in self.native_distributions:
             resolved_distribution = mx.dependency(distribution, fatalIfMissing=False)
             if not resolved_distribution.isLayoutDistribution():
-                mx.abort(
-                    f"Distribution {distribution} must be a layout distribution. "
+                return (
+                    f'native distribution "{distribution}" must be a layout distribution. '
                     'Use the "layout" attribute to specify the directory structure of the distribution.'
                 )
+
+        return None
 
 
 # A "polybench_run" function passed to the suite runner. It has the same input format as "mx polybench".
@@ -121,20 +150,23 @@ class PolybenchBenchmarkSuiteEntry(NamedTuple):
     benchmark_file_filter: Union[re.Pattern, Callable[[str], bool]]
     runner: Optional[PolybenchBenchmarkSuiteRunner]
     tags: Set[str]
+    suppress_validation_warnings: bool
 
-    def validate(self):
+    def validate(self) -> Optional[str]:
+        """Ensures this suite can run. Returns an error string otherwise."""
         for language in self.languages:
             if language not in _polybench_language_registry:
-                mx.abort(f"{self._description()} uses an unknown benchmark language '{language}'.")
+                return f'unknown benchmark language "{language}".'
         resolved_distribution = mx.dependency(self.benchmark_distribution, fatalIfMissing=False)
         if not resolved_distribution:
-            mx.abort(f"{self._description()} could not be resolved.")
+            return f'distribution "{self.benchmark_distribution}" could not be resolved.'
         if not resolved_distribution.isLayoutDistribution():
-            mx.abort(
-                f"{self._description()} is not a layout distribution. "
+            return (
+                f'distribution "{self.benchmark_distribution}" is not a layout distribution. '
                 "All polybench benchmark distributions must be layout distributions. "
                 'Use the "layout" attribute to specify the directory structure of the distribution.'
             )
+        return None
 
     def get_benchmark_files(self) -> Dict[str, "ResolvedPolybenchBenchmark"]:
         """
@@ -165,7 +197,7 @@ class PolybenchBenchmarkSuiteEntry(NamedTuple):
             return self.benchmark_file_filter(benchmark_file)
 
     def _description(self):
-        return f"Benchmark suite '{self.name}' (with distribution '{self.benchmark_distribution}', declared by suite '{self.mx_suite.name}')"
+        return f'Benchmark suite "{self.name}" (with distribution "{self.benchmark_distribution}", declared by suite "{self.mx_suite.name}")'
 
 
 class ResolvedPolybenchBenchmark(NamedTuple):
@@ -300,7 +332,7 @@ class PolybenchBenchmarkSuite(
         working_directory = self.workingDirectory(benchmarks, bmSuiteArgs) or os.getcwd()
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
 
-        mx.log(f"Running polybench benchmark '{resolved_benchmark.name}'.")
+        mx.log(f'Running polybench benchmark "{resolved_benchmark.name}"".')
         mx.logv(f"CWD: {working_directory}")
         mx.logv(f"Languages included on the classpath: {resolved_benchmark.suite.languages}")
 
@@ -637,6 +669,7 @@ def register_polybench_language(
     language: str,
     distributions: List[str],
     native_distributions: Optional[List[str]] = None,
+    suppress_validation_warnings: bool = False,
 ):
     """
     Registers a language for execution with polybench.
@@ -651,6 +684,7 @@ def register_polybench_language(
     :param native_distributions: An optional list of native distributions required to run the language. These
     distributions should be layout distributions with native libraries; their contents will be copied into the temporary
     working directory (i.e., the native libraries can be resolved as relative paths).
+    :param suppress_validation_warnings: Whether to suppress warning messages when the language specification does not validate.
     """
     check_late_registration(f"Polybench language {language}")
     if language in _polybench_language_registry:
@@ -659,6 +693,7 @@ def register_polybench_language(
         language=language,
         distributions=_qualify_distributions(mx_suite, distributions),
         native_distributions=_qualify_distributions(mx_suite, native_distributions or []),
+        suppress_validation_warnings=suppress_validation_warnings,
     )
     mx.logv(f"Registered polybench language {language}: {entry}")
     _polybench_language_registry[language] = entry
@@ -672,6 +707,7 @@ def register_polybench_benchmark_suite(
     benchmark_file_filter: Union[str, Callable[[str], bool]],
     runner: Optional[PolybenchBenchmarkSuiteRunner] = None,
     tags: Optional[Set[str]] = None,
+    suppress_validation_warnings: bool = False,
 ):
     """
     Registers a suite of polybench benchmarks. A polybench suite declares a distribution of benchmark files and the
@@ -694,6 +730,7 @@ def register_polybench_benchmark_suite(
     tags to determine which benchmarks to run, and runs them using the "polybench_run" function (which has the same
     input format as the "mx polybench" command).
     :param tags: The set of tags supported by the runner.
+    :param suppress_validation_warnings: Whether to suppress warning messages when the suite specification does not validate.
     """
     check_late_registration(f"Polybench benchmark suite {name}")
     if isinstance(benchmark_file_filter, str):
@@ -713,6 +750,7 @@ def register_polybench_benchmark_suite(
         benchmark_file_filter=compiled_file_filter,
         runner=runner,
         tags=tags if tags is not None else set(),
+        suppress_validation_warnings=suppress_validation_warnings,
     )
     if name in _polybench_benchmark_suite_registry:
         mx.abort(

@@ -174,7 +174,7 @@ def _run_suite(args):
     suite, tags = _get_suite_and_tags(args)
     if tags - suite.tags:
         mx.abort(
-            f"Requested tag(s) not available for suite '{suite}': {tags - suite.tags}. Available tags: {suite.tags}"
+            f'Requested tag(s) not available for suite "{suite}": {tags - suite.tags}. Available tags: {suite.tags}'
         )
 
     mx.log(f"Running suite {suite.name} with tags {tags}.")
