@@ -1213,7 +1213,7 @@ public class SnippetTemplate {
                 boolean needsPEA = false;
                 boolean needsCE = false;
                 LoweringTool.LoweringStage loweringStage = args.cacheKey.loweringStage;
-                boolean allowsFloatingReads = args.cacheKey.allowsFloatingReads;
+                final boolean allowsFloatingReads = args.cacheKey.allowsFloatingReads;
                 for (Node n : snippetCopy.getNodes()) {
                     if (!needsPEA && (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode)) {
                         needsPEA = true;
@@ -1247,7 +1247,6 @@ public class SnippetTemplate {
                 if (loweringStage != LoweringTool.StandardLoweringStage.HIGH_TIER) {
                     // (3)
                     assert !guardsStage.allowsFloatingGuards() : guardsStage;
-                    // Create memory map nodes
                     new FloatingReadPhase(true, allowsFloatingReads, canonicalizer).apply(snippetCopy, providers);
 
                     if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
