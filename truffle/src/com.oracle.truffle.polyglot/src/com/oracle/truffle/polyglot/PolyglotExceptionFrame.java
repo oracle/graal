@@ -40,21 +40,28 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
-    final PolyglotLanguage language;
+    private static final String BYTECODE_INDEX = "bytecode-index";
+    private static final String HOST = "host";
+    private static final String INTERNAL = "internal";
+    private static final String LANGUAGE_ID = "language-id";
+
+    private final PolyglotImpl polyglot;
+    private final Language language;
+    final String languageId;
     private final Object sourceLocation;
     private final String rootName;
     private final String executableName;
@@ -64,10 +71,15 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final String formattedSource;
     private final int bytecodeIndex;
 
-    private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
+    private PolyglotExceptionFrame(PolyglotExceptionImpl source, Language language,
                     Object sourceLocation, String rootName, String executableName, String metaQualifiedName, boolean isHost, StackTraceElement stackTrace, int bytecodeIndex) {
         super(source.polyglot);
+        this.polyglot = source.polyglot;
         this.language = language;
+        /*
+         * Materialize the language id eagerly to make it available even after isolate close.
+         */
+        this.languageId = language != null ? language.getId() : null;
         this.sourceLocation = sourceLocation;
         this.bytecodeIndex = bytecodeIndex;
         this.rootName = rootName;
@@ -95,11 +107,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     @Override
     public Object getLanguage() {
-        if (language != null) {
-            return language.engine.getAPIAccess().newLanguage(language.getImpl().languageDispatch, language, language.engine.getEngineAPI());
-        } else {
-            return null;
-        }
+        return language;
     }
 
     @Override
@@ -116,8 +124,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     public StackTraceElement toHostFrame() {
         if (stackTrace == null) {
             StringBuilder declaringClass = new StringBuilder();
-            if (language != null) {
-                declaringClass.append("<").append(language.getId()).append(">");
+            if (!host && language != null) {
+                declaringClass.append("<").append(languageId).append(">");
                 if (metaQualifiedName != null) {
                     declaringClass.append(" ");
                 }
@@ -132,7 +140,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
                 methodName = rootName == null ? "" : rootName;
             }
 
-            SourceSection sourceSection = sourceLocation != null ? (SourceSection) language.getAPIAccess().getSourceSectionReceiver(sourceLocation) : null;
+            SourceSection sourceSection = sourceLocation != null ? (SourceSection) polyglot.getAPIAccess().getSourceSectionReceiver(sourceLocation) : null;
             String fileName = sourceSection != null ? sourceSection.getSource().getName() : "Unknown";
             int startLine = sourceSection != null ? sourceSection.getStartLine() : -1;
             stackTrace = new StackTraceElement(declaringClass.toString(), methodName, fileName, startLine);
@@ -143,12 +151,12 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     @Override
     public String toStringImpl(int langColumn) {
         StringBuilder b = new StringBuilder();
-        String languageId;
-        if (isHostFrame()) {
-            languageId = "";
+        String useLanguageId;
+        if (isHostFrame() || language == null) {
+            useLanguageId = "";
         } else {
-            languageId = language.getId();
-            b.append(spaces(Math.max(langColumn, languageId.length()) - languageId.length())).append("<").append(languageId).append("> ");
+            useLanguageId = languageId;
+            b.append(spaces(Math.max(langColumn, useLanguageId.length()) - useLanguageId.length())).append("<").append(useLanguageId).append("> ");
         }
         if (isHostFrame()) {
             b.append(stackTrace.toString());
@@ -174,73 +182,90 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
 
-    static PolyglotExceptionFrame createGuest(PolyglotExceptionImpl exception, TruffleStackTraceElement frame) {
+    static PolyglotExceptionFrame create(PolyglotExceptionImpl exception, Object frame) {
         if (frame == null) {
             return null;
         }
-        RootNode targetRoot = frame.getTarget().getRootNode();
-        if (targetRoot.isInternal() && !exception.showInternalStackFrames) {
-            return null;
-        }
-
-        LanguageInfo info = targetRoot.getLanguageInfo();
-        if (info == null) {
-            return null;
-        }
-
-        PolyglotEngineImpl engine = exception.engine;
-        PolyglotLanguage language = null;
-        Object location = null;
         String metaQualifiedName = null;
         String executableName = null;
-        String rootName = targetRoot.getName();
-        if (engine != null) {
-            language = engine.idToLanguage.get(info.getId());
-            Object o = frame.getGuestObject();
-            if (INTEROP.hasDeclaringMetaObject(o)) {
+        Object location = null;
+        Language language = null;
+        boolean host = false;
+        int byteCodeIndex = -1;
+        if (INTEROP.hasMembers(frame)) {
+            if (INTEROP.isMemberReadable(frame, INTERNAL)) {
                 try {
-                    Object meta = INTEROP.getDeclaringMetaObject(o);
-                    metaQualifiedName = INTEROP.asString(INTEROP.getMetaQualifiedName(meta));
-                } catch (UnsupportedMessageException e) {
+                    boolean internal = INTEROP.asBoolean(INTEROP.readMember(frame, INTERNAL));
+                    if (internal && !exception.showInternalStackFrames) {
+                        return null;
+                    }
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
             }
-            if (INTEROP.hasExecutableName(o)) {
+            if (INTEROP.isMemberReadable(frame, LANGUAGE_ID)) {
+                String languageId;
                 try {
-                    executableName = INTEROP.asString(INTEROP.getExecutableName(o));
-                } catch (UnsupportedMessageException e) {
+                    languageId = INTEROP.asString(INTEROP.readMember(frame, LANGUAGE_ID));
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                if (exception.engine != null) {
+                    Engine engineAPI = exception.engine.getEngineAPIOrNull();
+                    if (engineAPI != null) {
+                        language = engineAPI.getLanguages().get(languageId);
+                    }
+                }
+            }
+            if (INTEROP.isMemberReadable(frame, BYTECODE_INDEX)) {
+                try {
+                    byteCodeIndex = INTEROP.asInt(INTEROP.readMember(frame, BYTECODE_INDEX));
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
             }
-            com.oracle.truffle.api.source.SourceSection section = null;
-            if (INTEROP.hasSourceLocation(o)) {
+            if (INTEROP.isMemberReadable(frame, HOST)) {
                 try {
-                    section = INTEROP.getSourceLocation(o);
-                } catch (UnsupportedMessageException e) {
+                    host = INTEROP.asBoolean(INTEROP.readMember(frame, HOST));
+                    if (host && exception.engine != null) {
+                        PolyglotEngineImpl polyglotEngine = exception.engine;
+                        language = exception.engine.apiAccess.newLanguage(polyglotEngine.getImpl().languageDispatch, polyglotEngine.hostLanguage, polyglotEngine.getEngineAPI());
+                    }
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
-            }
-
-            if (section != null) {
-                Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
-                location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
-            } else {
-                location = null;
             }
         }
-        return new PolyglotExceptionFrame(exception, language, location, rootName, executableName, metaQualifiedName, false, null, frame.getBytecodeIndex());
-    }
-
-    static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
-
-        // source section for the host language is currently null
-        // we should potentially in the future create a source section for the host language
-        // however it was not clear how a host language source section would consist of.
-        SourceSection location = null;
-
-        String rootname = hostStack.getClassName() + "." + hostStack.getMethodName();
-        return new PolyglotExceptionFrame(exception, language, location, rootname, hostStack.getClassName(), hostStack.getMethodName(), true, hostStack, -1);
+        if (INTEROP.hasDeclaringMetaObject(frame)) {
+            try {
+                Object meta = INTEROP.getDeclaringMetaObject(frame);
+                metaQualifiedName = INTEROP.asString(INTEROP.getMetaQualifiedName(meta));
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+        if (INTEROP.hasExecutableName(frame)) {
+            try {
+                executableName = INTEROP.asString(INTEROP.getExecutableName(frame));
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+        com.oracle.truffle.api.source.SourceSection section = null;
+        if (INTEROP.hasSourceLocation(frame)) {
+            try {
+                section = INTEROP.getSourceLocation(frame);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+        PolyglotEngineImpl engine = exception.engine;
+        if (engine != null && section != null) {
+            Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
+            location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
+        }
+        String rootName = metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
+        return new PolyglotExceptionFrame(exception, language, location, rootName, executableName, metaQualifiedName, host, null, byteCodeIndex);
     }
 
     private static String spaces(int length) {

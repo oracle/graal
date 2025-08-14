@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.Accessor.ExceptionSupport;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -419,6 +420,7 @@ public final class Debugger {
     }
 
     static final AccessorDebug ACCESSOR = new AccessorDebug();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
 
     static DebuggerInstrument.DebuggerFactory createFactory() {
         return new DebuggerInstrument.DebuggerFactory() {

@@ -331,4 +331,15 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     final void setLazyStackTrace(Throwable stackTrace) {
         this.lazyStackTrace = stackTrace;
     }
+
+    /**
+     * Creates the default interop representation of the stack trace for the given
+     * {@code throwable}. The returned object is suitable for use as the result of
+     * {@link InteropLibrary#getExceptionStackTrace(Object)}.
+     *
+     * @since 26.0
+     */
+    public static Object createDefaultExceptionStackTrace(Throwable throwable) {
+        return MergedHostGuestIterator.getExceptionStackTrace(throwable, null, false);
+    }
 }
