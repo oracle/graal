@@ -4803,7 +4803,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)15);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)16);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -5060,6 +5060,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredModule.Builder initLayeredModule() {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredModule.factory,14, 0);
       }
+      public final boolean hasCGlobals() {
+        return !_pointerFieldIsNull(15);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Builder> getCGlobals() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, null, 0);
+      }
+      public final void setCGlobals(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Builder> initCGlobals(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, size);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -5202,6 +5214,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredModule.Reader getLayeredModule() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredModule.factory,14,null, 0);
+      }
+
+      public final boolean hasCGlobals() {
+        return !_pointerFieldIsNull(15);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> getCGlobals() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, null, 0);
       }
 
     }
@@ -6052,6 +6071,307 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       D,
       _NOT_IN_SCHEMA,
     }
+  }
+
+
+  public static class CGlobalDataInfo {
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)2);
+    public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+        return CGlobalDataInfo.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+      Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final boolean getIsSymbolReference() {
+        return _getBooleanField(0);
+      }
+      public final void setIsSymbolReference(boolean value) {
+        _setBooleanField(0, value);
+      }
+
+      public final boolean getIsGlobalSymbol() {
+        return _getBooleanField(1);
+      }
+      public final void setIsGlobalSymbol(boolean value) {
+        _setBooleanField(1, value);
+      }
+
+      public final boolean getNonConstant() {
+        return _getBooleanField(2);
+      }
+      public final void setNonConstant(boolean value) {
+        _setBooleanField(2, value);
+      }
+
+      public final boolean hasLayeredSymbolName() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getLayeredSymbolName() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, null, 0, 0);
+      }
+      public final void setLayeredSymbolName(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, value);
+      }
+      public final void setLayeredSymbolName(String value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initLayeredSymbolName(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, size);
+      }
+      public final LinkingInfo.Builder getLinkingInfo() {
+        return new CGlobalDataInfo.LinkingInfo.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final LinkingInfo.Builder initLinkingInfo() {
+        _setShortField(1,(short)0);
+        _clearPointerField(1);
+  return new CGlobalDataInfo.LinkingInfo.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+
+    }
+
+    public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+      Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final boolean getIsSymbolReference() {
+        return _getBooleanField(0);
+      }
+
+      public final boolean getIsGlobalSymbol() {
+        return _getBooleanField(1);
+      }
+
+      public final boolean getNonConstant() {
+        return _getBooleanField(2);
+      }
+
+      public boolean hasLayeredSymbolName() {
+        return !_pointerFieldIsNull(0);
+      }
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getLayeredSymbolName() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, null, 0, 0);
+      }
+
+      public LinkingInfo.Reader getLinkingInfo() {
+        return new CGlobalDataInfo.LinkingInfo.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+    }
+
+    public static class LinkingInfo {
+      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)2);
+      public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+        public Factory() {
+        }
+        public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+          return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+        }
+        public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+          return new Builder(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+          return CGlobalDataInfo.LinkingInfo.STRUCT_SIZE;
+        }
+        public final Reader asReader(Builder builder) {
+          return builder.asReader();
+        }
+      }
+      public static final Factory factory = new Factory();
+      public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+        new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+      public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+        Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+          super(segment, data, pointers, dataSize, pointerCount);
+        }
+        public Which which() {
+          switch(_getShortField(1)) {
+            case 0 : return Which.ORIGINAL_SYMBOL_NAME;
+            case 1 : return Which.CODE_LOCATION;
+            default: return Which._NOT_IN_SCHEMA;
+          }
+        }
+        public final Reader asReader() {
+          return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+        }
+        public final boolean isOriginalSymbolName() {
+          return which() == CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME;
+        }
+        public final boolean hasOriginalSymbolName() {
+          if (which() != CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME) return false;
+          return !_pointerFieldIsNull(1);
+        }
+        public final com.oracle.svm.shaded.org.capnproto.Text.Builder getOriginalSymbolName() {
+          return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
+        }
+        public final void setOriginalSymbolName(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+          _setShortField(1, (short)CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME.ordinal());
+          _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
+        }
+        public final void setOriginalSymbolName(String value) {
+          _setShortField(1, (short)CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME.ordinal());
+          _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+        }
+        public final com.oracle.svm.shaded.org.capnproto.Text.Builder initOriginalSymbolName(int size) {
+          _setShortField(1, (short)CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME.ordinal());
+          return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
+        }
+        public final boolean isCodeLocation() {
+          return which() == CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION;
+        }
+        public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.Builder getCodeLocation() {
+          assert which() == CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION:
+                      "Must check which() before get()ing a union member.";
+          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.factory, 1, null, 0);
+        }
+        public final void setCodeLocation(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.Reader value) {
+          _setShortField(1, (short)CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION.ordinal());
+          _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.factory,1, value);
+        }
+        public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.Builder initCodeLocation() {
+          _setShortField(1, (short)CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION.ordinal());
+          return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.factory,1, 0);
+        }
+      }
+
+      public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+        Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+          super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        }
+
+        public Which which() {
+          switch(_getShortField(1)) {
+            case 0 : return Which.ORIGINAL_SYMBOL_NAME;
+            case 1 : return Which.CODE_LOCATION;
+            default: return Which._NOT_IN_SCHEMA;
+          }
+        }
+        public final boolean isOriginalSymbolName() {
+          return which() == CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME;
+        }
+        public boolean hasOriginalSymbolName() {
+          if (which() != CGlobalDataInfo.LinkingInfo.Which.ORIGINAL_SYMBOL_NAME) return false;
+          return !_pointerFieldIsNull(1);
+        }
+        public com.oracle.svm.shaded.org.capnproto.Text.Reader getOriginalSymbolName() {
+          return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
+        }
+
+        public final boolean isCodeLocation() {
+          return which() == CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION;
+        }
+        public boolean hasCodeLocation() {
+          return !_pointerFieldIsNull(1);
+        }
+        public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.Reader getCodeLocation() {
+          assert which() == CGlobalDataInfo.LinkingInfo.Which.CODE_LOCATION:
+                      "Must check which() before get()ing a union member.";
+          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CodeLocation.factory,1,null, 0);
+        }
+
+      }
+
+      public enum Which {
+        ORIGINAL_SYMBOL_NAME,
+        CODE_LOCATION,
+        _NOT_IN_SCHEMA,
+      }
+    }
+
+
+  }
+
+
+  public static class CodeLocation {
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)1);
+    public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+        return CodeLocation.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+      Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final int getBytecodeIndex() {
+        return _getIntField(0);
+      }
+      public final void setBytecodeIndex(int value) {
+        _setIntField(0, value);
+      }
+
+      public final boolean hasStacktraceName() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getStacktraceName() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, null, 0, 0);
+      }
+      public final void setStacktraceName(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, value);
+      }
+      public final void setStacktraceName(String value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initStacktraceName(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, size);
+      }
+    }
+
+    public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+      Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final int getBytecodeIndex() {
+        return _getIntField(0);
+      }
+
+      public boolean hasStacktraceName() {
+        return !_pointerFieldIsNull(0);
+      }
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getStacktraceName() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, null, 0, 0);
+      }
+
+    }
+
   }
 
 

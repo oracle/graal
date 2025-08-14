@@ -203,6 +203,7 @@ import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.OffsetOfSupportImpl;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
@@ -1004,6 +1005,7 @@ public class NativeImageGenerator {
                     HostedImageLayerBuildingSupport imageLayerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
                     SVMImageLayerLoader imageLayerLoader = HostedConfiguration.instance().createSVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, useSharedLayerGraphs);
                     imageLayerBuildingSupport.setLoader(imageLayerLoader);
+                    CGlobalDataFeature.singleton().getAppLayerCGlobalTracking().initializePriorLayerCGlobals();
                 }
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);

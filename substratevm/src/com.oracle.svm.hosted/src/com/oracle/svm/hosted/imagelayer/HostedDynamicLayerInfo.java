@@ -149,7 +149,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
          * CFunctionPointer/MethodPointer, we still use symbols. Therefore, not all these symbol
          * entries are needed, but the command-line linker should remove any unnecessary ones.
          */
-        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
+        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, true));
     }
 
     public void registerLibName(String lib) {

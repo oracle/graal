@@ -59,6 +59,7 @@ import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.NativeImage;
 
@@ -98,6 +99,7 @@ import jdk.vm.ci.meta.JavaConstant;
 public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
 
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
+    private static final String LAYER_NAME_PREFIX = "__svm_vm_layer";
 
     private static final int HEAP_BEGIN_OFFSET = 0;
     private static final int HEAP_END_OFFSET = 8;
@@ -127,12 +129,36 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ImageLayerSection.class, createImageLayerSection());
+        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
+
+        CGlobalData<WordPointer> cachedImageFDs;
+        CGlobalData<WordPointer> cachedImageHeapOffsets;
+        CGlobalData<WordPointer> cachedImageHeapRelocations;
+
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+        } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+            cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+            AppLayerCGlobalTracking appLayerTracking = CGlobalDataFeature.singleton().getAppLayerCGlobalTracking();
+            appLayerTracking.registerCGlobalWithPriorLayerReference(cachedImageFDs);
+            appLayerTracking.registerCGlobalWithPriorLayerReference(cachedImageHeapOffsets);
+            appLayerTracking.registerCGlobalWithPriorLayerReference(cachedImageHeapRelocations);
+        } else {
+            cachedImageFDs = null;
+            cachedImageHeapOffsets = null;
+            cachedImageHeapRelocations = null;
+        }
+
+        ImageSingletons.add(ImageLayerSection.class, new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations));
     }
 
     private static byte[] createWords(int count, WordBase initialValue) {
@@ -146,30 +172,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     }
 
     private static String getLayerName(int layerNumber) {
-        return String.format("__svm_layer_%s", layerNumber);
-    }
-
-    private static ImageLayerSectionImpl createImageLayerSection() {
-        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
-        CGlobalData<WordPointer> cachedImageFDs;
-        CGlobalData<WordPointer> cachedImageHeapOffsets;
-        CGlobalData<WordPointer> cachedImageHeapRelocations;
-
-        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
-        } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-            cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
-        } else {
-            cachedImageFDs = null;
-            cachedImageHeapOffsets = null;
-            cachedImageHeapRelocations = null;
-        }
-
-        return new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations);
+        return String.format("%s_%s", LAYER_NAME_PREFIX, layerNumber);
     }
 
     @Override
@@ -221,7 +224,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             String nextLayerSymbolName = getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber);
             // this symbol will be defined in the next layer's layer section
-            objectFile.createUndefinedSymbol(nextLayerSymbolName, 0, false);
+            objectFile.createUndefinedSymbol(nextLayerSymbolName, false);
             layeredSectionData.markRelocationSite(NEXT_SECTION_OFFSET, ObjectFile.RelocationKind.DIRECT_8, nextLayerSymbolName, 0);
         } else {
             /*

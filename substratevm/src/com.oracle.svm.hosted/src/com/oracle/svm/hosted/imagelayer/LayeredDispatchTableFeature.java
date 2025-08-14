@@ -551,7 +551,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
                      */
                     symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap, symbolNameSupplier);
                     if (unresolvedVTableSymbolNames.add(symbol)) {
-                        objectFile.createUndefinedSymbol(symbol, wordSize, true);
+                        objectFile.createUndefinedSymbol(symbol, true);
                     }
                 }
             } else {
