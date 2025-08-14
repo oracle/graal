@@ -41,6 +41,7 @@
 import argparse
 import contextlib
 import fnmatch
+import shlex
 from argparse import ArgumentParser
 from enum import Enum
 from typing import List, Set, Tuple, NamedTuple
@@ -124,7 +125,7 @@ class PolybenchArgumentsSpecification(NamedTuple):
         )
 
 
-def polybench_list(args):
+def polybench_list(args, _raw_args):
     benchmarks = _resolve_all_benchmarks()
     print('Benchmark files (run using "mx polybench run <glob_pattern>"):')
     file_found = False
@@ -155,11 +156,18 @@ def polybench_list(args):
         print("\tno suites found")
 
 
-def polybench_run(args):
-    if args.suite:
-        _run_suite(args)
+def polybench_run(parsed_args, raw_args):
+    if parsed_args.suite:
+        _run_suite(parsed_args)
+    elif parsed_args.dry_run_polybench:
+        _dry_run_polybench(raw_args)
     else:
-        _run_benchmark_pattern(args)
+        _run_benchmark_pattern(parsed_args)
+
+
+def _dry_run_polybench(raw_args):
+    raw_args.remove("--dry-run-polybench")
+    mx.log(_mx_polybench_command_string(raw_args))
 
 
 def _run_suite(args):
@@ -195,10 +203,13 @@ def _run_suite(args):
     base_args = ["run"]
     if args.dry_run:
         base_args.append("--dry-run")
+    elif args.dry_run_polybench:
+        base_args.append("--dry-run-polybench")
 
     def polybench_run_function(argument_list: List[str]) -> None:
-        parsed_args = parser.parse_args(base_args + argument_list + override_arguments)
-        polybench_run(parsed_args)
+        raw_args = base_args + argument_list + override_arguments
+        parsed_args = parser.parse_args(raw_args)
+        polybench_run(parsed_args, raw_args)
 
     with _run_suite_context(suite, tags):
         suite.runner(polybench_run_function, tags)
@@ -374,16 +385,26 @@ def _run_specification(spec: PolybenchRunSpecification, pattern_is_glob: bool = 
     mx_benchmark.benchmark(mx_benchmark_args)
 
 
-def _mx_benchmark_command_string(mx_benchmark_args: List[str]) -> str:
-    command = f"mx --java-home {mx.get_jdk().home}"
+def _base_mx_command() -> List[str]:
+    command = ["mx", "--java-home", mx.get_jdk().home]
     for dynamic_import, in_subdir in mx.get_dynamic_imports():
         if in_subdir:
-            command += f" --dy /{dynamic_import}"
+            command += ["--dy", f"/{dynamic_import}"]
         else:
-            command += f" --dy {dynamic_import}"
-    command += " benchmark "
-    command += " ".join(mx_benchmark_args)
+            command += ["--dy", dynamic_import]
     return command
+
+
+def _mx_polybench_command_string(mx_polybench_args: List[str]) -> str:
+    return _build_command(_base_mx_command() + ["polybench"] + mx_polybench_args)
+
+
+def _mx_benchmark_command_string(mx_benchmark_args: List[str]) -> str:
+    return _build_command(_base_mx_command() + ["benchmark"] + mx_benchmark_args)
+
+
+def _build_command(command: List[str]) -> str:
+    return " ".join(shlex.quote(token) for token in command)
 
 
 def _create_parser() -> ArgumentParser:
@@ -413,11 +434,18 @@ def _create_parser() -> ArgumentParser:
     run_parser.add_argument(
         "arguments", nargs=argparse.REMAINDER, help=PolybenchArgumentsSpecification.parser_help_message()
     )
-    run_parser.add_argument(
+    dry_run_group = run_parser.add_mutually_exclusive_group()
+    dry_run_group.add_argument(
         "--dry-run",
         action="store_true",
         help="log the mx benchmark commands that would be executed by this command (without actually executing them)",
     )
+    dry_run_group.add_argument(
+        "--dry-run-polybench",
+        action="store_true",
+        help="log the mx polybench commands that would be executed by this command (without actually executing them)",
+    )
+
     mode_group = run_parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--jvm", action="store_false", dest="is_native", default=False, help="run the benchmark on the JVM (default)"
@@ -458,4 +486,4 @@ def polybench_command(args):
     """Run one or more benchmarks using polybench."""
     parsed_args = parser.parse_args(args)
     mx.logv(f"Running polybench command {parsed_args.command} with arguments {parsed_args}")
-    parsed_args.func(parsed_args)
+    parsed_args.func(parsed_args, args)
