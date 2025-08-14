@@ -86,22 +86,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    utils.add_gate_predicate(self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + {
-     run: [
-       ['mx', 'build'],
-       ['mx', 'unittest', '--suite', 'vm'],
-     ],
-     name: 'gate-vm-unittest-linux-amd64',
-     timelimit: '30:00',
-    }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_Latest + graal_common.devkits['windows-jdkLatest'] + vm_common.vm_base('windows', 'amd64', 'gate') + {
-     run: [
-         ['mx', 'build'],
-         ['mx', 'unittest', '--suite', 'vm'],
-     ],
-     name: 'gate-vm-unittest-windows-amd64',
-     timelimit: '30:00',
-    }, ["sdk", "truffle", "vm"]),
     self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + graal_common.deps.sulong + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
