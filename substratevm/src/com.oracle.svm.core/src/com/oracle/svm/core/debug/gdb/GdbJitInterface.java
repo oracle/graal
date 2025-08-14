@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.debug;
+package com.oracle.svm.core.debug.gdb;
 
 import java.util.Collections;
 import java.util.List;

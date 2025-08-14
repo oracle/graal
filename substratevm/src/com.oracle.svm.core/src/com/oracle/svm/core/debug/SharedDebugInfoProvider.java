@@ -294,8 +294,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, NULL_LOADER_ENTRY);
 
-    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
-        this.runtimeConfiguration = runtimeConfiguration;
+    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfig, MetaAccessProvider metaAccess) {
+        this.runtimeConfiguration = runtimeConfig;
         this.metaAccess = metaAccess;
 
         /*

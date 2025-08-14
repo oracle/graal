@@ -60,12 +60,11 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
-import com.oracle.svm.core.debug.GdbJitInterface;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
+import com.oracle.svm.core.debug.gdb.GdbJitInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -260,9 +259,8 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-            RuntimeConfiguration runtimeConfiguration = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getRuntimeConfiguration();
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess(),
-                            runtimeConfiguration);
+                            accessImpl.getRuntimeConfiguration());
             var objectFile = image.getObjectFile();
 
             int debugInfoGenerationThreadCount = SubstrateOptions.DebugInfoGenerationThreadCount.getValue();

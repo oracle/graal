@@ -25,7 +25,10 @@
 
 package com.oracle.svm.core.debug;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -34,16 +37,66 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.InstalledCodeObserverSupportFeature;
+import com.oracle.svm.core.debug.gdb.GdbJitAccessor;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredFeature
 public class SubstrateDebugInfoFeature implements InternalFeature {
+
+    private static final String DEBUG_INFO_OBJFILE_NAME = "objfile";
+    private static final String DEBUG_INFO_PERFMAP_NAME = "perf-map";
+    private static final String DEBUG_INFO_JITDUMP_NAME = "jitdump";
+
+    public static class Options {
+        private static final String DEBUG_INFO_ALLOWED_VALUES_TEXT = "'" + DEBUG_INFO_OBJFILE_NAME + "' (default): Generates and installs a full in-memory object file for each run-time compilation." +
+                        ", '" + DEBUG_INFO_PERFMAP_NAME + "': Create and append to /tmp/perf-<pid>.map. Each run-time compilation adds one line to the map." +
+                        ", '" + DEBUG_INFO_JITDUMP_NAME + "': Create and append to jit-<imageName>.dump. Each run-time compilation adds one or more records to the jitdump file.";
+
+        @Option(help = "Specify formats for run-time debug info generation. Comma-separated list can contain " + DEBUG_INFO_ALLOWED_VALUES_TEXT + ". ")//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeDebugInfoFormat = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
+                        Options::validateRuntimeDebugInfoFormats) {
+            @Override
+            public AccumulatingLocatableMultiOptionValue.Strings getValue() {
+                var value = super.getValue();
+                return Objects.requireNonNullElseGet(value, () -> AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(DEBUG_INFO_OBJFILE_NAME));
+            }
+        };
+
+        private static void validateRuntimeDebugInfoFormats(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionKey) {
+            // TODO add validation for each of the options here
+        }
+
+        private static Set<String> getEnabledRuntimeDebugInfoFormats() {
+            return new HashSet<>(RuntimeDebugInfoFormat.getValue().values());
+        }
+
+        @Fold
+        public static boolean hasRuntimeDebugInfoObjectFileSupport() {
+            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_OBJFILE_NAME);
+        }
+
+        @Fold
+        public static boolean hasRuntimeDebugInfoPerfMapSupport() {
+            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_PERFMAP_NAME);
+        }
+
+        @Fold
+        public static boolean hasRuntimeDebugInfoJitdumpSupport() {
+            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_JITDUMP_NAME);
+        }
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(Platform.LINUX.class) &&
-                        ((SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.RuntimeDebugInfo.getValue()) || SubstrateOptions.WriteRuntimeCompilationPerfMap.getValue());
+        return Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.RuntimeDebugInfo.getValue();
     }
 
     @Override
@@ -54,12 +107,10 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
     @Override
     public void registerCodeObserver(RuntimeConfiguration runtimeConfig) {
         InstalledCodeObserverSupport installedCodeObserverSupport = ImageSingletons.lookup(InstalledCodeObserverSupport.class);
-        if (SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.RuntimeDebugInfo.getValue()) {
-            installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig.getProviders().getMetaAccess(), runtimeConfig));
-            ImageSingletons.add(SubstrateDebugInfoInstaller.GdbJitAccessor.class, new SubstrateDebugInfoInstaller.GdbJitAccessor());
-        }
-        if (SubstrateOptions.WriteRuntimeCompilationPerfMap.getValue()) {
-            installedCodeObserverSupport.addObserverFactory(new SubstratePerfMapWriter.Factory());
+
+        installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig));
+        if (Options.hasRuntimeDebugInfoObjectFileSupport()) {
+            ImageSingletons.add(GdbJitAccessor.class, new GdbJitAccessor());
         }
     }
 }

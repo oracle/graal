@@ -122,8 +122,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private final Set<HostedMethod> allOverrides;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
-                    RuntimeConfiguration runtimeConfiguration) {
-        super(debug, runtimeConfiguration, metaAccess);
+                    RuntimeConfiguration runtimeConfig) {
+        super(debug, runtimeConfig, metaAccess);
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;

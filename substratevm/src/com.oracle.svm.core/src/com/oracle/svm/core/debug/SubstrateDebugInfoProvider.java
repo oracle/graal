@@ -91,9 +91,9 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     private final CompilationResult compilation;
     private final long codeAddress;
 
-    public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod sharedMethod, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
+    public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod sharedMethod, CompilationResult compilation, RuntimeConfiguration runtimeConfig, MetaAccessProvider metaAccess,
                     long codeAddress) {
-        super(debug, runtimeConfiguration, metaAccess);
+        super(debug, runtimeConfig, metaAccess);
         this.sharedMethod = sharedMethod;
         this.compilation = compilation;
         this.codeAddress = codeAddress;
