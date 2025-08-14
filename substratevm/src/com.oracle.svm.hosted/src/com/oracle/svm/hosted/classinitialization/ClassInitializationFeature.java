@@ -290,7 +290,7 @@ public class ClassInitializationFeature implements InternalFeature {
             if (kind != BUILD_TIME) {
                 Optional<AnalysisType> type = access.getMetaAccess().optionalLookupJavaType(clazz);
                 if (type.isPresent()) {
-                    simulated = SimulateClassInitializerSupport.singleton().isClassInitializerSimulated(type.get());
+                    simulated = SimulateClassInitializerSupport.singleton().isSimulatedOrInitializedAtBuildTime(type.get());
                 }
             }
             if (simulated) {
