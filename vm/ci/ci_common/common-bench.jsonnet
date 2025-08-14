@@ -261,36 +261,36 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     # NFI polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'nfi') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
       ],
     },
     self.polybench_vm_daily('linux', 'amd64', 'nfi') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
       ],
     }
  ] + [
     # Graal.js polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'js') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:gate']),
       ],
     },
     self.polybench_vm_daily('linux', 'amd64', 'js') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:benchmark']),
       ],
     }
   ],
