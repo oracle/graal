@@ -348,7 +348,7 @@ class PolybenchBenchmarkSuite(
         return self.is_native_mode(bm_suite_args) and "pgo" not in self.jvmConfig(bm_suite_args)
 
     def _run_with_image_cache(
-            self, resolved_benchmark: ResolvedPolybenchBenchmark, benchmarks: List[str], bm_suite_args: List[str]
+        self, resolved_benchmark: ResolvedPolybenchBenchmark, benchmarks: List[str], bm_suite_args: List[str]
     ) -> DataPoints:
         with self._set_image_context(resolved_benchmark, bm_suite_args):
             image_build_datapoints = self._build_cached_image(benchmarks, bm_suite_args)
@@ -403,6 +403,7 @@ class PolybenchBenchmarkSuite(
 
         java_distributions = _get_java_distributions(resolved_benchmark)
         vm_args = mx.get_runtime_jvm_args(names=java_distributions) + self.vmArgs(bmSuiteArgs)
+        mx_truffle.enable_truffle_native_access(vm_args)
         polybench_args = ["--path=" + resolved_benchmark.absolute_path] + self.runArgs(bmSuiteArgs)
         return vm_args + [PolybenchBenchmarkSuite.POLYBENCH_MAIN] + polybench_args
 

@@ -1119,7 +1119,7 @@ class NativeImageVM(GraalVm):
             :return: a list of args supported by native image.
         """
         return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC', '--add-opens', '--add-modules', '--add-exports',
-                '--add-reads']
+                '--add-reads', '--enable-native-access']
 
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
