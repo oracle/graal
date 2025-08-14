@@ -94,7 +94,6 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
-      "javac.lint.overrides" : "-incubating",
     },
 
     "org.graalvm.wasm.jdk25" : {
