@@ -841,7 +841,10 @@ public class NativeImageGenerator {
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                            featureHandler.forEachFeature(feature -> {
+                                feature.duringAnalysis(config);
+                                loader.watchdog.recordActivity();
+                            });
                         }
                         /* Analysis is finished if no additional iteration was requested. */
                         return !config.getAndResetRequireAnalysisIteration() && !concurrentConfig.getAndResetRequireAnalysisIteration();

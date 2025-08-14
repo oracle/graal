@@ -109,16 +109,16 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
         Map<AnalysisMethod, RestrictionInfo> aggregation = new HashMap<>();
         DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
+        watchdog.recordActivity();
         for (AnalysisMethod method : methods) {
-            watchdog.recordActivity();
             if (method.isAnnotationPresent(RestrictHeapAccess.class)) {
                 setMethodRestrictionInfo(method, aggregation);
             }
         }
         MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
+        watchdog.recordActivity();
         for (AnalysisMethod method : aggregation.keySet().toArray(AnalysisMethod.EMPTY_ARRAY)) {
-            watchdog.recordActivity();
             walker.walkMethod(method, visitor);
         }
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
