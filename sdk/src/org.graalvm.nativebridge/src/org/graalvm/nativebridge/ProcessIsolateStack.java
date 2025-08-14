@@ -60,7 +60,7 @@ final class ProcessIsolateStack {
      * Merges {@code host} and {@code isolate} stack traces respecting process isolate transition
      * boundaries.
      */
-    static StackTraceElement[] mergeStackTraces(StackTraceElement[] host, StackTraceElement[] isolate, boolean originatedInHost) {
+    static StackTraceElement[] mergeStackTraces(StackTraceElement[] host, StackTraceElement[] isolate, ForeignException.ExceptionKind exceptionKind, boolean originatedInHost) {
         int hostStackEndIndex;
         int isolateStackEndIndex;
         if (originatedInHost) {
@@ -80,7 +80,9 @@ final class ProcessIsolateStack {
             }
             hostStackEndIndex = getMirrorThreadEntryMethodInfo(host).runnableIndex;
         }
-        StackTraceElement[] merged = mergeStackTraces(host, isolate, getTransitionIndex(host), hostStackEndIndex, getTransitionIndex(isolate), isolateStackEndIndex, originatedInHost);
+        int hostStackStartIndex = exceptionKind == ForeignException.ExceptionKind.THROWN || originatedInHost ? getTransitionIndex(host) : getBoundaryIndex(host);
+        int isolateStackStartIndex = exceptionKind == ForeignException.ExceptionKind.THROWN || !originatedInHost ? getTransitionIndex(isolate) : 0;
+        StackTraceElement[] merged = mergeStackTraces(host, isolate, hostStackStartIndex, hostStackEndIndex, isolateStackStartIndex, isolateStackEndIndex, originatedInHost);
         return merged;
     }
 
@@ -124,6 +126,15 @@ final class ProcessIsolateStack {
 
     private static int getTransitionIndex(StackTraceElement[] stack) {
         return FOREIGN_EXCEPTION_CLASS.equals(stack[0].getClassName()) && CREATE_METHOD.equals(stack[0].getMethodName()) ? 1 : 0;
+    }
+
+    private static int getBoundaryIndex(StackTraceElement[] stack) {
+        for (int i = 0; i < stack.length; i++) {
+            if (isBoundary(stack[i])) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     private static MirrorThreadInfo getMirrorThreadEntryMethodInfo(StackTraceElement[] stack) {

@@ -860,6 +860,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return res;
     }
 
+    @Override
+    public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
+        return hostException;
+    }
+
     static final class EmbedderFileSystemContext {
 
         private final PolyglotImpl impl;
