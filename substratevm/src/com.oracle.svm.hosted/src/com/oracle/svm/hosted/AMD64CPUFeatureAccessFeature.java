@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64LibCHelper;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
 import jdk.vm.ci.amd64.AMD64;
 
@@ -46,12 +46,25 @@ public class AMD64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase im
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
         var arch = (AMD64) targetDescription.arch;
-        var buildtimeCPUFeatures = arch.getFeatures();
+        var buildtimeCPUFeatures = filterFeatures(arch.getFeatures());
         initializeCPUFeatureAccessData(AMD64.CPUFeature.values(), buildtimeCPUFeatures, AMD64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
     @Override
     protected AMD64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         return new AMD64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
+    }
+
+    /** Returns a copy of {@code features}, with some unwanted features removed. */
+    private static EnumSet<AMD64.CPUFeature> filterFeatures(EnumSet<AMD64.CPUFeature> features) {
+        var ret = EnumSet.copyOf(features);
+        /*
+         * GR-68707: Intel P-cores and E-cores may differ in the presence of the HT feature. This
+         * could cause the runtime CPU feature check to fail on hybrid CPUs if an image is built
+         * with --march=native, the build time checking happens on a P-core, but the runtime
+         * checking is done on an E-core, even on the same machine.
+         */
+        ret.remove(AMD64.CPUFeature.HT);
+        return ret;
     }
 }
