@@ -37,6 +37,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -51,6 +52,7 @@ import com.oracle.svm.util.LogUtils;
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
     protected final ProgressReporter reporter = ProgressReporter.singleton();
+    private boolean resourcesAreReachable;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -72,9 +74,14 @@ public class ProgressReporterFeature implements InternalFeature {
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        resourcesAreReachable = access.isReachable(NativeImageResourceFileSystem.class);
+    }
+
+    @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-            HeapBreakdownProvider.singleton().calculate(((BeforeImageWriteAccessImpl) access));
+            HeapBreakdownProvider.singleton().calculate(((BeforeImageWriteAccessImpl) access), resourcesAreReachable);
         }
     }
 
