@@ -42,8 +42,6 @@ package com.oracle.truffle.runtime;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -302,7 +300,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      */
     private volatile CompilationTask compilationTask;
     private int successfulCompilationsCount;
-    private Instant timeOfFirstCompilationInWindow;
 
     private volatile boolean needsSplit;
 
@@ -540,7 +537,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     public final void resetCompilationProfile() {
         this.callCount = 0;
         this.callAndLoopCount = 0;
-        this.timeOfFirstCompilationInWindow = Instant.now();
+        this.successfulCompilationsCount = 0;
     }
 
     @Override
@@ -1005,7 +1002,13 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
                     try {
                         assert compilationTask == null;
-                        if (blockNewCompilations(lastTier)) {
+                        if (engine.maximumCompilations >= 0 && successfulCompilationsCount >= engine.maximumCompilations) {
+                            compilationFailed = true;
+                            runtime().getListener().onCompilationStarted(this, new PresubmitFailureCompilationTask(engine.firstTierOnly, lastTier));
+                            String failureReason = String.format("Maximum compilation count %d reached.", engine.maximumCompilations);
+                            runtime().getListener().onCompilationFailed(this, failureReason, true, true,
+                                            lastTier ? 2 : 1, null);
+                            handleCompilationFailure(() -> failureReason, false, true, true);
                             return false;
                         }
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
@@ -1019,58 +1022,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                 return maybeWaitForTask(task);
             }
         }
-        return false;
-    }
-
-    private boolean blockNewCompilations(boolean lastTier) {
-        // No limit on number of re-compilations
-        if (engine.maximumCompilations < 0) {
-            return false;
-        }
-
-        // If there is a window specified for the maximum number of compilations we check if we
-        // should reset the number of compilations because we overflowed the window period.
-        if (engine.maximumCompilationsWindowInMinutes > 0) {
-            long ageInMinutes = ChronoUnit.MINUTES.between(timeOfFirstCompilationInWindow, Instant.now());
-            if (ageInMinutes >= engine.maximumCompilationsWindowInMinutes) {
-                // This compilation would have been blocked if the window hadn't overflowed,
-                // therefore we print a log saying that compilations are now "enabled". I don't want
-                // to print this message if the number of compilations of the method hadn't reached
-                // the limit.
-                if (successfulCompilationsCount == engine.maximumCompilations) {
-                    runtime().getListener().onCompilationReenabled(this);
-                }
-
-                // Reset window information
-                successfulCompilationsCount = 0;
-                timeOfFirstCompilationInWindow = Instant.now();
-            }
-        }
-
-        if (successfulCompilationsCount >= engine.maximumCompilations) {
-            if (successfulCompilationsCount == engine.maximumCompilations) {
-                // This bailout will be permanent if there is no window set for the maximum number
-                // of compilations
-                compilationFailed = (engine.maximumCompilationsWindowInMinutes < 0);
-                String failureReason = String.format("Maximum compilation count %d reached.", engine.maximumCompilations);
-
-                // If the bailout is not permanent, i.e., this method is blocked for new
-                // compilations only for a period, then I bump the {@code
-                // successfulCompilationsCount}
-                // counter by one to indicate that the method is temporarily blocked for new
-                // compilations. Since there is a time window set, this value will eventually be
-                // reset to zero, so its temporary value should be imaterial.
-                if (!compilationFailed) {
-                    successfulCompilationsCount++;
-                }
-
-                runtime().getListener().onCompilationStarted(this, new PresubmitFailureCompilationTask(engine.firstTierOnly, lastTier));
-                runtime().getListener().onCompilationFailed(this, failureReason, true, compilationFailed, lastTier ? 2 : 1, null);
-                handleCompilationFailure(() -> failureReason, false, true, compilationFailed);
-            }
-            return true;
-        }
-
         return false;
     }
 
@@ -1219,9 +1170,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     @Override
     public void onCompilationSuccess(int compilationTier, boolean lastTier) {
-        if (this.timeOfFirstCompilationInWindow == null) {
-            timeOfFirstCompilationInWindow = Instant.now();
-        }
         successfulCompilationsCount++;
     }
 

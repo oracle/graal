@@ -294,6 +294,18 @@ public interface OptimizedTruffleRuntimeListener {
      *
      * @param target the call target whose compiled code was just deoptimized
      * @param frame
+     */
+    @Deprecated(since = "26.0")
+    default void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+        onCompilationDeoptimized(target, frame, null);
+    }
+
+    /**
+     * Notifies this object when {@code target} has just deoptimized and is now executing in the
+     * Truffle interpreter instead of executing compiled code.
+     *
+     * @param target the call target whose compiled code was just deoptimized
+     * @param frame
      * @param reason optional reason why the deoptimization happened.
      */
     default void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
@@ -305,14 +317,6 @@ public interface OptimizedTruffleRuntimeListener {
      * @param target the call target whose profile was just reset.
      */
     default void onProfileReset(OptimizedCallTarget target) {
-    }
-
-    /**
-     * Notifies this object when compilations of {@code target} are enabled.
-     *
-     * @param target the call target whose compilations are enabled.
-     */
-    default void onCompilationReenabled(OptimizedCallTarget target) {
     }
 
     /**

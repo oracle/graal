@@ -53,7 +53,6 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompil
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierMinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MaximumCompilations;
-import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MaximumCompilationsWindow;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Mode;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MultiTier;
@@ -168,7 +167,6 @@ public final class EngineData {
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
     @CompilationFinal public int maximumCompilations;
-    @CompilationFinal public int maximumCompilationsWindowInMinutes;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -337,7 +335,6 @@ public final class EngineData {
         // See usage of traversingFirstTierBonus for explanation of this formula.
         traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus) * options.get(LastTierCompilationThreshold) / options.get(FirstTierCompilationThreshold);
         maximumCompilations = options.get(MaximumCompilations);
-        maximumCompilationsWindowInMinutes = options.get(MaximumCompilationsWindow);
         traversingInvalidatedBonus = options.get(TraversingQueueInvalidatedBonus);
         traversingOSRBonus = options.get(TraversingQueueOSRBonus);
 
