@@ -217,7 +217,7 @@ public class RubyTests extends RegexTestBase {
         test("f{2,2}", "i", "\ufb00", 0, false);
 
         // Test that we bail out on strings with complex unfoldings.
-        Assert.assertTrue(compileRegex(new String(new char[100]).replace('\0', 'f'), "i").isNull());
+        expectUnsupported(new String(new char[100]).replace('\0', 'f'), "i");
     }
 
     @Test
