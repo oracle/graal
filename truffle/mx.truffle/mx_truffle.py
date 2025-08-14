@@ -2161,11 +2161,11 @@ def register_truffle_polybench_suites():
 
         def sl_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags: Set[str]) -> None:
             if "gate" in tags:
-                polybench_run(["--jvm", "*.sl", "-w", "1", "-i", "1"])
-                polybench_run(["--native", "*.sl", "-w", "1", "-i", "1"])
+                polybench_run(["--jvm", "*/*.sl", "-w", "1", "-i", "1"])
+                polybench_run(["--native", "*/*.sl", "-w", "1", "-i", "1"])
             if "benchmark" in tags:
-                polybench_run(["--jvm", "*.sl", "-w", "10", "-i", "10"])
-                polybench_run(["--native", "*.sl", "-w", "10", "-i", "10"])
+                polybench_run(["--jvm", "*/*.sl", "-w", "10", "-i", "10"])
+                polybench_run(["--native", "*/*.sl", "-w", "10", "-i", "10"])
 
         mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="sl", languages=["sl"], benchmark_distribution="SL_BENCHMARKS", benchmark_file_filter=".*sl", runner=sl_polybench_runner, tags={"gate", "benchmark"})
 
