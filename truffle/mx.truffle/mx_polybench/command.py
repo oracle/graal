@@ -127,23 +127,23 @@ class PolybenchArgumentsSpecification(NamedTuple):
 
 def polybench_list(args, _raw_args):
     benchmarks = _resolve_all_benchmarks()
-    print('Benchmark files (run using "mx polybench run <glob_pattern>"):')
+    mx.log('Benchmark files (run using "mx polybench run <glob_pattern>"):')
     file_found = False
     for benchmark_name, resolved_benchmark in benchmarks.items():
         if args.glob and not fnmatch.fnmatchcase(benchmark_name, f"*{args.glob}*"):
             continue
         file_found = True
-        print(f"\t{benchmark_name}")
+        mx.log(f"\t{benchmark_name}")
         if args.verbose:
-            print(f"\t\tabsolute path: {resolved_benchmark.absolute_path}")
-            print(f"\t\tdistribution: {resolved_benchmark.suite.benchmark_distribution}")
-            print(f"\t\tdeclaring suite: {resolved_benchmark.suite.mx_suite.name}")
-            print(f"\t\trequired languages: {resolved_benchmark.suite.languages}")
+            mx.log(f"\t\tabsolute path: {resolved_benchmark.absolute_path}")
+            mx.log(f"\t\tdistribution: {resolved_benchmark.suite.benchmark_distribution}")
+            mx.log(f"\t\tdeclaring suite: {resolved_benchmark.suite.mx_suite.name}")
+            mx.log(f"\t\trequired languages: {resolved_benchmark.suite.languages}")
     if not file_found:
-        print("\tno benchmark files found")
+        mx.log("\tno benchmark files found")
 
     suites = _get_all_suites()
-    print(
+    mx.log(
         'Suites (run using "mx polybench run --suite <suite_name>" or "mx polybench run --suite <suite_name>:<tag1>,<tag2>,..."):'
     )
     suite_found = False
@@ -151,9 +151,9 @@ def polybench_list(args, _raw_args):
         if args.glob and not fnmatch.fnmatchcase(suite_name, f"*{args.glob}*"):
             continue
         suite_found = True
-        print(f"\t{suite_name}: {suite.tags if suite.tags else '{}'}")
+        mx.log(f"\t{suite_name}: {suite.tags if suite.tags else '{}'}")
     if not suite_found:
-        print("\tno suites found")
+        mx.log("\tno suites found")
 
 
 def polybench_run(parsed_args, raw_args):
@@ -180,9 +180,9 @@ def _run_suite(args):
     mx.log(f"Running suite {suite.name} with tags {tags}.")
 
     # Arguments passed in a suite run are appended after the arguments specified by the suite runner.
-    if args.arguments:
+    if args.benchmark_arguments:
         mx.warn(
-            f"Arguments were supplied on the command line ({args.arguments}). "
+            f"Arguments were supplied on the command line ({args.benchmark_arguments}). "
             "These arguments will be inserted after any arguments supplied by the suite runner."
         )
     features = _get_vm_features(args)
@@ -192,7 +192,7 @@ def _run_suite(args):
             "You can directly enable these features in the suite runner itself."
         )
     override_arguments = (
-        PolybenchArgumentsSpecification.parse(args.arguments)
+        PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
         .append(
             # Ensure results are combined across multiple runs.
             PolybenchArgumentsSpecification(mx_benchmark_args=["--append-results"])
@@ -259,7 +259,7 @@ def _get_vm_features(args) -> Set[VMFeature]:
 
 
 def _run_benchmark_pattern(args):
-    arguments_spec = PolybenchArgumentsSpecification.parse(args.arguments)
+    arguments_spec = PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
     run_spec = PolybenchRunSpecification(args.benchmarks, _get_vm_features(args), arguments_spec)
     _validate_jdk(run_spec.is_native())
     mx.logv(f"Performing polybench run: {run_spec}")
@@ -431,49 +431,78 @@ def _create_parser() -> ArgumentParser:
         'or a suite specification if "--suite" is provided. '
         'Use "mx polybench list" to see a list of available benchmarks.',
     )
-    run_parser.add_argument(
-        "arguments", nargs=argparse.REMAINDER, help=PolybenchArgumentsSpecification.parser_help_message()
-    )
+
+    run_flags = set()
+
+    def run_flag(run_arg):
+        run_flags.add(run_arg)
+        return run_arg
+
     dry_run_group = run_parser.add_mutually_exclusive_group()
     dry_run_group.add_argument(
-        "--dry-run",
+        run_flag("--dry-run"),
         action="store_true",
         help="log the mx benchmark commands that would be executed by this command (without actually executing them)",
     )
     dry_run_group.add_argument(
-        "--dry-run-polybench",
+        run_flag("--dry-run-polybench"),
         action="store_true",
         help="log the mx polybench commands that would be executed by this command (without actually executing them)",
     )
 
     mode_group = run_parser.add_mutually_exclusive_group()
     mode_group.add_argument(
-        "--jvm", action="store_false", dest="is_native", default=False, help="run the benchmark on the JVM (default)"
+        run_flag("--jvm"),
+        action="store_false",
+        dest="is_native",
+        default=False,
+        help="run the benchmark on the JVM (default)",
     )
     mode_group.add_argument(
-        "--native",
+        run_flag("--native"),
         action="store_true",
         dest="is_native",
         help="run the benchmark with a native image of the Truffle interpreter",
     )
-    run_parser.add_argument("--pgo", action="store_true", default=False, help="use PGO (only valid for native runs)")
-    run_parser.add_argument("--g1gc", action="store_true", default=False, help="use G1GC (only valid for native runs)")
+    run_parser.add_argument(
+        run_flag("--pgo"), action="store_true", default=False, help="use PGO (only valid for native runs)"
+    )
+    run_parser.add_argument(
+        run_flag("--g1gc"), action="store_true", default=False, help="use G1GC (only valid for native runs)"
+    )
     benchmark_pattern_group = run_parser.add_mutually_exclusive_group()
     benchmark_pattern_group.add_argument(
-        "--suite",
+        run_flag("--suite"),
         action="store_true",
         help='treat "benchmarks" as a suite specification (a suite name, optionally '
         "followed by a colon and a comma-separated list of tags, "
         'e.g., "sl:gate,daily")',
     )
     benchmark_pattern_group.add_argument(
-        "--use-mx-benchmark-pattern",
+        run_flag("--use-mx-benchmark-pattern"),
         action="store_false",
         dest="pattern_is_glob",
         default=True,
         help='treat "benchmarks" as an mx benchmark pattern instead of a glob '
         '(e.g., "r[interpreter/.*]"; see mx_benchmark.py for details)',
     )
+
+    def benchmark_argument(arg):
+        """Prevents users from accidentally passing a run flag in the benchmark arguments section."""
+        if arg in run_flags:
+            mx.abort(
+                f'Flag "{arg}" is an "mx polybench run" flag, but it was specified in the extra benchmark arguments section.\n'
+                f'Move it before the benchmark pattern/suite specification to fix this error (e.g., "mx polybench run {arg} ... benchmark_or_suite ...").'
+            )
+        return arg
+
+    run_parser.add_argument(
+        "benchmark_arguments",
+        nargs=argparse.REMAINDER,
+        type=benchmark_argument,
+        help=PolybenchArgumentsSpecification.parser_help_message(),
+    )
+
     run_parser.set_defaults(func=polybench_run)
     return parser
 
