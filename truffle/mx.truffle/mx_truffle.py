@@ -460,30 +460,33 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
 class TruffleGateTags:
     style = ['style']
-    javadoc = ['javadoc']
+    javadoc = ['javadoc', 'style']
     sigtest = ['sigtest', 'test', 'fulltest']
     truffle_test = ['truffle-test', 'test', 'fulltest']
     panama_test = ['panama-test', 'test', 'fulltest']
     string_test = ['string-test', 'test', 'fulltest']
     dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
-    parser_test = ['parser-test', 'test', 'fulltest']
+    generate_slow_path_test = ['fulltest']
+    parser_test = ['parser-test', 'fulltest']
     truffle_jvm = ['truffle-jvm']
-    sl_native = ['sl-native', 'truffle-native']
-    sl_native_quickbuild = ['sl-native-quickbuild', 'truffle-native-quickbuild']
-    unittest_native = ['unittest-native', 'truffle-native']
-    unittest_native_quickbuild = ['unittest-native-quickbuild', 'truffle-native-quickbuild']
+    truffle_jvm_lite = ['truffle-jvm-lite', 'truffle-jvm']
+    truffle_native = ['truffle-native']
+    truffle_native_lite = ['truffle-native-lite', 'truffle-native']
+    # LibC Musl tests need special setup so we can't run them in truffle-native
     truffle_native_libcmusl_static = ['truffle-native-libcmusl-static']
-    truffle_native_libcmusl_static_quickbuild = ['truffle-native-libcmusl-static-quickbuild']
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
-    if jdk.javaCompliance < '9':
-        with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
-            if t: javadoc([])
+    with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
+        if t: javadoc([])
     with Task('File name length check', tasks, tags=TruffleGateTags.style) as t:
         if t: check_filename_length([])
     with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
-        if t: sigtest(['--check', 'binary'])
+        if t:
+            if jdk.javaCompliance == '21':
+                sigtest(['--check', 'all'])
+            else:
+                sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
         if t:
             unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25'])
@@ -498,60 +501,81 @@ def _truffle_gate_runner(args, tasks):
         with Task('Truffle DSL max state bit tests', tasks, tags=TruffleGateTags.dsl_max_state_bit_test) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
+    with Task('Truffle DSL Generate Slow Path Tests', tasks, tags=TruffleGateTags.generate_slow_path_test) as t:
+        if t:
+            _truffle_generate_slow_path_tests()
     with Task('Validate parsers', tasks, tags=TruffleGateTags.parser_test) as t:
         if t: validate_parsers()
     gate_truffle_jvm(tasks)
     gate_truffle_native(tasks)
-    gate_truffle_native(tasks, quickbuild=True)
 
 
 def gate_truffle_jvm(tasks):
+    jdk = mx.get_jdk(tag='default')
     if mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(mx.get_jdk(tag='default').home):
         additional_jvm_args = mx_sdk.GraalVMJDKConfig.libgraal_additional_vm_args
     else:
         additional_jvm_args = []
     # GR-62632: Debug VM exception translation failure
     additional_jvm_args += ['-Djdk.internal.vm.TranslatedException.debug=true']
-    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
+
+    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm_lite) as t:
         if t:
             truffle_jvm_module_path_optimized_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ModulePath Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_module_path_fallback_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ClassPath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_class_path_optimized_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ClassPath Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_class_path_fallback_unit_tests_gate(additional_jvm_args)
+
+    with Task('Truffle SL JVM Lite', tasks, tags=TruffleGateTags.truffle_jvm) as t:
+        if t:
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=False, compile_immediately=False)
+
     with Task('Truffle SL JVM', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
-            sl_jvm_gate_tests(additional_jvm_args)
+            supports_optimization = mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home)
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=True, compile_immediately=supports_optimization)
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=False, compile_immediately=supports_optimization)
 
 
-def gate_truffle_native(tasks, quickbuild=False):
-    tag = TruffleGateTags.sl_native_quickbuild if quickbuild else TruffleGateTags.sl_native
-    name_suffix = ' with quickbuild' if quickbuild else ''
-
-    with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=tag) as t:
+def gate_truffle_native(tasks):
+    with Task('Truffle SL Native ModulePath', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            sl_native_fallback_gate_tests(quickbuild)
+            _sl_native_fallback_gate_tests(force_cp=False)
+            _sl_native_optimized_gate_tests(force_cp=False)
 
-    with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle SL Native ClassPath', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            sl_native_optimized_gate_tests(quickbuild)
+            _sl_native_fallback_gate_tests(force_cp=True)
+            _sl_native_optimized_gate_tests(force_cp=True)
 
-    tag = TruffleGateTags.unittest_native_quickbuild if quickbuild else TruffleGateTags.unittest_native
-    with Task('Truffle API Native Tests' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle Native Unit Preinitialization Tests', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            truffle_native_context_preinitialization_tests(quickbuild)
-            truffle_native_unit_tests_gate(True, quickbuild)
-            truffle_native_unit_tests_gate(False, quickbuild)
+            truffle_native_context_preinitialization_tests()
 
-    tag = TruffleGateTags.truffle_native_libcmusl_static_quickbuild if quickbuild else TruffleGateTags.truffle_native_libcmusl_static
-    with Task('Truffle API Native Tests with static libc musl' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle Native Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_native_lite) as t:
         if t:
-            truffle_native_unit_tests_gate(True, False, [
+            truffle_native_unit_tests_gate(use_optimized_runtime=True)
+
+    with Task('Truffle Native Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_native) as t:
+        if t:
+            truffle_native_unit_tests_gate(use_optimized_runtime=False)
+
+    with Task('Truffle Native Unit Tests Quick Build', tasks, tags=TruffleGateTags.truffle_native) as t:
+        if t:
+            truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=['-Ob'])
+
+    with Task('Truffle API Native Tests with static libc musl', tasks, tags=TruffleGateTags.truffle_native_libcmusl_static) as t:
+        if t:
+            truffle_native_unit_tests_gate(True, [
                 "--libc=musl",
                 "--static"
             ])
@@ -759,21 +783,9 @@ def native_truffle_unittest(args):
             mx.warn(f'The native Truffle unit test has failed, preserving the working directory at {tmp} for further investigation.')
 
 
-# Run with:
-# mx -p ../vm --env ce build
-# export JAVA_HOME=`mx -p ../vm --env ce --quiet --no-warning graalvm-home`
-# mx build
-# mx gate -o -t "Truffle SL JVM"
-def sl_jvm_gate_tests(additional_vm_args):
-    jdk = mx.get_jdk(tag='default')
-    supports_optimization = mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home)
-    _sl_jvm_gate_tests(jdk, additional_vm_args, force_cp=False, supports_optimization=supports_optimization)
-    _sl_jvm_gate_tests(jdk, additional_vm_args, force_cp=True, supports_optimization=supports_optimization)
-
-
-def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True):
+def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, compile_immediately=True):
     default_args = []
-    if not supports_optimization:
+    if not compile_immediately:
         default_args += ['--engine.WarnInterpreterOnly=false']
 
     def run_jvm_fallback(test_file):
@@ -792,7 +804,7 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
     mx.log(f'Run SL JVM JVMCI disabled on {jdk.home} force_cp={force_cp}')
     _run_sl_tests(run_jvmci_disabled)
 
-    if supports_optimization:
+    if compile_immediately:
         mx.log(f'Run SL JVM Optimized Immediately Test on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_optimized_immediately)
 
@@ -810,7 +822,7 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
         mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_no_enterprise_optimized)
 
-        if supports_optimization:
+        if compile_immediately:
             mx.log(f'Run SL JVM Optimized Immediately Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
             _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
 
@@ -818,17 +830,10 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
 
 
-# Run in VM suite with:
-# mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -t "Truffle SL Native Optimized"
-def sl_native_optimized_gate_tests(quick_build=False):
-    _sl_native_optimized_gate_tests(force_cp=False, quick_build=quick_build)
-    _sl_native_optimized_gate_tests(force_cp=True, quick_build=quick_build)
-
-def _sl_native_optimized_gate_tests(force_cp, quick_build):
+def _sl_native_optimized_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    vm_args = ['-Ob'] if quick_build else []
+    vm_args = []
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True)
 
     def run_native_optimized(test_file):
@@ -862,27 +867,16 @@ def _sl_native_optimized_gate_tests(force_cp, quick_build):
 
         shutil.rmtree(target_dir)
 
-
-# Run in VM suite with:
-# mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -t "Truffle SL Native Fallback"
-def sl_native_fallback_gate_tests(quick_build=False):
-    _sl_native_fallback_gate_tests(force_cp=False, quick_build=quick_build)
-    _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
-
-
-def truffle_native_context_preinitialization_tests(quick_build=False, build_args=None):
+def truffle_native_context_preinitialization_tests(build_args=None):
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
     # Context pre-initialization is supported only in optimized runtime.
     # See TruffleFeature for details.
     use_build_args = build_args if build_args else []
-    if quick_build:
-        use_build_args = use_build_args + ['-Ob']
     native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + ['--build-args'] + use_build_args)
 
 
-def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False, build_args=None):
+def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
     build_args = build_args if build_args else []
     is_libc_musl = '--libc=musl' in build_args
     is_static = '--static' in build_args
@@ -892,10 +886,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     else:
         build_truffle_runtime_args = ['-Dtruffle.UseFallbackRuntime=true']
         run_truffle_runtime_args = ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-    if quick_build:
-        build_optimize_args = ['-Ob']
-    else:
-        build_optimize_args = []
+    build_optimize_args = []
 
     # Run Truffle and NFI tests
     test_packages = [
@@ -916,11 +907,8 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         'com.oracle.truffle.api.test.nodes.*',    # GR-52262
         'com.oracle.truffle.api.test.host.*',    # GR-52263
         'com.oracle.truffle.api.test.interop.*',    # GR-52264
+        'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
     ]
-    if quick_build:
-        excluded_tests = excluded_tests + [
-            'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
-        ]
     build_args = build_args + build_optimize_args + build_truffle_runtime_args + [
         '-R:MaxHeapSize=2g',
         '-H:MaxRuntimeCompileMethods=5000',
@@ -937,10 +925,10 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     native_truffle_unittest(test_packages + ['--build-args'] + build_args + ['--run-args'] + run_args + exclude_args)
 
 
-def _sl_native_fallback_gate_tests(force_cp, quick_build):
+def _sl_native_fallback_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    vm_args = ['-Ob'] if quick_build else []
+    vm_args = []
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=False, force_cp=force_cp)
 
     def run_native_fallback(test_file):
@@ -999,6 +987,20 @@ def _truffle_gate_state_bitwidth_tests():
             mx.log('Completed Truffle DSL state bitwidth test. Reproduce with:')
             mx.log('  mx build {0}'.format(" ".join(build_args)))
             mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
+
+def _truffle_generate_slow_path_tests():
+    build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
+                  '-A-Atruffle.dsl.GenerateSlowPathOnly=true']
+
+    unittest_args = ['--suite', 'truffle', '--enable-timing', '--max-class-failures=25',
+                     'com.oracle.truffle.api.test.polyglot', 'com.oracle.truffle.nfi.test']
+    try:
+        mx.build(build_args)
+        unittest(unittest_args)
+    finally:
+        mx.log('Completed Truffle DSL Generate Slow Path Tests. Reproduce with:')
+        mx.log('  mx build {0}'.format(" ".join(build_args)))
+        mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
