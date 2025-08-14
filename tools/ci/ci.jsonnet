@@ -22,13 +22,14 @@
     }
   },
 
-  local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
-    name: 'gate-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
+  local tools_post_merge = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
+    name: 'post-merge-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
-    targets: ["gate"],
+    targets: ["post-merge"],
     guard+: {
         includes+: ["**.jsonnet"],
-    }
+    },
+    notify_groups:: ["tools"],
   },
 
   local tools_weekly = tools_common + {
@@ -43,12 +44,13 @@
   },
 
   local tools_javadoc = tools_common + common_guard + {
-    name: "gate-tools-javadoc-" + self.jdk_name,
+    name: "post-merge-tools-javadoc-" + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "javadoc"],
     ],
-    targets: ["gate"]
+    targets: ["post-merge"],
+    notify_groups:: ["tools"],
   },
 
   local coverage_whitelisting = [
@@ -82,8 +84,8 @@
   },
 
   local _builds = [
-    common.linux_amd64   + common.oraclejdkLatest + tools_gate,
-    common.linux_amd64   + common.oraclejdk21 + tools_gate,
+    common.linux_amd64   + common.oraclejdkLatest + tools_post_merge,
+    common.linux_amd64   + common.oraclejdk21 + tools_post_merge,
 
     common.linux_amd64   + common.oraclejdkLatest + tools_javadoc,
     common.linux_amd64   + common.oraclejdk21 + tools_coverage_weekly,

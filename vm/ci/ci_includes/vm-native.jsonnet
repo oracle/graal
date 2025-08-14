@@ -41,16 +41,17 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'post-merge') + {
      run+: [
        ['mx', '--env', vm.edition, '--native-images=true', '--dy', 'graalpython', 'gate', '-B--targets=GRAALPY_NATIVE_STANDALONE', '--no-warning-as-error', '--tags', 'build,python'],
      ],
+     notify_groups: ["python"],
      timelimit: '45:00',
-     name: 'gate-vm-native-graalpython-linux-amd64',
+     name: 'post-merge-vm-native-graalpython-linux-amd64',
     },
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck,
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck_wasm,
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_maven_downloader,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_native_tck,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_native_tck_wasm,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_maven_downloader,
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),

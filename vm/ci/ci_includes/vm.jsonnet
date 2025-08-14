@@ -86,7 +86,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + graal_common.deps.sulong + {
+    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge') + graal_common.deps.sulong + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',
@@ -95,8 +95,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
        ['rm', '-rf', '../.git'],
        ['mx', 'gate', '--strict-mode', '--tags', 'build'],
      ],
-     name: 'gate-vm-build-without-vcs-linux-amd64',
+     name: 'post-merge-vm-build-without-vcs-linux-amd64',
      timelimit: '30:00',
+     notify_groups:: ['deploy'],
     },
 
     # Linux/AMD64
