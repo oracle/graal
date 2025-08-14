@@ -108,10 +108,12 @@ suite = {
       "overlayTarget" : "org.graalvm.wasm",
       "multiReleaseJarVersion" : "25",
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "25+",
+      "forceJavac": True,
       "workingSets" : "WebAssembly",
       "license" : "UPL",
       "javac.lint.overrides" : "-incubating",
+      "spotbugs" : "false",
     },
 
     "org.graalvm.wasm.launcher" : {
