@@ -382,6 +382,7 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
+        "mx:HAMCREST",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
@@ -428,6 +429,7 @@ suite = {
         "name" : "org.graalvm.wasm.benchmark",
         "requires" : [
           "java.compiler",
+          "org.graalvm.polyglot",
         ],
       },
       "subDir" : "src",

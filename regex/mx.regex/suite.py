@@ -168,15 +168,14 @@ suite = {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.regex.test.dummylang",
         "requires": [
+          "org.graalvm.polyglot",
           "org.graalvm.truffle",
         ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex.test.dummylang"],
       "distDependencies" : [
-        "regex:TREGEX"
-      ],
-      "exclude" : [
+        "regex:TREGEX",
       ],
       "description" : "Truffle regular expressions testing dummy language.",
       "allowsJavadocWarnings": True,
