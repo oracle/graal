@@ -461,7 +461,7 @@ public class JNIAccessFeature implements Feature {
                  * Constructors can be invoked on objects allocated separately via AllocObject,
                  * which we implement via Unsafe.
                  */
-                access.registerAsUnsafeAllocated(aTargetMethod.getDeclaringClass());
+                access.registerAsUnsafeAllocated(aTargetMethod.getDeclaringClass(), preserved);
                 newObjectMethod = aFactoryMethod.getWrapped();
             }
 

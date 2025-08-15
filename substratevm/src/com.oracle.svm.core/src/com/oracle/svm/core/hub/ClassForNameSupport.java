@@ -296,13 +296,14 @@ public final class ClassForNameSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerUnsafeAllocated(AccessCondition condition, Class<?> clazz) {
+    public void registerUnsafeAllocated(AccessCondition condition, Class<?> clazz, boolean preserved) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
             if (!previousLayerUnsafe.contains(clazz.getName())) {
-                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition, false));
+                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition, preserved));
                 if (conditionSet != null) {
                     conditionSet.addCondition(condition);
+                    conditionSet.reportReregistered(preserved);
                 }
             }
         }
@@ -458,6 +459,17 @@ public final class ClassForNameSupport {
             ConditionalRuntimeValue<Object> conditionalClass = singleton.knownClasses.get(jClassName);
             if (conditionalClass != null) {
                 return conditionalClass.getConditions().preserved();
+            }
+        }
+        return false;
+    }
+
+    public static boolean isUnsafeAllocatedPreserved(Class<?> jClass) {
+        Objects.requireNonNull(jClass);
+        for (var singleton : layeredSingletons()) {
+            RuntimeConditionSet conditionSet = singleton.unsafeInstantiatedClasses.get(jClass);
+            if (conditionSet != null) {
+                return conditionSet.preserved();
             }
         }
         return false;

@@ -415,15 +415,15 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAllocated(Class<?> clazz) {
-            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz));
+            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz), false);
         }
 
-        public void registerAsUnsafeAllocated(AnalysisType aType) {
+        public void registerAsUnsafeAllocated(AnalysisType aType, boolean preserved) {
             if (aType.isAbstract()) {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
-            classForNameSupport.registerUnsafeAllocated(AccessCondition.unconditional(), aType.getJavaClass());
+            classForNameSupport.registerUnsafeAllocated(AccessCondition.unconditional(), aType.getJavaClass(), preserved);
         }
 
         @Override

@@ -299,7 +299,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         type.registerAsReachable("Is registered for reflection.");
         if (unsafeInstantiated) {
             type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
-            classForNameSupport.registerUnsafeAllocated(condition, clazz);
+            classForNameSupport.registerUnsafeAllocated(condition, clazz, preserved);
         }
 
         if (allowForName) {
