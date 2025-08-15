@@ -1731,7 +1731,6 @@ suite = {
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.runtime.LoopNodeFactory",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.EngineCacheSupport",
           "com.oracle.truffle.runtime.jfr.EventFactory.Provider",

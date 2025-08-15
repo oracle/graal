@@ -193,7 +193,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private final LoopNodeFactory loopNodeFactory;
     private EngineCacheSupport engineCacheSupport;
     private final Iterable<Class<?>> extraLookupTypes;
     private UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
@@ -209,7 +208,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         this.compilationSupport = compilationSupport;
         this.extraLookupTypes = extraLookupTypes;
         List<OptionDescriptors> options = new ArrayList<>();
-        this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         this.previousEngineCacheSupportOptions = engineCacheSupport.getEngineOptions();
@@ -640,11 +638,16 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
-        return getLoopNodeFactory().create(repeatingNode);
+        return OptimizedOSRLoopNode.create(repeatingNode);
     }
 
+    /**
+     * @deprecated do not use just here for compatibility with older SubstrateTruffleRuntime.
+     */
+    @SuppressWarnings("static-method")
+    @Deprecated
     protected final LoopNodeFactory getLoopNodeFactory() {
-        return loopNodeFactory;
+        return null;
     }
 
     public final EngineCacheSupport getEngineCacheSupport() {
