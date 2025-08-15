@@ -42,10 +42,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.NEW;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTSTATIC;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,12 +53,9 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.ConstantPool.Tag;
-import com.oracle.svm.espresso.classfile.ParserConstantPool;
-import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.interpreter.classfile.ClassFile;
+import com.oracle.svm.interpreter.constantpool.ConstantPoolBuilder;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
@@ -97,176 +91,78 @@ final class BuildTimeConstantPool {
 
     private static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
 
-    private final InterpreterResolvedObjectType holder;
-
-    private final Map<Object, Integer> constantCPI;
-    private final Map<JavaConstant, Integer> appendixCPI;
-    private final Map<JavaField, Integer> fieldCPI;
-    private final Map<JavaType, Integer> typeCPI;
-    private final Map<JavaMethod, Integer> methodCPI;
-
-    final ArrayList<Object> entries;
-    final ArrayList<Tag> tags;
+    private final ConstantPoolBuilder poolBuilder;
 
     /**
      * Creates runtime-ready constant pool for the interpreter.
      */
     public InterpreterConstantPool snapshot() {
         // Contains a partial parser/symbolic constant pool.
-        return InterpreterConstantPool.create(holder, buildParserConstantPool(), entries.toArray());
+        return poolBuilder.build();
     }
 
-    /**
-     * Currently, it's not possible to derive a perfect parser/symbolic CP representation from JVMCI
-     * data-structures, for types serialized at build-time only primitive entries are stored.
-     */
-    private ParserConstantPool buildParserConstantPool() {
-        int length = entries.size();
-
-        byte[] byteTags = new byte[length];
-        for (int i = 0; i < length; ++i) {
-            Tag tag = tags.get(i);
-            if (tag == null) {
-                tag = Tag.INVALID;
-            }
-            byteTags[i] = tag.getValue();
-        }
-
-        int[] primitiveEntries = new int[length];
-        for (int i = 0; i < length; ++i) {
-            Tag tag = tags.get(i);
-            if (tag == null) {
-                continue;
-            }
-            switch (tag) {
-                case INTEGER -> {
-                    int intValue = ((PrimitiveConstant) entries.get(i)).asInt();
-                    primitiveEntries[i] = intValue;
-                }
-                case FLOAT -> {
-                    float floatValue = ((PrimitiveConstant) entries.get(i)).asFloat();
-                    primitiveEntries[i] = Float.floatToRawIntBits(floatValue);
-                }
-                case DOUBLE -> {
-                    double doubleValue = ((PrimitiveConstant) entries.get(i)).asDouble();
-                    long doubleBits = Double.doubleToRawLongBits(doubleValue);
-                    primitiveEntries[i] = (int) (doubleBits >> 32);
-                    primitiveEntries[i + 1] = (int) (doubleBits & 0xFFFFFFFFL);
-                }
-                case LONG -> {
-                    long longValue = ((PrimitiveConstant) entries.get(i)).asLong();
-                    primitiveEntries[i] = (int) (longValue >> 32);
-                    primitiveEntries[i + 1] = (int) (longValue & 0xFFFFFFFFL);
-                }
-            }
-        }
-
-        // TODO(peterssen): GR-68564 Obtain proper major/minor version for this type.
-        return new ParserConstantPool(byteTags, primitiveEntries, Symbol.EMPTY_ARRAY, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION);
-    }
-
-    private int appendConstant(Tag tag, Object value) {
-        assert entries.size() == tags.size();
-        entries.add(value);
-        tags.add(tag);
-        return entries.size() - 1;
-    }
-
-    BuildTimeConstantPool(InterpreterResolvedObjectType holder) {
-        this.holder = holder;
-        this.entries = new ArrayList<>(32);
-        this.tags = new ArrayList<>(32);
-        appendConstant(Tag.INVALID, null); // index 0 always contains illegal entry
-        this.constantCPI = new HashMap<>();
-        this.fieldCPI = new HashMap<>();
-        this.typeCPI = new HashMap<>();
-        this.methodCPI = new HashMap<>();
-        this.appendixCPI = new HashMap<>();
-    }
-
-    public int length() {
-        return entries.size();
+    private BuildTimeConstantPool(InterpreterResolvedObjectType holder, int majorVersion, int minorVersion) {
+        this.poolBuilder = new ConstantPoolBuilder(holder, majorVersion, minorVersion);
+        // index 0 always contains an invalid entry
+        int invalidIndex = this.poolBuilder.appendInvalid();
+        assert invalidIndex == 0;
     }
 
     public int longConstant(long value) {
-        return constantCPI.computeIfAbsent(value, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
-            int cpi = appendConstant(Tag.LONG, javaConstant);
-            appendConstant(Tag.INVALID, null);
-            return cpi;
-        });
+        PrimitiveConstant primitiveConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
+        return poolBuilder.appendPrimitiveConstant(primitiveConstant);
     }
 
     public int intConstant(int value) {
-        return constantCPI.computeIfAbsent(value, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
-            return appendConstant(Tag.INTEGER, javaConstant);
-        });
+        PrimitiveConstant primitiveConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
+        return poolBuilder.appendPrimitiveConstant(primitiveConstant);
     }
 
     public int floatConstant(float value) {
-        return constantCPI.computeIfAbsent(value, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
-            return appendConstant(Tag.FLOAT, javaConstant);
-        });
+        PrimitiveConstant primitiveConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
+        return poolBuilder.appendPrimitiveConstant(primitiveConstant);
     }
 
     public int doubleConstant(double value) {
-        return constantCPI.computeIfAbsent(value, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
-            int cpi = appendConstant(Tag.DOUBLE, javaConstant);
-            appendConstant(Tag.INVALID, null);
-            return cpi;
-        });
+        PrimitiveConstant primitiveConstant = BuildTimeInterpreterUniverse.singleton().primitiveConstant(value);
+        return poolBuilder.appendPrimitiveConstant(primitiveConstant);
     }
 
     public int stringConstant(String value) {
-        return constantCPI.computeIfAbsent(value, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().stringConstant(value);
-            return appendConstant(Tag.STRING, javaConstant);
-        });
+        String string = BuildTimeInterpreterUniverse.singleton().stringConstant(value);
+        return poolBuilder.appendCachedString(string);
     }
 
     public int typeConstant(JavaType type) {
         if (!(type instanceof InterpreterResolvedJavaType || type instanceof UnresolvedJavaType)) {
             throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaType or UnresolvedJavaType");
         }
-        return typeCPI.computeIfAbsent(type, key -> {
-            return appendConstant(Tag.CLASS, type);
-        });
+        return poolBuilder.appendCachedType(type);
     }
 
     public int method(JavaMethod method) {
         if (!(method instanceof InterpreterResolvedJavaMethod || method instanceof UnresolvedJavaMethod)) {
             throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaMethod or UnresolvedJavaMethod");
         }
-        return methodCPI.computeIfAbsent(method, (key) -> {
-            return appendConstant(Tag.METHOD_REF, method);
-        });
+        return poolBuilder.appendCachedMethod(false, method);
     }
 
     public int field(JavaField field) {
         if (!(field instanceof InterpreterResolvedJavaField || field instanceof UnresolvedJavaField)) {
             throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaField or UnresolvedJavaField");
         }
-        return fieldCPI.computeIfAbsent(field, (key) -> {
-            return appendConstant(Tag.FIELD_REF, field);
-        });
+        return poolBuilder.appendCachedField(field);
     }
 
     private int appendixConstant(JavaConstant appendix) {
         assert appendix instanceof ReferenceConstant || appendix.isNull();
-        return appendixCPI.computeIfAbsent(appendix, key -> {
-            return appendConstant(Tag.INVOKEDYNAMIC, appendix);
-        });
+        return poolBuilder.appendCachedAppendix(appendix);
     }
 
     public int weakObjectConstant(ImageHeapConstant imageHeapConstant) {
-        return constantCPI.computeIfAbsent(imageHeapConstant, key -> {
-            JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().weakObjectConstant(imageHeapConstant);
-            // Can't put arbitrary objects on the CP, (ab)used INVOKEDYNAMIC tag as a workaround.
-            return appendConstant(Tag.INVOKEDYNAMIC, javaConstant);
-        });
+        JavaConstant javaConstant = BuildTimeInterpreterUniverse.singleton().weakObjectConstant(imageHeapConstant);
+        // Can't put arbitrary objects on the CP, (ab)used INVOKEDYNAMIC tag as a workaround.
+        return poolBuilder.appendCachedAppendix(javaConstant);
     }
 
     private int ldcConstant(Object javaConstantOrType) {
@@ -292,8 +188,8 @@ final class BuildTimeConstantPool {
         throw VMError.shouldNotReachHereUnexpectedInput(javaConstantOrType);
     }
 
-    public static BuildTimeConstantPool create(InterpreterResolvedObjectType type) {
-        BuildTimeConstantPool btcp = new BuildTimeConstantPool(type);
+    public static BuildTimeConstantPool create(InterpreterResolvedObjectType type, int majorVersion, int minorVersion) {
+        BuildTimeConstantPool btcp = new BuildTimeConstantPool(type, majorVersion, minorVersion);
         btcp.hydrate(type);
         return btcp;
     }
