@@ -48,10 +48,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.Pair;
@@ -60,6 +58,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.polyglot.InternalResourceRoots.Root.Kind;
 
 final class InternalResourceRoots {
 
@@ -87,7 +86,7 @@ final class InternalResourceRoots {
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
      * native image heap. The value is recomputed when the pre-initialized engine is patched.
      */
-    private volatile Set<Root> roots;
+    private volatile List<Root> roots;
 
     private InternalResourceRoots() {
     }
@@ -142,7 +141,7 @@ final class InternalResourceRoots {
             if (InternalResourceCache.usesInternalResources()) {
                 roots = computeRoots(findDefaultRoot());
             } else {
-                roots = Set.of();
+                roots = List.of();
             }
         }
     }
@@ -219,23 +218,23 @@ final class InternalResourceRoots {
     /**
      * Computes the internal resource roots.
      */
-    private static Set<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
+    private static List<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
         Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector = new HashMap<>();
         InternalResourceCache.walkAllResources((componentId, resources) -> {
             collectRoots(componentId, defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
         });
         // Build a set of immutable Roots.
-        Set<Root> result = new HashSet<>();
+        List<Root> result = new ArrayList<>();
         for (var entry : collector.entrySet()) {
-            var key = entry.getKey();
-            var resources = entry.getValue();
+            Pair<Path, Kind> key = entry.getKey();
+            List<InternalResourceCache> resources = entry.getValue();
             Root internalResourceRoot = new Root(key.getLeft(), key.getRight(), resources);
             for (InternalResourceCache resource : resources) {
                 resource.initializeOwningRoot(internalResourceRoot);
             }
             result.add(internalResourceRoot);
         }
-        return Collections.unmodifiableSet(result);
+        return Collections.unmodifiableList(result);
     }
 
     private static Pair<Path, Root.Kind> findDefaultRoot() {
@@ -371,6 +370,7 @@ final class InternalResourceRoots {
             UNVERSIONED,
             VERSIONED,
         }
+
     }
 
     private record ResolvedCacheFolder(Path path, String hint, Path hintValue) {
