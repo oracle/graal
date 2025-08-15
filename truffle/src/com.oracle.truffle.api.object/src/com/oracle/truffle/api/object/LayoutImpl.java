@@ -138,6 +138,12 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
                     int implicitCastFlags,
                     LayoutStrategy strategy) {
 
+        // letting Java generate hashcodes has slow startup
+        @Override
+        public int hashCode() {
+            return Objects.hash(type, implicitCastFlags, strategy);
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
