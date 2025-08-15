@@ -744,6 +744,7 @@ suite = {
         "TRUFFLE_API",
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
+        "TRUFFLE_RUNTIME",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
