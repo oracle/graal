@@ -266,7 +266,7 @@ public abstract class ImageHeapScanner {
         if (existingTask == null) {
             AnalysisFuture<ImageHeapConstant> newTask;
             ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
-            if (hostVM.useBaseLayer() && imageLayerLoader.hasValueForConstant(javaConstant)) {
+            if (hostVM.buildingExtensionLayer() && imageLayerLoader.hasValueForConstant(javaConstant)) {
                 ImageHeapConstant value = imageLayerLoader.getValueForConstant(javaConstant);
                 ensureFieldPositionsComputed(value, nonNullReason);
                 AnalysisError.guarantee(value.getHostedObject().equals(javaConstant));

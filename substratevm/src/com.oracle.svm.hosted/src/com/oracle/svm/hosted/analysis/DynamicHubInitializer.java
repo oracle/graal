@@ -172,7 +172,7 @@ public class DynamicHubInitializer {
      * GR-60254.
      */
     private boolean shouldRescanHub(ImageHeapScanner heapScanner, DynamicHub hub) {
-        if (hostVM.useBaseLayer()) {
+        if (hostVM.buildingExtensionLayer()) {
             ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
             return hubConstant == null || !hubConstant.isInBaseLayer();
         }
