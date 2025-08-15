@@ -229,12 +229,6 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             }
         }
 
-        assert !isUnresolved(entry);
-        if (entry instanceof Throwable throwable) {
-            // Cached exception.
-            throw uncheckedThrow(throwable);
-        }
-
         return entry;
     }
 
@@ -243,7 +237,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
+    protected static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
         throw (T) t;
     }
 
