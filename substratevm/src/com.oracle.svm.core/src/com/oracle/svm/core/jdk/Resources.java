@@ -219,9 +219,10 @@ public final class Resources implements MultiLayeredImageSingleton {
     }
 
     /**
-     * The object used to mark a resource as reachable according to the metadata. It can be obtained
-     * when accessing the {@link Resources#resources} map, and it means that even though the
-     * resource was correctly specified in the configuration, accessing it will return null.
+     * A resource marked with the NEGATIVE_QUERY_MARKER is a resource included in the image
+     * according to the resource configuration, but it does not actually exist. Trying to access it
+     * at runtime will return {@code null} and not throw a
+     * {@link com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError}.
      */
     public static final ResourceStorageEntryBase NEGATIVE_QUERY_MARKER = new ResourceStorageEntryBase();
 
@@ -231,7 +232,7 @@ public final class Resources implements MultiLayeredImageSingleton {
      * correctly specified in the configuration, but we do not want to throw directly (for example
      * when we try to check all the modules for a resource).
      */
-    private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
+    public static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are

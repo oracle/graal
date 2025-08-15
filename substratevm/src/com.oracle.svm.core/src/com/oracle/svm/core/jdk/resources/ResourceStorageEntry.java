@@ -35,7 +35,7 @@ import com.oracle.svm.core.util.VMError;
 
 public final class ResourceStorageEntry extends ResourceStorageEntryBase {
 
-    private static byte[][] EMPTY_DATA = new byte[0][];
+    private static final byte[][] EMPTY_DATA = new byte[0][];
 
     private final boolean isDirectory;
     private final boolean fromJar;

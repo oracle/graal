@@ -522,7 +522,7 @@ public class ProgressReporter {
             }
         }
         if (resourceCount > 0) {
-            l().a("%,9d %s found with %s total size", resourceCount, resourceCount == 1 ? "resource" : "resources", ByteFormattingUtil.bytesToHuman(totalResourceSize)).println();
+            l().a("%,9d %s registered with %s total size", resourceCount, resourceCount == 1 ? "resource access" : "resource accesses", ByteFormattingUtil.bytesToHuman(totalResourceSize)).println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
@@ -592,10 +592,15 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        int numResources = Resources.currentLayer().resources().size();
+        int numResources = 0;
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources().getValues()) {
+            if (entry.getValueUnconditionally() != Resources.NEGATIVE_QUERY_MARKER && entry.getValueUnconditionally() != Resources.MISSING_METADATA_MARKER) {
+                numResources++;
+            }
+        }
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
-                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();
+                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resource%s", heapObjectCount, numResources, numResources == 1 ? "" : "s").println();
         long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
