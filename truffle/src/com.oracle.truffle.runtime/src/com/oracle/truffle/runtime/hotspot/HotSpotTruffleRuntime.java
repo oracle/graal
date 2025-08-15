@@ -483,9 +483,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
-        ResolvedJavaType type = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+        ResolvedJavaType target = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : target.getDeclaredMethods(false)) {
+            if (method.getName().equals("callBoundary")) {
+                assert method.getAnnotation(TruffleCallBoundary.class) != null;
                 if (compiler != null) {
                     OptimizedCallTarget initCallTarget = initializeCallTarget;
                     Objects.requireNonNull(initCallTarget);
@@ -493,6 +494,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 } else {
                     setNotInlinableOrCompilable(method);
                 }
+                break;
             }
         }
     }
