@@ -48,11 +48,17 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     packages+: {
       'papi': '==5.5.1',
     },
+    local PAPI_DIR='/cm/shared/apps/papi/papi-5.5.1',
     environment+: {
       ENABLE_POLYBENCH_HPC: 'yes',
-      POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
-      POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
+      POLYBENCH_HPC_EXTRA_HEADERS: PAPI_DIR + '/include',
+      POLYBENCH_HPC_PAPI_LIB_DIR: PAPI_DIR + '/lib',
     } + if !std.objectHasAll(self, 'machine_name') then {} else if std.count(['e3', 'e4_36_256', 'e4_8_64'], self.machine_name) > 0 then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
+    setup+: [
+        # Debug commands to help diagnose future problems.
+        ['sysctl', 'kernel.perf_event_paranoid'], # print paranoid level (-1 expected)
+        [PAPI_DIR + '/bin/papi_avail'], # print available events (non-zero number of events expected)
+    ],
   },
 
 
