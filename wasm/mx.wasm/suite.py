@@ -94,7 +94,6 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
-      "javac.lint.overrides" : "-incubating",
     },
 
     "org.graalvm.wasm.jdk25" : {
@@ -109,10 +108,12 @@ suite = {
       "overlayTarget" : "org.graalvm.wasm",
       "multiReleaseJarVersion" : "25",
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "25+",
+      "forceJavac": True,
       "workingSets" : "WebAssembly",
       "license" : "UPL",
       "javac.lint.overrides" : "-incubating",
+      "spotbugs" : "false",
     },
 
     "org.graalvm.wasm.launcher" : {
@@ -381,6 +382,7 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
+        "mx:HAMCREST",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
@@ -427,6 +429,7 @@ suite = {
         "name" : "org.graalvm.wasm.benchmark",
         "requires" : [
           "java.compiler",
+          "org.graalvm.polyglot",
         ],
       },
       "subDir" : "src",
