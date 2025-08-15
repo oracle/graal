@@ -203,8 +203,8 @@ final class InternalResourceCache {
      * the Truffle runtime is created and accessor classes are initialized. For this reason, it
      * cannot use {@code EngineSupport} to call this method, nor can this method use any accessor.
      */
-    static Path installRuntimeResource(InternalResource resource) throws IOException {
-        InternalResourceCache cache = createRuntimeResourceCache(resource);
+    static Path installRuntimeResource(InternalResource resource, String id) throws IOException {
+        InternalResourceCache cache = createRuntimeResourceCache(resource, id);
         synchronized (cache) {
             Path result = cache.path;
             if (result == null) {
@@ -215,12 +215,19 @@ final class InternalResourceCache {
         }
     }
 
-    private static InternalResourceCache createRuntimeResourceCache(InternalResource resource) {
-        InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
-        assert id != null : resource.getClass() + " must be annotated by @InternalResource.Id";
-        InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id.value(), () -> resource);
+    private static InternalResourceCache createRuntimeResourceCache(InternalResource resource, String id) {
+        assert verifyAnnotationConsistency(resource, id) : resource.getClass() + " must be annotated by @InternalResource.Id(\"" + id + "\"";
+        InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id, () -> resource);
         InternalResourceRoots.initializeRuntimeResource(cache);
         return cache;
+    }
+
+    private static boolean verifyAnnotationConsistency(InternalResource resource, String expectedId) {
+        InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
+        if (id == null) {
+            return false;
+        }
+        return id.value().equals(expectedId);
     }
 
     private static InternalResource.Env createInternalResourceEnvReflectively(InternalResource resource) {
