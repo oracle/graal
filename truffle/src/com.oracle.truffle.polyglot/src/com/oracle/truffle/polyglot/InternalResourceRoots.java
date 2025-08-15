@@ -65,6 +65,7 @@ final class InternalResourceRoots {
     private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
     private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
     private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
+    static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
 
     static String overriddenComponentRootProperty(String componentId) {
         StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
@@ -252,8 +253,10 @@ final class InternalResourceRoots {
             root = findCacheRootDefault();
             kind = Root.Kind.VERSIONED;
         }
-        logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
-                        root.path(), root.hint(), root.hintValue());
+        if (TRACE_INTERNAL_RESOURCE_EVENTS) {
+            logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
+                            root.path(), root.hint(), root.hintValue());
+        }
         return Pair.create(root.path(), kind);
     }
 
@@ -344,18 +347,9 @@ final class InternalResourceRoots {
         return container.resolve("org.graalvm.polyglot");
     }
 
-    static boolean isTraceInternalResourceEvents() {
-        /*
-         * Internal resources are utilized before the Engine is created; hence, we cannot leverage
-         * engine options and engine logger.
-         */
-        return Boolean.getBoolean("polyglotimpl.TraceInternalResources");
-    }
-
     static void logInternalResourceEvent(String message, Object... args) {
-        if (isTraceInternalResourceEvents()) {
-            PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
-        }
+        assert TRACE_INTERNAL_RESOURCE_EVENTS : "need to check for TRACE_INTERNAL_RESOURCE_EVENTS before use";
+        PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
     }
 
     private static void emitWarning(String message, Object... args) {

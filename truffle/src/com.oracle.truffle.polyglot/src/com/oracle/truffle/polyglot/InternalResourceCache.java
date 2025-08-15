@@ -163,7 +163,7 @@ final class InternalResourceCache {
             case UNVERSIONED -> findStandaloneResourceRoot(root.path());
             case VERSIONED -> null;
         };
-        if (path != null && InternalResourceRoots.isTraceInternalResourceEvents()) {
+        if (path != null && InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
             /*
              * The path for the VERSIONED resource is logged when the resource is requested.
              * Computation of this path is expensive and involves a call to
@@ -254,7 +254,9 @@ final class InternalResourceCache {
         }
         Path target = owningRoot.path().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
         if (!Files.exists(target)) {
-            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
+            if (InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
+                InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
+            }
             Path parent = target.getParent();
             if (parent == null) {
                 throw new AssertionError("Target must have a parent directory but was " + target);
@@ -280,8 +282,10 @@ final class InternalResourceCache {
                 }
             }
         } else {
-            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
-                            id, resourceId, target);
+            if (InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
+                InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
+                                id, resourceId, target);
+            }
             verifyResourceRoot(target);
         }
         return target;
