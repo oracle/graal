@@ -346,7 +346,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
-        AnalysisError.guarantee(isBaseLayerAnalysisEnabled());
+        AnalysisError.guarantee(isBaseLayerAnalysisEnabled() || hostVM.buildingImageLayer());
         registerDefaultMethod(method, reason);
         PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(method);
         postTask(ignore -> {

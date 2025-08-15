@@ -706,6 +706,11 @@ public class MethodTypeFlowBuilder {
 
         method.setReachableInCurrentLayer();
 
+        if (method.isDelayed()) {
+            /* The method will be analyzed in the application layer */
+            return;
+        }
+
         if (method.analyzedInPriorLayer()) {
             /*
              * We don't need to analyze this method. We already know its return type state from the

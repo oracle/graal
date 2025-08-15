@@ -536,7 +536,7 @@ public class ProgressReporter {
 
     private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {
         Stream<T> reachableElements = elements.stream().filter(elementsFilter);
-        return universe.hostVM().useBaseLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
+        return universe.hostVM().buildingExtensionLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
     }
 
     public ReporterClosable printUniverse() {

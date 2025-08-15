@@ -860,10 +860,10 @@ public class CompileQueue {
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
         if (!SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
             /*
-             * We have compiled this method in a prior layer, but don't have the graph available
-             * here.
+             * We have compiled this method in a prior layer or this method's compilation is delayed
+             * to the application layer, but don't have the graph available here.
              */
-            assert callee.isCompiledInPriorLayer() : method;
+            assert callee.isCompiledInPriorLayer() || callee.wrapped.isDelayed() : method;
             return false;
         }
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
@@ -1205,9 +1205,10 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
-        if (method.isCompiledInPriorLayer()) {
+        if (method.isCompiledInPriorLayer() || method.wrapped.isDelayed()) {
             /*
-             * Since this method was compiled in a prior layer we should not compile it again.
+             * Since this method was compiled in a prior layer or its compilation is delayed to the
+             * application layer we should not compile it.
              */
             return;
         }

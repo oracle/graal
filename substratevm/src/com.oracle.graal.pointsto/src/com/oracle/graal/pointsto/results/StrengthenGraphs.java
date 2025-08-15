@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -193,6 +194,8 @@ public abstract class StrengthenGraphs {
     /** Used to avoid aggressive optimizations for open type world analysis. */
     protected final boolean isClosedTypeWorld;
 
+    protected final boolean buildingSharedLayer;
+
     public StrengthenGraphs(BigBang bb, Universe converter) {
         this.bb = bb;
         this.converter = converter;
@@ -208,7 +211,9 @@ public abstract class StrengthenGraphs {
             beforeCounters = null;
             afterCounters = null;
         }
-        this.isClosedTypeWorld = converter.hostVM().isClosedTypeWorld();
+        HostVM hostVM = converter.hostVM();
+        this.isClosedTypeWorld = hostVM.isClosedTypeWorld();
+        this.buildingSharedLayer = hostVM.buildingSharedLayer();
     }
 
     private static void reportNeverNullInstanceFields(BigBang bb) {
