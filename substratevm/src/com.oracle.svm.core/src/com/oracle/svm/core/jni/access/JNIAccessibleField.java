@@ -61,7 +61,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     private static final UnsignedWord ID_OFFSET_MASK = ID_LAYER_NUMBER_MASK.subtract(1);
 
     public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleField(jniClass, null, 0);
+        return new JNIAccessibleField(false, jniClass, null, 0);
     }
 
     /**
@@ -116,8 +116,8 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     private UnsignedWord id = Word.zero();
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleField(JNIAccessibleClass declaringClass, JavaKind kind, int modifiers) {
-        super(declaringClass);
+    public JNIAccessibleField(boolean preserved, JNIAccessibleClass declaringClass, JavaKind kind, int modifiers) {
+        super(preserved, declaringClass);
 
         UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : Word.zero();
         if (kind == null) {

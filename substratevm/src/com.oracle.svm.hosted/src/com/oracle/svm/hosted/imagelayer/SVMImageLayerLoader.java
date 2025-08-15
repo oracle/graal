@@ -940,7 +940,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (wm.isReflectionExpandSignature()) {
                 ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(member);
             } else if (wm.isJavaCallVariantWrapper()) {
-                JNIAccessFeature.singleton().addMethod(member, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
+                JNIAccessFeature.singleton().addMethod(member, false, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
             }
             return true;
         } else if (wrappedMethod.isPolymorphicSignature()) {

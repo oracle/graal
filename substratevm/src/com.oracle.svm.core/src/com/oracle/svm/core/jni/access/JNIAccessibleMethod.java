@@ -57,7 +57,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     public static final int NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE = -1;
 
     public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleMethod(jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK);
+        return new JNIAccessibleMethod(false, jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -104,8 +104,8 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @SuppressWarnings("unused") private CodePointer valistNonvirtualWrapper;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers) {
-        super(declaringClass);
+    public JNIAccessibleMethod(boolean preserved, JNIAccessibleClass declaringClass, int modifiers) {
+        super(preserved, declaringClass);
         this.modifiers = modifiers;
     }
 

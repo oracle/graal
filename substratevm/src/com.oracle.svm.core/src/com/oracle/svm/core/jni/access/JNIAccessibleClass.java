@@ -39,19 +39,21 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Information on a class that can be looked up and accessed via JNI.
  */
-public final class JNIAccessibleClass {
+public final class JNIAccessibleClass extends JNIAccessibleElement {
     private final Class<?> classObject;
     private EconomicMap<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
     private EconomicMap<CharSequence, JNIAccessibleField> fields;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleClass(Class<?> clazz) {
+    public JNIAccessibleClass(Class<?> clazz, boolean preserved) {
+        super(preserved);
         assert clazz != null;
         this.classObject = clazz;
     }
 
     @Platforms(HOSTED_ONLY.class)
     JNIAccessibleClass() {
+        super(false);
         /* For negative queries */
         this.classObject = null;
     }
@@ -73,22 +75,28 @@ public final class JNIAccessibleClass {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addFieldIfAbsent(String name, Function<String, JNIAccessibleField> mappingFunction) {
+    public void addOrUpdateField(String name, boolean updatedPreserved, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
             fields = ImageHeapMap.createNonLayeredMap(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
         }
-        if (!fields.containsKey(name)) {
+        JNIAccessibleField existing = fields.get(name);
+        if (existing == null) {
             fields.put(name, mappingFunction.apply(name));
+        } else {
+            existing.reportReregistered(updatedPreserved);
         }
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addMethodIfAbsent(JNIAccessibleMethodDescriptor descriptor, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
+    public void addOrUpdateMethod(JNIAccessibleMethodDescriptor descriptor, boolean updatedPreserved, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
             methods = ImageHeapMap.createNonLayeredMap();
         }
-        if (!methods.containsKey(descriptor)) {
+        JNIAccessibleMethod existing = methods.get(descriptor);
+        if (existing == null) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
+        } else {
+            existing.reportReregistered(updatedPreserved);
         }
     }
 
