@@ -672,12 +672,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
 
-    def daCapoPath(self):
-        lib = mx.library(self.daCapoLibraryName(), False)
-        if lib:
-            return lib.get_path(True)
-        return None
-
     def availableSuiteVersions(self):
         # The version 9.12-MR1-git+2baec49 also ships a custom harness class to allow native image to find the entry point in the nested jar
         return ["9.12-MR1-git+2baec49", "23.11-MR2-chopin"]

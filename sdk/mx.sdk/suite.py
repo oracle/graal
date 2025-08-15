@@ -315,6 +315,12 @@ suite = {
       "packedResource": True,
     },
 
+    "DACAPO_23.11_MR2_chopin_minimal" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-23.11-MR2-chopin-minimal.zip"],
+      "digest" : "sha512:51c04f81564f758e12c43dc44fc70fe2de15c5ea368e759b898a41bac3a458a421c1dbf557676533ba97c82283055fe73637cdc8c100b82384e5af9380113d40",
+      "packedResource": True,
+    },
+
     "DACAPO_SCALA" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "digest" : "sha512:9a3908f3a0f2937bbc7edcd78f7e7e229bea8dee566d5f2d922bd4dc3c5b02cf97de294e479200372ff90bfbdf80e88dc7fc9fda9cb294088346e4a5ff28893e",
