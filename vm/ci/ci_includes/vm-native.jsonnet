@@ -11,7 +11,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     notify_groups: ["truffle"],
     components+: ["truffletck"],
     timelimit: '35:00',
-    name: self.targets[0] + '-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
+    name: 'gate-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
     logs+: [
       "*/call_tree.txt.gz"
     ]
@@ -24,7 +24,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     notify_groups: ["wasm"],
     components+: ["truffletck"],
     timelimit: '35:00',
-    name: self.targets[0] + '-vm-truffle-native-tck-wasm-labs' + self.jdk_name + '-linux-amd64',
+    name: 'gate-vm-truffle-native-tck-wasm-labs' + self.jdk_name + '-linux-amd64',
   },
 
   local truffle_maven_downloader = graal_common.deps.svm + graal_common.deps.sulong + {
@@ -37,21 +37,21 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     packages+: {
       maven: '==3.5.3',
     },
-    name: self.targets[0] + '-vm-ce-truffle-maven-downloader-labs' + self.jdk_name + '-linux-amd64',
+    name: 'gate-vm-ce-truffle-maven-downloader-labs' + self.jdk_name + '-linux-amd64',
   },
 
   local builds = [
-    vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'post-merge') + {
+    vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'tier3') + {
      run+: [
        ['mx', '--env', vm.edition, '--native-images=true', '--dy', 'graalpython', 'gate', '-B--targets=GRAALPY_NATIVE_STANDALONE', '--no-warning-as-error', '--tags', 'build,python'],
      ],
      notify_groups: ["python"],
      timelimit: '45:00',
-     name: 'post-merge-vm-native-graalpython-linux-amd64',
+     name: 'gate-vm-native-graalpython-linux-amd64',
     },
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_native_tck,
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_native_tck_wasm,
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge')  + truffle_maven_downloader,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'tier3')  + truffle_native_tck,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'tier3')  + truffle_native_tck_wasm,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'tier3')  + truffle_maven_downloader,
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),
