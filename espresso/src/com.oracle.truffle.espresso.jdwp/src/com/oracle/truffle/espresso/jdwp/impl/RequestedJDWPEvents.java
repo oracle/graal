@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -111,11 +109,9 @@ public final class RequestedJDWPEvents {
                 MethodBreakpointInfo methodInfo = new MethodBreakpointInfo(filter);
                 methodInfo.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
-                for (KlassRef klass : filter.getKlassRefPatterns()) {
-                    for (MethodRef method : klass.getDeclaredMethods()) {
-                        method.addMethodHook(methodInfo);
-                        methodInfo.addMethod(method);
-                    }
+                eventListener.addClassConsumer(methodInfo);
+                for (KlassRef klass : context.getAllLoadedClasses()) {
+                    methodInfo.accept(klass);
                 }
                 filter.addBreakpointInfo(methodInfo);
                 break;
@@ -219,30 +215,18 @@ public final class RequestedJDWPEvents {
             case 4:
                 long refTypeId = input.readLong();
                 final KlassRef finalKlass = (KlassRef) ids.fromId((int) refTypeId);
-                filter.addRefTypeLimit(finalKlass);
+                filter.addRefTypeOnly(finalKlass);
                 controller.fine(() -> "RefType limit: " + finalKlass);
                 break;
             case 5: // class positive pattern
-                String classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
-                try {
-                    Pattern pattern = Pattern.compile(classPattern);
-                    filter.addPositivePattern(pattern);
-                    controller.fine(() -> "adding positive refType pattern: " + pattern.pattern());
-                } catch (PatternSyntaxException ex) {
-                    // wrong input pattern
-                    throw new RuntimeException("should not reach here");
-                }
+                String pattern = input.readString();
+                filter.addIncludePattern(pattern);
+                controller.fine(() -> "adding positive refType pattern: " + pattern);
                 break;
             case 6:
-                classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
-                try {
-                    Pattern pattern = Pattern.compile(classPattern);
-                    filter.addExcludePattern(pattern);
-                    controller.fine(() -> "adding negative refType pattern: " + pattern.pattern());
-                } catch (PatternSyntaxException ex) {
-                    // wrong input pattern
-                    throw new RuntimeException("should not reach here");
-                }
+                pattern = input.readString();
+                filter.addExcludePattern(pattern);
+                controller.fine(() -> "adding negative refType pattern: " + pattern);
                 break;
             case 7: // location-specific
                 byte typeTag = input.readByte();
@@ -307,6 +291,7 @@ public final class RequestedJDWPEvents {
         }
     }
 
+    @SuppressWarnings("fallthrough")
     public CommandResult clearRequest(Packet packet) {
         PacketStream reply = new PacketStream().id(packet.id).replyPacket();
         PacketStream input = new PacketStream(packet);
@@ -323,15 +308,16 @@ public final class RequestedJDWPEvents {
                         controller.fine(() -> "Clearing step command: " + requestId);
                         controller.clearStepCommand(requestFilter.getStepInfo());
                         break;
+                    case METHOD_ENTRY:
                     case METHOD_EXIT_WITH_RETURN_VALUE:
                     case METHOD_EXIT:
                         MethodBreakpointInfo methodInfo = (MethodBreakpointInfo) requestFilter.getBreakpointInfo();
+                        eventListener.removeClassConsumer(methodInfo);
                         for (MethodRef method : methodInfo.getMethods()) {
                             method.removeMethodHook(requestFilter.getRequestId());
                         }
-                        break;
+                        // fall through to breakpoint request removal
                     case BREAKPOINT:
-                    case METHOD_ENTRY:
                     case EXCEPTION:
                         eventListener.removeBreakpointRequest(requestFilter.getRequestId());
                         break;
