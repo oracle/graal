@@ -242,22 +242,19 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
      * using reflection. If the method is unavailable, a fallback version of 23.1.1 is returned.
      */
     public static Version getCompilerVersion(TruffleCompilationSupport compilationSupport) {
-        /*
-         * The TruffleCompilationSupport is present in both the maven artifact
-         * org.graalvm.truffle/truffle-compiler and the JDK org.graalvm.truffle.compiler module. The
-         * JDK version of TruffleCompilationSupport may be outdated and lack the getCompilerVersion
-         * method. To address this, we use reflection.
-         */
-        String compilerVersionString = null;
+        Version version = null;
         try {
-            Method getCompilerVersion = compilationSupport.getClass().getMethod("getCompilerVersion");
-            compilerVersionString = (String) getCompilerVersion.invoke(compilationSupport);
-        } catch (NoSuchMethodException noMethod) {
-            // pass with compilerVersionString set to null
-        } catch (ReflectiveOperationException e) {
-            throw new InternalError(e);
+            version = Version.parse(compilationSupport.getCompilerVersion());
+        } catch (NoSuchMethodError noMethod) {
+            /*
+             * The TruffleCompilationSupport is present in both the maven artifact
+             * org.graalvm.truffle/truffle-compiler and the JDK org.graalvm.truffle.compiler module.
+             * The JDK version of TruffleCompilationSupport may be outdated and lack the
+             * getCompilerVersion method. To address this, we use reflection.
+             */
+            version = Version.create(23, 1, 1);
         }
-        return compilerVersionString != null ? Version.parse(compilerVersionString) : Version.create(23, 1, 1);
+        return version;
     }
 
     private static Version stripUpdateVersion(Version version) {
