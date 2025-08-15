@@ -39,6 +39,7 @@
 # SOFTWARE.
 #
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -326,11 +327,14 @@ class WatBuildTask(GraalWasmBuildTask):
                 mx.warn("No WABT_DIR specified.")
             mx.abort("Could not check the wat2wasm version.")
 
-        wat2wasm_version = str(out.data).split(".")
-        major = int(wat2wasm_version[0])
-        build = int(wat2wasm_version[2])
-        if major <= 1 and build <= 24:
-            bulk_memory_option = "--enable-bulk-memory"
+        try:
+            wat2wasm_version = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', str(out.data)).groups()
+
+            major, minor, build = wat2wasm_version
+            if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
+                bulk_memory_option = "--enable-bulk-memory"
+        except:
+            mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
 
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
