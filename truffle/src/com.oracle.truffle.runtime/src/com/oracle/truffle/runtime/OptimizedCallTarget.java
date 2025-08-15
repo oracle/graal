@@ -271,9 +271,13 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     /**
-     * Set if compilation failed or was ignored. Reset by TruffleBaseFeature after image generation.
+     * Set if compilation failed or was ignored. Reset by TruffleFeature after image generation.
      */
     private volatile boolean compilationFailed;
+    /**
+     * Unset if compilation failed. Reset by TruffleFeature to true after image generation.
+     */
+    private volatile boolean canBeInlined = true;
     /**
      * Whether the call profile was preinitialized with a fixed set of type classes. In such a case
      * the arguments will be cast using unsafe and the arguments array for calls is not checked
@@ -283,7 +287,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     /**
      * Timestamp when the call target was initialized e.g. used the first time. Reset by
-     * TruffleBaseFeature after image generation.
+     * TruffleFeature after image generation.
      */
     private volatile long initializedTimestamp;
 
@@ -909,6 +913,10 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compilationFailed;
     }
 
+    public boolean canBeInlined() {
+        return canBeInlined;
+    }
+
     private CompilationActivityMode getCompilationActivityMode() {
         CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
         long stoppedTime = runtime().stoppedCompilationTime().get();
@@ -1217,6 +1225,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             action = ExceptionAction.Silent;
         } else {
             compilationFailed = true;
+            canBeInlined = false;
             action = silent ? ExceptionAction.Silent : engine.compilationFailureAction;
         }
 
