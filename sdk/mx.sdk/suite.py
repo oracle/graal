@@ -976,6 +976,7 @@ suite = {
         "exports" : [
           "com.oracle.svm.core.annotate",
           "org.graalvm.nativeimage.hosted",
+          "org.graalvm.nativeimage.dynamicaccess",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",
           "org.graalvm.nativeimage.c.type",
