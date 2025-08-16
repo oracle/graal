@@ -168,7 +168,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = "Called during GC or teardown.")
         public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
             GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
@@ -192,12 +192,6 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         public void attachToCurrentIsolate(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
             NonmovableArrays.trackUnmanagedArray(handle.getDebugInfoData());
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            release(installedCodeObserverHandle);
         }
     }
 
