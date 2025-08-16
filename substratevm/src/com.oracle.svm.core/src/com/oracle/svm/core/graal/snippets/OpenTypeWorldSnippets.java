@@ -244,7 +244,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
 
             SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {
-                args = new SnippetTemplate.Arguments(typeEquality, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(typeEquality, node.graph(), tool.getLoweringStage());
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
@@ -258,7 +258,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
 
         protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
             assert type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
             args.add("object", node.getValue());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
@@ -288,7 +288,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             InstanceOfDynamicNode node = (InstanceOfDynamicNode) replacer.instanceOf;
 
             if (node.isExact()) {
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(typeEquality, node.graph().getGuardsStage(), tool.getLoweringStage());
+                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(typeEquality, node.graph(), tool.getLoweringStage());
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
@@ -297,7 +297,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                 return args;
 
             } else {
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
+                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfDynamic, node.graph(), tool.getLoweringStage());
                 args.add("type", node.getMirrorOrHub());
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
@@ -326,7 +326,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         protected SnippetTemplate.Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
             ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) replacer.instanceOf;
 
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(assignableTypeCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(assignableTypeCheck, node.graph(), tool.getLoweringStage());
             args.add("type", node.getThisClass());
             args.add("checkedHub", node.getOtherClass());
             args.add("trueValue", replacer.trueValue);

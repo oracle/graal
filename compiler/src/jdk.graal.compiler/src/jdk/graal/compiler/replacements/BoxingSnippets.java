@@ -262,7 +262,7 @@ public class BoxingSnippets implements Snippets {
 
         public void lower(BoxNode box, LoweringTool tool) {
             SnippetTemplate.Arguments args = null;
-            args = new SnippetTemplate.Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
+            args = new SnippetTemplate.Arguments(boxSnippets.get(box.getBoxingKind()), box.graph(), tool.getLoweringStage());
             args.add("value", box.getValue());
             args.add("valueOfCounter", valueOfCounter);
             SnippetTemplate template = template(tool, box, args);
@@ -273,7 +273,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(UnboxNode unbox, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph(), tool.getLoweringStage());
             args.add("value", unbox.getValue());
             args.add("valueCounter", valueCounter);
 

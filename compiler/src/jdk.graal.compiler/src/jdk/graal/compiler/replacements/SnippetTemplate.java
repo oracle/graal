@@ -45,6 +45,7 @@ import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -600,9 +601,13 @@ public class SnippetTemplate {
 
         protected int nextParamIdx;
 
-        public Arguments(SnippetInfo info, GuardsStage guardsStage, LoweringTool.LoweringStage loweringStage) {
+        public Arguments(SnippetInfo info, StructuredGraph graph, LoweringTool.LoweringStage loweringStage) {
+            this(info, graph.getGuardsStage(), graph.getGraphState().allowsFloatingReads(), loweringStage);
+        }
+
+        public Arguments(SnippetInfo info, GuardsStage guardsStage, boolean allowsFloatingReads, LoweringTool.LoweringStage loweringStage) {
             this.info = info;
-            this.cacheKey = new CacheKey(info, guardsStage, loweringStage);
+            this.cacheKey = new CacheKey(info, guardsStage, allowsFloatingReads, loweringStage);
             this.values = new Object[info.getParameterCount()];
             this.constStamps = new Stamp[info.getParameterCount()];
             this.cacheable = true;
@@ -773,16 +778,18 @@ public class SnippetTemplate {
         private final ResolvedJavaMethod method;
         private final Object[] values;
         private final GuardsStage guardsStage;
+        private final boolean allowsFloatingReads;
         private final LoweringTool.LoweringStage loweringStage;
         private int hash;
         private final Snippet.SnippetType type;
 
-        protected CacheKey(SnippetInfo info, GuardsStage guardsStage, LoweringTool.LoweringStage loweringStage) {
+        protected CacheKey(SnippetInfo info, GuardsStage guardsStage, boolean allowsFloatingReads, LoweringTool.LoweringStage loweringStage) {
             this.method = info.method;
             this.guardsStage = guardsStage;
+            this.allowsFloatingReads = allowsFloatingReads;
             this.loweringStage = loweringStage;
             this.values = new Object[info.getParameterCount()];
-            this.hash = info.method.hashCode() + 31 * guardsStage.ordinal();
+            this.hash = Objects.hash(info.method, allowsFloatingReads, loweringStage);
             this.type = info.type;
         }
 
@@ -800,7 +807,7 @@ public class SnippetTemplate {
             if (!method.equals(other.method)) {
                 return false;
             }
-            if (guardsStage != other.guardsStage || loweringStage != other.loweringStage) {
+            if (guardsStage != other.guardsStage || loweringStage != other.loweringStage || allowsFloatingReads != other.allowsFloatingReads) {
                 return false;
             }
             if (type != other.type) {
@@ -1206,6 +1213,7 @@ public class SnippetTemplate {
                 boolean needsPEA = false;
                 boolean needsCE = false;
                 LoweringTool.LoweringStage loweringStage = args.cacheKey.loweringStage;
+                final boolean allowsFloatingReads = args.cacheKey.allowsFloatingReads;
                 for (Node n : snippetCopy.getNodes()) {
                     if (!needsPEA && (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode)) {
                         needsPEA = true;
@@ -1239,8 +1247,7 @@ public class SnippetTemplate {
                 if (loweringStage != LoweringTool.StandardLoweringStage.HIGH_TIER) {
                     // (3)
                     assert !guardsStage.allowsFloatingGuards() : guardsStage;
-                    // only create memory map nodes if we need the memory graph
-                    new FloatingReadPhase(true, false, canonicalizer).apply(snippetCopy, providers);
+                    new FloatingReadPhase(true, allowsFloatingReads, canonicalizer).apply(snippetCopy, providers);
 
                     if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
                         new GuardLoweringPhase().apply(snippetCopy, providers);
@@ -1923,9 +1930,7 @@ public class SnippetTemplate {
 
     private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         verifyWithExceptionNode(replacee);
-        final StructuredGraph replaceeGraph = replacee.graph();
-        final boolean hasMemoryGraph = replaceeGraph.isAfterStage(StageFlag.FLOATING_READS) && !replaceeGraph.isAfterStage(StageFlag.FIXED_READS);
-        if (!hasMemoryGraph) {
+        if (!replacee.graph().getGraphState().allowsFloatingReads()) {
             return;
         }
 

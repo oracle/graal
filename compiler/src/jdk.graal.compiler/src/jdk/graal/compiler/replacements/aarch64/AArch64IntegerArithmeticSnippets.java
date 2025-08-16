@@ -111,7 +111,7 @@ public class AArch64IntegerArithmeticSnippets extends SnippetTemplate.AbstractTe
             throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
         }
         StructuredGraph graph = node.graph();
-        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, graph, tool.getLoweringStage());
         args.add("x", node.getX());
         args.add("y", node.getY());
 

@@ -99,7 +99,7 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
     class EnsureClassInitializedNodeLowering implements NodeLoweringProvider<EnsureClassInitializedNode> {
         @Override
         public void lower(EnsureClassInitializedNode node, LoweringTool tool) {
-            Arguments args = new Arguments(ensureClassIsInitialized, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(ensureClassIsInitialized, node.graph(), tool.getLoweringStage());
             args.add("hub", node.getHub());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

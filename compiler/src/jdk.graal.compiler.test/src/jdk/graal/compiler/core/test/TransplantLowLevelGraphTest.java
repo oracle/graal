@@ -93,7 +93,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producer, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producer, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         // no args
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);
                         return template;
@@ -116,7 +116,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producerWithArgs, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producerWithArgs, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         args.add("a", arg0);
                         args.add("b", arg1);
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);
@@ -140,7 +140,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producerWithDeopt, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producerWithDeopt, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         args.add("a", arg0);
                         args.add("b", arg1);
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);

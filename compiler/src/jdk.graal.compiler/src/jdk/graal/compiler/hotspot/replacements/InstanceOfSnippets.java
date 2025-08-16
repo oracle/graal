@@ -293,22 +293,22 @@ public class InstanceOfSnippets implements Snippets {
                 StructuredGraph graph = instanceOf.graph();
                 if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
                     Hints hints = createHints(hintInfo, tool.getMetaAccess(), false, graph);
-                    args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(instanceofWithProfile, graph, tool.getLoweringStage());
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
-                    args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(instanceofExact, graph, tool.getLoweringStage());
                     args.add("object", object);
                     args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), tool.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
-                    args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(instanceofPrimary, graph, tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.add("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, tool.getMetaAccess(), false, graph);
-                    args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(instanceofSecondary, graph, tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
@@ -326,7 +326,7 @@ public class InstanceOfSnippets implements Snippets {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
                 ValueNode object = instanceOf.getObject();
 
-                Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(instanceofDynamic, instanceOf.graph(), tool.getLoweringStage());
                 args.add("hub", instanceOf.getMirrorOrHub());
                 args.add("object", object);
                 args.add("trueValue", replacer.trueValue);
@@ -337,7 +337,7 @@ public class InstanceOfSnippets implements Snippets {
                 return args;
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
-                Arguments args = new Arguments(isAssignableFrom, isAssignable.graph().getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(isAssignableFrom, isAssignable.graph(), tool.getLoweringStage());
                 assert ((ObjectStamp) isAssignable.getThisClass().stamp(NodeView.DEFAULT)).nonNull();
                 assert ((ObjectStamp) isAssignable.getOtherClass().stamp(NodeView.DEFAULT)).nonNull();
                 args.add("thisClassNonNull", isAssignable.getThisClass());

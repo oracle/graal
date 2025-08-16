@@ -802,11 +802,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
                 if (objectHeaderConstant != null) {
-                    args = new Arguments(allocateInstanceConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateInstanceConstantHeader, graph, tool.getLoweringStage());
                     args.add("objectHeader", objectHeaderConstant);
                 } else {
                     ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-                    args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateInstance, graph, tool.getLoweringStage());
                     args.add("hub", hubConstant);
                 }
 
@@ -840,7 +840,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -875,7 +875,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateStoredContinuation, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -926,11 +926,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
                 if (objectHeaderConstant != null) {
-                    args = new Arguments(allocateArrayConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateArrayConstantHeader, graph, tool.getLoweringStage());
                     args.add("objectHeader", objectHeaderConstant);
                 } else {
                     ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-                    args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateArray, graph, tool.getLoweringStage());
                     args.add("hub", hubConstant);
                 }
 
@@ -967,7 +967,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.type();
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("rank", rank);
                 args.add("withException", false);
@@ -994,7 +994,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.type();
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("rank", rank);
                 args.add("withException", true);
@@ -1012,7 +1012,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -1034,7 +1034,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("fillContents", FillContent.fromBoolean(true));
@@ -1056,7 +1056,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -1079,7 +1079,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -1099,7 +1099,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
 
-                Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(validateNewInstanceClass, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -1118,7 +1118,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 tool.getConstantReflection().asJavaType(node.getHub().asConstant()).equals(node.getKnownInstanceType()));
                 assert node.fillContents() : "fillContents must be true for hybrid allocations";
 
-                Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocatePod, graph, tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));

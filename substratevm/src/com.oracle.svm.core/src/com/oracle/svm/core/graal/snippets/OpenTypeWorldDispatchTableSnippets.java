@@ -134,7 +134,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
                  * an interface dispatch table.
                  */
                 if (target.getDeclaringClass().isInterface()) {
-                    SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadITableStartingOffset, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadITableStartingOffset, node.graph(), tool.getLoweringStage());
                     args.add("hub", node.getHub());
                     args.add("interfaceTypeID", ((SharedType) target.getDeclaringClass()).getTypeID());
                     template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -148,7 +148,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
                 /*
                  * Otherwise we must search on the interfaceID
                  */
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadDispatchTableStartingOffset, node.graph().getGuardsStage(), tool.getLoweringStage());
+                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadDispatchTableStartingOffset, node.graph(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("interfaceTypeID", node.getInterfaceTypeID());
                 args.add("vtableStartingOffset", vtableStartingOffset);

@@ -564,6 +564,16 @@ public final class GraphState {
     }
 
     /**
+     * Determines if {@link jdk.graal.compiler.nodes.memory.FloatingReadNode FloatingReadNodes} are
+     * allowed to be inserted. They should only be manually inserted if
+     * {@link jdk.graal.compiler.phases.common.FloatingReadPhase} has been run and
+     * {@link jdk.graal.compiler.phases.common.FixReadsPhase} has not.
+     */
+    public boolean allowsFloatingReads() {
+        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
+    }
+
+    /**
      * Configure the graph to only allow explicit exception edges without floating guard nodes. That
      * is the graph:
      *

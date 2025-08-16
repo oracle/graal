@@ -118,10 +118,10 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
                         LoweringTool tool) {
             SnippetTemplate.Arguments args;
             if (barrier.usePrecise()) {
-                args = new SnippetTemplate.Arguments(preciseSnippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(preciseSnippet, barrier.graph(), tool.getLoweringStage());
                 args.add("address", barrier.getAddress());
             } else {
-                args = new SnippetTemplate.Arguments(impreciseSnippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(impreciseSnippet, barrier.graph(), tool.getLoweringStage());
                 OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
                 args.add("object", address.getBase());
             }
@@ -132,7 +132,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, SerialArrayRangeWriteBarrierNode barrier, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
             args.add("elementStride", barrier.getElementStride());
