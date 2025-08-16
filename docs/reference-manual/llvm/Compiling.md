@@ -7,7 +7,7 @@ permalink: /reference-manual/llvm/Compiling/
 # Compiling to LLVM Bitcode
 
 GraalVM can execute C/C++, Rust, and other languages that can be compiled to LLVM bitcode.
-As the first step, you have to compile a program to LLVM bitcode using some LLVM compiler front end, for example, `clang` for C and C++, `rust` for the Rust programing language, etc.
+As the first step, you have to compile a program to LLVM bitcode using some LLVM compiler front end, for example, `clang` for C and C++, `rust` for the Rust programming language, etc.
 
 ## File Format
 
