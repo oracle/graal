@@ -52,14 +52,17 @@ public class RemoveSourceRootAction extends CallbackSystemAction {
         super.initialize();
     }
 
+    @Override
     public Object getActionMapKey() {
         return "delete"; // NOI18N
     }
 
+    @Override
     public String getName() {
         return Bundle.ACTION_RemoveSourceRoot();
     }
 
+    @Override
     public HelpCtx getHelpCtx() {
         return new HelpCtx(RemoveSourceRootAction.class);
     }

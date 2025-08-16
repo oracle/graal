@@ -57,12 +57,12 @@ public class Pair<L, R> {
             return false;
         }
         Pair<?, ?> obj = (Pair<?, ?>) o;
-        boolean b1 = (l == obj.l);
+        boolean b1 = l == obj.l;
         if (l != null) {
             b1 = l.equals(obj.l);
         }
 
-        boolean b2 = (r == obj.r);
+        boolean b2 = r == obj.r;
         if (r != null) {
             b2 = r.equals(obj.r);
         }
@@ -72,7 +72,7 @@ public class Pair<L, R> {
 
     @Override
     public int hashCode() {
-        return ((l == null) ? 0 : l.hashCode()) * 71 + ((r == null) ? 0 : r.hashCode());
+        return (l == null ? 0 : l.hashCode()) * 71 + (r == null ? 0 : r.hashCode());
     }
 
     @Override

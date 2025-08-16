@@ -73,7 +73,6 @@ public final class UIUtils {
     private static final Logger LOGGER = Logger.getLogger(UIUtils.class.getName());
     public static final float ALTERNATE_ROW_DARKER_FACTOR = 0.96f;
     private static final int MAX_TREE_AUTOEXPAND_LINES = 50;
-    private static boolean toolTipValuesInitialized = false;
     private static Color unfocusedSelBg;
     private static Color unfocusedSelFg;
     private static Color disabledLineColor;
@@ -82,6 +81,7 @@ public final class UIUtils {
 
     public static JPanel createFillerPanel() {
         JPanel fillerPanel = new JPanel(null) {
+            @Override
             public Dimension getPreferredSize() {
                 return DIMENSION_SMALLEST;
             }
@@ -92,6 +92,7 @@ public final class UIUtils {
 
     public static JSeparator createHorizontalSeparator() {
         JSeparator horizontalSeparator = new JSeparator() {
+            @Override
             public Dimension getMinimumSize() {
                 return getPreferredSize();
             }
@@ -103,14 +104,17 @@ public final class UIUtils {
     public static JSeparator createHorizontalLine(Color background) {
         final boolean customPaint = isNimbus() || isAquaLookAndFeel();
         JSeparator separator = new JSeparator() {
+            @Override
             public Dimension getMaximumSize() {
                 return new Dimension(super.getMaximumSize().width, 1);
             }
 
+            @Override
             public Dimension getPreferredSize() {
                 return new Dimension(super.getPreferredSize().width, 1);
             }
 
+            @Override
             public void paint(Graphics g) {
                 if (customPaint) {
                     g.setColor(getDisabledLineColor());
@@ -390,7 +394,7 @@ public final class UIUtils {
             return false;
         }
 
-        return (!isWindowsXPLookAndFeel());
+        return !isWindowsXPLookAndFeel();
     }
 
     /**
@@ -413,9 +417,9 @@ public final class UIUtils {
         boolean xpThemeActiveOS = Boolean.TRUE.equals(Toolkit.getDefaultToolkit().getDesktopProperty("win.xpstyle.themeActive")); //NOI18N
         // is XP theme disabled by the application?
 
-        boolean xpThemeDisabled = (System.getProperty("swing.noxp") != null); // NOI18N
+        boolean xpThemeDisabled = System.getProperty("swing.noxp") != null; // NOI18N
 
-        return ((xpThemeActiveOS) && (!xpThemeDisabled));
+        return xpThemeActiveOS && (!xpThemeDisabled);
     }
 
     public static boolean isWindowsModernLookAndFeel() {
@@ -547,6 +551,7 @@ public final class UIUtils {
         if (comp != null) {
             final Component top = comp;
             top.addComponentListener(new ComponentAdapter() {
+                @Override
                 public void componentResized(ComponentEvent e) {
                     Dimension d = top.getSize();
                     Dimension min = top.getMinimumSize();
@@ -619,9 +624,11 @@ public final class UIUtils {
         tree.addTreeExpansionListener(new TreeExpansionListener() {
             boolean internalChange = false;
 
+            @Override
             public void treeCollapsed(TreeExpansionEvent event) {
             }
 
+            @Override
             public void treeExpanded(TreeExpansionEvent event) {
                 if (internalChange || Boolean.TRUE.equals(tree.getClientProperty(PROP_EXPANSION_TRANSACTION))) { // NOI18N
                     return;

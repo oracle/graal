@@ -335,7 +335,7 @@ public class FolderNode extends AbstractOutlineNode {
             versions.setName("versions"); // NOI18N
             versions.setDisplayName(Bundle.TITLE_Versions());
             List<jdk.graal.compiler.graphio.parsing.model.Property<?>> versionProps = new ArrayList<>();
-            pen.getProperties().forEach((p) -> {
+            pen.getProperties().forEach(p -> {
                 if (p.getName().startsWith("igv.")) { // NOI18N
                     return;
                 }

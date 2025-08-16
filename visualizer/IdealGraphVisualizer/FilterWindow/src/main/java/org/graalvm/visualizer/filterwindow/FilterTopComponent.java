@@ -464,7 +464,7 @@ public final class FilterTopComponent extends TopComponent implements ExplorerMa
         return nodes[0];
     }
 
-    final static class ResolvableHelper implements Serializable {
+    static final class ResolvableHelper implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

@@ -105,8 +105,6 @@ class LoadSupport<T> implements Group.LazyContent<T> {
         return data;
     }
 
-    private Reference<Future> getContentsRef = new WeakReference<>(null);
-
     /**
      * Returns the lazy-loaded contents, or partial contents. The first call to
      * getContents will block. Subsequent calls will yield partial results; clients

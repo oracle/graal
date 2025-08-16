@@ -77,7 +77,7 @@ public final class FilterView {
     }
 
     public void select(int nodeID) {
-        find(nodeID).ifPresent((f) -> select(f));
+        find(nodeID).ifPresent(f -> select(f));
 
     }
 
@@ -99,12 +99,12 @@ public final class FilterView {
     }
 
     public void extract(int nodeID) {
-        find(nodeID).ifPresent((f) -> extract(f));
+        find(nodeID).ifPresent(f -> extract(f));
 
     }
 
     public void addExtract(int nodeID) {
-        find(nodeID).ifPresent((f) -> addExtract(f));
+        find(nodeID).ifPresent(f -> addExtract(f));
 
     }
 
@@ -119,7 +119,7 @@ public final class FilterView {
         Collection<Integer> hidden = model.getHiddenNodes();
         Diagram dg = diagram;
         Collection<Figure> figures = dg.forSources(hidden, Figure.class).stream().filter(
-                (f) -> f.isVisible()).collect(Collectors.toList());
+                f -> f.isVisible()).collect(Collectors.toList());
         return new HashSet<>(figures);
     }
 
@@ -145,7 +145,7 @@ public final class FilterView {
 
     private void doExtract() {
         if (showAll) {
-            model.showNot(Collections.<Integer>emptySet());
+            model.showNot(Collections.emptySet());
             return;
         }
         if (toExtract == null) {

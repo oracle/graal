@@ -40,7 +40,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.script.Invocable;
@@ -132,8 +131,6 @@ public class GraalSDKEngine implements UserScriptEngine {
     public Set<String> supportedLanguages() {
         return supportedLanguages;
     }
-
-    private static final AtomicInteger uniq = new AtomicInteger(0);
 
     @NbBundle.Messages({
         "# {0} - filename with type definitions",
@@ -250,7 +247,6 @@ public class GraalSDKEngine implements UserScriptEngine {
         private final DelegatingWriter outStream = new DelegatingWriter(defaultOutWriter);
         private final DelegatingWriter errStream = new DelegatingWriter(defaultErrWriter);
         private boolean initialized;
-        private Map<String, Object> types = new HashMap<>();
 
 
         public ContextHolder(ScriptEngine builder) {
@@ -287,10 +283,6 @@ public class GraalSDKEngine implements UserScriptEngine {
         ctx = new ContextHolder(engine);
         env.setValue(this, ctx);
         return ctx;
-    }
-    
-    private void clearContext(ScriptEnvironment env) {
-        env.setValue(this, null);
     }
 
     /**

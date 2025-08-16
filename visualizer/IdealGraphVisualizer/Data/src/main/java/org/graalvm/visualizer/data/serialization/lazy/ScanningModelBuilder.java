@@ -230,9 +230,6 @@ public class ScanningModelBuilder extends LazyModelBuilder {
         return (StreamPool) getConstantPool();
     }
 
-    private void documentUpdatedExternally() {
-    }
-
     @Override
     protected void registerToParent(Folder parent, FolderElement element) {
         if (!(parent instanceof GraphDocument)) {

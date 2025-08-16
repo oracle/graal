@@ -129,7 +129,7 @@ public class DiagramCache implements DiagramCacheBase {
         return inputGraphDiagramCache;
     }
 
-    private final static class GraphTextKey {
+    private static final class GraphTextKey {
         final InputGraph graph;
         final String nodeText;
         final int hash;
@@ -404,7 +404,7 @@ public class DiagramCache implements DiagramCacheBase {
         }
     }
 
-    private final static class HiddenNodesSet extends HashSet<Integer> {
+    private static final class HiddenNodesSet extends HashSet<Integer> {
         final int hash;
         final boolean showNodeHull;
 

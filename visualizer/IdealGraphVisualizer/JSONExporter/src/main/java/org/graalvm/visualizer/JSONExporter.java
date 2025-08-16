@@ -199,7 +199,7 @@ public class JSONExporter {
             if (o != null) {
                 String key = p.getName();
                 if (o instanceof LocationStackFrame) {
-                    nodeJson.add(key, stacktrace(((LocationStackFrame) o)));
+                    nodeJson.add(key, stacktrace((LocationStackFrame) o));
                 } else {
                     nodeJson.add(key, o.toString());
                 }
@@ -218,16 +218,16 @@ public class JSONExporter {
     public static JSONHelper.JSONObjectBuilder getBlock(InputBlock b) {
         JSONHelper.JSONObjectBuilder block = JSONHelper.object();
         JSONHelper.JSONArrayBuilder ids = JSONHelper.array();
-        b.getNodes().forEach((bb) -> ids.add(bb.getId()));
+        b.getNodes().forEach(bb -> ids.add(bb.getId()));
         block.add(NODES, ids);
         JSONHelper.JSONArrayBuilder edges = JSONHelper.array();
-        b.getSuccessors().forEach((ss) -> edges.add(ss.getName()));
+        b.getSuccessors().forEach(ss -> edges.add(ss.getName()));
         block.add(EDGES, edges);
         return block;
     }
 
     private static String createFileName(String graphType, String graphName, int part) {
-        String p = (part == -1) ? "" : ("." + part);
+        String p = part == -1 ? "" : ("." + part);
         String gt = graphType.replaceAll("[^\\p{Alnum}]", "") + '_';
         String gn = graphName.replaceAll("[^\\p{Alnum}]", "_");
         return gt + gn + p + ".json";
@@ -245,7 +245,7 @@ public class JSONExporter {
                     String methodName = t.getFullMethodName();
                     boolean isJava = lang.contentEquals(JAVA);
                     ArrayList<String> stack = langStack.getOrDefault(lang, new ArrayList<>());
-                    methodName = (isJava && methodName != null) ? ("(" + methodName + ") ") : "";
+                    methodName = isJava && methodName != null ? ("(" + methodName + ") ") : "";
                     stack.add(methodName + stratumToString(s));
                     langStack.put(lang, stack);
                 }

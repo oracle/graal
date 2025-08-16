@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -61,8 +62,7 @@ public class NetworkStreamContent implements ReadableByteChannel, CachedContent,
     private static final boolean KEEP_CACHES = Boolean.getBoolean(NetworkStreamContent.class.getName() + ".keepCaches"); // NOI18N
 
     private static final String CACHE_FILE_EXT = ".bgv"; // NOI18N
-    private static final String CACHE_FILE_TEMPLATE = "igvdata_%d"; // NOI18N
-    private static final String CACHE_DIRECTORY_NAME = "igv"; // NOI18N
+    private static final String CACHE_FILE_TEMPLATE = "igvdata_%d";
 
     private final int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
     private final List<ByteBuffer> cacheBuffers = new ArrayList<>();
@@ -76,7 +76,6 @@ public class NetworkStreamContent implements ReadableByteChannel, CachedContent,
     File dumpFile;
 
     private long readBytes;
-    private static final AtomicInteger contentIdGenerator = new AtomicInteger();
     private long receiveBufferOffset;
 
     /**
@@ -129,9 +128,10 @@ public class NetworkStreamContent implements ReadableByteChannel, CachedContent,
     }
 
     private File tempFile() throws IOException {
-        return File.createTempFile(String.format(CACHE_FILE_TEMPLATE, bufferId.incrementAndGet()), CACHE_FILE_EXT, cacheDir);
+        return Files.createTempFile(cacheDir.toPath(), String.format(CACHE_FILE_TEMPLATE, bufferId.incrementAndGet()), CACHE_FILE_EXT).toFile();
     }
 
+    @Override
     public synchronized boolean resetCache(long offset) {
         if (KEEP_CACHES || firstBufferOffset > offset) {
             return false;
@@ -376,7 +376,7 @@ public class NetworkStreamContent implements ReadableByteChannel, CachedContent,
                 if (fromBuffer == toBuffer) {
                     endBuf = startBuf;
                 } else {
-                    endBuf = (fromBuffer == toBuffer) ? startBuf : cacheBuffers.get(toBuffer).asReadOnlyBuffer();
+                    endBuf = fromBuffer == toBuffer ? startBuf : cacheBuffers.get(toBuffer).asReadOnlyBuffer();
                     endBuf.flip();
                 }
                 LOG.log(Level.FINEST, "end in buffer {0}, offset {1}", new Object[]{toBuffer, endAt});

@@ -149,7 +149,7 @@ public final class LazyGroup extends Group implements Group.LazyContent<List<? e
             return l;
         }
         List<FolderElement> fl = (List<FolderElement>) getElementsInternal();
-        l = Collections.unmodifiableList((List) fl.stream().filter((e) -> e instanceof InputGraph).collect(
+        l = Collections.unmodifiableList((List) fl.stream().filter(e -> e instanceof InputGraph).collect(
                 Collectors.toList()));
         graphs = new WeakReference(l);
         return l;

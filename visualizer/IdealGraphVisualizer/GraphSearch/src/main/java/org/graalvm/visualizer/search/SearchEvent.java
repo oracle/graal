@@ -77,6 +77,7 @@ public final class SearchEvent extends EventObject {
         this.completed = completed;
     }
 
+    @Override
     public SearchController getSource() {
         return (SearchController) super.getSource();
     }

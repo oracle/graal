@@ -271,11 +271,11 @@ public class FilterProfileServiceImplTest extends FilterProfileTestBase {
     }
 
     private Filter findFilter(List<Filter> filters, String name) {
-        return filters.stream().filter((f) -> f.getName().equals(name)).findFirst().orElse(null);
+        return filters.stream().filter(f -> f.getName().equals(name)).findFirst().orElse(null);
     }
 
     private FilterProfile findProfile(List<FilterProfile> profiles, String name) {
-        return profiles.stream().filter((f) -> f.getName().equals(name)).findFirst().orElse(null);
+        return profiles.stream().filter(f -> f.getName().equals(name)).findFirst().orElse(null);
     }
 
     @Ignore

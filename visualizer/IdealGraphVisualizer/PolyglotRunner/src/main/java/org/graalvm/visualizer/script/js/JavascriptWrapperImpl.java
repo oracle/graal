@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
 /**
  * Provides javascript-specific wrapping around the executing code
@@ -39,7 +38,6 @@ import java.util.logging.Logger;
  */
 @MimeRegistration(mimeType = "text/javascript", service = UserScriptProcessor.class)
 public class JavascriptWrapperImpl implements UserScriptProcessor {
-    private static final Logger LOG = Logger.getLogger(JavascriptWrapperImpl.class.getName());
 
     private static final AtomicInteger uniq = new AtomicInteger(0);
 

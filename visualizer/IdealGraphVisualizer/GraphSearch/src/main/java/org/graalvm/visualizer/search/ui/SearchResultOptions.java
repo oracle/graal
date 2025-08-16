@@ -44,7 +44,7 @@ public class SearchResultOptions {
         propertyChangeSupport.firePropertyChange(PROP_OPEN_IN_CURRENT_DIAGRAM, oldOpenInCurrentDiagram, openInCurrentDiagram);
     }
 
-    private transient final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+    private final transient PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         propertyChangeSupport.addPropertyChangeListener(listener);

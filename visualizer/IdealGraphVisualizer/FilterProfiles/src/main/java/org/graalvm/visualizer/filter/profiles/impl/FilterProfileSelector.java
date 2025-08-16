@@ -213,6 +213,7 @@ public class FilterProfileSelector implements DataFilterSelector, ChangeListener
         public void run() {
         }
 
+        @Override
         public boolean equals(Object o) {
             if (!(o instanceof Key)) {
                 return false;

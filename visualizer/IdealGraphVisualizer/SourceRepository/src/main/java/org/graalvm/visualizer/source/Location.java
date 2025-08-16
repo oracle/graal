@@ -273,7 +273,7 @@ public final class Location {
         return this.frameFrom - oF;
     }
 
-    public final static class Line {
+    public static final class Line {
         private final FileKey fk;
         private final int line;
 

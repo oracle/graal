@@ -154,8 +154,6 @@ public class LazyGroupTest extends BinaryDataTestBase {
         assertEquals(lazyParent.getElements(), lazyParent.partialData());
     }
 
-    private volatile int changed;
-
     public void testPartialContentUpdates() throws Exception {
         loadGroupStart();
         assertNotNull(lazyParent);

@@ -61,8 +61,8 @@ public final class Filters {
     public static FilterProvider locateChainSource(Lookup lkp) {
         return Lookup.getDefault().lookupAll(GraphFilterLocator.class)
                 .stream().sequential()
-                .map((gfl) -> gfl.findChain(lkp))
-                .filter((i) -> i != null).findFirst().orElse(null);
+                .map(gfl -> gfl.findChain(lkp))
+                .filter(i -> i != null).findFirst().orElse(null);
     }
 
     public static <T> T lookupFilter(Filter f, Class<T> clazz) {

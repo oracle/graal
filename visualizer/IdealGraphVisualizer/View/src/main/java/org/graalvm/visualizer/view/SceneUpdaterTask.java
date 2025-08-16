@@ -855,7 +855,7 @@ abstract class SceneUpdaterTask implements Runnable {
             if (w.isVisible()) {
                 w.setBoundary(f.isBoundary());
                 Point p2 = p.getLocation();
-                if ((visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w))) {
+                if (visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w)) {
                     scene.animateMoveWidget(w, p2);
                 } else {
                     scene.moveWidget(w, p2);
@@ -876,7 +876,7 @@ abstract class SceneUpdaterTask implements Runnable {
                 if (w.isVisible()) {
                     // make a copy
                     Rectangle r = new Rectangle(bounds.getLocation(), bounds.getSize());
-                    if ((visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w))) {
+                    if (visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w)) {
                         scene.animateBounds(w, r);
                     } else {
                         scene.moveWidget(w, r);
@@ -1099,7 +1099,7 @@ abstract class SceneUpdaterTask implements Runnable {
         protected void processPhase(Phase phase) {
             switch (phase) {
                 case PREPARE:
-                    allWidgets = scene.getObjects().stream().parallel().map((o) -> scene.<Widget>getWidget(o)).
+                    allWidgets = scene.getObjects().stream().parallel().map(o -> scene.<Widget>getWidget(o)).
                             collect(Collectors.toList());
                     nextPhase = Phase.UPDATE_A;
                     return;

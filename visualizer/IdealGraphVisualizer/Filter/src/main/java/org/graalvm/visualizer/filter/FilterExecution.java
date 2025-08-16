@@ -77,11 +77,6 @@ public class FilterExecution {
     private volatile int state;
 
     /**
-     * Initialization, did not run yet
-     */
-    private static final int INIT = 0;
-
-    /**
      * Running
      */
     private static final int RUN = 1;
@@ -320,7 +315,6 @@ public class FilterExecution {
     @SuppressFBWarnings(value = "UCF_USELESS_CONTROL_FLOW_NEXT_LINE", justification = "Throws exception when asserts are enabled")
     void applyFilter(Filter f, FilterChain chain) {
         final FilterEnvironment env = getEnvironment();
-        final FilterExecution exec = this;
 
         final Diagram d = getDiagram();
 //        serviceImpl.runWith(chain, this, () -> {

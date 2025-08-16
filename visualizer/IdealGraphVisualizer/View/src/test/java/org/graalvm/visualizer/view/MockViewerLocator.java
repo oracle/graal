@@ -71,7 +71,7 @@ public class MockViewerLocator implements DiagramViewerLocator {
 
     @Override
     public List<DiagramViewer> find(Group g) {
-        return viewers.stream().filter((v) -> v.getModel().getContainer() == g).collect(Collectors.toList());
+        return viewers.stream().filter(v -> v.getModel().getContainer() == g).collect(Collectors.toList());
     }
 
     @Override
@@ -92,8 +92,9 @@ public class MockViewerLocator implements DiagramViewerLocator {
     public void removeChangeListener(ChangeListener l) {
     }
 
+    @Override
     public List<DiagramViewer> find(InputGraph graph) {
-        return viewers.stream().filter((v) -> v.getModel().getGraphToView() == graph).collect(Collectors.toList());
+        return viewers.stream().filter(v -> v.getModel().getGraphToView() == graph).collect(Collectors.toList());
     }
 
     @Override

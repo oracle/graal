@@ -38,7 +38,6 @@ import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
 import org.openide.awt.ActionState;
-import org.openide.awt.Actions;
 import org.openide.awt.Mnemonics;
 import org.openide.util.ContextAwareAction;
 import org.openide.util.ImageUtilities;
@@ -164,14 +163,6 @@ public class ManageProfileAction extends AbstractAction implements ActionListene
         menu.add(a);
         */
         ActionUtils.populatePopupMenu(menu, null, "IGV/ContextActions/ManageProfiles", context);
-    }
-
-    private Action action(String id) {
-        Action a = Actions.forID(RemoveFilterAction.CATEGORY, id);
-        if (a instanceof ContextAwareAction) {
-            a = ((ContextAwareAction) a).createContextAwareInstance(context);
-        }
-        return a;
     }
 
     @Override

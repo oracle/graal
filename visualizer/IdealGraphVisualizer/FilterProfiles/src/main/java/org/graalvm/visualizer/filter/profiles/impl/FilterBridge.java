@@ -135,6 +135,7 @@ public class FilterBridge implements Filter, FilterDefinition, ChangedListener {
         return changeDelegate(Filter.NONE);
     }
 
+    @Override
     public int hashCode() {
         if (hashCode == -1) {
             return delegate().hashCode();
@@ -236,6 +237,7 @@ public class FilterBridge implements Filter, FilterDefinition, ChangedListener {
         }
     }
 
+    @Override
     public String toString() {
         return "FB[" + file.getPath() + ", impl = " + lastDelegate + "]";
     }

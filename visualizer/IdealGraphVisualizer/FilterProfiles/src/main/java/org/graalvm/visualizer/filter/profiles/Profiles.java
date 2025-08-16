@@ -94,7 +94,7 @@ public class Profiles {
      */
     public static List<FilterProfile> allProfiles() {
         return Lookup.getDefault().lookupAll(FilterRegistry.class).stream().
-                flatMap((r) -> r.getProfiles().stream()).collect(Collectors.toList());
+                flatMap(r -> r.getProfiles().stream()).collect(Collectors.toList());
     }
 
     /**

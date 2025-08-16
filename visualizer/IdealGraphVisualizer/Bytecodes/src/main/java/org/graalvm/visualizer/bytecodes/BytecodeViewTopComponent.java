@@ -177,6 +177,7 @@ final class BytecodeViewTopComponent extends TopComponent implements ExplorerMan
         InputGraphProvider p = viewer.getActiveViewer();
         SwingUtilities.invokeLater(new Runnable() {
 
+            @Override
             public void run() {
                 InputGraph g;
                 if (p != null) {
@@ -194,7 +195,7 @@ final class BytecodeViewTopComponent extends TopComponent implements ExplorerMan
         });
     }
 
-    final static class ResolvableHelper implements Serializable {
+    static final class ResolvableHelper implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

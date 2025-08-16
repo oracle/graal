@@ -150,7 +150,7 @@ public class FileStackProcessor implements StackProcessor {
     }
 
     @ServiceProvider(service = StackProcessor.Factory.class, position = Integer.MAX_VALUE)
-    public final static class RegisteredLangFactory implements StackProcessor.Factory {
+    public static final class RegisteredLangFactory implements StackProcessor.Factory {
         @Override
         public String[] getLanguageIDs() {
             /*

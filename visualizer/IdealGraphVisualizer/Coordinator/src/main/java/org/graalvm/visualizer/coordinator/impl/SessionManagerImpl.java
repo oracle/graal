@@ -215,6 +215,7 @@ public class SessionManagerImpl implements Folder, Runnable, DocumentFactory {
         }
     }
 
+    @Override
     public void run() {
         binaryServer = new SImpl(this, new ParseMonitor() {
             @Override
@@ -248,9 +249,7 @@ public class SessionManagerImpl implements Folder, Runnable, DocumentFactory {
     }
 
     public GraphDocument getCurrentDocument() {
-        boolean a = true;
         boolean b = false;
-        a = !b;
         return singleDocument;
     }
 

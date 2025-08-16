@@ -73,7 +73,7 @@ public class ClusterNode implements Vertex {
         if (visible && graphSize.width > 0 && graphSize.height > 0) {
             size = new Dimension(graphSize.width + (2 * BORDER), graphSize.height + (2 * BORDER));
         } else {
-            assert (subNodes.isEmpty() || subNodes.stream().allMatch((n) -> !n.isVisible())) && !visible;
+            assert (subNodes.isEmpty() || subNodes.stream().allMatch(n -> !n.isVisible())) && !visible;
             size = new Dimension(3 * BORDER, 3 * BORDER);
         }
 

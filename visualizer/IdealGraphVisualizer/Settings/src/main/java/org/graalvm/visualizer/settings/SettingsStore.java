@@ -68,7 +68,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
 
     protected final Preferences PREFERENCES = Preferences.userNodeForPackage(this.getClass());
 
-    private final static class PrefMapper<T> {
+    private static final class PrefMapper<T> {
 
         private final Function<Preferences, Function<String, Consumer<T>>> setter;
         private final Function<Preferences, Function<String, Function<T, T>>> getter;
@@ -126,7 +126,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
     public final Map<Class, Map<String, Object>> defaults;
 
     private static void def(Map<Class, Map<String, Object>> defs, String propName, Object def) {
-        defs.computeIfAbsent(def.getClass(), (c) -> new HashMap<>()).put(propName, def);
+        defs.computeIfAbsent(def.getClass(), c -> new HashMap<>()).put(propName, def);
     }
 
     private static Map<Class, Map<String, Object>> finalize(Map<Class, Map<String, Object>> defs) {
@@ -176,7 +176,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
         bean.store();
     }
 
-    public static abstract class SettingsBean<S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> implements Settings {
+    public abstract static class SettingsBean<S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> implements Settings {
 
         final Map<Class, Map<String, Object>> settings;
         protected final S store;
@@ -243,7 +243,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
             settings.forEach((t, m) -> {
                 PrefMapper mapper = prefMaps.get(t);
                 if (mapper != null) {
-                    m.entrySet().forEach((e) -> mapper.save(prefs, e));
+                    m.entrySet().forEach(e -> mapper.save(prefs, e));
                 }
             });
         }
@@ -379,7 +379,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
 
         private static Map<Class<? extends SettingsStore>, WeakReference<? extends SettingsStore>> hold = new HashMap<>();
 
-        private synchronized static void register(SettingsStore store) {
+        private static synchronized void register(SettingsStore store) {
             Class<? extends SettingsStore> type = store.getClass();
             WeakReference<? extends SettingsStore> wk = hold.get(type);
             if (wk != null && wk.get() != null) {
@@ -388,7 +388,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
             hold.put(type, new WeakReference<>(store));
         }
 
-        private synchronized static <S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> S obtain(Class<S> type) {
+        private static synchronized <S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> S obtain(Class<S> type) {
             WeakReference<? extends SettingsStore> wk = hold.get(type);
             if (wk == null) {
                 return null;
@@ -396,7 +396,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
             return (S) wk.get();
         }
 
-        private synchronized static <S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> S obtain(Class<S> type, Supplier<S> get) {
+        private static synchronized <S extends SettingsStore<S, B>, B extends SettingsBean<S, B>> S obtain(Class<S> type, Supplier<S> get) {
             S settings = obtain(type);
             if (settings == null) {
                 settings = get.get();

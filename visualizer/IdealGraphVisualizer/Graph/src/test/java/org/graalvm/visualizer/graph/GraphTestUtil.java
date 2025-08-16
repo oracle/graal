@@ -247,7 +247,7 @@ public class GraphTestUtil {//uncomplete/incorrect
     public static void assertSlotEquals(Slot a, Slot b) {
         if (checkNotNulls(a, b)) {
             assertSlotEqualsShallow(a, b);
-            assertCollections_NoOrder(a.getConnections(), b.getConnections(), GraphTestUtil::assertConnectionEqualsShallow, (c) -> c.getInputSlot().toString() + ">;<" + c.getOutputSlot().toString());
+            assertCollections_NoOrder(a.getConnections(), b.getConnections(), GraphTestUtil::assertConnectionEqualsShallow, c -> c.getInputSlot().toString() + ">;<" + c.getOutputSlot().toString());
             assertFigureEqualsShallow(a.getFigure(), b.getFigure());
         }
     }
@@ -255,7 +255,7 @@ public class GraphTestUtil {//uncomplete/incorrect
     public static void assertSlotEqualsDeep(Slot a, Slot b) {
         if (checkNotNulls(a, b)) {
             assertSlotEqualsShallow(a, b);
-            assertCollections_NoOrder(a.getConnections(), b.getConnections(), GraphTestUtil::assertConnectionEquals, (c) -> c.getInputSlot().toString() + ">;<" + c.getOutputSlot().toString());
+            assertCollections_NoOrder(a.getConnections(), b.getConnections(), GraphTestUtil::assertConnectionEquals, c -> c.getInputSlot().toString() + ">;<" + c.getOutputSlot().toString());
             assertFigureEquals(a.getFigure(), b.getFigure());
         }
     }

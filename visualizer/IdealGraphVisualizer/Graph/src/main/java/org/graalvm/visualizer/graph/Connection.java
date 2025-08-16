@@ -96,10 +96,10 @@ public final class Connection implements Link {
             return true;
         }
         Connection c = (Connection) other;
-        return ((inputSlot.getFigure().getId() == c.getInputSlot().getFigure().getId())
+        return (inputSlot.getFigure().getId() == c.getInputSlot().getFigure().getId())
                 && (outputSlot.getFigure().getId() == c.getOutputSlot().getFigure().getId())
                 && (outputSlot.getPosition() == c.getOutputSlot().getPosition())
-                && (inputSlot.getPosition() == c.getInputSlot().getPosition()));
+                && (inputSlot.getPosition() == c.getInputSlot().getPosition());
     }
 
     public InputSlot getInputSlot() {

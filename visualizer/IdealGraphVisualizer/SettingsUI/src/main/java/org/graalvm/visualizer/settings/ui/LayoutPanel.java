@@ -677,6 +677,7 @@ final class LayoutPanel extends SettingsPanel<LayoutPanel, LayoutOptionsPanelCon
 
         org.openide.awt.Mnemonics.setLocalizedText(resetAdvancedButton, org.openide.util.NbBundle.getMessage(LayoutPanel.class, "LayoutPanel.resetAdvancedButton.text")); // NOI18N
         resetAdvancedButton.addActionListener(new java.awt.event.ActionListener() {
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetAdvancedButtonActionPerformed(evt);
             }
@@ -684,6 +685,7 @@ final class LayoutPanel extends SettingsPanel<LayoutPanel, LayoutOptionsPanelCon
 
         org.openide.awt.Mnemonics.setLocalizedText(advancedAsDefaultButton, org.openide.util.NbBundle.getMessage(LayoutPanel.class, "LayoutPanel.advancedAsDefaultButton.text")); // NOI18N
         advancedAsDefaultButton.addActionListener(new java.awt.event.ActionListener() {
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 advancedToDefault(evt);
             }

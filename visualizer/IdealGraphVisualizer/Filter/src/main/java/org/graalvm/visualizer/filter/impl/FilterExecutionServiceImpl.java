@@ -38,13 +38,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 
 /**
  * @author sdedic
  */
 public class FilterExecutionServiceImpl implements FilterExecutionService {
-    private static final Logger LOG = Logger.getLogger(FilterExecutionServiceImpl.class.getName());
     private final List<FilterListener> listeners = new ArrayList<>();
 
     private static FilterExecutionServiceImpl INSTANCE = new FilterExecutionServiceImpl();

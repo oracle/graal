@@ -55,7 +55,7 @@ public class SearchResultsModel {
     }
 
     public void addParentListener(GraphItem item, SearchResultsListener l) {
-        graphListeners.computeIfAbsent(item, (i) -> new ArrayList<>()).add(l);
+        graphListeners.computeIfAbsent(item, i -> new ArrayList<>()).add(l);
     }
 
     public void removeParentListener(GraphItem item, SearchResultsListener l) {
@@ -293,6 +293,7 @@ public class SearchResultsModel {
         return new ArrayList<>(owners.keySet());
     }
 
+    @Override
     public String toString() {
         return "GraphSearch[nodes = " + items.size() + " graphs = " + owners.keySet().size() + "]";
     }

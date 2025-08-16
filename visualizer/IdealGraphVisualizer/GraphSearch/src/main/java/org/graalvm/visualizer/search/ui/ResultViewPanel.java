@@ -247,13 +247,10 @@ public class ResultViewPanel extends javax.swing.JPanel
 
     private void seInitialColumnSizes(Collection<String> columnIds) {
         ETableColumnModel colModel = (ETableColumnModel) outlineView.getOutline().getColumnModel();
-
-        float totalWidth = 0;
         for (int i = 0; i < colModel.getColumnCount(); i++) {
             ETableColumn ecol = (ETableColumn) colModel.getColumn(i);
             String id = ecol.getIdentifier().toString();
             if (!columnIds.contains(id)) {
-                totalWidth += ecol.getPreferredWidth();
             }
         }
 
