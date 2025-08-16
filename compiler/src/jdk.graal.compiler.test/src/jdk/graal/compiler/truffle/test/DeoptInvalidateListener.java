@@ -45,7 +45,7 @@ public class DeoptInvalidateListener extends AbstractGraalTruffleRuntimeListener
     }
 
     @Override
-    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
         if (target == focus) {
             deoptimized = true;
         }

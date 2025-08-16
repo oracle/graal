@@ -176,11 +176,24 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     private final HotSpotVMConfigAccess vmConfigAccess;
 
+    /**
+     * This constant is used to detect when a method was invalidated by HotSpot because the code
+     * cache heuristic considered it cold.
+     */
+    private final int coldMethodInvalidationReason;
+
+    /**
+     * This constant is used when Truffle invalidates an installed code.
+     */
+    private final int jvmciReplacedMethodInvalidationReason;
+
     public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
         super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        this.jvmciReplacedMethodInvalidationReason = vmConfigAccess.getConstant("nmethod::InvalidationReason::JVMCI_REPLACED_WITH_NEW_CODE", Integer.class, -1);
+        this.coldMethodInvalidationReason = vmConfigAccess.getConstant("nmethod::InvalidationReason::UNLOADING_COLD", Integer.class, -1);
 
         int jvmciReservedReference0Offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1);
         if (jvmciReservedReference0Offset == -1) {
@@ -644,6 +657,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         return getVMOptionValue("ObjectAlignmentInBytes", Integer.class);
     }
 
+    public int getJVMCIReplacedMethodInvalidationReason() {
+        return this.jvmciReplacedMethodInvalidationReason;
+    }
+
     @Override
     protected int getArrayIndexScale(Class<?> componentType) {
         MetaAccessProvider meta = getMetaAccess();
@@ -735,5 +752,26 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
             case 2 -> CompilationActivityMode.SHUTDOWN_COMPILATION;
             default -> throw CompilerDirectives.shouldNotReachHere("Invalid CompilationActivityMode " + i);
         };
+    }
+
+    /**
+     * When running as part of HotSpot we should pay special attention to CallTargets (CTs) that
+     * have been flushed from the code cache because they were cold (According to Code Cache's
+     * heuristics). Truffle's CallTargets' Profile counter don't decay. For that reason, we need
+     * special handling for cold (according to code cache heuristics) CTs that were flushed from the
+     * code cache. Otherwise, we can enter a recompilation cycle because Truffle will always see the
+     * method as hot (because the profile counters never reset). To handle this case we reset the CT
+     * profile whenever its prior compilation was invalidated because it was cold.
+     */
+    @Override
+    protected boolean shouldAbortCompilation(OptimizedCallTarget callTarget) {
+        HotSpotOptimizedCallTarget hsCallTarget = (HotSpotOptimizedCallTarget) callTarget;
+        if (hsCallTarget.getInvalidationReason() == this.coldMethodInvalidationReason) {
+            hsCallTarget.resetCompilationProfile();
+            hsCallTarget.resetInstalledCode();
+            listeners.onProfileReset(hsCallTarget);
+            return true;
+        }
+        return false;
     }
 }
