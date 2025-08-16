@@ -56,10 +56,10 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 public class WasmLauncher extends AbstractLanguageLauncher {
-    private File file = null;
+    protected File file = null;
     private VersionAction versionAction = VersionAction.None;
-    private String customEntryPoint = null;
-    private String[] programArguments = null;
+    protected String customEntryPoint = null;
+    protected String[] programArguments = null;
     private ArrayList<String> argumentErrors = null;
 
     private static final String USAGE = "Usage: wasm [OPTION...] [FILE] [ARG...]";
@@ -168,7 +168,7 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private Value detectEntryPoint(Value mainModule) {
+    protected Value detectEntryPoint(Value mainModule) {
         Value exports = mainModule.getMember("exports");
         if (customEntryPoint != null) {
             return exports.getMember(customEntryPoint);
