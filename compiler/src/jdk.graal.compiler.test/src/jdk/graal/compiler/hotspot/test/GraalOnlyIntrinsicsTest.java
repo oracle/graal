@@ -26,14 +26,14 @@ package jdk.graal.compiler.hotspot.test;
 
 import java.io.IOException;
 
-import jdk.graal.compiler.core.test.SubprocessTest;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.test.Graal;
+import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.junit.Test;
-
 import jdk.vm.ci.aarch64.AArch64;
 
 /**
@@ -70,7 +70,7 @@ public class GraalOnlyIntrinsicsTest extends SubprocessTest {
 
     @Test
     public void assertHotSpotFlags() throws IOException, InterruptedException {
-        launchSubprocess(s -> !s.contains("UseVectorizedMismatchIntrinsic"), () -> testUseVectorizedMismatchIntrinsic());
-        launchSubprocess(s -> !s.contains("UseCharacterCompareIntrinsics"), () -> testUseCharacterCompareIntrinsics());
+        launchSubprocess(s -> !s.contains("UseVectorizedMismatchIntrinsic"), true, getClass(), currentUnitTestName(), () -> testUseVectorizedMismatchIntrinsic());
+        launchSubprocess(s -> !s.contains("UseCharacterCompareIntrinsics"), true, getClass(), currentUnitTestName(), () -> testUseCharacterCompareIntrinsics());
     }
 }

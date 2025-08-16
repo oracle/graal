@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -39,15 +40,21 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
+import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -70,7 +77,9 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -79,6 +88,23 @@ public class SubstrateGraalUtils {
     /** Does the compilation of the method and returns the compilation result. */
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
         return doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+    }
+
+    public static InstalledCode compileAndInstall(SubstrateMethod method) {
+        return compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
+    }
+
+    public static InstalledCode compileAndInstall(SubstrateMethod method, SubstrateInstalledCode.Factory installedCodeFactory) {
+        if (SubstrateOptions.shouldCompileInIsolates()) {
+            return IsolatedGraalUtils.compileInNewIsolateAndInstall(method, installedCodeFactory);
+        }
+        RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+        DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
+        SubstrateInstalledCode installedCode = installedCodeFactory.createSubstrateInstalledCode();
+        CompilationResult compilationResult = doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+        RuntimeCodeInstaller.install(method, compilationResult, installedCode);
+        Log.log().string("Code for " + method.format("%H.%n(%p)") + ": " + compilationResult.getTargetCodeSize() + " bytes").newline();
+        return (InstalledCode) installedCode;
     }
 
     private static final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
@@ -166,7 +192,7 @@ public class SubstrateGraalUtils {
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
             if (cpuFeatureAccess != null) {
                 Architecture architecture = graalBackend.getCodeCache().getTarget().arch;
-                cpuFeatureAccess.enableFeatures(architecture);
+                cpuFeatureAccess.enableFeatures(architecture, TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getLowerer());
             }
         }
     }

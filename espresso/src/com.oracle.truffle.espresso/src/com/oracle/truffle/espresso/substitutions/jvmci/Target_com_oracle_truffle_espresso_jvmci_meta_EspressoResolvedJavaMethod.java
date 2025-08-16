@@ -82,7 +82,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_init.getCallTarget())") DirectCallNode unresolvedTypeConstructor,
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved,
                         @Cached InitCheck initCheck) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
@@ -98,7 +98,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
             StaticObject guestLocals = meta.jvmci.Local.allocateReferenceArray(locals.length);
             StaticObject[] unwrappedGuestLocals = guestLocals.unwrap(meta.getLanguage());
             for (int i = 0; i < locals.length; i++) {
-                unwrappedGuestLocals[i] = toJVMCILocal(locals[i], method.getDeclaringKlass(), localConstructor, objectTypeConstructor, arrayTypeConstructor, forBasicType, unresolvedTypeConstructor,
+                unwrappedGuestLocals[i] = toJVMCILocal(locals[i], method.getDeclaringKlass(), localConstructor, objectTypeConstructor, arrayTypeConstructor, forBasicType, createUnresolved,
                                 initCheck, context, meta);
             }
             StaticObject result = meta.jvmci.LocalVariableTable.allocateInstance(context);
@@ -107,14 +107,14 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
         }
 
         private static StaticObject toJVMCILocal(Local local, ObjectKlass declaringKlass, DirectCallNode localConstructor, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor,
-                        DirectCallNode forBasicType, DirectCallNode unresolvedTypeConstructor, InitCheck initCheck, EspressoContext context, Meta meta) {
+                        DirectCallNode forBasicType, DirectCallNode createUnresolved, InitCheck initCheck, EspressoContext context, Meta meta) {
             StaticObject result = meta.jvmci.Local.allocateInstance(context);
             Klass resolvedType = getResolvedType(local, declaringKlass, meta);
             StaticObject guestType;
             if (resolvedType != null) {
                 guestType = toJVMCIType(resolvedType, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
             } else {
-                guestType = toJVMCIUnresolvedType(local.getTypeOrDesc(), unresolvedTypeConstructor, context, meta);
+                guestType = toJVMCIUnresolvedType(local.getTypeOrDesc(), createUnresolved, meta);
             }
             localConstructor.call(result, meta.toGuestString(local.getNameAsString()), guestType, local.getStartBCI(), local.getEndBCI(), local.getSlot());
             return result;
@@ -122,7 +122,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
 
         @TruffleBoundary
         private static Klass getResolvedType(Local local, ObjectKlass declaringKlass, Meta meta) {
-            Symbol<Type> localType = null;
+            Symbol<Type> localType;
             try {
                 localType = local.getTypeOrDesc().validateType(true);
             } catch (ValidationException e) {
@@ -180,7 +180,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jvmci.ExceptionHandler_init.getCallTarget())") DirectCallNode exceptionHandlerConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_init.getCallTarget())") DirectCallNode unresolvedTypeConstructor) {
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
@@ -206,7 +206,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                         catchType = toJVMCIInstanceType(catchKlass, objectTypeConstructor, context, meta);
                     } else {
                         ByteSequence type = TypeSymbols.nameToType(pool.className(exceptionClassIndex));
-                        catchType = toJVMCIUnresolvedType(type, unresolvedTypeConstructor, context, meta);
+                        catchType = toJVMCIUnresolvedType(type, createUnresolved, meta);
                     }
                 }
                 exceptionHandlerConstructor.call(jvmciExceptionHandler,
@@ -243,7 +243,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
     }
 
     @Substitution(hasReceiver = true)
-    public static int hashCode(StaticObject self, @Inject EspressoContext context) {
+    public static int hashCode0(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);

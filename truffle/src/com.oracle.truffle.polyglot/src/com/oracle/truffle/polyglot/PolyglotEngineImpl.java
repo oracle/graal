@@ -975,7 +975,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return Collections.emptyMap();
         }
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load();
+        Collection<InstrumentCache> cachedInstruments = InstrumentCache.load().values();
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());

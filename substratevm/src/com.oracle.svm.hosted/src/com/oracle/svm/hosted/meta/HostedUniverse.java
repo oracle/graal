@@ -107,6 +107,40 @@ import jdk.vm.ci.meta.Signature;
  * <li>The "hosted universe": elements that the AOT compilation operates on.</li>
  * </ol>
  *
+ * Layered Model for Static Analysis Universes
+ * 
+ * <pre>
+ * +--------------------------------------------------------------+
+ * |                        Hosted Universe                       |
+ * |--------------------------------------------------------------|
+ * |        Elements that we need to create code or data for      |
+ * +------------------------------+-------------------------------+
+ *                                | wraps elements of
+ *                                V
+ * +--------------------------------------------------------------+
+ * |                        Analysis Universe                     |
+ * |--------------------------------------------------------------|
+ * |        Elements that the static analysis operates on         |
+ * +------+----------------------------+--------------------------+
+ *        | wraps elements of          | wraps elements of
+ *        |                            |
+ *        |                            V
+ *        |  +----------------------------------------------------+
+ *        |  |               Substitution Layer                   |
+ *        |  |----------------------------------------------------|
+ *        |  |  Allows modification of some elements coming from  |
+ *        |  | the layer below without modifying the layer below  |
+ *        |  +--------------------+-------------------------------+
+ *        |                       | wraps elements of
+ *        V                       V
+ * +--------------------------------------------------------------+
+ * |                         Host VM Universe                     |
+ * |--------------------------------------------------------------|
+ * |         Original source of elements, as parsed from          |
+ * |      class files found on image class and module path        |
+ * +--------------------------------------------------------------+
+ * </pre>
+ * 
  * Not covered in this documentation is the "substrate universe", i.e., elements that are used for
  * JIT compilation at image run time when a native image contains the GraalVM compiler itself. JIT
  * compilation is only used when a native image contains a Truffle language, e.g., the JavaScript

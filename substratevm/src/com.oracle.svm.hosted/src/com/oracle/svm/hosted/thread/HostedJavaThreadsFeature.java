@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.thread;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -39,10 +38,16 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -241,7 +246,8 @@ class ReachableThreadGroup {
 }
 
 @AutomaticallyRegisteredImageSingleton
-class HostedJavaThreadsMetadata implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedJavaThreadsMetadata.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class HostedJavaThreadsMetadata {
     long maxThreadId;
     int maxAutonumber;
 
@@ -259,23 +265,37 @@ class HostedJavaThreadsMetadata implements LayeredImageSingleton {
         this.maxAutonumber = maxAutonumber;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+    public LayeredImageSingleton.PersistFlags preparePersist(ImageSingletonWriter writer) {
         writer.writeLong("maxThreadId", maxThreadId);
         writer.writeInt("maxAutonumber", maxAutonumber);
-        return PersistFlags.CREATE;
+        return LayeredImageSingleton.PersistFlags.CREATE;
     }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        long maxThreadId = loader.readLong("maxThreadId");
-        int maxAutonumber = loader.readInt("maxAutonumber");
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    return ((HostedJavaThreadsMetadata) singleton).preparePersist(writer);
+                }
 
-        return new HostedJavaThreadsMetadata(maxThreadId, maxAutonumber);
+                @Override
+                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
+    }
+
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+        @Override
+        public Object createFromLoader(ImageSingletonLoader loader) {
+            long maxThreadId = loader.readLong("maxThreadId");
+            int maxAutonumber = loader.readInt("maxAutonumber");
+
+            return new HostedJavaThreadsMetadata(maxThreadId, maxAutonumber);
+        }
     }
 }

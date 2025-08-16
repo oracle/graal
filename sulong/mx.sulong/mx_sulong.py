@@ -398,9 +398,7 @@ if 'CPPFLAGS' in os.environ:
 
 
 # Legacy bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
-# Polybench bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 # LLVM unit tests suite
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 

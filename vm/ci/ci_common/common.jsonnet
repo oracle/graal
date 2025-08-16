@@ -93,7 +93,7 @@ local devkits = graal_common.devkits;
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
   vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
-    capabilities+: ['darwin_bigsur', 'ram16gb'],
+    capabilities+: ['ram16gb'],
     packages+: {
       gcc: '==4.9.2',
     },
@@ -106,7 +106,6 @@ local devkits = graal_common.devkits;
   vm_darwin_amd64_jdkLatest: self.vm_darwin_amd64,
 
   vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
-    capabilities+: ['darwin_bigsur'],
     environment+: {
       # for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
@@ -161,20 +160,30 @@ local devkits = graal_common.devkits;
 
   full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm,
 
-  graalvm_complete_build_deps(edition, os, arch, java_version):
+  graalvm_complete_build_deps(edition, os, arch, java_version, espresso_java_version=25, espresso_extra_java_version=[21]):
       local java_deps(edition) = {
         downloads+: {
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
-          ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21'],
+          ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version],
         } + (
           if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-            ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21-llvm'],
+            ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version + '-llvm'],
           } else {
           }
         ) + (
           if (java_version == 'latest') then {
             TOOLS_JAVA_HOME: graal_common.jdks_data['oraclejdk21'],
           } else {
+          }
+        ) + (
+          if (std.length(espresso_extra_java_version) > 0) then ({
+            EXTRA_ESPRESSO_JAVA_HOMES: {pathlist: [graal_common.jdks_data['labsjdk-ee-' + v] for v in espresso_extra_java_version]},
+          } + (
+            if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+              EXTRA_ESPRESSO_LLVM_JAVA_HOMEs:  {pathlist: [graal_common.jdks_data['labsjdk-ee-' + v + '-llvm'] for v in espresso_extra_java_version]},
+            } else {
+            }
+          )) else {
           }
         )
       };
@@ -266,8 +275,8 @@ local devkits = graal_common.devkits;
     # 2. Ensure the language is either:
     #    - already included in `ee_suites`, or
     #    - its suite is listed in `polyglot_isolate_ce_suites`.
-    local polyglot_isolate_languages = ['js', 'python'],
-    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython'],
+    local polyglot_isolate_languages = ['js', 'python', 'wasm'],
+    local polyglot_isolate_ce_suites = ['graal-js', 'graalpython', 'wasm'],
     local polyglot_isolate_mx_args = std.flattenArrays([['--suite', s] for s in polyglot_isolate_ce_suites]),
 
     legacy_mx_args:: [],  # `['--force-bash-launcher=true', '--skip-libraries=true']` have been replaced by arguments from `vm.maven_deploy_base_functions.mx_args(os, arch)`
@@ -458,7 +467,7 @@ local devkits = graal_common.devkits;
 
   linux_deploy: self.deploy_build + {
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.5.3',
     },
   },
 
@@ -468,7 +477,7 @@ local devkits = graal_common.devkits;
     },
   },
 
-  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
+  record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
 
   build_base_graalvm_image: [
@@ -530,7 +539,7 @@ local devkits = graal_common.devkits;
     + $.deploy_standalones(self.os, self.tags)
     + (
       if (record_file_sizes) then [
-        $.mx_vm_complete + $.record_file_sizes + ['--', '--', 'standalones'],
+        $.mx_vm_complete + $.record_file_sizes + ['--', 'standalones'],
         $.upload_file_sizes,
       ] else []
     ),
@@ -549,13 +558,13 @@ local devkits = graal_common.devkits;
   # Linux/AARCH64
   deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
   # Darwin/AMD64
-  deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-amd64', capabilities+: ["!macmini_late_2014"], notify_groups:: ["deploy"], timelimit: '3:00:00'},
+  deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-amd64', capabilities+: ["darwin_bigsur", "!macmini_late_2014"], notify_groups:: ["deploy"], timelimit: '3:00:00'},
   # Darwin/AARCH64
-  deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
+  deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', capabilities+: ["darwin_bigsur"], notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # Windows/AMD64
   deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + graal_common.deps.sulong + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + self.deploy_build + {name: 'daily-deploy-vm-standalones-java-latest-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
-  local sulong_vm_tests = graal_common.deps.svm + graal_common.deps.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
+  local sulong_vm_tests = graal_common.deps.svm + graal_common.deps.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'tier3') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
@@ -573,6 +582,7 @@ local devkits = graal_common.devkits;
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
      name: 'gate-vm-style-' + self.jdk_name + "-linux-amd64",
+     timelimit: '30:00',
     },
 
     vm.vm_java_Latest + sulong_vm_tests,

@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
@@ -34,14 +36,18 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import java.util.Collections;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.gen.LIRGenerationProvider;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -51,6 +57,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterConfig;
@@ -109,15 +116,60 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
         HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
 
-        try (InitTimer st = timer("foreignCalls.initialize")) {
+        try (InitTimer st = timer("foreignCalls.initialize"); DebugCloseable c = ReplayCompilationSupport.enterSnippetContext(providers)) {
             foreignCalls.initialize(providers, options);
         }
-        try (InitTimer st = timer("lowerer.initialize")) {
+        try (InitTimer st = timer("lowerer.initialize"); DebugCloseable c = ReplayCompilationSupport.enterSnippetContext(providers)) {
             Iterable<DebugHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
             lowerer.initialize(options, factories, providers, config);
         }
         providers.getReplacements().closeSnippetRegistration();
         providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().maybePrintIntrinsics(options);
+        maybeEncodeSnippets(options, jvmciRuntime);
+    }
+
+    /**
+     * {@code true} when snippet encoding is in progress on jargraal.
+     * <p>
+     * The purpose of tracking whether snippets are being encoded is to allow the backend
+     * initialization code to trigger the initialization of Truffle backends and break from the
+     * recursion.
+     */
+    @LibGraalSupport.HostedOnly//
+    private static boolean snippetEncodingInProgress;
+
+    /**
+     * Encodes snippets on jargraal if they are not already encoded (or being encoded by a caller).
+     *
+     * @param options option values
+     * @param jvmciRuntime the JVMCI runtime
+     */
+    @SuppressWarnings("try")
+    private void maybeEncodeSnippets(OptionValues options, HotSpotJVMCIRuntime jvmciRuntime) {
+        if (!inRuntimeCode() && !inBuildtimeCode() && !HotSpotReplacementsImpl.snippetsAreEncoded() && !snippetEncodingInProgress) {
+            try (InitTimer st = timer("encodeSnippets")) {
+                GraalError.guarantee(getProviders().getReplayCompilationSupport() == null, "encode snippets without replay support");
+                snippetEncodingInProgress = true;
+                /*
+                 * Initialize Truffle backends to register their snippets. We must perform this
+                 * initialization since those backends could be initialized at any time in the
+                 * future. The backends must register the snippets to our encoder so we share it
+                 * with them.
+                 */
+                HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) getProviders().getReplacements();
+                replacements.shareSnippetEncoder();
+                HotSpotGraalRuntimeProvider truffleGraalRuntime = getRuntime();
+                if (HotSpotTruffleCompilerImpl.Options.TruffleCompilerConfiguration.hasBeenSet(options)) {
+                    CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(
+                                    HotSpotTruffleCompilerImpl.Options.TruffleCompilerConfiguration.getValue(options), options, jvmciRuntime);
+                    truffleGraalRuntime = new HotSpotGraalRuntime("Truffle", jvmciRuntime, compilerConfigurationFactory, options, null);
+                }
+                HotSpotTruffleCompilerImpl.ensureBackendsInitialized(options, truffleGraalRuntime);
+                replacements.encode(options);
+            } finally {
+                snippetEncodingInProgress = false;
+            }
+        }
     }
 
     protected CallingConvention makeCallingConvention(StructuredGraph graph, Stub stub) {

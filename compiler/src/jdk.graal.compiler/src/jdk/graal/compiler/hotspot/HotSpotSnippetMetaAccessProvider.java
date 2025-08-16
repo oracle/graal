@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -50,7 +50,7 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        if (LibGraalSupport.inLibGraalRuntime()) {
+        if (inRuntimeCode()) {
             ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
             if (type != null) {
                 return type;
@@ -73,19 +73,12 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
         if (constant instanceof SnippetObjectConstant objectConstant) {
             Class<?> clazz = objectConstant.asObject(Object.class).getClass();
-            if (LibGraalSupport.inLibGraalRuntime() && HotSpotReplacementsImpl.isGraalClass(clazz)) {
+            if (HotSpotReplacementsImpl.isGraalClass(clazz)) {
                 ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
                 GraalError.guarantee(type != null, "Type of compiler object %s missing from encoded snippet types: %s", constant, clazz.getName());
                 return type;
             }
             return delegate.lookupJavaType(clazz);
-        }
-        if (constant instanceof HotSpotObjectConstant hsConstant) {
-            Object object = hsConstant.asObject(Object.class);
-            if (object != null) {
-                Class<?> clazz = object.getClass();
-                return lookupJavaType(clazz);
-            }
         }
         return delegate.lookupJavaType(constant);
     }

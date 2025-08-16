@@ -81,7 +81,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
@@ -176,7 +175,7 @@ final class InternalResourceCache {
                 case RESOURCE -> InternalResourceRoots.overriddenResourceRootProperty(id, resourceId) + " system property";
                 case COMPONENT -> InternalResourceRoots.overriddenComponentRootProperty(id) + " system property";
                 case UNVERSIONED -> "internal resource cache root directory";
-                default -> throw CompilerDirectives.shouldNotReachHere(root.kind().name());
+                default -> throw new AssertionError(root.kind().name());
             };
             InternalResourceRoots.logInternalResourceEvent("Resolved a pre-created directory for the internal resource %s::%s to: %s, determined by the %s with the value %s.",
                             id, resourceId, path, hint, root.path());
@@ -231,7 +230,7 @@ final class InternalResourceCache {
             newEnv.setAccessible(true);
             return newEnv.newInstance(resource, (BooleanSupplier) () -> TruffleOptions.AOT);
         } catch (ReflectiveOperationException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
+            throw new AssertionError("Failed to instantiate InternalResource.Env", e);
         }
     }
 
@@ -252,7 +251,7 @@ final class InternalResourceCache {
             InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
             Path parent = target.getParent();
             if (parent == null) {
-                throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
+                throw new AssertionError("Target must have a parent directory but was " + target);
             }
             Path owner = Files.createDirectories(Objects.requireNonNull(parent));
             Path tmpDir = Files.createTempDirectory(owner, null);
@@ -348,13 +347,13 @@ final class InternalResourceCache {
             Collections.addAll(requiredComponentIds, components);
             Set<String> requiredLanguageIds = new HashSet<>(LanguageCache.languages().keySet());
             requiredLanguageIds.retainAll(requiredComponentIds);
-            Set<String> requiredInstrumentIds = InstrumentCache.load().stream().map(InstrumentCache::getId).collect(Collectors.toSet());
+            Set<String> requiredInstrumentIds = new HashSet<>(InstrumentCache.load().keySet());
             requiredInstrumentIds.retainAll(requiredComponentIds);
             requiredComponentIds.removeAll(requiredLanguageIds);
             requiredComponentIds.removeAll(requiredInstrumentIds);
             if (!requiredComponentIds.isEmpty()) {
                 Set<String> installedComponents = new TreeSet<>(LanguageCache.languages().keySet());
-                InstrumentCache.load().stream().map(InstrumentCache::getId).forEach(installedComponents::add);
+                installedComponents.addAll(InstrumentCache.load().keySet());
                 throw new IllegalArgumentException(String.format("Components with ids %s are not installed. Installed components are: %s.",
                                 String.join(", ", requiredComponentIds),
                                 String.join(", ", installedComponents)));
@@ -467,7 +466,7 @@ final class InternalResourceCache {
                 consumer.visit(language.getId(), language.getResources());
             }
         }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
+        for (InstrumentCache instrument : InstrumentCache.load().values()) {
             Collection<InternalResourceCache> resources = instrument.getResources();
             if (!resources.isEmpty()) {
                 consumer.visit(instrument.getId(), resources);

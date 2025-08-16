@@ -27,7 +27,6 @@ from __future__ import annotations
 import os
 import re
 from os.path import basename, dirname, getsize
-from typing import Iterable
 
 import mx
 import mx_benchmark
@@ -35,22 +34,10 @@ import mx_sdk_benchmark
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_sdk_vm_ng
-from mx_benchmark import DataPoint, DataPoints
+from mx_benchmark import DataPoints
 from mx_sdk_benchmark import GraalVm, NativeImageVM
 
 _suite = mx.suite('vm')
-_polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
-_polybench_modes = [
-    ('standard', ['--mode=standard']),
-    ('interpreter', ['--mode=interpreter']),
-]
-
-POLYBENCH_METRIC_MAPPING = {
-    "compilation-time": "compile-time",
-    "partial-evaluation-time": "pe-time",
-    "allocated-bytes": "allocated-memory",
-    "peak-time": "time"
-}  # Maps some polybench metrics to standardized metric names
 
 
 class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
@@ -131,195 +118,6 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         return results
 
 
-class ExcludeWarmupRule(mx_benchmark.StdOutRule):
-    """Rule that behaves as the StdOutRule, but skips input until a certain pattern."""
-
-    def __init__(self, *args, **kwargs):
-        self.startPattern = re.compile(kwargs.pop('startPattern'))
-        super(ExcludeWarmupRule, self).__init__(*args, **kwargs)
-
-    def parse(self, text) -> Iterable[DataPoint]:
-        m = self.startPattern.search(text)
-        if m:
-            return super(ExcludeWarmupRule, self).parse(text[m.end()+1:])
-        else:
-            return []
-
-
-class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    def __init__(self):
-        super(PolyBenchBenchmarkSuite, self).__init__()
-        self._extensions = [".js", ".rb", ".wasm", ".bc", ".py", ".pmh"]
-
-    def _get_benchmark_root(self):
-        if not hasattr(self, '_benchmark_root'):
-            dist_name = "POLYBENCH_BENCHMARKS"
-            distribution = mx.distribution(dist_name)
-            _root = distribution.get_output()
-            if not os.path.exists(_root):
-                msg = f"The distribution {dist_name} does not exist: {_root}{os.linesep}"
-                msg += f"This might be solved by running: mx build --dependencies={dist_name}"
-                mx.abort(msg)
-            self._benchmark_root = _root
-        return self._benchmark_root
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "truffle"
-
-    def name(self):
-        return "polybench"
-
-    def version(self):
-        return "0.1.0"
-
-    def benchmarkList(self, bmSuiteArgs):
-        if not hasattr(self, "_benchmarks"):
-            self._benchmarks = []
-            graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
-            polybench_ee = mx.distribution('POLYBENCH_EE', fatalIfMissing=False)
-            if graal_test and polybench_ee and mx.get_env('ENABLE_POLYBENCH_HPC') == 'yes':
-                # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
-                # are present, the CompileTheWorld benchmark is available.
-                self._benchmarks = ['CompileTheWorld']
-            for group in ["interpreter", "compiler", "warmup", "nfi"]:
-                dir_path = os.path.join(self._get_benchmark_root(), group)
-                for f in os.listdir(dir_path):
-                    f_path = os.path.join(dir_path, f)
-                    if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
-                        self._benchmarks.append(os.path.join(group, f))
-        return self._benchmarks
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return self._get_benchmark_root()
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is None or len(benchmarks) != 1:
-            mx.abort("Must specify one benchmark at a time.")
-        vmArgs = self.vmArgs(bmSuiteArgs)
-        benchmark = benchmarks[0]
-        if benchmark == 'CompileTheWorld':
-            # Run CompileTheWorld as a polybench benchmark, using instruction counting to get a stable metric.
-            # The CompileTheWorld class has been reorganized to have separate "prepare" and
-            # "compile" steps such that only the latter is measured by polybench.
-            # PAPI instruction counters are thread-local so CTW is run on the same thread as
-            # the polybench harness (i.e., CompileTheWorld.MultiThreaded=false).
-            import mx_compiler
-            res = mx_compiler._ctw_jvmci_export_args(arg_prefix='--vm.-') + [
-                   '--ctw',
-                   '--vm.cp=' + mx.distribution('GRAAL_TEST').path,
-                   '--vm.DCompileTheWorld.MaxCompiles=10000',
-                   '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
-                   '--vm.DCompileTheWorld.Verbose=false',
-                   '--vm.DCompileTheWorld.MultiThreaded=false',
-                   '--vm.Djdk.graal.ShowConfiguration=info',
-                   '--metric=instructions',
-                   '-w', '1',
-                   '-i', '5'] + vmArgs
-        else:
-            benchmark_path = os.path.join(self._get_benchmark_root(), benchmark)
-            res = ["--path=" + benchmark_path] + vmArgs
-        return res
-
-    def get_vm_registry(self):
-        return _polybench_vm_registry
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
-        metric_name = self._get_metric_name(output)
-        rules = []
-        if metric_name == "time":
-            # Special case for metric "time": Instead of reporting the aggregate numbers,
-            # report individual iterations. Two metrics will be reported:
-            # - "warmup" includes all iterations (warmup and run)
-            # - "time" includes only the "run" iterations
-            rules += [
-                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                    "benchmark": ("<name>", str),
-                    "metric.better": "lower",
-                    "metric.name": "warmup",
-                    "metric.unit": ("<unit>", str),
-                    "metric.value": ("<value>", float),
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.iteration": ("$iteration", int),
-                }),
-                ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                    "benchmark": ("<name>", str),
-                    "metric.better": "lower",
-                    "metric.name": "time",
-                    "metric.unit": ("<unit>", str),
-                    "metric.value": ("<value>", float),
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.iteration": ("<iteration>", int),
-                }, startPattern=r"::: Running :::")
-            ]
-        elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
-            rules += [
-                ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                    "benchmark": ("<name>", str),
-                    "metric.better": "lower",
-                    "metric.name": metric_name,
-                    "metric.unit": ("<unit>", str),
-                    "metric.value": ("<value>", float),
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.iteration": ("<iteration>", int),
-                }, startPattern=r"::: Running :::")
-            ]
-        else:
-            rules += [
-                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
-                    "benchmark": ("<name>", str),
-                    "metric.better": "lower",
-                    "metric.name": metric_name,
-                    "metric.unit": ("<unit>", str),
-                    "metric.value": ("<value>", float),
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.iteration": 0,
-                })
-            ]
-        rules += [
-            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-                "benchmark": benchmarks[0],
-                "metric.name": "context-eval-time",
-                "metric.value": ("<delta>", float),
-                "metric.unit": ("<unit>", str),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0
-            }),
-            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-                "benchmark": benchmarks[0],
-                "metric.name": "context-init-time",
-                "metric.value": ("<delta>", float),
-                "metric.unit": ("<unit>", str),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0
-            })
-        ]
-        return rules
-
-    def _get_metric_name(self, bench_output):
-        match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)Metric", bench_output)
-        if match is None:
-            match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)", bench_output)
-
-        metric_class_name = match.group("metric_class_name")
-        metric_class_name = re.sub(r'(?<!^)(?=[A-Z])', '-', metric_class_name).lower()
-
-        if metric_class_name in POLYBENCH_METRIC_MAPPING:
-            return POLYBENCH_METRIC_MAPPING[metric_class_name]
-        else:
-            return metric_class_name
-
-
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}\n"
     SZ_RGX_PATTERN = r"== binary size == (?P<image_name>[a-zA-Z0-9_\-\.:]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
@@ -341,7 +139,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return ["default"]
 
     def get_vm_registry(self):
-        return _polybench_vm_registry
+        return mx_benchmark.java_vm_registry
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
@@ -410,102 +208,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
 
 
-class PolyBenchVm(GraalVm):
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
-        super(PolyBenchVm, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
-        if self.debug_args:
-            # The `arg[1:]` is to strip the first '-' from the args since it's
-            # re-added by the subsequent processing of `--vm`
-            self.debug_args = [f'--vm.{arg[1:]}' for arg in self.debug_args]
-
-    def run(self, cwd, args):
-        return self.run_launcher('polybench', args, cwd)
-
-def polybenchmark_rules(benchmark, metric_name, mode):
-    rules = []
-    if metric_name == "time":
-        # Special case for metric "time": Instead of reporting the aggregate numbers,
-        # report individual iterations. Two metrics will be reported:
-        # - "warmup" includes all iterations (warmup and run)
-        # - "time" includes only the "run" iterations
-        rules += [
-            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": benchmark, #("<name>", str),
-                "metric.better": "lower",
-                "metric.name": "warmup",
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": ("$iteration", int),
-                "engine.config": mode,
-            }),
-            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": benchmark, #("<name>", str),
-                "metric.better": "lower",
-                "metric.name": "time",
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": ("<iteration>", int),
-                "engine.config": mode,
-            }, startPattern=r"::: Running :::"),
-            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-                "benchmark": benchmark,
-                "metric.name": "context-eval-time",
-                "metric.value": ("<delta>", float),
-                "metric.unit": ("<unit>", str),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "engine.config": mode
-            }),
-            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-                "benchmark": benchmark,
-                "metric.name": "context-init-time",
-                "metric.value": ("<delta>", float),
-                "metric.unit": ("<unit>", str),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "engine.config": mode,
-            }),
-        ]
-    elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory", "instructions"):
-        rules += [
-            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": benchmark, #("<name>", str),
-                "metric.better": "lower",
-                "metric.name": metric_name,
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": ("<iteration>", int),
-                "engine.config": mode,
-            }, startPattern=r"::: Running :::")
-        ]
-    elif metric_name in ("compile-time", "pe-time"):
-        rules += [
-            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": benchmark, #("<name>", str),
-                "metric.better": "lower",
-                "metric.name": metric_name,
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": 0,
-                "engine.config": mode,
-            }),
-        ]
-    return rules
-
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
-mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
 mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
 
 
@@ -515,17 +218,13 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            extra_launcher_args = []
             if config_name.startswith("jvm"):
                 # needed for NFI CLinker benchmarks
-                launcher_args += ['--vm.-enable-preview']
-            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
-            for mode, mode_options in _polybench_modes:
-                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
-        if _suite.get_import("polybenchmarks") is not None:
-            import mx_polybenchmarks_benchmark
-            mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))
-            mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
-            mx_polybenchmarks_benchmark.rules = polybenchmark_rules
+                extra_launcher_args += ['--vm.-enable-preview']
+                # needed for GraalWasm SIMD benchmarks
+                extra_launcher_args += ['--vm.-add-modules=jdk.incubator.vector']
+            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args + extra_launcher_args), _suite, priority)
 
     optimization_levels = ['O0', 'O1', 'O2', 'O3', 'Os']
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
@@ -533,7 +232,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             config_names = list()
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath', 'layered', 'graalos'] + analysis_context_sensitivity:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
                 config_names.append(f'{main_config}-{config_suffix}')
 
             for optimization_level in optimization_levels:
@@ -543,11 +242,6 @@ def register_graalvm_vms():
 
             for config_name in config_names:
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
-
-    # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc', 'layered', 'graalos']:
-        mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
-
 
     # Add VMs for libgraal
     if mx.suite('substratevm', fatalIfMissing=False) is not None:

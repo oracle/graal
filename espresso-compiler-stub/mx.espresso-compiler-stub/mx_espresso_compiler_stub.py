@@ -29,7 +29,7 @@ import mx_gate
 
 from mx_espresso import _espresso_stability, _has_native_espresso_standalone, _send_sigquit, get_java_home_dep, _jdk_lib_dir, jvm_standalone_with_llvm
 from mx_sdk_vm_ng import _find_native_image_command, ThinLauncherProject  # pylint: disable=unused-import
-from mx_sdk_vm_impl import get_final_graalvm_distribution, has_component
+from mx_sdk_vm_impl import get_final_graalvm_distribution, has_component, graalvm_skip_archive
 
 _suite = mx.suite('espresso-compiler-stub')
 
@@ -57,14 +57,14 @@ def create_ni_standalone(base_standalone_name, register_distribution):
         layout = deepcopy(base_standalone.layout)
         if '_NATIVE_' in base_standalone_name:
             # avoid dependency on project, copy from base standalone
-            idx = layout['<jdk_lib_dir>/truffle/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>')
+            idx = layout['<jdk_lib_dir>/truffle/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>')
             layout['<jdk_lib_dir>/truffle/'][idx] = f'dependency:espresso:{base_standalone_name}/{_jdk_lib_dir()}/truffle/<lib:jvm>'
             assert len(layout['languages/java/lib/']) == 1
             layout['languages/java/lib/'] = [
                 f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:javavm>'
             ]
         else:
-            idx = layout['languages/java/lib/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>')
+            idx = layout['languages/java/lib/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>')
             layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
             idx = layout['bin/'].index('dependency:espresso:espresso')
             del layout['bin/'][idx]
@@ -80,6 +80,9 @@ def create_ni_standalone(base_standalone_name, register_distribution):
             # ESPRESSO_JAVA_HOME has native-image, keep that
             pass
         elif has_component('ni') and espresso_java_home.java_home == mx_sdk_vm.base_jdk().home:
+            if graalvm_skip_archive():
+                mx.abort("Cannot build NI standalones with GRAALVM_SKIP_ARCHIVE enabled")
+
             # substratevm is available and ESPRESSO_JAVA_HOME is JAVA_HOME, use GraalVM
             layout['./'][0]['source_type'] = 'extracted-dependency'
             layout['./'][0]['dependency'] = get_final_graalvm_distribution().qualifiedName()

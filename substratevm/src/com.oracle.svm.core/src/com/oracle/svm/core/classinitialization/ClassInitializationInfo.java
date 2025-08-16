@@ -27,8 +27,6 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.hub.RuntimeClassLoading;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -39,6 +37,7 @@ import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -46,12 +45,13 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
- * {@link #slowPath(ClassInitializationInfo, DynamicHub)} implementation} of class initialization
+ * {@link #slowPath(ClassInitializationInfo, DynamicHub) implementation} of class initialization
  * according to the Java VM specification.
  * <p>
  * The information is not directly stored in {@link DynamicHub} because 1) the class initialization
@@ -244,6 +244,14 @@ public final class ClassInitializationInfo {
         this.typeReached = typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
         this.slowPathRequired = true;
         this.initLock = new ReentrantLock();
+    }
+
+    public InitState getInitState() {
+        return initState;
+    }
+
+    public boolean isSlowPathRequired() {
+        return slowPathRequired;
     }
 
     public boolean hasInitializer() {

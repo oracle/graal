@@ -33,7 +33,9 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -65,6 +67,7 @@ public class HeapVerifier {
     public boolean verify(Occasion occasion) {
         boolean success = true;
         success &= verifyImageHeap();
+        success &= verifyMetaspace();
         success &= verifyYoungGeneration(occasion);
         success &= verifyOldGeneration();
         success &= verifyRememberedSets();
@@ -78,6 +81,13 @@ public class HeapVerifier {
             success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
         return success;
+    }
+
+    private static boolean verifyMetaspace() {
+        if (!MetaspaceImpl.isSupported()) {
+            return true;
+        }
+        return MetaspaceImpl.singleton().verify();
     }
 
     private static boolean verifyYoungGeneration(Occasion occasion) {
@@ -134,18 +144,22 @@ public class HeapVerifier {
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
 
+        if (MetaspaceImpl.isSupported()) {
+            success &= MetaspaceImpl.singleton().verifyRememberedSets();
+        }
+
         success &= HeapImpl.getHeapImpl().getOldGeneration().verifyRememberedSets();
         return success;
     }
 
-    static boolean verifyRememberedSet(Space space) {
+    public static boolean verifyRememberedSet(Space space) {
         boolean success = true;
         success &= RememberedSet.get().verify(space.getFirstAlignedHeapChunk());
         success &= RememberedSet.get().verify(space.getFirstUnalignedHeapChunk());
         return success;
     }
 
-    static boolean verifySpace(Space space) {
+    public static boolean verifySpace(Space space) {
         boolean success = true;
         success &= verifyChunkList(space, "aligned", space.getFirstAlignedHeapChunk(), space.getLastAlignedHeapChunk());
         success &= verifyChunkList(space, "unaligned", space.getFirstUnalignedHeapChunk(), space.getLastUnalignedHeapChunk());
@@ -348,7 +362,7 @@ public class HeapVerifier {
             return true;
         }
 
-        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
+        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeapSlow(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
             printParent(parentObject);
             return false;
@@ -384,10 +398,11 @@ public class HeapVerifier {
     }
 
     private static void printParent(Object parentObject) {
-        if (parentObject != null) {
-            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
+        if (parentObject instanceof VerifyFrameReferencesVisitor visitor) {
+            Log.log().string("The invalid reference is on the stack: sp=").zhex(visitor.getSP()).string(", ip=").zhex(visitor.getIP()).newline();
         } else {
-            Log.log().string("The invalid reference is on the stack").newline();
+            assert parentObject != null;
+            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
         }
     }
 

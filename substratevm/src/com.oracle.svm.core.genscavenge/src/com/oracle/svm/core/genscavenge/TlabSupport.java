@@ -409,10 +409,10 @@ public class TlabSupport {
 
         if (SerialAndEpsilonGCOptions.PrintTLAB.getValue()) {
             Log.log().string("TLAB new size: thread ").zhex(thread)
-                            .string(" target refills: ").unsigned(targetRefills)
-                            .string(" alloc avg.: ").unsigned(allocatedAvg)
-                            .string(" desired size: ").hex(desiredSize.get(thread))
-                            .string(" -> ").hex(alignedNewSize).newline();
+                            .string(", target refills: ").unsigned(targetRefills)
+                            .string(", alloc avg.: ").unsigned(allocatedAvg)
+                            .string(", desired size: ").unsigned(desiredSize.get(thread))
+                            .string(" -> ").unsigned(alignedNewSize).newline();
         }
 
         desiredSize.set(thread, alignedNewSize);
@@ -498,13 +498,13 @@ public class TlabSupport {
 
         long waste = gcWaste.get(thread) + refillWaste.get(thread);
         Log.log().string("TLAB: thread: ").zhex(thread)
-                        .string(" slow allocs: ").unsigned(slowAllocations.get(thread))
-                        .string(" refills: ").unsigned(numberOfRefills.get(thread))
-                        .string(" alloc bytes: ").unsigned(allocatedBytesSinceLastGC)
-                        .string(" alloc avg.: ").unsigned((long) allocatedBytesAvg.getAddress(thread).getAverage())
-                        .string(" waste bytes: ").zhex(waste)
-                        .string(" GC waste: ").unsigned(gcWaste.get(thread))
-                        .string(" refill waste: ").unsigned(refillWaste.get(thread)).newline();
+                        .string(", slow allocs: ").unsigned(slowAllocations.get(thread))
+                        .string(", refills: ").unsigned(numberOfRefills.get(thread))
+                        .string(", alloc bytes: ").unsigned(allocatedBytesSinceLastGC)
+                        .string(", alloc avg.: ").unsigned((long) allocatedBytesAvg.getAddress(thread).getAverage())
+                        .string(", waste bytes: ").unsigned(waste)
+                        .string(", GC waste: ").unsigned(gcWaste.get(thread))
+                        .string(", refill waste: ").unsigned(refillWaste.get(thread)).newline();
     }
 
     static void logTlabChunks(Log log, IsolateThread thread, String shortSpaceName) {

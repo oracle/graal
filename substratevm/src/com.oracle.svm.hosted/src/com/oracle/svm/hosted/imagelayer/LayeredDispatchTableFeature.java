@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
@@ -37,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -50,28 +50,31 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
-import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
 
 import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -108,6 +111,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
+    private int wordSize;
+    private HostedUniverse hUniverse;
+
     final Map<HostedType, PriorDispatchTable> priorDispatchTableCache = buildingExtensionLayer ? new ConcurrentHashMap<>() : null;
     final Map<Integer, PriorDispatchMethod> priorDispatchMethodCache = buildingExtensionLayer ? new ConcurrentHashMap<>() : null;
 
@@ -115,7 +121,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     final boolean generateUnresolvedSymbolNames = buildingSharedLayer;
     Map<HostedMethod, Integer> persistedHostedMethodIndexMap = buildingSharedLayer ? new ConcurrentHashMap<>() : null;
 
-    final Map<WordBase, HostedDispatchSlot> vtableWordToDispatchSlot = new IdentityHashMap<>();
+    final Map<MethodRef, HostedDispatchSlot> vtableWordToDispatchSlot = new IdentityHashMap<>();
     final Map<HostedType, HostedDispatchTable> typeToDispatchTable = new HashMap<>();
     /**
      * Bitmap relative to the start of the current layer's image heap relocatables partition where
@@ -139,6 +145,8 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
     static final int INVALID_HOSTED_METHOD_INDEX = -1;
 
+    private static final String UNRESOLVED_VTABLE_ENTRY_SYMBOL = "__svm_vtableSym_";
+
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
         return ImageLayerBuildingSupport.buildingImageLayer();
@@ -146,18 +154,21 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+        wordSize = ConfigurationValues.getTarget().wordSize;
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
             getPriorVirtualCallTargets().forEach(aMethod -> {
                 config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
             });
         }
-        LayeredImageHooks.registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
+        LayeredImageHooks.singleton().registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
+        LayeredImageHooks.singleton().registerPatchedWordWrittenCallback(this::onPatchedWordWritten);
     }
 
     @Override
     public void beforeCompilation(Feature.BeforeCompilationAccess a) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
+        hUniverse = access.getUniverse();
         installBuilderModules(access.getImageClassLoader().getBuilderModules());
     }
 
@@ -412,19 +423,14 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         }
     }
 
-    /*
-     * Recording a hub was written to the heap
-     */
-    public void onDynamicHubWritten(LayeredImageHooks.WrittenDynamicHubInfo hubInfo) {
-        AnalysisType aType = ((SVMHost) hubInfo.aUniverse().hostVM()).lookupType(hubInfo.hub());
-        HostedType hType = hubInfo.hUniverse().lookup(aType);
+    private void onDynamicHubWritten(DynamicHub hub, MethodRef[] vtable) {
+        AnalysisType aType = hUniverse.hostVM().lookupType(hub);
+        HostedType hType = hUniverse.lookup(aType);
 
         assert hType.getWrapped().isReachable() : "All installed hubs should be reachable " + hType;
 
-        Object vTable = hubInfo.vTable();
-        int vtableLength = Array.getLength(vTable);
         if (VTableBuilder.hasEmptyDispatchTable(hType)) {
-            assert vtableLength == 0 : hType;
+            assert vtable.length == 0 : hType;
             return;
         }
 
@@ -434,46 +440,54 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         assert dispatchTable.status == HubStatus.DISPATCH_INFO_CALCULATED || dispatchTable.status == HubStatus.COMPUTED_PRIOR_LAYER : dispatchTable;
         dispatchTable.status = HubStatus.INSTALLED_CURRENT_LAYER;
 
-        assert dispatchTable.slots.length == vtableLength : Assertions.errorMessage(vTable, dispatchTable.slots);
+        assert dispatchTable.slots.length == vtable.length : Assertions.errorMessage(vtable, dispatchTable.slots);
 
-        int wordSize = ConfigurationValues.getTarget().wordSize;
-        for (int i = 0; i < vtableLength; i++) {
-            WordBase methodRef = (WordBase) Array.get(vTable, i);
+        for (int i = 0; i < vtable.length; i++) {
             var slot = dispatchTable.slots[i];
-            if (methodRef instanceof MethodOffset methodOffset) {
-                int slotBit = hubInfo.vTableOffsetInHeapRelocs() / wordSize + i;
-                HostedMethod target = (HostedMethod) methodOffset.getMethod();
-                if (target.isCompiledInPriorLayer()) {
-                    /*
-                     * Method compiled in the initial layer: we can use its offset without patching
-                     * because it is relative to the initial layer's text section, which becomes the
-                     * global code base.
-                     */
-                    assert DynamicImageLayerInfo.getCurrentLayerNumber() == 1 : "Currently cannot patch references to code in a middle layer";
-                } else if (target.isCompiled()) {
-                    if (!buildingInitialLayer) {
-                        /*
-                         * Method compiled in the current (non-base) layer: the offset is relative
-                         * to the current layer's text section and must be patched to account for
-                         * its displacement from the global code base at runtime.
-                         */
-                        offsetsToPatchInHeapRelocs.set(slotBit);
-                    }
-                } else {
-                    /*
-                     * Method compiled in a future layer, so the target will be resolved to an
-                     * address via a symbol reference by the runtime linker and we must subsequently
-                     * patch the word to turn the address into an offset relative to the code base.
-                     */
-                    addressesToPatchInHeapRelocs.set(slotBit);
-                }
-            }
-            var prev = vtableWordToDispatchSlot.put(methodRef, slot);
+            var prev = vtableWordToDispatchSlot.put(vtable[i], slot);
             assert prev == null : prev;
         }
     }
 
-    private static String computeUnresolvedMethodSymbol(HostedDispatchSlot slotInfo, Map<ResolvedJavaMethod, String> methodToSymbolMap) {
+    private void onPatchedWordWritten(WordBase word, int offsetInHeap, ImageHeapLayoutInfo heapLayout) {
+        if (word instanceof MethodOffset methodOffset) {
+            ResolvedJavaMethod method = methodOffset.getMethod();
+            HostedMethod target = (method instanceof HostedMethod hm) ? hm : hUniverse.lookup(method);
+            if (target.isCompiledInPriorLayer()) {
+                /*
+                 * Method compiled in the initial layer: we can use its offset without patching
+                 * because it is relative to the initial layer's text section, which becomes the
+                 * global code base.
+                 */
+                assert DynamicImageLayerInfo.getCurrentLayerNumber() == 1 : "Currently cannot patch references to code in a middle layer";
+            } else if (target.isCompiled()) {
+                if (!buildingInitialLayer) {
+                    /*
+                     * Method compiled in the current (non-base) layer: the offset is relative to
+                     * the current layer's text section and must be patched to account for its
+                     * displacement from the global code base at runtime.
+                     */
+                    markRelocsWordInBitmap(offsetsToPatchInHeapRelocs, offsetInHeap, heapLayout);
+                }
+            } else {
+                /*
+                 * Method compiled in a future layer, so the target will be resolved to an address
+                 * via a symbol reference by the runtime linker and we must subsequently patch the
+                 * word to turn the address into an offset relative to the code base.
+                 */
+                markRelocsWordInBitmap(addressesToPatchInHeapRelocs, offsetInHeap, heapLayout);
+            }
+        }
+    }
+
+    private void markRelocsWordInBitmap(BitSet bitmap, int offsetInHeap, ImageHeapLayoutInfo heapLayout) {
+        assert heapLayout.isReadOnlyRelocatable(offsetInHeap) : offsetInHeap;
+        int offsetInHeapRelocs = NumUtil.safeToInt(offsetInHeap - heapLayout.getReadOnlyRelocatableOffset());
+        assert offsetInHeapRelocs % wordSize == 0 : offsetInHeap;
+        bitmap.set(offsetInHeapRelocs / wordSize);
+    }
+
+    private static String computeUnresolvedMethodSymbol(HostedDispatchSlot slotInfo, Map<ResolvedJavaMethod, String> methodToSymbolMap, Supplier<String> symbolNameSupplier) {
         /*
          * First try to determine the resolved method. This is useful for deduplication.
          */
@@ -491,10 +505,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
         String unresolvedTableSymbol;
         if (resolvedMethod != null) {
-            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> String.format("%s_unresolvedVTableSym", NativeImage.localSymbolNameForMethod(k)));
+            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> symbolNameSupplier.get());
         } else {
-            unresolvedTableSymbol = SubstrateOptions.ImageSymbolsPrefix.getValue() +
-                            String.format("unresolvedVTableSym_typeid%s_slot%s", slotInfo.dispatchTable.type.getWrapped().getId(), slotInfo.slotIndex);
+            unresolvedTableSymbol = symbolNameSupplier.get();
         }
         return unresolvedTableSymbol;
     }
@@ -511,6 +524,11 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         Set<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? new HashSet<>() : null;
 
         Map<ResolvedJavaMethod, String> deduplicatedMethodMap = new HashMap<>();
+        final var unresolvedSlotCount = IntStream.iterate(0, i -> i + 1).iterator();
+        Supplier<String> symbolNameSupplier = () -> {
+            int count = unresolvedSlotCount.nextInt();
+            return String.format("%s_%s", UNRESOLVED_VTABLE_ENTRY_SYMBOL, count);
+        };
 
         /*
          * First calculate symbols for all slots
@@ -531,9 +549,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
                      * We need to make a symbol for this method which can be resolved in a later
                      * build if the target is compiled.
                      */
-                    symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap);
+                    symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap, symbolNameSupplier);
                     if (unresolvedVTableSymbolNames.add(symbol)) {
-                        objectFile.createUndefinedSymbol(symbol, 0, true);
+                        objectFile.createUndefinedSymbol(symbol, wordSize, true);
                     }
                 }
             } else {
@@ -594,7 +612,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     }
 
     // GR-58588 use injectedNotCompiled to track status of all MethodPointers
-    public String getSymbolName(WordBase methodRef, HostedMethod target, @SuppressWarnings("unused") boolean injectedNotCompiled) {
+    public String getSymbolName(MethodRef methodRef, HostedMethod target, @SuppressWarnings("unused") boolean injectedNotCompiled) {
         var slotInfo = vtableWordToDispatchSlot.get(methodRef);
         String symbol = NativeImage.localSymbolNameForMethod(target);
         if (slotInfo != null) {

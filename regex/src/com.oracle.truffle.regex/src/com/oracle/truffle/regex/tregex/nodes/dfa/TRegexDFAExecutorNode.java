@@ -450,10 +450,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         }
                     }
                     if (injectBranchProbability(EXIT_PROBABILITY, !inputHasNext(locals))) {
-                        int ipFinalTransition = state.atEnd(locals, this);
-                        CompilerAsserts.partialEvaluationConstant(ipFinalTransition);
-                        if (ipFinalTransition >= 0) {
-                            ip = ipFinalTransition;
+                        boolean inputAtEnd = inputAtEnd(locals);
+                        state.atEnd(locals, this, inputAtEnd);
+                        int anchoredFinalSuccessor = state.getAnchoredFinalSuccessor();
+                        CompilerAsserts.partialEvaluationConstant(anchoredFinalSuccessor);
+                        if (state.isAnchoredFinalState() && anchoredFinalSuccessor >= 0 && inputAtEnd) {
+                            ip = anchoredFinalSuccessor;
                             continue outer;
                         }
                         if (isBackward() && state.hasBackwardPrefixState() && locals.getIndex() > locals.getRegionFrom()) {

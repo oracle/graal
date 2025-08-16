@@ -9,8 +9,23 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   devkits:: common.devkits,
 
-  gate:: {
-    targets+: ['gate'],
+  tier1:: {
+    targets+: ['tier1'],
+  },
+  tier2:: {
+    targets+: ['tier2'],
+  },
+  tier3:: {
+    targets+: ['tier3'],
+  },
+  tier4:: {
+    targets+: ['tier4'],
+    notify_groups:: ['wasm'],
+  },
+
+  postmerge:: {
+    targets+: ['post-merge'],
+    notify_groups:: ['wasm'],
   },
 
   daily:: {
@@ -23,12 +38,27 @@ local graal_suite_root = root_ci.graal_suite_root;
     notify_groups:: ['wasm'],
   },
 
+  monthly:: {
+    targets+: ['monthly'],
+    notify_groups:: ['wasm'],
+  },
+
+  ondemand:: {
+    targets+: ['ondemand'],
+  },
+
+  deploy:: {
+    targets+: ['deploy'],
+  },
+
   bench:: {
     targets+: ['bench'],
   },
 
   bench_daily:: self.bench + self.daily,
   bench_weekly:: self.bench + self.weekly,
+  bench_monthly:: self.bench + self.monthly,
+  bench_ondemand:: self.bench + self.ondemand,
 
   linux_common:: {
     packages+: {

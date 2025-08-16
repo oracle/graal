@@ -194,7 +194,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             Pair<HostedMethod, CompilationResult> lastCompilation = getLastCompilation();
             HostedMethod lastMethod = lastCompilation.getLeft();
 
-            // the total code size is aligned up to SubstrateOptions.codeAlignment()
+            // the total code size is aligned up to SubstrateOptions.buildTimeCodeAlignment()
             int totalSize;
             if (orderedTrampolineMap.containsKey(lastMethod)) {
                 var trampolines = orderedTrampolineMap.get(lastMethod);
@@ -203,7 +203,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             } else {
                 totalSize = addOffset(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
             }
-            totalSize = align(totalSize, SubstrateOptions.codeAlignment());
+            totalSize = align(totalSize, SubstrateOptions.buildTimeCodeAlignment());
 
             setCodeAreaSize(totalSize);
 
@@ -476,7 +476,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
 
-            for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.codeAlignment()); i++) {
+            for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.buildTimeCodeAlignment()); i++) {
                 bufferBytes.put(CODE_FILLER_BYTE);
             }
         }

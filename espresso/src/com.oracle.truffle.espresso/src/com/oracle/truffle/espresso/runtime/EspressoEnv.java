@@ -101,11 +101,11 @@ public final class EspressoEnv {
     public final boolean EnableNativeAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
-    public final boolean RegexSubstitutions;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
     private final boolean enableGenericTypeHints;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
+    public final boolean AdvancedRedefinition;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -135,12 +135,6 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableNativeAgents = env.getOptions().get(EspressoOptions.EnableNativeAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
-        boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
-        if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
-            context.getLogger().warning("UseTRegex is set to true but the 'regex' language is not available. Ignoring UseTRegex.");
-            regexSubstitutions = false;
-        }
-        this.RegexSubstitutions = regexSubstitutions;
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
@@ -175,6 +169,7 @@ public final class EspressoEnv {
         this.enableGenericTypeHints = env.getOptions().get(EspressoOptions.EnableGenericTypeHints);
         this.proxyCache = polyglotTypeMappings.hasMappings() ? new HashMap<>() : null;
         this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
+        this.AdvancedRedefinition = env.getOptions().get(EspressoOptions.EnableAdvancedRedefinition);
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {

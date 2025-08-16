@@ -397,8 +397,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
                 reasonStr = ((ResolvedJavaMethod) current).format("%f method %H.%n");
 
             } else if (current instanceof ResolvedJavaField field) {
-                /**
-                 * In {@link AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
+                /*
+                 * In {@code AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is

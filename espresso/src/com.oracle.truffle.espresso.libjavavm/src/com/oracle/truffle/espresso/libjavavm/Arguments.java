@@ -95,6 +95,7 @@ public final class Arguments {
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         boolean printFlagsFinal = false;
+        String argumentError = null;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -223,6 +224,9 @@ public final class Arguments {
                     } else if (optionString.startsWith("-Xshare:")) {
                         String value = optionString.substring("-Xshare:".length());
                         builder.option("java.CDS", value);
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
@@ -240,12 +244,16 @@ public final class Arguments {
                     }
                 }
             } catch (ArgumentException e) {
-                if (!ignoreUnrecognized) {
-                    // Failed to parse
-                    warn(e.getMessage());
-                    return JNI_ERR();
+                // Failed to parse
+                if (argumentError == null) {
+                    argumentError = e.getMessage();
                 }
             }
+        }
+
+        if (argumentError != null && !ignoreUnrecognized) {
+            warn(argumentError);
+            return JNI_ERR();
         }
 
         for (String xOption : xOptions) {

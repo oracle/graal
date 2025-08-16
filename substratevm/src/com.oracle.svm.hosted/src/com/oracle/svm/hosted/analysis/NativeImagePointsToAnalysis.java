@@ -27,10 +27,8 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -51,7 +49,6 @@ import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 
@@ -61,7 +58,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.Signature;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
@@ -154,17 +151,14 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             }
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 /*
-                 * Using getInstanceFields and getStaticFields allows to include the fields from the
-                 * substitution class.
+                 * Register open-world fields as roots to prevent premature optimizations, i.e.,
+                 * like constant-folding their values in the shared layer.
                  */
-                Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
-                                Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
-                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded((AnalysisField) field))
-                                .forEach(field -> classInclusionPolicy.includeField((AnalysisField) field));
+                tryRegisterFieldsInBaseImage(type.getInstanceFields(true));
+                tryRegisterFieldsInBaseImage(type.getStaticFields());
 
                 /*
-                 * Only the class initializers that are executed at run time should be included in
-                 * the base layer.
+                 * Register run time executed class initializers as roots in the base layer.
                  */
                 AnalysisMethod classInitializer = type.getClassInitializer();
                 if (classInitializer != null && !ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type) && classInitializer.getCode() != null) {
@@ -174,19 +168,15 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         });
     }
 
+    private void tryRegisterFieldsInBaseImage(ResolvedJavaField[] fields) {
+        for (ResolvedJavaField resolvedJavaField : fields) {
+            tryRegisterFieldForBaseImage((AnalysisField) resolvedJavaField);
+        }
+    }
+
     @Override
     public void initializeMetaData(AnalysisType type) {
         dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
-    }
-
-    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
-        if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrapped();
-        } else if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else {
-            return type;
-        }
     }
 
     @Override

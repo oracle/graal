@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/time.h>
 #include <dlfcn.h>
 #include <stdatomic.h>

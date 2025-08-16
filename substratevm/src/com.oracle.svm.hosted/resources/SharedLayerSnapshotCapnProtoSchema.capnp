@@ -29,33 +29,38 @@ struct PersistedAnalysisType {
   isInitialized @9 :Bool;
   # True if the type was configured as initialized at BUILD_TIME but initialization failed so it was registered as RUN_TIME.
   isFailedInitialization @10 :Bool;
-  isLinked @11 :Bool;
-  sourceFileName @12 :Text;
-  enclosingTypeId @13 :TypeId;
-  componentTypeId @14 :TypeId;
-  superClassTypeId @15 :TypeId;
-  isInstantiated @16 :Bool;
-  isUnsafeAllocated @17 :Bool;
-  isReachable @18 :Bool;
-  interfaces @19 :List(TypeId);
-  instanceFieldIds @20 :List(FieldId);
-  instanceFieldIdsWithSuper @21 :List(FieldId);
-  staticFieldIds @22 :List(FieldId);
-  annotationList @23 :List(Annotation);
-  classInitializationInfo @24 :ClassInitializationInfo;
-  hasArrayType @25 :Bool;
-  subTypes @26 :List(TypeId);
-  isAnySubtypeInstantiated @27 :Bool;
+  # Type's initializer simulation succeeded. We'll also persist simulated field values.
+  isSuccessfulSimulation @11 :Bool;
+  # Type's initializer simulation failed.
+  isFailedSimulation @12 :Bool;
+  isLinked @13 :Bool;
+  sourceFileName @14 :Text;
+  enclosingTypeId @15 :TypeId;
+  componentTypeId @16 :TypeId;
+  superClassTypeId @17 :TypeId;
+  isInstantiated @18 :Bool;
+  isUnsafeAllocated @19 :Bool;
+  isReachable @20 :Bool;
+  interfaces @21 :List(TypeId);
+  instanceFieldIds @22 :List(FieldId);
+  instanceFieldIdsWithSuper @23 :List(FieldId);
+  staticFieldIds @24 :List(FieldId);
+  annotationList @25 :List(Annotation);
+  classInitializationInfo @26 :ClassInitializationInfo;
+  hasArrayType @27 :Bool;
+  hasClassInitInfo @28 :Bool;
+  subTypes @29 :List(TypeId);
+  isAnySubtypeInstantiated @30 :Bool;
   wrappedType :union {
-    none @28 :Void; # default
+    none @31 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @29 :Text;
-      rawTargetConstructor @30 :Text;
+      rawDeclaringClass @32 :Text;
+      rawTargetConstructor @33 :Text;
     }
     lambda :group {
-      capturingClass @31 :Text;
+      capturingClass @34 :Text;
     }
-    proxyType @32 :Void;
+    proxyType @35 :Void;
   }
 }
 
@@ -144,12 +149,14 @@ struct PersistedAnalysisField {
   isRead @9 :Bool;
   isWritten @10 :Bool;
   isFolded @11 :Bool;
-  isStatic @12 :Bool;
-  isSynthetic @13 :Bool;
-  annotationList @14 :List(Annotation);
-  name @15 :Text;
-  priorInstalledLayerNum @16 :Int32;
-  assignmentStatus @17 :Int32;
+  isUnsafeAccessed @12 :Bool;
+  isStatic @13 :Bool;
+  isSynthetic @14 :Bool;
+  annotationList @15 :List(Annotation);
+  name @16 :Text;
+  priorInstalledLayerNum @17 :Int32;
+  assignmentStatus @18 :Int32;
+  simulatedFieldValue @19 :ConstantReference;
 }
 
 struct CEntryPointLiteralReference {
@@ -169,9 +176,11 @@ struct ConstantReference {
     methodPointer :group {
       methodId @4 :MethodId;
     }
-    cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
-    cGlobalDataBasePointer @6 :Void;
-    methodOffset @7 :Void;
+    methodOffset :group {
+      methodId @5 :MethodId;
+    }
+    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
+    cGlobalDataBasePointer @7 :Void;
   }
 }
 
@@ -239,6 +248,9 @@ struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
   store @2 :List(KeyStoreEntry);
+  recreateClass @3 :Text;
+  # GR-66792 remove once no custom persist actions exist
+  recreateMethod @4 :Text;
 }
 
 struct Annotation {
@@ -301,7 +313,9 @@ struct StaticFinalFieldFoldingSingleton {
 
 struct LayeredRuntimeMetadataSingleton {
   methods @0 :List(MethodId);
-  fields @1 :List(FieldId);
+  methodStates @1 :List(Bool);
+  fields @2 :List(FieldId);
+  fieldStates @3 :List(Bool);
 }
 
 struct LayeredModule {

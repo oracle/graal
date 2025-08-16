@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.phases;
 
 import java.util.ListIterator;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -43,7 +42,7 @@ public final class TruffleCompilerPhases {
     private TruffleCompilerPhases() {
     }
 
-    public static void register(KnownTruffleTypes types, Providers providers, Suites suites, ForeignCallDescriptor deoptimizeCallDescriptor) {
+    public static void register(KnownTruffleTypes types, Providers providers, Suites suites) {
         if (suites.isImmutable()) {
             throw new IllegalStateException("Suites are already immutable.");
         }
@@ -64,7 +63,7 @@ public final class TruffleCompilerPhases {
         ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
         if (lowTierPhasesIterator != null) {
             lowTierPhasesIterator.previous();
-            lowTierPhasesIterator.add(new TruffleForceDeoptSpeculationPhase(deoptimizeCallDescriptor));
+            lowTierPhasesIterator.add(new TruffleForceDeoptSpeculationPhase());
         }
     }
 

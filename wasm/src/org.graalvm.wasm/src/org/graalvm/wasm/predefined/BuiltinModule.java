@@ -80,7 +80,11 @@ public abstract class BuiltinModule {
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
     public WasmInstance createInstance(WasmLanguage language, WasmStore store, String name) {
-        final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, store.context(), name));
+        final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> {
+            WasmModule newModule = createModule(language, store.context(), name);
+            newModule.finishSymbolTable();
+            return newModule;
+        });
 
         final WasmInstance instance = new WasmInstance(store, module);
         instance.createLinkActions();

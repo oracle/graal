@@ -144,6 +144,12 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
         return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.HIGH_TIER_LOWERING, graphState);
     }
 
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
+    }
+
     /**
      * A "connected component" of macro nodes connected by input/usage relationships or through phi
      * or proxy nodes.
@@ -211,9 +217,18 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
+        graph.getGraphState().setDuringStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
         if (!graph.hasNode(VectorAPIMacroNode.TYPE)) {
             return;
         }
+
+        /*
+         * Canonicalize first. Needed for computing SIMD stamps, since we delay their computation to
+         * compile time. We can't generally compute SIMD stamps at the time we build the macro nodes
+         * because the target architecture for SVM runtime compilations is not known at that time.
+         */
+        canonicalizer.applyIncremental(graph, context, graph.getNodes(VectorAPIMacroNode.TYPE));
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after Vector API macro canonicalization");
 
         VectorArchitecture vectorArch = ((VectorLoweringProvider) context.getLowerer()).getVectorArchitecture();
         /*
@@ -729,6 +744,11 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
      */
     private static void replaceComponentNodes(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
         for (ValueNode node : component.simdStamps.getKeys()) {
+            if (!node.isAlive()) {
+                // As we kill CFGs while replacing each element of the component, it may be the case
+                // that an element is killed because its control dies, simply skip those elements
+                continue;
+            }
             ValueNode replacement = expanded.get(node);
             GraalError.guarantee(replacement != null, "node was not expanded: %s", node);
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "before replacing %s -> %s", node, replacement);

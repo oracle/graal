@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.phases;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -37,8 +36,8 @@ import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 
 public class TruffleForceDeoptSpeculationPhase extends ForceDeoptSpeculationPhase {
-    public TruffleForceDeoptSpeculationPhase(ForeignCallDescriptor deoptimizeCallDescriptor) {
-        super(0, deoptimizeCallDescriptor);
+    public TruffleForceDeoptSpeculationPhase() {
+        super(0);
     }
 
     @Override

@@ -57,7 +57,6 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseUnfoldingTrie.Unfolding;
-import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBCharClassTrieNode;
 
 public class MultiCharacterCaseFolding {
 

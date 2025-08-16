@@ -46,16 +46,14 @@ import com.oracle.truffle.api.strings.TruffleString;
 public class DFASimpleCGTrackingStateNode extends DFAStateNode {
 
     private final DFASimpleCGTransition transitionToFinalState;
-    private final short transitionToAnchoredFinalState;
 
     public DFASimpleCGTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
                     Matchers matchers,
                     DFASimpleCGTransition transitionToFinalState,
-                    short transitionToAnchoredFinalState) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers);
+                    short anchoredFinalSuccessor) {
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
         this.transitionToFinalState = transitionToFinalState;
-        this.transitionToAnchoredFinalState = transitionToAnchoredFinalState;
     }
 
     @Override
@@ -83,18 +81,15 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     @Override
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
         CompilerAsserts.partialEvaluationConstant(this);
-        boolean anchored = isAnchoredFinalState() && executor.inputAtEnd(locals);
+        boolean anchored = isAnchoredFinalState() && inputAtEnd;
         if (isFinalState() || anchored) {
             storeResult(locals, executor, anchored);
-            if (isAnchoredFinalState()) {
-                return transitionToAnchoredFinalState;
-            } else if (isFinalState()) {
+            if (!isAnchoredFinalState() && isFinalState()) {
                 applySimpleCGFinalTransition(executor, locals);
             }
         }
-        return -1;
     }
 
     @Override

@@ -54,6 +54,7 @@ import json
 import argparse
 import zipfile
 from dataclasses import dataclass
+from enum import Enum
 from os import PathLike
 from os.path import exists, basename
 from pathlib import Path
@@ -286,6 +287,27 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
+# The uncompressed file from perf script is ~25x bigger than the compressed file
+ADJUSTED_ITERS_FOR_PERF = {
+    "renaissance": {
+        "finagle-chirper": 10, # Default: 90 iters, 7GB compressed perf file
+        "fj-kmeans": 15, # Default: 30 iters, 520MB compressed perf file
+        "scala-stm-bench7": 20, # Default: 60 iters, 840MB compressed perf file
+        "philosophers": 10, # Default: 30 iters, 900MB compressed perf file
+        "akka-uct": 5, # Default: 24 iters, 2GB compressed perf file
+        "finagle-http": 5 # Default: 12 iters, 1.3GB compressed perf file
+    },
+    "dacapo": {
+        "sunflow": 15 # Default: 49 iters, 1.2GB compressed perf file
+    }
+}
+
+NUM_ITERS_FLAG_NAME = {
+    "renaissance": "-r",
+    "dacapo": "-n"
+}
+
+
 class NativeImageBenchmarkConfig:
     def __init__(self, vm: NativeImageVM, bm_suite: BenchmarkSuite | NativeImageBenchmarkMixin, args):
         self.bm_suite = bm_suite
@@ -302,11 +324,16 @@ class NativeImageBenchmarkConfig:
         for option in self.extra_agentlib_options:
             if option.startswith('config-output-dir'):
                 mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-        # Do not strip the run arguments if safepoint-sampler or pgo_sampler_only configuration is active
+        # Do not strip the run arguments if safepoint-sampler configuration is active or we want pgo samples (either from instrumentation or perf)
         self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args),
-                                                                     not (vm.safepoint_sampler or vm.pgo_sampler_only))
+                                                                     not (vm.safepoint_sampler or vm.pgo_sampler_only or vm.pgo_use_perf))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args,
                                                                                  list(image_run_args))
+        if vm.pgo_use_perf and self.benchmark_suite_name in ADJUSTED_ITERS_FOR_PERF and self.benchmark_name in ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name]:
+            # For some benches the number of iters in the instrument-run stage is too much for perf, the generated files are too large.
+            desired_iters = ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name][self.benchmark_name]
+            mx.log(f"Adjusting number of iters for instrument-run stage to {desired_iters}")
+            self.extra_profile_run_args = adjust_arg_with_number(NUM_ITERS_FLAG_NAME[self.benchmark_suite_name], desired_iters, self.extra_profile_run_args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg',
                        'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
@@ -320,10 +347,16 @@ class NativeImageBenchmarkConfig:
         self.output_dir: Path = output_dir
         self.final_image_name = self.executable_name + '-' + vm.config_name()
         self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
+        self.source_mappings_path: Path = self.output_dir / f"{self.executable_name}.sourceMappings.json"
+        self.perf_script_path: Path = self.output_dir / f"{self.executable_name}.perf.script.out"
+        self.perf_data_path: Path = self.output_dir / f"{self.executable_name}.perf.data"
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
         self.ml_log_dump_path: Path = self.output_dir / f"{self.executable_name}.ml.log.csv"
-        base_image_build_args = ['--no-fallback', '-g']
+        base_image_build_args = ['--no-fallback']
+        if not vm.pgo_use_perf:
+            # Can only have debug info when not using perf, [GR-66850]
+            base_image_build_args.append('-g')
         base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases',
                                   '--diagnostics-mode'] if vm.is_gate else []
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
@@ -381,7 +414,7 @@ class NativeImageBenchmarkConfig:
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
-        if vm.graalos:
+        if vm.graalos or vm.graalhost_graalos:
             base_image_build_args += ['-H:+GraalOS']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
@@ -433,10 +466,7 @@ class NativeImageBenchmarkConfig:
         return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
 
     def get_executable_name_and_output_dir_for_stage(self, stage: Stage, vm: NativeImageVM) -> Tuple[str, Path]:
-        # Form executable name
-        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
-        executable_name = (
-                unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+        executable_name = self.compute_executable_name()
         is_shared_library = stage is not None and stage.is_layered() and stage.layer_info.is_shared_library
         if is_shared_library:
             # Shared library layers have to start with 'lib' and are differentiated with the layer index
@@ -444,11 +474,23 @@ class NativeImageBenchmarkConfig:
 
         # Form output directory
         root_dir = Path(
-            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False,
+            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('sdk').get_output_root(platformDependent=False,
                                                                                              jdkDependent=False)).absolute()
         output_dir = root_dir / "native-image-benchmarks" / f"{executable_name}-{vm.config_name()}"
 
         return executable_name, output_dir
+
+    def compute_executable_name(self) -> str:
+        result = self.bm_suite.executable_name()
+        if result is not None:
+            return result
+
+        parts = [self.bm_suite.benchSuiteName()]
+        if self.bm_suite.version() != "unknown":
+            parts.append(self.bm_suite.version().replace(".", "-"))
+        if self.benchmark_name:
+            parts.append(self.benchmark_name.replace(os.sep, "_"))
+        return "-".join(parts).lower()
 
     def get_build_output_json_file(self, stage: StageName) -> Path:
         """
@@ -712,13 +754,19 @@ class NativeImageVM(GraalVm):
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
         super().__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.vm_args = None
+        # When this is set, run the instrumentation-image and instrumentation-run stages.
+        # Does not necessarily do instrumentation.
         self.pgo_instrumentation = False
         self.pgo_exclude_conditional = False
         self.pgo_sampler_only = False
+        self.pgo_use_perf = False
+        self.pgo_perf_invoke_profile_collection_strategy: Optional[PerfInvokeProfileCollectionStrategy] = None
         self.is_gate = False
         self.is_quickbuild = False
-        self.layered = False
         self.graalos = False
+        self.graalhost_graalos = False
+        self.pie = False
+        self.layered = False
         self.use_string_inlining = False
         self.is_llvm = False
         self.gc = None
@@ -774,6 +822,14 @@ class NativeImageVM(GraalVm):
             config += ["preserve-all"]
         if self.preserve_classpath is True:
             config += ["preserve-classpath"]
+        if self.graalos is True:
+            config += ["graalos"]
+        if self.graalhost_graalos is True:
+            config += ["graalhost-graalos"]
+        if self.pie is True:
+            config += ["pie"]
+        if self.layered is True:
+            config += ["layered"]
         if self.future_defaults_all is True:
             config += ["future-defaults-all"]
         if self.is_gate is True:
@@ -782,10 +838,6 @@ class NativeImageVM(GraalVm):
             config += ["upx"]
         if self.is_quickbuild is True:
             config += ["quickbuild"]
-        if self.layered is True:
-            config += ["layered"]
-        if self.graalos is True:
-            config += ["graalos"]
         if self.gc == "G1":
             config += ["g1gc"]
         if self.is_llvm is True:
@@ -803,6 +855,10 @@ class NativeImageVM(GraalVm):
                 and self.force_profile_inference is False \
                 and self.profile_inference_feature_extraction is False:
             config += ["pgo"]
+        if self.pgo_use_perf:
+            config += ["perf-sampler"]
+            if self.pgo_perf_invoke_profile_collection_strategy is not None:
+                config += [str(self.pgo_perf_invoke_profile_collection_strategy)]
         if self.analysis_context_sensitivity is not None:
             sensitivity = self.analysis_context_sensitivity
             if sensitivity.startswith("_"):
@@ -847,8 +903,9 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<layered>layered-)?(?P<graalos>graalos-)?(?P<gc>g1gc-)?' \
-               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
+               r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
+               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
+               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
 
@@ -869,6 +926,22 @@ class NativeImageVM(GraalVm):
         if matching.group("preserve_classpath") is not None:
             mx.logv(f"'preserve-classpath' is enabled for {config_name}")
             self.preserve_classpath = True
+
+        if matching.group("graalos") is not None:
+            mx.logv(f"'graalos' is enabled for {config_name}")
+            self.graalos = True
+
+        if matching.group("graalhost_graalos") is not None:
+            mx.logv(f"'graalhost-graalos' is enabled for {config_name}")
+            self.graalhost_graalos = True
+
+        if matching.group("pie") is not None:
+            mx.logv(f"'pie' is enabled for {config_name}")
+            self.pie = True
+
+        if matching.group("layered") is not None:
+            mx.logv(f"'layered' is enabled for {config_name}")
+            self.layered = True
 
         if matching.group("future_defaults_all") is not None:
             mx.logv(f"'future-defaults-all' is enabled for {config_name}")
@@ -898,14 +971,6 @@ class NativeImageVM(GraalVm):
             mx.logv(f"'quickbuild' is enabled for {config_name}")
             self.is_quickbuild = True
 
-        if matching.group("layered") is not None:
-            mx.logv(f"'layered' is enabled for {config_name}")
-            self.layered = True
-
-        if matching.group("graalos") is not None:
-            mx.logv(f"'graalos' is enabled for {config_name}")
-            self.graalos = True
-
         if matching.group("gc") is not None:
             gc = matching.group("gc")[:-1]
             if gc == "g1gc":
@@ -926,6 +991,17 @@ class NativeImageVM(GraalVm):
             elif pgo_mode == "pgo-sampler":
                 self.pgo_instrumentation = True
                 self.pgo_sampler_only = True
+            elif pgo_mode == "pgo-perf-sampler":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+            elif pgo_mode == "pgo-perf-sampler-invoke":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+                self.pgo_perf_invoke_profile_collection_strategy = PerfInvokeProfileCollectionStrategy.ALL
+            elif pgo_mode == "pgo-perf-sampler-invoke-multiple":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+                self.pgo_perf_invoke_profile_collection_strategy = PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
 
@@ -1330,8 +1406,11 @@ class NativeImageVM(GraalVm):
         return rules
 
     def image_build_timers_rules(self, benchmarks):
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout',
                            'image', 'write']
+        if not self.pgo_use_perf:
+            # No debug info with perf, [GR-66850]
+            measured_phases.append('dbginfo')
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -1434,8 +1513,12 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self):
         executable_name_args = ['-o', str(self.config.instrumented_image_path)]
-        instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
-        instrument_args += [f"-R:ProfilesDumpFile={self.config.profile_path}"]
+        instrument_args = []
+        if self.pgo_use_perf:
+            instrument_args += svm_experimental_options([f'-H:PGOPerfSourceMappings={self.config.source_mappings_path}'])
+        else:
+            instrument_args += ['--pgo-sampling' if self.pgo_sampler_only else '--pgo-instrument', f"-R:ProfilesDumpFile={self.config.profile_path}"]
+
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect',
                                                          f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
@@ -1484,13 +1567,48 @@ class NativeImageVM(GraalVm):
                     assert sample["records"][
                                0] > 0, f"Sampling profiles seem to have a 0 in records in file {profile_path}"
 
+    def _collect_perf_results_into_iprof(self):
+        with open(self.config.perf_script_path, 'w') as outfile:
+            mx.log(f"Started perf script at {self.get_stage_runner().get_timestamp()}")
+            exit_code = mx.run(['perf', 'script', f'--input={self.config.perf_data_path}', '--max-stack=2048'], out=outfile)
+            if exit_code == 0:
+                mx.log(f"Finished perf script at {self.get_stage_runner().get_timestamp()}")
+                mx.log(f"Perf compressed data file size: {os.path.getsize(self.config.perf_data_path)} bytes")
+                mx.log(f"Perf script file size: {os.path.getsize(self.config.perf_script_path)} bytes")
+            else:
+                mx.abort(f"Perf script failed with exit code: {exit_code}")
+        mx.log(f"Started generating iprof at {self.get_stage_runner().get_timestamp()}")
+        nic_command = [os.path.join(self.home(), 'bin', 'native-image-configure'), 'generate-iprof-from-perf', f'--perf={self.config.perf_script_path}', f'--source-mappings={self.config.source_mappings_path}', f'--output-file={self.config.profile_path}']
+        if self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.ALL:
+            nic_command += ["--enable-experimental-option=SampledVirtualInvokeProfilesAll"]
+        elif self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES:
+            nic_command += ["--enable-experimental-option=SampledVirtualInvokeProfilesMultipleCallees"]
+
+        mx.run(nic_command)
+        mx.log(f"Finished generating iprof at {self.get_stage_runner().get_timestamp()}")
+        os.remove(self.config.perf_script_path)
+        os.remove(self.config.perf_data_path)
+        os.remove(self.config.source_mappings_path)
+
     def run_stage_instrument_run(self):
         image_run_cmd = [str(self.config.instrumented_image_path)]
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
+        if self.pgo_use_perf:
+            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp', '--freq=999'] + image_run_cmd
+
         with self.get_stage_runner() as s:
-            exit_code = s.execute_command(self, image_run_cmd)
+            if self.pgo_use_perf:
+                mx.log(f"Started perf record at {self.get_stage_runner().get_timestamp()}")
+                exit_code = s.execute_command(self, image_run_cmd)
+                mx.log(f"Finished perf record at {self.get_stage_runner().get_timestamp()}")
+            else:
+                exit_code = s.execute_command(self, image_run_cmd)
+
             if exit_code == 0:
+                if self.pgo_use_perf:
+                    self._collect_perf_results_into_iprof()
+
                 if not self.config.profile_path.exists():
                     # The shutdown hook does not trigger for certain apps (GR-60456)
                     mx.abort(
@@ -1503,46 +1621,56 @@ class NativeImageVM(GraalVm):
                 print(
                     f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {exit_code}")
 
-    def get_layered_build_args(self) -> List[str]:
-        """Return extra options that are necessary when building a layered image."""
+    def get_layer_aware_build_args(self) -> List[str]:
+        """Return extra build options that are dependent on layer information."""
         current_stage = self.stages_info.current_stage
-        if not self.layered or current_stage.layer_info.is_shared_library:
-            # No extra options are necessary if we are not building a layered image
-            # No extra options are necessary when building shared layers
-            return []
+        layer_aware_build_args = []
 
-        # Set LinkerRPath to point to the directories containing the shared objects of underlying layers
-        shared_library_stages = [stage for stage in self.stages_info.complete_stage_list
-                                 if current_stage.stage_name == stage.stage_name and stage.is_layered() and stage.layer_info.is_shared_library]
-        if len(shared_library_stages) == 0:
-            mx.abort("Failed to find any shared library layer image stages!")
-        layer_output_dirs = []
-        for stage in shared_library_stages:
-            _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
-            layer_output_dirs.append(stage_output_dir.absolute().as_posix())
-        linker_r_path = ",".join(layer_output_dirs)
-        layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
+        if self.pie and (not self.layered or not current_stage.layer_info.is_shared_library):
+            # This option should not be applied to base layers
+            layer_aware_build_args += ["-H:NativeLinkerOption=-pie"]
 
-        # Set LayerUse to point to the .nil archive of the preceeding layer
-        last_shared_library_stage_output_dir = Path(layer_output_dirs[-1])
-        nil_archives = list(last_shared_library_stage_output_dir.glob("*.nil"))
-        if len(nil_archives) == 0:
-            mx.abort(
-                f"Could not determine the .nil archive of the preceding shared library layer!"
-                f" No .nil archives located in '{last_shared_library_stage_output_dir}' directory!"
-            )
-        if len(nil_archives) > 1:
-            mx.abort(
-                f"Could not determine the .nil archive of the preceding shared library layer!"
-                f" Multiple files found: {nil_archives}"
-            )
-        layer_build_args.append(f"-H:LayerUse={nil_archives[0]}")
+        if self.layered and not current_stage.layer_info.is_shared_library:
+            # Set LinkerRPath to point to the directories containing the shared objects of underlying layers
+            shared_library_stages = [stage for stage in self.stages_info.complete_stage_list
+                                     if current_stage.stage_name == stage.stage_name and stage.is_layered() and stage.layer_info.is_shared_library]
+            if len(shared_library_stages) == 0:
+                mx.abort("Failed to find any shared library layer image stages!")
+            layer_output_dirs = []
+            for stage in shared_library_stages:
+                _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
+                layer_output_dirs.append(stage_output_dir.absolute().as_posix())
+            linker_r_path = ",".join(layer_output_dirs)
+            app_layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
 
-        return layer_build_args
+            # Set LayerUse to point to the .nil archive of the preceeding layer
+            last_shared_library_stage_output_dir = Path(layer_output_dirs[-1])
+            nil_archives = list(last_shared_library_stage_output_dir.glob("*.nil"))
+            if len(nil_archives) == 0:
+                mx.abort(
+                    f"Could not determine the .nil archive of the preceding shared library layer!"
+                    f" No .nil archives located in '{last_shared_library_stage_output_dir}' directory!"
+                )
+            if len(nil_archives) > 1:
+                mx.abort(
+                    f"Could not determine the .nil archive of the preceding shared library layer!"
+                    f" Multiple files found: {nil_archives}"
+                )
+            app_layer_build_args.append(f"-H:LayerUse={nil_archives[0]}")
+            layer_aware_build_args += app_layer_build_args
+
+        return layer_aware_build_args
 
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
         pgo_args = [f"--pgo={self.config.profile_path}"]
+        if self.pgo_use_perf:
+            # -g is already set in base_image_build_args if we're not using perf. When using perf, if debug symbols
+            # are present they will interfere with sample decoding using source mappings.
+            # We still set -g for the optimized build to stay consistent with the other configs.
+            # [GR-66850] would allow enabling -g during instrument-image even with perf.
+            executable_name_args = ['-g'] + executable_name_args
+            pgo_args += svm_experimental_options(['-H:+PGOPrintProfileQuality', '-H:+PGOIgnoreVersionCheck'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
             jdk_version = mx_sdk_vm.get_jdk_version_for_profiles()
@@ -1578,7 +1706,7 @@ class NativeImageVM(GraalVm):
             [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(StageName.IMAGE)}"])
         final_image_command = (self.config.base_image_build_args + executable_name_args
             + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + ml_debug_args
-            + collection_args + self.get_layered_build_args())
+            + collection_args + self.get_layer_aware_build_args())
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, final_image_command)
             NativeImageVM.move_bundle_output(self.config, self.config.image_path)
@@ -1715,6 +1843,11 @@ class NativeImageVM(GraalVm):
             for layer in benchmark_layers:
                 layered_stages.append(Stage(s.stage_name, layer))
         return layered_stages
+
+
+# Adds JAVA_HOME VMs so benchmarks can run on GraalVM binaries without building them first.
+for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
@@ -1894,6 +2027,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                          "and user-provided one ('{}')!".format(self.workloadSize(), args.size))
 
         otherArgs = ["-s", self.workloadSize(), "--preserve"] + remaining
+
+        if benchname == "pmd":
+            # GR-61626: known transient which is a benchmark bug (dacapobench/dacapobench#310)
+            otherArgs += ["--no-validation"]
 
         if args.iterations:
             if args.iterations.isdigit():
@@ -2144,7 +2281,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
             re.compile(
                 r"^java.lang.Exception: TradeDirect:Login failure for user:",
-                re.MULTILINE),
+                re.MULTILINE)
         ]
 
     def vmArgs(self, bmSuiteArgs):
@@ -3280,6 +3417,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["gauss-mix"]
             del benchmarks["page-rank"]
             del benchmarks["movie-lens"]
+            if mx.get_jdk().javaCompliance >= '26':
+                # JDK-8361426 removes jdk.internal.ref.Cleaner and causes the following to fail
+                del benchmarks["als"]
+                del benchmarks["db-shootout"]
+                del benchmarks["dec-tree"]
+                del benchmarks["log-regression"]
+                del benchmarks["naive-bayes"]
 
         return benchmarks
 
@@ -3629,6 +3773,26 @@ def strip_args_with_number(strip_args, args):
         result = _strip_arg_with_number_gen(strip_arg, result)
     return list(result)
 
+def adjust_arg_with_number(arg_name, new_value: int, user_args):
+    """
+    Sets the argument value of `arg_name` in `user_args` with `new_value`.
+    If `arg_name` is already present in `user_args`, the value will be replaced.
+    If `arg_name` is not already present, the argument and corresponding value will be added.
+    """
+
+    return [arg_name, str(new_value)] + strip_args_with_number(arg_name, user_args)
+
+class PerfInvokeProfileCollectionStrategy(Enum):
+    """
+    The strategy for extracting virtual invoke method profiles from perf sampling data.
+    ALL: Generate a profile for each callsite.
+    MULTIPLE_CALLEES: Only generate profiles for callsites with at least 2 different sampled targets.
+    """
+    ALL = "invoke"
+    MULTIPLE_CALLEES = "invoke-multiple"
+
+    def __str__(self):
+        return self.value
 
 class StagesInfo:
     """
@@ -4080,6 +4244,10 @@ class NativeImageBenchmarkMixin(object):
 
     def get_stage_env(self) -> Optional[dict]:
         """Return the environment to be used when executing a stage."""
+        return None
+
+    def executable_name(self) -> Optional[str]:
+        """Override to allow suites to control the executable name used in image builds."""
         return None
 
 

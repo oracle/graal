@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -262,7 +262,9 @@ public final class GraphState {
         builder.append(valueStringAsDiff(previous.frameStateVerification, this.frameStateVerification, "Frame state verification: ", ", "));
         builder.append(newFlagsToString(previous.futureRequiredStages, this.futureRequiredStages, "+", "Future required stages: "));
         builder.append(newFlagsToString(this.futureRequiredStages, previous.futureRequiredStages, "-", ""));
-        builder.setLength(builder.length() - 2);
+        if (builder.length() > 1) {
+            builder.setLength(builder.length() - 2);
+        }
         builder.append('}');
         return builder.toString();
     }
@@ -608,7 +610,9 @@ public final class GraphState {
         CANONICALIZATION,
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,
+        PARTIAL_ESCAPE,
         FINAL_PARTIAL_ESCAPE,
+        VECTOR_API_EXPANSION,
         HIGH_TIER_LOWERING,
         /* Stages applied by mid tier. */
         FLOATING_READS,

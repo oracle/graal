@@ -25,15 +25,25 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.graal.pointsto.api.PointstoOptions.UseConservativeUnsafeAccess;
+import static com.oracle.svm.core.SubstrateOptions.EnableURLProtocols;
 import static com.oracle.svm.core.SubstrateOptions.Preserve;
+import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+import static com.oracle.svm.core.metadata.MetadataTracer.Options.MetadataTracingSupport;
+import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.security.Provider;
+import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -45,7 +55,9 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
+import com.oracle.graal.pointsto.ClassInclusionPolicy.DefaultAllInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -58,6 +70,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
@@ -93,6 +106,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                     "jdk.security.auth",
                     "jdk.crypto.cryptoki",
                     "java.logging",
+                    "jdk.management",
+                    "java.management",
                     "java.naming",
                     "jdk.naming.dns",
                     "jdk.httpserver",
@@ -132,6 +147,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             }
         });
         if (classLoaderSupport.isPreserveMode()) {
+            /* Significantly speeds up analysis */
             if (UseConservativeUnsafeAccess.hasBeenSet(optionValues)) {
                 UserError.guarantee(UseConservativeUnsafeAccess.getValue(optionValues), "%s can not be used together with %s. Please unset %s.",
                                 SubstrateOptionsParser.commandArgument(UseConservativeUnsafeAccess, "-"),
@@ -140,12 +156,42 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             }
             UseConservativeUnsafeAccess.update(hostedValues, true);
         }
+
+        if (classLoaderSupport.isPreserveAll()) {
+            /* Include all parts of native image that are stripped */
+            AddAllCharsets.update(hostedValues, true);
+            IncludeAllLocales.update(hostedValues, true);
+            AllowJRTFileSystem.update(hostedValues, true);
+
+            /* Should be removed with GR-61365 */
+            var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
+            for (String missingProtocol : missingJDKProtocols) {
+                EnableURLProtocols.update(hostedValues, missingProtocol);
+            }
+
+            AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
+
+            /* Allow metadata tracing in preserve all images */
+            MetadataTracingSupport.update(hostedValues, true);
+        }
     }
 
-    public static void registerPreservedClasses(NativeImageClassLoaderSupport classLoaderSupport) {
+    private static String getSecurityProvidersCSV() {
+        StringJoiner joiner = new StringJoiner(",");
+        for (Provider provider : Security.getProviders()) {
+            Class<? extends Provider> aClass = provider.getClass();
+            String typeName = aClass.getTypeName();
+            joiner.add(typeName);
+        }
+        return joiner.toString();
+    }
+
+    public static void registerPreservedClasses(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
         var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
+        ClassInclusionPolicy classInclusionPolicy = new DefaultAllInclusionPolicy("included by " + SubstrateOptionsParser.commandArgument(Preserve, ""));
+        classInclusionPolicy.setBigBang(bb);
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
-                        .filter(ClassInclusionPolicy::isClassIncludedBase)
+                        .filter(clazz -> classInclusionPolicy.isOriginalTypeIncluded(originalMetaAccess.lookupJavaType(clazz)))
                         .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
                         .sorted(Comparator.comparing(ReflectionUtil::getClassHierarchyDepth).reversed())
                         .toList();
@@ -221,7 +267,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
-            reflection.registerClassLookup(always, className);
+            if (!classesOrPackagesToIgnore.contains(className)) {
+                reflection.registerClassLookup(always, className);
+            }
         }
     }
 

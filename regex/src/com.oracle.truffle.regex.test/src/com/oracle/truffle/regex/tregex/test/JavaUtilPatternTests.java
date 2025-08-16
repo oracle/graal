@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -58,16 +57,16 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.flavor.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.test.generated.JavaGeneratedTests;
 import com.oracle.truffle.regex.util.EmptyArrays;
 
 public class JavaUtilPatternTests extends RegexTestBase {
 
-    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "JavaUtilPattern", "regexDummyLang.JavaJDKVersion", String.valueOf(Runtime.version().feature()));
+    public static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "JavaUtilPattern", "regexDummyLang.JavaJDKVersion", String.valueOf(Runtime.version().feature()));
 
     @Override
     Map<String, String> getEngineOptions() {
@@ -1146,7 +1145,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 String flags = new JavaFlags(regexes[i].getRight()).toString();
                 try {
                     compiledJava[i] = Pattern.compile(regexes[i].getLeft(), regexes[i].getRight().intValue());
-                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, Collections.emptyMap(), getTRegexEncoding());
+                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, options(), getTRegexEncoding());
                 } catch (PatternSyntaxException e) {
                     nErrors++;
                     expectSyntaxError(regexes[i].getLeft(), flags, e);
@@ -1246,11 +1245,11 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void unsupportedOperations() {
-        Assert.assertTrue(compileRegex("(?>X)", "").isNull());
-        Assert.assertTrue(compileRegex("\\X", "").isNull());
-        Assert.assertTrue(compileRegex("\\G", "").isNull());
-        Assert.assertTrue(compileRegex("\\b{g}", "").isNull());
-        Assert.assertTrue(compileRegex("abc", "c").isNull());
+        expectUnsupported("(?>X)");
+        expectUnsupported("\\X");
+        expectUnsupported("\\G");
+        expectUnsupported("\\b{g}");
+        expectUnsupported("abc", "c");
     }
 
     @Test
@@ -1287,108 +1286,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void generatedTests() {
-        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
-
-        // Generated using Java version 24
-        test("((A|){7,10}?){10,17}", "", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, true, 0, 86, 86, 86, 86, 86);
-        test("(a{1,30}){1,4}", "", "a", 0, true, 0, 1, 0, 1);
-        test("((a|){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
-        test("((a?){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
-        test("((|a){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 0, 0, 0, 0, 0);
-        test("((a??){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 0, 0, 0, 0, 0);
-        test("((a?){4,6}){4,6}", "", "aaaaaa", 0, true, 0, 6, 6, 6, 6, 6);
-        test("(a|^){100}", "", "a", 0, true, 0, 0, 0, 0);
-        test("(a|^){100}", "", "aa", 0, true, 0, 0, 0, 0);
-        test("(a|^){100}", "", "aa", 1, false);
-        test("(a|^){100}", "", "ab", 1, false);
-        test("(.)\\1{2,}", "", "billiam", 0, false);
-        test("(^_(a{1,2}[:])*a{1,2}[:]a{1,2}([.]a{1,4})?_)+", "", "_a:a:a.aaa_", 0, true, 0, 11, 0, 11, 1, 3, 6, 10);
-        test("(a{2}|())+$", "", "aaaa", 0, true, 0, 4, 4, 4, 4, 4);
-        test("^a(b*)\\1{4,6}?", "", "abbbb", 0, true, 0, 1, 1, 1);
-        test("^a(b*)\\1{4,6}?", "", "abbbbb", 0, true, 0, 6, 1, 2);
-        test("(?<=|$)", "", "a", 0, true, 0, 0);
-        test("(?=ab)a", "", "ab", 0, true, 0, 1);
-        test("(?=()|^)|x", "", "empty", 0, true, 0, 0, 0, 0);
-        test("a(?<=ba)", "", "ba", 0, true, 1, 2);
-        test("(?<=(?=|()))", "", "aa", 0, true, 0, 0, -1, -1);
-        test("\\d\\W", "iv", "4\u017f", 0, true, 0, 2);
-        test("[\u08bc-\ucf3a]", "iv", "\u03b0", 0, false);
-        test("a(?:|()\\1){1,2}", "", "a", 0, true, 0, 1, -1, -1);
-        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "error", 0, ErrorCode.InvalidNamedGroup);
-        test("[a-z][a-z\u2028\u2029].|ab(?<=[a-z]w.)", "", "aac", 0, true, 0, 3);
-        test("(animation|animation-name)", "", "animation", 0, true, 0, 9, 0, 9);
-        test("(a|){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a|){7,7}?b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(|a){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(|a){7,7}?b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a||b){7,7}c", "", "aaabc", 0, true, 0, 5, 4, 4);
-        test("(a||b){7,7}c", "", "aaac", 0, true, 0, 4, 3, 3);
-        test("(a||b){7,7}c", "", "aaabac", 0, true, 0, 6, 5, 5);
-        test("($|a){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("($|a){7,7}?", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$){7,7}?", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$|b){7,7}", "", "aaab", 0, true, 0, 4, 4, 4);
-        test("(a|$|b){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$|b){7,7}", "", "aaaba", 0, true, 0, 5, 5, 5);
-        test("((?=a)|a){7,7}b", "", "aaa", 0, false);
-        test("((?=[ab])|a){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("((?<=a)|a){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("a((?<=a)|a){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a|){0,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a|){0,7}?b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(|a){0,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(|a){0,7}?b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a||b){0,7}c", "", "aaabc", 0, true, 0, 5, 4, 4);
-        test("(a||b){0,7}c", "", "aaac", 0, true, 0, 4, 3, 3);
-        test("(a||b){0,7}c", "", "aaabac", 0, true, 0, 6, 5, 5);
-        test("((?=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("((?=[ab])|a){0,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("((?<=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("a((?<=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a*?){11,11}?b", "", "aaaaaaaaaaaaaaaaaaaaaaaaab", 0, true, 0, 26, 10, 25);
-        test("(?:a(b{0,19})c)", "", "abbbbbbbcdebbbbbbbf", 0, true, 0, 9, 1, 8);
-        test("(?:a(b{0,19})c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 0, 11, 1, 8);
-        test("(?<=a(b{0,19})c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 9, 11, 1, 8);
-        test("[\ud0d9](?<=\\S)", "", "\ud0d9", 0, true, 0, 1);
-        test("[\ud0d9](?<=\\W)", "", "\ud0d9", 0, true, 0, 1);
-        test("\u0895(?<=\\S)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895(?<=\\W)", "", "\u0895", 0, true, 0, 1);
-        test("[\u8053](?<=\\S)", "", "\u8053", 0, true, 0, 1);
-        test("[\u8053](?<=\\W)", "", "\u8053", 0, true, 0, 1);
-        test("\u0895(?<=\\S)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895(?<=\\W)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895|[\u8053\ud0d9]+(?<=\\S\\W\\S)", "", "\ud0d9\ud0d9\ud0d9\ud0d9", 0, true, 0, 4);
-        test("a|[bc]+(?<=[abc][abcd][abc])", "", "bbbb", 0, true, 0, 4);
-        test("a(b*)*c\\1d", "", "abbbbcbbd", 0, true, 0, 9, 3, 5);
-        test("(|a)||b(?<=cde)|", "", "a", 0, true, 0, 0, 0, 0);
-        test("^(\\1)?\\D*", "s", "empty", 0, true, 0, 5, -1, -1);
-        test("abcd(?<=d|c()d)", "", "_abcd", 0, true, 1, 5, -1, -1);
-        test("\\Dw\u3aa7\\A\\S(?<=\ue3b3|\\A()\\S)", "", "\udad1\udcfaw\u3aa7A\ue3b3", 0, false);
-        test("a(?:c|b(?=()))*", "", "abc", 0, true, 0, 3, 2, 2);
-        test("a(?:c|b(?=(c)))*", "", "abc", 0, true, 0, 3, 2, 3);
-        test("a(?:c|(?<=(a))b)*", "", "abc", 0, true, 0, 3, 0, 1);
-        test("(a||b){15,18}c", "", "ababaabbaaac", 0, true, 0, 12, 11, 11);
-        test("(a||b){15,18}?c", "", "ababaabbaaac", 0, true, 0, 12, 11, 11);
-        test("(?:ab|c|^){103,104}", "", "abcababccabccabababccabcababcccccabcababababccccabcabcabccabcabcccabababccabababcababababccababccabcababcabcabccabababccccabcab", 0, true, 0, 0);
-        test("((?<=a)bec)*d", "", "abecd", 0, true, 1, 5, 1, 4);
-        test("(|(^|\\z){2,77}?)?", "", "empty", 0, true, 0, 0, 0, 0, -1, -1);
-        test("a(|a{15,36}){10,11}", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 1, 1, 1);
-        test("a(|a{15,36}?){10,11}", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 1, 1, 1);
-        test("a(|a{15,36}){10,11}$", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 66, 66, 66);
-        test("a(|a{15,36}?){10,11}b$", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", 0, true, 0, 67, 66, 66);
-        test("(?:a()|b??){22,26}c", "", "aabbbaabaaaaaabaaaac", 0, true, 0, 20, 19, 19);
-        test("b()(a\\1|){4,4}\\2c", "", "baaaac", 0, false);
-        test("a((?=b()|)[a-d])+", "", "abbbcbd", 0, true, 0, 7, 6, 7, 6, 6);
-        test("a(?=b(?<=ab)()|)", "", "ab", 0, true, 0, 1, 2, 2);
-        test("[ab]*?$(?<=[^b][ab][^b])", "", "aaaaaa", 0, true, 0, 6);
-        test("([ab]+){0,5}", "", "bbbba", 0, true, 0, 5, 0, 5);
-        test("[--a]", "v", "empty", 0, false);
-        test("(?:^\\1|$){10,11}bc", "", "aaaaaabc", 0, false);
-        test("a(?:|[0-9]+?a|[0-9a]){11,13}?[ab]", "", "a372a466a109585878b", 0, true, 0, 19);
-        test("\\Z", "", "\r\n", 0, true, 0, 0);
-
-        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+        runGeneratedTests(JavaGeneratedTests.TESTS);
     }
 
     @Override
@@ -1436,7 +1334,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     private void expectSyntaxError(String pattern, String flags, PatternSyntaxException javaPatternException) {
         try {
-            compileRegex(pattern, flags, Collections.emptyMap(), getTRegexEncoding());
+            compileRegex(pattern, flags);
         } catch (PolyglotException tRegexException) {
             Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
             return;

@@ -1390,7 +1390,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public long getLastBCI() {
+    public int getLastBCI() {
         int bci = 0;
         BytecodeStream bs = new BytecodeStream(getOriginalCode());
         int end = bs.endBCI();
@@ -1961,10 +1961,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         private void checkPoisonPill(Meta meta) {
             if (poisonPill) {
                 // Conflicting Maximally-specific non-abstract interface methods.
-                if (getJavaVersion().java9OrLater() && getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.HOTSPOT) {
+                if (getJavaVersion().inRange(9, 25) && getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.HOTSPOT) {
                     /*
                      * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface),
-                     * but HotSpot throws AbstractMethodError.
+                     * but HotSpot throws AbstractMethodError. See JDK-8356942.
                      */
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getName());
                 }

@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -92,7 +93,11 @@ public final class Target_sun_instrument_InstrumentationImpl {
         for (int i = 0; i < redefineInfos.length; i++) {
             redefineInfos[i] = translateClassDefinition(context.getMeta(), classDefinitions.get(context.getLanguage(), i));
         }
-        context.getClassRedefinition().redefineClasses(redefineInfos, true);
+        try {
+            context.getClassRedefinition().redefineClasses(redefineInfos, true);
+        } catch (RedefinitionException e) {
+            throw e.throwInstrumentationGuestException(context.getMeta());
+        }
     }
 
     private static RedefineInfo translateClassDefinition(Meta meta, @JavaType(internalName = "Ljava/lang/instrument/ClassDefinition;") StaticObject classDefinition) {
@@ -139,7 +144,11 @@ public final class Target_sun_instrument_InstrumentationImpl {
                 throw meta.throwExceptionWithMessage(meta.java_lang_instrument_UnmodifiableClassException, getUnmodifiableMessage(klasses[i]));
             }
         }
-        context.getJavaAgents().retransformClasses(klasses);
+        try {
+            context.getJavaAgents().retransformClasses(klasses);
+        } catch (RedefinitionException e) {
+            throw e.throwInstrumentationGuestException(context.getMeta());
+        }
     }
 
     @Substitution(hasReceiver = true)

@@ -196,12 +196,16 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
 
     private void casNextIfNullAndMaybeClear(EspressoReference wrapper) {
         StaticObject ref = wrapper.getGuestReference();
-        // Cleaner references extends PhantomReference but are cleared.
-        // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
-        if (InterpreterToVM.instanceOf(ref, getMeta().sun_misc_Cleaner)) {
+        Meta meta = getMeta();
+        assert meta.sun_misc_Cleaner != null || getJavaVersion().java9OrLater();
+        if (meta.sun_misc_Cleaner != null && InterpreterToVM.instanceOf(ref, meta.sun_misc_Cleaner)) {
+            /*
+             * Cleaner references extends PhantomReference but are cleared. See HotSpot's
+             * ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
+             */
             wrapper.clear();
         }
-        getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
+        meta.java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
     }
 
     private static final class ExitTLA extends ThreadLocalAction {

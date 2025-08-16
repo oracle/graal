@@ -4,7 +4,7 @@
 
   Gate:: {
     timelimit : "30:00",
-    targets: [ "gate" ],
+    targets: [ "tier2" ],
     run: [
       ["cd", "./visualizer"],
       ["mx", "pylint" ],
@@ -18,7 +18,9 @@
 
   Integration:: {
     timelimit : "30:00",
-    targets: [ "gate" ],
+    targets: [ "tier2" ],
+    # reset catch files to avoid capturing (non-existent) dump files, which can take very long
+    catch_files: [],
     downloads+: {
       "TOOLS_JAVA_HOME": common.jdks_data["oraclejdk21"]
     },
@@ -34,7 +36,7 @@
 
   linux_maven: {
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.9.10',
     },
   },
 

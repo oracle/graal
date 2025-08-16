@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -32,8 +34,6 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -53,7 +53,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -68,6 +67,9 @@ import jdk.vm.ci.meta.Value;
  * CAUTION: the compression implementation assumes that the upper bytes of {@code char}/{@code int}
  * values to be compressed are zero. If this assumption is broken, compression will yield incorrect
  * results!
+ * <p>
+ * Also implements copy with byte order reversal for equal source and target strides on
+ * {@link Stride#S2 16 bit} and {@link Stride#S4 32 bit} arrays.
  */
 @Opcode("ARRAY_COPY_WITH_CONVERSIONS")
 public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp {
@@ -92,6 +94,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
     private final Stride strideSrcConst;
     private final Stride strideDstConst;
+    private final boolean reverseBytes;
     private final AMD64MacroAssembler.ExtendMode extendMode;
 
     @Use({OperandFlag.REG}) private Value arraySrc;
@@ -119,21 +122,24 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      *            bit} or {@link JavaKind#Int 32 bit}.
      * @param strideDst target stride. May be {@link JavaKind#Byte 8 bit}, {@link JavaKind#Char 16
      *            bit} or {@link JavaKind#Int 32 bit}.
+     * @param reverseBytes if {@code true}, copy values in reverse byte order.
      * @param arraySrc source array.
      * @param offsetSrc offset to be added to arraySrc, in bytes. Must include array base offset!
      * @param arrayDst destination array.
      * @param offsetDst offset to be added to arrayDst, in bytes. Must include array base offset!
      * @param length length of the region to copy, scaled to strideDst.
-     * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
      * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
+     * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
      */
-    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst, boolean reverseBytes, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.extendMode = extendMode;
 
         GraalError.guarantee(supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE2), "needs at least SSE2 support");
-
+        GraalError.guarantee(!reverseBytes || strideSrc == strideDst, "endian conversion is not implemented for inflate and compress operations");
+        GraalError.guarantee(!reverseBytes || strideSrc == Stride.S2 || strideSrc == Stride.S4, "endian conversion is not implemented for S1 and S8");
+        this.reverseBytes = reverseBytes;
         this.arraySrcTmp = this.arraySrc = arraySrc;
         this.offsetSrcTmp = this.offsetSrc = offsetSrc;
         this.arrayDstTmp = this.arrayDst = arrayDst;
@@ -144,7 +150,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         if (StrideUtil.useConstantStrides(dynamicStrides)) {
             this.strideSrcConst = strideSrc;
             this.strideDstConst = strideDst;
-            this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(getOp(strideDstConst, strideSrcConst))];
+            this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(getOp(strideDstConst, strideSrcConst), reverseBytes)];
         } else {
             strideSrcConst = null;
             strideDstConst = null;
@@ -157,15 +163,20 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
     public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, strideSrc, strideDst, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
+        return movParamsAndCreate(tool, strideSrc, strideDst, false, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
+    }
+
+    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreateReverseBytes(LIRGeneratorTool tool, Stride stride,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        return movParamsAndCreate(tool, stride, stride, true, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, AMD64MacroAssembler.ExtendMode.ZERO_EXTEND);
     }
 
     public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, null, null, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
+        return movParamsAndCreate(tool, null, null, false, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
     }
 
-    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst,
+    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst, boolean reverseBytes,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArraySrc = REG_ARRAY_SRC.asValue(arraySrc.getValueKind());
@@ -185,8 +196,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             regDynamicStrides = REG_STRIDE.asValue(dynamicStrides.getValueKind());
             tool.emitMove((RegisterValue) regDynamicStrides, dynamicStrides);
         }
-        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, runtimeCheckedCPUFeatures, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regDynamicStrides,
-                        extendMode);
+        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, reverseBytes, runtimeCheckedCPUFeatures, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength,
+                        regDynamicStrides, extendMode);
     }
 
     private static Op getOp(Stride strideDst, Stride strideSrc) {
@@ -229,7 +240,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         }
     }
 
-    private static int getNumberOfRequiredVectorRegisters(Op op) {
+    private static int getNumberOfRequiredVectorRegisters(Op op, boolean reverseBytes) {
         switch (op) {
             case compressCharToByte:
             case compressIntToChar:
@@ -237,7 +248,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             case compressIntToByte:
                 return 5;
             default:
-                return 1;
+                return reverseBytes ? 2 : 1;
         }
     }
 
@@ -575,19 +586,21 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                     Register len,
                     Register tmp) {
         Register vec = asRegister(vectorTemp[0]);
+        Register vecReverseBytesMask = reverseBytes ? asRegister(vectorTemp[1]) : null;
         Label labelTailXMM = new Label();
         Label labelTailQWORD = new Label();
-        Label labelTailDWORD = new Label();
-        Label labelTailWORD = new Label();
-        Label labelTailBYTE = new Label();
         Label labelDone = new Label();
 
         int vectorLength = vectorSize.getBytes() / strideDst.value;
 
         masm.movl(tmp, len);
 
+        if (reverseBytes && supports(CPUFeature.SSSE3)) {
+            loadMask(crb, masm, vecReverseBytesMask, getReverseBytesMask(strideDst));
+        }
+
         masm.andl(tmp, vectorLength - 1);
-        masm.andlAndJcc(len, -vectorLength, ConditionFlag.Zero, supportsAVX2AndYMM() ? labelTailXMM : labelTailQWORD, true);
+        masm.andlAndJcc(len, -vectorLength, ConditionFlag.Zero, supportsAVX2AndYMM() ? labelTailXMM : labelTailQWORD, !reverseBytes);
 
         masm.leaq(src, new AMD64Address(src, len, strideSrc));
         masm.leaq(dst, new AMD64Address(dst, len, strideDst));
@@ -597,40 +610,48 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         Label labelXMMLoop = new Label();
 
         if (supportsAVX2AndYMM()) {
+            GraalError.guarantee(vectorSize == YMM, "vectorSize must be YMM, but was %s", vectorSize);
             // vectorized loop
             masm.align(preferredLoopAlignment(crb));
             masm.bind(labelYMMLoop);
-            masm.vmovdqu(vec, new AMD64Address(src, len, strideSrc));
-            masm.vmovdqu(new AMD64Address(dst, len, strideDst), vec);
+            masm.movdqu(YMM, vec, new AMD64Address(src, len, strideSrc));
+            emitReverseBytesIfEnabled(masm, YMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(YMM, new AMD64Address(dst, len, strideDst), vec);
             masm.addqAndJcc(len, vectorLength, ConditionFlag.NotZero, labelYMMLoop, true);
 
             // vectorized tail
-            masm.vmovdqu(vec, new AMD64Address(src, tmp, strideSrc, -32));
-            masm.vmovdqu(new AMD64Address(dst, tmp, strideDst, -32), vec);
+            masm.movdqu(YMM, vec, new AMD64Address(src, tmp, strideSrc, -32));
+            emitReverseBytesIfEnabled(masm, YMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(YMM, new AMD64Address(dst, tmp, strideDst, -32), vec);
             masm.jmpb(labelDone);
 
             // half vector size
             masm.bind(labelTailXMM);
             masm.cmplAndJcc(tmp, 16 / strideDst.value, ConditionFlag.Less, labelTailQWORD, true);
-            masm.movdqu(vec, new AMD64Address(src));
-            masm.movdqu(new AMD64Address(dst), vec);
+            masm.movdqu(XMM, vec, new AMD64Address(src));
+            emitReverseBytesIfEnabled(masm, XMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(XMM, new AMD64Address(dst), vec);
 
             // half vector size tail
-            masm.movdqu(vec, new AMD64Address(src, tmp, strideSrc, -16));
-            masm.movdqu(new AMD64Address(dst, tmp, strideDst, -16), vec);
+            masm.movdqu(XMM, vec, new AMD64Address(src, tmp, strideSrc, -16));
+            emitReverseBytesIfEnabled(masm, XMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(XMM, new AMD64Address(dst, tmp, strideDst, -16), vec);
             masm.jmpb(labelDone);
 
         } else {
+            GraalError.guarantee(vectorSize == XMM, "vectorSize must be XMM, but was %s", vectorSize);
             // xmm vectorized loop
             masm.align(preferredLoopAlignment(crb));
             masm.bind(labelXMMLoop);
-            masm.movdqu(vec, new AMD64Address(src, len, strideSrc));
-            masm.movdqu(new AMD64Address(dst, len, strideDst), vec);
+            masm.movdqu(XMM, vec, new AMD64Address(src, len, strideSrc));
+            emitReverseBytesIfEnabled(masm, XMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(XMM, new AMD64Address(dst, len, strideDst), vec);
             masm.addqAndJcc(len, vectorLength, ConditionFlag.NotZero, labelXMMLoop, true);
 
             // xmm vectorized tail
-            masm.movdqu(vec, new AMD64Address(src, tmp, strideSrc, -16));
-            masm.movdqu(new AMD64Address(dst, tmp, strideDst, -16), vec);
+            masm.movdqu(XMM, vec, new AMD64Address(src, tmp, strideSrc, -16));
+            emitReverseBytesIfEnabled(masm, XMM, strideDst, vec, vecReverseBytesMask);
+            masm.movdqu(XMM, new AMD64Address(dst, tmp, strideDst, -16), vec);
             masm.jmpb(labelDone);
         }
 
@@ -644,6 +665,133 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
          */
 
         masm.bind(labelTailQWORD);
+        if (reverseBytes) {
+            emitReverseBytesTail(crb, masm, strideSrc, strideDst, src, dst, len, tmp, labelDone);
+        } else {
+            emitCopyTail(masm, strideSrc, strideDst, src, dst, len, tmp, labelDone);
+        }
+        masm.bind(labelDone);
+    }
+
+    /**
+     * Reverses byte order in vector elements of size {@code sizeDst} in vector {@code vec}, using a
+     * {@code pshufb}-mask stored in {@code vecReverseBytesMask}, unless field {@code reverseBytes}
+     * is {@code false}. If {@code pshufb} is not available, achieves the same with vector shift and
+     * or-instructions.
+     */
+    private void emitReverseBytesIfEnabled(AMD64MacroAssembler masm, AVXSize vSize, Stride strideDst, Register vec, Register vecReverseBytesMask) {
+        if (reverseBytes) {
+            if (supports(CPUFeature.SSSE3)) {
+                masm.pshufb(vSize, vec, vecReverseBytesMask);
+            } else {
+                switch (strideDst) {
+                    case S2 -> {
+                        masm.psrlw(vSize, vecReverseBytesMask, vec, 8);
+                        masm.psllw(vSize, vec, vec, 8);
+                        masm.por(vSize, vec, vecReverseBytesMask);
+                    }
+                    case S4 -> {
+                        masm.psrld(vSize, vecReverseBytesMask, vec, 16);
+                        masm.pslld(vSize, vec, vec, 16);
+                        masm.por(vSize, vec, vecReverseBytesMask);
+                        masm.psrlw(vSize, vecReverseBytesMask, vec, 8);
+                        masm.psllw(vSize, vec, vec, 8);
+                        masm.por(vSize, vec, vecReverseBytesMask);
+                    }
+                    default -> GraalError.shouldNotReachHere("only 2-byte and 4-byte strides are supported");
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a vector mask to be used with {@code pshufb} to reverse the byte order of all
+     * elements in a vector.
+     */
+    private byte[] getReverseBytesMask(Stride stride) {
+        byte[] mask = new byte[vectorSize.getBytes()];
+        for (int i = 0; i < XMM.getBytes(); i += stride.value) {
+            for (int j = 0; j < stride.value; j++) {
+                mask[i + j] = (byte) (i + (stride.value - (1 + j)));
+            }
+        }
+        // on AVX2, PSHUFB doesn't shuffle an entire YMM vector, instead it behaves like two
+        // adjacent XMM PSHUFB operations
+        if (mask.length > XMM.getBytes()) {
+            for (int i = XMM.getBytes(); i < mask.length; i += XMM.getBytes()) {
+                System.arraycopy(mask, 0, mask, i, XMM.getBytes());
+            }
+        }
+        return mask;
+    }
+
+    /**
+     * Vector loop tail implementation for copy with byte order reversal.
+     */
+    private void emitReverseBytesTail(CompilationResultBuilder crb, AMD64MacroAssembler masm, Stride strideSrc, Stride strideDst, Register src, Register dst, Register len, Register tmp,
+                    Label labelDone) {
+        masm.movl(len, tmp);
+        Label lengthIsEven = new Label();
+        Label labelScalarLoop = new Label();
+        masm.leaq(src, new AMD64Address(src, len, strideSrc));
+        masm.leaq(dst, new AMD64Address(dst, len, strideDst));
+        masm.negq(len);
+
+        // process single element if length is odd
+        masm.testqAndJcc(len, 1, ConditionFlag.Zero, lengthIsEven, true);
+        switch (strideDst) {
+            case S2 -> {
+                masm.movzwl(tmp, new AMD64Address(src, len, strideSrc));
+                masm.bswapl(tmp);
+                masm.shrl(tmp, 16);
+                masm.movw(new AMD64Address(dst, len, strideDst), tmp);
+            }
+            case S4 -> {
+                masm.movl(tmp, new AMD64Address(src, len, strideSrc));
+                masm.bswapl(tmp);
+                masm.movl(new AMD64Address(dst, len, strideDst), tmp);
+            }
+            default -> GraalError.shouldNotReachHere("only 2-byte and 4-byte strides are supported");
+        }
+        masm.incq(len);
+
+        masm.bind(lengthIsEven);
+        // return if length is 0
+        masm.testlAndJcc(len, len, ConditionFlag.Zero, labelDone, true);
+
+        // scalar loop: processes two elements per iteration, length is guaranteed to be even here
+        masm.align(preferredLoopAlignment(crb));
+        masm.bind(labelScalarLoop);
+        switch (strideDst) {
+            case S2 -> {
+                masm.movl(tmp, new AMD64Address(src, len, strideSrc));
+                masm.bswapl(tmp);
+                masm.rorl(tmp, 16);
+                masm.movl(new AMD64Address(dst, len, strideDst), tmp);
+            }
+            case S4 -> {
+                masm.movq(tmp, new AMD64Address(src, len, strideSrc));
+                masm.bswapq(tmp);
+                masm.rorq(tmp, 32);
+                masm.movq(new AMD64Address(dst, len, strideDst), tmp);
+            }
+            default -> GraalError.shouldNotReachHere("only 2-byte and 4-byte strides are supported");
+        }
+        masm.addqAndJcc(len, 2, ConditionFlag.NotZero, labelScalarLoop, true);
+    }
+
+    private static void emitCopyTail(AMD64MacroAssembler masm,
+                    Stride strideSrc,
+                    Stride strideDst,
+                    Register src,
+                    Register dst,
+                    Register len,
+                    Register tmp,
+                    Label labelDone) {
+        Label labelTailDWORD = new Label();
+        Label labelTailWORD = new Label();
+        Label labelTailBYTE = new Label();
+
         masm.cmplAndJcc(tmp, 8 / strideDst.value, ConditionFlag.Less, labelTailDWORD, true);
         masm.movq(len, new AMD64Address(src));
         masm.movq(new AMD64Address(dst), len);
@@ -683,6 +831,5 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             masm.movb(len, new AMD64Address(src));
             masm.movb(new AMD64Address(dst), len);
         }
-        masm.bind(labelDone);
     }
 }

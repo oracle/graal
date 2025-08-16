@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.log;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -41,14 +39,17 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * A {@link LogHandler} that can use provided function pointers for each operation. If a function
  * pointer is missing, it forwards the operation to the delegate set in the constructor.
  */
-public class FunctionPointerLogHandler implements LogHandlerExtension, InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+public class FunctionPointerLogHandler implements LogHandlerExtension {
     private static final CGlobalData<CCharPointer> LOG_OPTION = CGlobalDataFactory.createCString("_log");
     private static final CGlobalData<CCharPointer> FATAL_LOG_OPTION = CGlobalDataFactory.createCString("_fatal_log");
     private static final CGlobalData<CCharPointer> FLUSH_LOG_OPTION = CGlobalDataFactory.createCString("_flush_log");
@@ -188,15 +189,5 @@ public class FunctionPointerLogHandler implements LogHandlerExtension, InitialLa
         } else if (fpHandler.flushFunctionPointer.isNonNull()) {
             throw new IllegalArgumentException("The _log option cannot be null when _flush_log is non-null");
         }
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
     }
 }

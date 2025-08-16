@@ -24,8 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.core.common.LibGraalSupport.inLibGraalRuntime;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
-import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 
 import java.util.BitSet;
 
@@ -35,11 +36,13 @@ import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotWordOperationPlugin;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.word.HotSpotOperation;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.Invoke;
@@ -72,7 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
     public HotSpotReplacementsImpl(HotSpotProviders providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
         super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!inLibGraalRuntime()) {
             registeredSnippets = EconomicSet.create();
         }
     }
@@ -80,7 +83,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, HotSpotProviders providers) {
         super(new GraalDebugHandlersFactory(replacements.getProviders().getSnippetReflection()), providers,
                         replacements.getDefaultReplacementBytecodeProvider(), replacements.target);
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!inLibGraalRuntime()) {
             registeredSnippets = EconomicSet.create();
         }
     }
@@ -92,17 +95,17 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @LibGraalSupport.HostedOnly
     public SymbolicSnippetEncoder maybeInitializeEncoder() {
-        synchronized (HotSpotReplacementsImpl.class) {
-            if (snippetEncoder == null) {
-                snippetEncoder = new SymbolicSnippetEncoder(this);
-            }
+        if (sharedSnippetEncoder != null) {
+            snippetEncoder = sharedSnippetEncoder;
+        } else {
+            snippetEncoder = new SymbolicSnippetEncoder(this);
         }
         return snippetEncoder;
     }
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!inLibGraalRuntime()) {
             if (method.getAnnotation(HotSpotOperation.class) != null) {
                 return HotSpotWordOperationPlugin.class;
             }
@@ -111,17 +114,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public void registerConditionalPlugin(InvocationPlugin plugin) {
-        if (!LibGraalSupport.inLibGraalRuntime()) {
-            if (snippetEncoder != null) {
-                snippetEncoder.registerConditionalPlugin(plugin);
-            }
-        }
-    }
-
-    @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!inLibGraalRuntime()) {
             if (b.parsingIntrinsic() && snippetEncoder != null) {
                 if (getIntrinsifyingPlugin(method) != null) {
                     snippetEncoder.addDelayedInvocationPluginMethod(method);
@@ -192,20 +186,23 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     @LibGraalSupport.HostedOnly//
     private boolean snippetRegistrationClosed;
 
+    @SuppressWarnings("try")
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         assert method.isStatic() || receiver != null : "must have a constant type for the receiver";
-        if (inBuildtimeCode()) {
-            assert !snippetRegistrationClosed || System.getProperty("GraalUnitTest") != null : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
+        if (!isAfterSnippetEncoding()) {
+            assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             if (registeredSnippets.add(method)) {
-                snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
+                try (DebugCloseable ignored = ReplayCompilationSupport.enterSnippetContext(getProviders())) {
+                    snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
+                }
             }
         }
     }
 
     @Override
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
-        if (inRuntimeCode()) {
+        if (isAfterSnippetEncoding()) {
             return getEncodedSnippets().getSnippetParameterInfo(method);
         }
         return super.getSnippetParameterInfo(method);
@@ -213,7 +210,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @Override
     public boolean isSnippet(ResolvedJavaMethod method) {
-        if (inRuntimeCode()) {
+        if (isAfterSnippetEncoding()) {
             return getEncodedSnippets().isSnippet(method);
         }
         return super.isSnippet(method);
@@ -243,29 +240,74 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         HotSpotReplacementsImpl.encodedSnippets = encodedSnippets;
     }
 
+    @LibGraalSupport.HostedOnly//
+    public void encode(OptionValues options) {
+        GraalError.guarantee(!snippetsAreEncoded(), "snippets should not be encoded yet");
+        GraalError.guarantee(snippetEncoder != null && snippetEncoder == sharedSnippetEncoder, "only the shared encoder can encode snippets");
+        setEncodedSnippets(snippetEncoder.encodeSnippets(options));
+    }
+
+    /**
+     * Opens a scope without encoded snippets, in which additional snippets can be registered and
+     * encoded. The previous encoded snippets are restored when the scope is closed. Useful for
+     * testing.
+     *
+     * @return a scope without encoded snippets
+     */
+    @LibGraalSupport.HostedOnly
+    public DebugCloseable suppressEncodedSnippets() {
+        EncodedSnippets previous = encodedSnippets;
+        setEncodedSnippets(null);
+        return () -> setEncodedSnippets(previous);
+    }
+
+    /**
+     * The global shared instance of encoded snippets.
+     */
     private static volatile EncodedSnippets encodedSnippets;
 
+    /**
+     * The shared snippet encoder. The purpose of the shared encoder is to initialize other (i.e.,
+     * Truffle) backends, which should register their snippets to the shared encoder.
+     */
     @LibGraalSupport.HostedOnly//
-    private static SymbolicSnippetEncoder snippetEncoder;
+    private static volatile SymbolicSnippetEncoder sharedSnippetEncoder;
+
+    /**
+     * The snippet encoder used by this instance. Before the encoder is used to encode snippets, it
+     * must be {@link #sharedSnippetEncoder shared} with Truffle backends to allow them to register
+     * their snippets.
+     */
+    @LibGraalSupport.HostedOnly//
+    private SymbolicSnippetEncoder snippetEncoder;
+
+    /**
+     * Shares this encoder with all subsequently initialized backends. Consequently, these backends
+     * will register their snippets to the encoder used by this instance. Only one encoder can be
+     * shared, and only the shared encoder can encode snippets.
+     */
+    @LibGraalSupport.HostedOnly
+    public void shareSnippetEncoder() {
+        GraalError.guarantee(sharedSnippetEncoder == null, "only a single encoder can be shared");
+        sharedSnippetEncoder = snippetEncoder;
+    }
 
     @SuppressWarnings("try")
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        if (LibGraalSupport.inLibGraalRuntime()) {
+        if (isAfterSnippetEncoding()) {
             // Snippets graphs can contain foreign object references and
             // outlive a single compilation.
             try (CompilationContext scope = HotSpotGraalServices.enterGlobalCompilationContext()) {
-                StructuredGraph graph = getEncodedSnippets().getEncodedSnippet(method, original, this, args, AllowAssumptions.NO, options);
-                if (graph == null) {
-                    throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
-                }
-                return graph;
+                return getEncodedSnippets().getEncodedSnippet(method, original, this, args, AllowAssumptions.NO, options);
             }
         }
 
         assert !inBuildtimeCode() || registeredSnippets == null || registeredSnippets.contains(method) : "Asking for snippet method that was never registered: " + method.format("%H.%n(%p)");
-        return super.getSnippet(method, original, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, options);
+        try (DebugCloseable ignored = ReplayCompilationSupport.enterSnippetContext(getProviders())) {
+            return super.getSnippet(method, original, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, options);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -278,13 +320,13 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     public static MetaAccessProvider noticeTypes(MetaAccessProvider metaAccess) {
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!inLibGraalRuntime()) {
             return SymbolicSnippetEncoder.noticeTypes(metaAccess);
         }
         return metaAccess;
     }
 
-    static boolean isGraalClass(ResolvedJavaType type) {
+    public static boolean isGraalClass(ResolvedJavaType type) {
         return isGraalClass(type.toClassName());
     }
 

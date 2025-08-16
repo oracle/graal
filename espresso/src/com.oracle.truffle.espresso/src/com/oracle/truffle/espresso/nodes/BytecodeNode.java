@@ -1279,7 +1279,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                         Object returnValue = getReturnValueAsObject(frame, top);
                         if (instrument != null) {
-                            instrument.exitAt(frame, statementIndex, returnValue);
+                            instrument.notifyExit(frame, this, returnValue);
+                            instrument.notifyStatementExit(frame, statementIndex, returnValue);
                         }
 
                         // This branch must not be a loop exit.
@@ -1463,6 +1464,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         int targetBCI = bs.nextBCI(curBCI);
                         livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
+                        if (instrument != null) {
+                            int nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
+                            if (nextStatementIndex != statementIndex) {
+                                instrument.notifyStatementChange(frame, statementIndex, nextStatementIndex, targetBCI);
+                                statementIndex = nextStatementIndex;
+                            }
+                        }
                         top += Bytecodes.stackEffectOf(wideOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -2732,56 +2740,56 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             case 'Z':
                 boolean booleanValue = stackIntToBoolean(popInt(frame, top - 1));
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, booleanValue);
                 }
                 InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
                 break;
             case 'B':
                 byte byteValue = (byte) popInt(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, byteValue);
                 }
                 InterpreterToVM.setFieldByte(byteValue, receiver, field);
                 break;
             case 'C':
                 char charValue = (char) popInt(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, charValue);
                 }
                 InterpreterToVM.setFieldChar(charValue, receiver, field);
                 break;
             case 'S':
                 short shortValue = (short) popInt(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, shortValue);
                 }
                 InterpreterToVM.setFieldShort(shortValue, receiver, field);
                 break;
             case 'I':
                 int intValue = popInt(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, intValue);
                 }
                 InterpreterToVM.setFieldInt(intValue, receiver, field);
                 break;
             case 'D':
                 double doubleValue = popDouble(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, doubleValue);
                 }
                 InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
                 break;
             case 'F':
                 float floatValue = popFloat(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, floatValue);
                 }
                 InterpreterToVM.setFieldFloat(floatValue, receiver, field);
                 break;
             case 'J':
                 long longValue = popLong(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, longValue);
                 }
                 InterpreterToVM.setFieldLong(longValue, receiver, field);
                 break;
@@ -2789,7 +2797,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             case 'L':
                 StaticObject value = popObject(frame, top - 1);
                 if (instrumentation != null) {
-                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, this, receiver, value);
                 }
                 InterpreterToVM.setFieldObject(value, receiver, field);
                 break;
@@ -2840,7 +2848,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         if (instrumentation != null) {
-            instrumentation.notifyFieldAccess(frame, statementIndex, field, receiver);
+            instrumentation.notifyFieldAccess(frame, statementIndex, field, this, receiver);
         }
 
         int resultAt = mode.isStatic() ? top : (top - 1);
@@ -2894,14 +2902,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
         // Notifications are only for Espresso objects
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
-            instrumentation.notifyFieldModification(frame, index, field, receiver, value);
+            instrumentation.notifyFieldModification(frame, index, field, this, receiver, value);
         }
     }
 
     public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
         // Notifications are only for Espresso objects
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
-            instrumentation.notifyFieldAccess(frame, index, field, receiver);
+            instrumentation.notifyFieldAccess(frame, index, field, this, receiver);
         }
     }
 
@@ -2973,7 +2981,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         void notifyStatementChange(VirtualFrame frame, int statementIndex, int nextStatementIndex, int targetBci) {
             assert statementIndex != nextStatementIndex;
-            notifyStatementExit(frame, statementIndex);
+            notifyStatementExit(frame, statementIndex, StaticObject.NULL);
             setBCI(frame, targetBci);
             notifyStatementEnter(frame, nextStatementIndex);
         }
@@ -2988,20 +2996,26 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             resumeAt(frame, statementIndex);
         }
 
-        void notifyStatementExit(VirtualFrame frame, int statementIndex) {
+        void notifyStatementExit(VirtualFrame frame, int statementIndex, Object returnValue) {
             CompilerAsserts.partialEvaluationConstant(statementIndex);
-            exitAt(frame, statementIndex, StaticObject.NULL);
+            exitAt(frame, statementIndex, returnValue);
         }
 
         public void notifyEntry(VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode) {
             if (context.shouldReportVMEvents() && method.getMethod().hasActiveHook()) {
-                context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true));
+                context.reportOnMethodEntry(method, instrumentableNode, instrumentableNode.getScope(frame, true));
             }
         }
 
         public void notifyResume(VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode) {
             if (context.shouldReportVMEvents() && method.getMethod().hasActiveHook()) {
-                context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true));
+                context.reportOnMethodEntry(method, instrumentableNode, instrumentableNode.getScope(frame, true));
+            }
+        }
+
+        public void notifyExit(@SuppressWarnings("unused") VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode, Object returnValue) {
+            if (context.shouldReportVMEvents() && method.getMethod().hasActiveHook()) {
+                context.reportOnMethodReturn(method, instrumentableNode, returnValue);
             }
         }
 
@@ -3021,17 +3035,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             probeNode.onYield(frame, o);
         }
 
-        public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
+        public void notifyFieldModification(VirtualFrame frame, int index, Field field, AbstractInstrumentableBytecodeNode instrumentableNode, StaticObject receiver, Object value) {
             if (context.shouldReportVMEvents() && field.hasActiveBreakpoint()) {
-                if (context.reportOnFieldModification(field, receiver, value)) {
+                if (context.reportOnFieldModification(field, instrumentableNode, receiver, value)) {
                     enterAt(frame, index);
                 }
             }
         }
 
-        public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
+        public void notifyFieldAccess(VirtualFrame frame, int index, Field field, AbstractInstrumentableBytecodeNode instrumentableNode, StaticObject receiver) {
             if (context.shouldReportVMEvents() && field.hasActiveBreakpoint()) {
-                if (context.reportOnFieldAccess(field, receiver)) {
+                if (context.reportOnFieldAccess(field, instrumentableNode, receiver)) {
                     enterAt(frame, index);
                 }
             }

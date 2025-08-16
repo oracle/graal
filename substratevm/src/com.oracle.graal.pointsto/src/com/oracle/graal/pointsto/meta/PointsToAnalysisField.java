@@ -91,7 +91,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  */
                 saturatePrimitiveField();
             }
-            ((PointsToAnalysis) getUniverse().getBigbang()).forceUnsafeUpdate(this);
+            ((PointsToAnalysis) getUniverse().getBigbang()).forceUnsafeUpdate();
             return true;
         }
         return false;

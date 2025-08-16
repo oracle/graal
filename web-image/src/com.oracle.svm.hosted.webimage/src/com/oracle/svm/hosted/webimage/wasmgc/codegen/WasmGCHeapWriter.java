@@ -39,8 +39,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import org.graalvm.word.WordBase;
-
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -51,6 +49,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -836,7 +835,7 @@ public class WasmGCHeapWriter {
     private Instruction createHubVtableArray(ImageHeapInstance instance) {
         WasmId.ArrayType vtableFieldType = providers.knownIds().vtableFieldType;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        WordBase[] vtable = (WordBase[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
+        MethodRef[] vtable = (MethodRef[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
 
         int vtableLength = vtable.length;
 

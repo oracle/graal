@@ -56,10 +56,10 @@ layout: base
               <img src='{{ "/assets/img/icon-set-general/speed-icon.svg" | relative_url }}' alt="speed icon">
             </div>
             <div class="langbenefits__title">
-              <h4>Fastest Wasm on the JVM</h4>
+              <h4>Portable Native Extensions</h4>
             </div>
             <div class="langpage__benefits-text">
-              <h5><a href="https://www.graalvm.org/latest/reference-manual/java/compiler/">Graal JIT</a> compiles Wasm for native code speed</h5>
+              <h5><a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide/" target="_blank">Integrate C</a>, C++, Rust, and Go libraries using Wasm as an alternative to JNI or FFM API</h5>
             </div>
           </div>
         </div>
@@ -73,6 +73,17 @@ layout: base
             </div>
             <div class="langpage__benefits-text">
               <h5>Simplifies use of WebAssembly modules with <a href="https://github.com/graalvm/graal-languages-demos/blob/main/graalwasm/graalwasm-spring-boot-photon/" target="_blank">JavaScript bindings</a></h5>
+            </div>
+          </div>
+          <div class="langbenefits__card">
+            <div class="langbenefits__icon">
+              <img src='{{ "/assets/img/icon-set-general/speed-icon.svg" | relative_url }}' alt="speed icon">
+            </div>
+            <div class="langbenefits__title">
+              <h4>Fastest Wasm on the JVM</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5><a href="https://www.graalvm.org/latest/reference-manual/java/compiler/">Graal JIT</a> compiles Wasm for native code speed</h5>
             </div>
           </div>
           <div class="langbenefits__card">

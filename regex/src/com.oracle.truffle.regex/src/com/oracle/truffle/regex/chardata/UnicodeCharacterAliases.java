@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,8 @@ package com.oracle.truffle.regex.chardata;
 import org.graalvm.collections.EconomicMap;
 
 /**
- * Contents of NameAliases.txt. This is currently used by
- * {@link com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor} only, so we don't have to
- * version it. If another flavor starts using this table, it needs to be moved into
+ * Contents of NameAliases.txt. This is currently used by {@code PythonFlavor} only, so we don't
+ * have to version it. If another flavor starts using this table, it needs to be moved into
  * {@link com.oracle.truffle.regex.charset.UnicodePropertyData} and versioned.
  */
 public class UnicodeCharacterAliases {

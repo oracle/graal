@@ -124,8 +124,30 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      */
     private final HotSpotGraalRuntimeProvider hotspotGraalRuntime;
 
+    /**
+     * Initialize and return Truffle backends.
+     *
+     * @param options option values
+     * @return a list of Truffle backends
+     */
     public static List<HotSpotBackend> ensureBackendsInitialized(OptionValues options) {
         HotSpotGraalRuntimeProvider graalRuntime = (HotSpotGraalRuntimeProvider) getCompiler(options).getGraalRuntime();
+        return ensureBackendsInitialized(options, graalRuntime);
+    }
+
+    /**
+     * Initialize and return Truffle backends using the provided Graal runtime, which must match the
+     * {@link Options#TruffleCompilerConfiguration} or the host configuration if not set.
+     *
+     * @param options option values
+     * @param graalRuntime the Graal runtime
+     * @return a list of Truffle backends
+     */
+    public static List<HotSpotBackend> ensureBackendsInitialized(OptionValues options, HotSpotGraalRuntimeProvider graalRuntime) {
+        if (Options.TruffleCompilerConfiguration.hasBeenSet(options)) {
+            GraalError.guarantee(graalRuntime.getCompilerConfigurationName().equals(Options.TruffleCompilerConfiguration.getValue(options)),
+                            "the provided runtime must match the Truffle compiler configuration");
+        }
         List<HotSpotBackend> backends = new ArrayList<>();
         backends.add(createTruffleBackend(graalRuntime, options, null, null));
         backends.add(createTruffleBackend(graalRuntime, options, null, EconomyCompilerConfigurationFactory.NAME));
@@ -198,7 +220,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Backend backend = createTruffleBackend(hotspotGraalRuntime, options, knownTruffleTypes, forceConfigName);
         Suites suites = backend.getSuites().getDefaultSuites(options, backend.getTarget().arch);
         LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(options);
-        return new TruffleTierConfiguration(peConfig, backend, backend.getProviders(), suites, lirSuites, knownTruffleTypes, null);
+        return new TruffleTierConfiguration(peConfig, backend, backend.getProviders(), suites, lirSuites, knownTruffleTypes);
     }
 
     private static String resolveConfigurationName(HotSpotGraalRuntimeProvider hotspotGraalRuntime, OptionValues options, String forceConfigName) {
@@ -240,7 +262,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             }
         }
         CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options, runtime);
-        return HotSpotGraalCompilerFactory.createCompiler("Truffle", runtime, options, compilerConfigurationFactory);
+        return HotSpotGraalCompilerFactory.createCompiler("Truffle", runtime, options, compilerConfigurationFactory, null);
     }
 
     public HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerConfiguration config) {

@@ -68,6 +68,18 @@
     targets: [t],
   }),
 
+  // Split gate into multiple batches
+  partial(num):: run_spec.add_multiply(
+    [
+      task_spec({
+        local batch = "%d/%d" % [i, num],
+        mxgate_batch:: batch,
+        mxgate_extra_args+: ["--partial=" + batch],
+        })
+      for i in std.range(1, num)
+    ]
+  ),
+
   gate:: $.target("gate"),
   tier1:: $.target("tier1"),
   tier2:: $.target("tier2"),
@@ -87,7 +99,7 @@
       mxgate_config+::["musl-dynamic"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl -H:+UnlockExperimentalVMOptions -H:-StaticExecutable -H:-UnlockExperimentalVMOptions"],
       environment+: {
-        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter
+        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/x86_64-linux-musl/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter. If the path is incorrect, some svm tests fail with "FAILED image construction: java.lang.AssertionError: internal error"
       },
   } +
     # The galahad gates run with oracle JDK, which do not offer a musl build
@@ -140,4 +152,9 @@
       JAVA_HOME_RISCV    : {name : "labsjdk", version : b.downloads.JAVA_HOME.version + "-linux-riscv64" }
     },
   })),
+
+  validate_tiers(b)::
+    assert b.target != "gate": "Must not add new `gate` jobs.\nPlease change the target of the job '%s' to `tier1`, `tier2`, `tier3` or make it a post-merge or periodic job" % [b.name] ;
+    b
+ ,
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,48 +26,67 @@
 
 package com.oracle.objectfile.debugentry.range;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-class CallRange extends SubRange {
-    /**
-     * The first direct callee whose range is wholly contained in this range or null if this is a
-     * leaf range.
-     */
-    protected SubRange firstCallee;
-    /**
-     * The last direct callee whose range is wholly contained in this range.
-     */
-    protected SubRange lastCallee;
+public class CallRange extends Range {
 
-    protected CallRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
-        this.firstCallee = null;
-        this.lastCallee = null;
+    /**
+     * The direct callees whose ranges are wholly contained in this range. Empty if this is a leaf
+     * range.
+     */
+    private List<Range> callees;
+
+    protected CallRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
+        this.callees = new ArrayList<>();
     }
 
     @Override
-    protected void addCallee(SubRange callee) {
-        assert this.lo <= callee.lo;
-        assert this.hi >= callee.hi;
-        assert callee.caller == this;
-        assert callee.siblingCallee == null;
-        if (this.firstCallee == null) {
-            assert this.lastCallee == null;
-            this.firstCallee = this.lastCallee = callee;
-        } else {
-            this.lastCallee.siblingCallee = callee;
-            this.lastCallee = callee;
+    public void seal() {
+        super.seal();
+        assert callees instanceof ArrayList<Range> : "CallRange should only be sealed once";
+        callees = callees.stream().sorted().toList();
+        callees.forEach(Range::seal);
+
+    }
+
+    @Override
+    public List<Range> getCallees() {
+        assert !(callees instanceof ArrayList<Range>) : "Can only access callee ranges after a CallRange is sealed.";
+        return callees;
+    }
+
+    @Override
+    public Stream<Range> rangeStream() {
+        assert !(callees instanceof ArrayList<Range>) : "Can only access callee ranges after a CallRange is sealed.";
+        return Stream.concat(super.rangeStream(), callees.stream().flatMap(Range::rangeStream));
+    }
+
+    protected void addCallee(Range callee) {
+        assert callees instanceof ArrayList<Range> : "Can only add callee ranges before a CallRange is sealed";
+        assert this.contains(callee);
+        assert callee.getCaller() == this;
+        synchronized (callees) {
+            callees.add(callee);
         }
     }
 
     @Override
-    public SubRange getFirstCallee() {
-        return firstCallee;
+    public boolean isLeaf() {
+        return callees.isEmpty();
     }
 
-    @Override
-    public boolean isLeaf() {
-        assert firstCallee != null;
-        return false;
+    public void removeCallee(Range callee) {
+        assert callees instanceof ArrayList<Range> : "Can only remove callee ranges before a CallRange is sealed";
+        synchronized (callees) {
+            callees.remove(callee);
+        }
     }
 }

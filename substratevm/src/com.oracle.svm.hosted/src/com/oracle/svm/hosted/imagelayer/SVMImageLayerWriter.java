@@ -38,6 +38,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -101,22 +102,29 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -165,6 +173,7 @@ import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
@@ -194,7 +203,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private final SharedLayerSnapshot.Builder snapshotBuilder = this.snapshotFileBuilder.initRoot(SharedLayerSnapshot.factory);
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
     private final Map<String, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
-    private final Map<InitialLayerOnlyImageSingleton, Integer> initialLayerOnlySingletonMap = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisMethod>> polymorphicSignatureCallers = new ConcurrentHashMap<>();
     private final GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
@@ -203,6 +211,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
     private final ClassInitializationSupport classInitializationSupport;
+    private SimulateClassInitializerSupport simulateClassInitializerSupport;
 
     private boolean polymorphicSignatureSealed = false;
 
@@ -283,6 +292,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
         this.aUniverse = aUniverse;
+    }
+
+    public void setSimulateClassInitializerSupport(SimulateClassInitializerSupport simulateClassInitializerSupport) {
+        this.simulateClassInitializerSupport = simulateClassInitializerSupport;
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
@@ -421,7 +434,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setHasArrayType(hub.getArrayHub() != null);
 
         ClassInitializationInfo info = hub.getClassInitializationInfo();
-        if (info != null) {
+        if (info == null) {
+            /* Type metadata was not initialized. */
+            assert !type.isReachable();
+            builder.setHasClassInitInfo(false);
+        } else {
+            builder.setHasClassInitInfo(true);
             Builder b = builder.initClassInitializationInfo();
             b.setIsNoInitializerNoTracking(info == ClassInitializationInfo.forNoInitializerInfo(false));
             b.setIsInitializedNoTracking(info == ClassInitializationInfo.forInitializedInfo(false));
@@ -450,6 +468,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
         builder.setIsInitialized(type.isInitialized());
+        boolean successfulSimulation = simulateClassInitializerSupport.isSuccessfulSimulation(type);
+        boolean failedSimulation = simulateClassInitializerSupport.isFailedSimulation(type);
+        VMError.guarantee(!(successfulSimulation && failedSimulation), "Class init simulation cannot be both successful and failed.");
+        builder.setIsSuccessfulSimulation(successfulSimulation);
+        builder.setIsFailedSimulation(failedSimulation);
         builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type.getJavaClass()));
         builder.setIsLinked(type.isLinked());
         if (type.getSourceFileName() != null) {
@@ -664,6 +687,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsRead(field.getReadReason() != null);
         builder.setIsWritten(field.getWrittenReason() != null);
         builder.setIsFolded(field.getFoldedReason() != null);
+        builder.setIsUnsafeAccessed(field.isUnsafeAccessed());
 
         Field originalField = OriginalFieldProvider.getJavaField(field);
         if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
@@ -693,6 +717,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
         persistAnnotations(field, builder::initAnnotationList);
+
+        JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
+        writeConstant(simulatedFieldValue, builder.initSimulatedFieldValue());
     }
 
     private void persistAnnotations(AnnotatedElement annotatedElement, IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
@@ -797,13 +824,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
         int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);
         builder.setIdentityHashCode(identityHashCode);
-
-        if (imageHeapConstant.isBackedByHostedObject() && InitialLayerOnlyImageSingleton.class.isAssignableFrom(type.getJavaClass())) {
-            InitialLayerOnlyImageSingleton singleton = aUniverse.getBigbang().getSnippetReflectionProvider().asObject(InitialLayerOnlyImageSingleton.class, imageHeapConstant.getHostedObject());
-            if (singleton.accessibleInFutureLayers()) {
-                initialLayerOnlySingletonMap.put(singleton, id);
-            }
-        }
 
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
@@ -959,16 +979,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private static boolean delegateProcessing(ConstantReference.Builder builder, Object constant) {
         if (constant instanceof PatchedWordConstant patchedWordConstant) {
             WordBase word = patchedWordConstant.getWord();
-            if (word instanceof MethodOffset) {
-                /*
-                 * Such constants are not supposed to be used in another layer. Any method code
-                 * offsets should be accessed via PersistedHostedMethod.
-                 */
-                builder.setMethodOffset(Void.VOID);
-                return true;
-            } else if (word instanceof MethodPointer methodPointer) {
-                AnalysisMethod method = getRelocatableConstantMethod(methodPointer);
-                builder.initMethodPointer().setMethodId(method.getId());
+            if (word instanceof MethodRef methodRef) {
+                AnalysisMethod method = getRelocatableConstantMethod(methodRef);
+                switch (methodRef) {
+                    case MethodOffset mo -> builder.initMethodOffset().setMethodId(method.getId());
+                    case MethodPointer mp -> builder.initMethodPointer().setMethodId(method.getId());
+                    default -> throw VMError.shouldNotReachHere("Unsupported method ref: " + methodRef);
+                }
                 return true;
             } else if (word instanceof CEntryPointLiteralCodePointer cp) {
                 CEntryPointLiteralReference.Builder b = builder.initCEntryPointLiteralCodePointer();
@@ -1010,14 +1027,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
                 discoveredConstants.add(con);
                 constantsMap.put(con, parent);
-            } else if (obj instanceof MethodPointer mp) {
-                getRelocatableConstantMethod(mp).registerAsTrackedAcrossLayers("In method pointer");
+            } else if (obj instanceof MethodRef mr) {
+                getRelocatableConstantMethod(mr).registerAsTrackedAcrossLayers("In method ref");
             }
         }
     }
 
-    private static AnalysisMethod getRelocatableConstantMethod(MethodPointer methodPointer) {
-        ResolvedJavaMethod method = methodPointer.getMethod();
+    private static AnalysisMethod getRelocatableConstantMethod(MethodRef methodRef) {
+        ResolvedJavaMethod method = methodRef.getMethod();
         if (method instanceof HostedMethod hostedMethod) {
             return hostedMethod.wrapped;
         } else {
@@ -1092,44 +1109,76 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
-    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, EconomicMap<String, Object> keyStore) {
+    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, RecreateInfo recreateInfo, EconomicMap<String, Object> keyStore) {
     }
 
-    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, Object>> layeredImageSingletons) {
+    // GR-66792 remove once no custom persist actions exist
+    record RecreateInfo(String clazz, String method) {
+    }
+
+    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks action) {
+        if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
+            // GR-66792 remove once no custom persist actions exist
+            Class<?> singletonClass = injectAction.getSingletonClass();
+            String recreateName = "createFromLoader";
+            Method loaderMethod = ReflectionUtil.lookupMethod(true, singletonClass, recreateName, ImageSingletonLoader.class);
+            if (loaderMethod == null) {
+                throw VMError.shouldNotReachHere("Unable to find createFromLoader for %s", singletonClass);
+            }
+            return new RecreateInfo(singletonClass.getName(), recreateName);
+
+        } else {
+            return new RecreateInfo(action.getSingletonInstantiator().getName(), "");
+        }
+    }
+
+    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
         StructList.Builder<ImageSingletonKey.Builder> singletonsBuilder = snapshotBuilder.initSingletonKeys(layeredImageSingletons.size());
-        Map<LayeredImageSingleton, SingletonPersistInfo> singletonInfoMap = new HashMap<>();
+        Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new HashMap<>();
         int nextID = 1;
+        Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         for (int i = 0; i < layeredImageSingletons.size(); i++) {
-            var singletonInfo = layeredImageSingletons.get(i);
-            LayeredImageSingleton singleton;
-            if (singletonInfo.getValue() instanceof RuntimeOnlyWrapper wrapper) {
-                singleton = wrapper.wrappedObject();
-            } else {
-                singleton = (LayeredImageSingleton) singletonInfo.getValue();
-            }
-            String key = singletonInfo.getKey().getName();
-            if (!singletonInfoMap.containsKey(singleton)) {
+            var singletonEntry = layeredImageSingletons.get(i);
+            String key = singletonEntry.getKey().getName();
+            Object singleton = singletonEntry.getValue().singleton();
+            boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
+            if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                var flags = singleton.preparePersist(writer);
+                SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
+                var flags = action.doPersist(writer, singleton);
                 boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
-                var info = new SingletonPersistInfo(flags, persistData ? nextID++ : -1, persistData ? writer.getKeyValueStore() : null);
-                singletonInfoMap.put(singleton, info);
+                if (initialLayerOnly) {
+                    VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
+                                    singleton);
+                }
+                int id = -1;
+                RecreateInfo recreateInfo = null;
+                EconomicMap<String, Object> keyValueStore = null;
+                if (persistData) {
+                    id = nextID++;
+                    recreateInfo = createRecreateInfo(action);
+                    keyValueStore = writer.getKeyValueStore();
+                }
+
+                var info = new SingletonPersistInfo(flags, id, recreateInfo, keyValueStore);
+                singletonPersistInfoMap.put(singleton, info);
             }
-            var info = singletonInfoMap.get(singleton);
+            var info = singletonPersistInfoMap.get(singleton);
 
             ImageSingletonKey.Builder sb = singletonsBuilder.get(i);
             sb.setKeyClassName(key);
             sb.setObjectId(info.id);
             sb.setPersistFlag(info.flags.ordinal());
             int constantId = -1;
-            if (singleton instanceof InitialLayerOnlyImageSingleton initialLayerOnlyImageSingleton && initialLayerOnlyImageSingleton.accessibleInFutureLayers()) {
-                constantId = initialLayerOnlySingletonMap.getOrDefault(initialLayerOnlyImageSingleton, -1);
+            if (initialLayerOnly) {
+                ImageHeapConstant imageHeapConstant = (ImageHeapConstant) aUniverse.getSnippetReflection().forObject(singleton);
+                constantId = ImageHeapConstant.getConstantID(imageHeapConstant);
             }
             sb.setConstantId(constantId);
-            sb.setIsInitialLayerOnly(singleton instanceof InitialLayerOnlyImageSingleton);
+            sb.setIsInitialLayerOnly(initialLayerOnly);
         }
 
-        var sortedByIDs = singletonInfoMap.entrySet().stream()
+        var sortedByIDs = singletonPersistInfoMap.entrySet().stream()
                         .filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE)
                         .sorted(Comparator.comparingInt(e -> e.getValue().id))
                         .toList();
@@ -1141,6 +1190,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             ImageSingletonObject.Builder ob = objectsBuilder.get(i);
             ob.setId(info.id);
             ob.setClassName(entry.getKey().getClass().getName());
+            ob.setRecreateClass(info.recreateInfo().clazz());
+            ob.setRecreateMethod(info.recreateInfo().method());
             writeImageSingletonKeyStore(ob, info.keyStore);
         }
     }

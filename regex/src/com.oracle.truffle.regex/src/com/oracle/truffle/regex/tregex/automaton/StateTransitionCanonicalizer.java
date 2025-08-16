@@ -42,6 +42,9 @@ package com.oracle.truffle.regex.tregex.automaton;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Objects;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -69,6 +72,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
     private boolean anyArgConstraints;
     private final IntArrayBuffer stack = new IntArrayBuffer();
     private final IntArrayBuffer skipStack = new IntArrayBuffer();
+    private final EconomicSet<ConstraintDeduplicationKey> constraintDeduplicationSet = EconomicSet.create();
 
     private static final int INITIAL_CAPACITY = 8;
 
@@ -287,6 +291,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
             for (int i : intersectingArgs[iStage1]) {
                 addToStack(argTransitions.get(i), matcher, argConstraints.get(i), argOperations.get(i), resultLength);
             }
+            constraintDeduplicationSet.clear();
             outer: while (!stack.isEmpty()) {
                 int i = stack.pop();
                 T argTransition = argTransitions.get(i);
@@ -301,7 +306,6 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
                     if (constraintMerge == null) {
                         continue;
                     }
-                    assert TransitionConstraint.isNormalized(constraintMerge.middle());
 
                     // if the slot already contains an unconditional transition to the final state,
                     // we don't have to check any other constraints.
@@ -309,22 +313,29 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
                         if (constraintMerge.lhs().length == 0) {
                             addTransitionTo(j, argTransition, argOperation);
                         } else {
+                            assert TransitionConstraint.isNormalized(constraintMerge.lhs()[0]);
                             constraintBuilder[j] = constraintMerge.lhs()[0];
                             for (int k = 1; k < constraintMerge.lhs().length; ++k) {
                                 duplicateSlot(j, matcher, constraintMerge.lhs()[k]);
                                 resultLength++;
                             }
-
                             duplicateSlot(j, matcher, constraintMerge.middle());
                             addTransitionTo(resultLength, argTransition, argOperation);
                             resultLength++;
                         }
                     }
                     for (long[] rhs : constraintMerge.rhs()) {
-                        addToStack(argTransition, matcher, rhs, argOperation, j + 1);
+                        // TransitionConstraint.intersectAndSubtract may yield the same constraint
+                        // formula for the same transition multiple times when intersecting a large
+                        // set of transitions. We drop those duplicates here, otherwise they would
+                        // increase this stage's run time exponentially.
+                        if (constraintDeduplicationSet.add(new ConstraintDeduplicationKey(argTransition.getId(), rhs))) {
+                            addToStack(argTransition, matcher, rhs, argOperation, j + 1);
+                        }
                     }
                     continue outer;
                 }
+                assert TransitionConstraint.isNormalized(argConstraint);
                 createSlot();
                 matcherBuilders[resultLength] = matcher;
                 constraintBuilder[resultLength] = argConstraint;
@@ -336,6 +347,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
     }
 
     private void duplicateSlot(int i, CodePointSet matcher, long[] constraints) {
+        assert TransitionConstraint.isNormalized(constraints);
         createSlot();
         targetStateSets[resultLength] = targetStateSets[i].copy();
         transitionLists[resultLength].addAll(transitionLists[i]);
@@ -471,6 +483,22 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
             }
         }
         return resultBuffer2.toArray(createResultArray(resultBuffer2.length()));
+    }
+
+    private record ConstraintDeduplicationKey(int transitionID, long[] constraints) {
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ConstraintDeduplicationKey o)) {
+                return false;
+            }
+            return transitionID == o.transitionID && Arrays.equals(constraints, o.constraints);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(transitionID, Arrays.hashCode(constraints));
+        }
     }
 
     protected abstract TB createTransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder, long[] constraints, long[] operations);
