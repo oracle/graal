@@ -194,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides support for Truffle runtime compilation";
+        return "Provides internal support for Truffle runtime compilation";
     }
 
     public static class Options {
