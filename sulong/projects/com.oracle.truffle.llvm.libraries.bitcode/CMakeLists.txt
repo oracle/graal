@@ -41,7 +41,7 @@ function(check_var var)
   require_var(${var})
 endfunction()
 
-# set variable from environement variable if the latter exists
+# set variable from environment variable if the latter exists
 function(setFromEnv varname envname)
   if(DEFINED ENV{${envname}})
     set(${varname} $ENV{${envname}} PARENT_SCOPE)

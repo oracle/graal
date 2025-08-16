@@ -37,7 +37,7 @@ function(requireVariable varname)
     endif()
 endfunction()
 
-# set variable from environement variable if the latter exists
+# set variable from environment variable if the latter exists
 function(setFromEnv varname envname)
     if(DEFINED ENV{${envname}})
         set(${varname} $ENV{${envname}} PARENT_SCOPE)
@@ -46,7 +46,7 @@ endfunction()
 
 # set compiler from environment variable if the latter exists
 # If the environment variable consists of the command + flags,
-# the command will be sotred in ${compiler_var} and the rest in
+# the command will be stored in ${compiler_var} and the rest in
 # ${flag_var}.
 function(setCompilerFromEnv compiler_var flag_var envname)
     if(DEFINED ENV{${envname}})

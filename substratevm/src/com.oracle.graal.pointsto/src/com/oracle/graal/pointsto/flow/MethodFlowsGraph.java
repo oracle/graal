@@ -373,7 +373,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                     }
                     for (MethodFlowsGraph calleeFlowGraph : invoke.getAllNonStubCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
-                        // of the clones of the caller methods, hence we regiter that clone as a
+                        // of the clones of the caller methods, hence we register that clone as a
                         // caller for 'this' method clone
                         if (calleeFlowGraph.equals(this)) {
                             callers.add(callerFlowGraph);

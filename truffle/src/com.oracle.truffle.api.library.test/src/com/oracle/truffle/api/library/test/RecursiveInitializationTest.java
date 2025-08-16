@@ -70,7 +70,7 @@ public class RecursiveInitializationTest extends AbstractLibraryTest {
     public void testRecursiveResolve() {
         /*
          * Resolving the library triggers the gen class to load which if it triggers the library
-         * class to load will result in resolving the library again whe initializing the FACTORY
+         * class to load will result in resolving the library again when initializing the FACTORY
          * static variable. To solve this the gen class must never trigger initialization of the
          * library class. Instead ,we explicitly load the library class using Class.forName but
          * without initialization. If this test succeeds then the recursive resolve worked.

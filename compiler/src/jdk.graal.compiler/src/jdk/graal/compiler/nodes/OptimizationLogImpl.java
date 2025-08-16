@@ -773,7 +773,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
      * The tree built by this method respects {@link InliningLog.Callsite#getOverriddenParent() the
-     * overriden parents}. As a result of this, the tree is slightly different from what is printed
+     * overridden parents}. As a result of this, the tree is slightly different from what is printed
      * by {@link GraalOptions#TraceInlining}. This is achieved by remembering the mapping from
      * callsites to their JSON representations in the {@code replacements} parameter. Each callsite
      * then attaches itself to the correct {@link InliningLog.Callsite#getOverriddenParent() parent}
@@ -819,7 +819,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         if (callsite.getOverriddenParent() != null) {
             EconomicMap<String, Object> parentMap = replacements.get(callsite.getOverriddenParent());
-            assert parentMap != null : "there must already exist a JSON map for the overriden parent";
+            assert parentMap != null : "there must already exist a JSON map for the overridden parent";
             List<Object> parentInvokesProperty = (List<Object>) parentMap.get(INVOKES_PROPERTY);
             if (parentInvokesProperty == null) {
                 parentInvokesProperty = new ArrayList<>();
