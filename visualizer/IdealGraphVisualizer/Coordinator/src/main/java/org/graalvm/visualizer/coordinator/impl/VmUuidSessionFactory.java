@@ -22,8 +22,6 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import java.util.Objects;
-
 import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;

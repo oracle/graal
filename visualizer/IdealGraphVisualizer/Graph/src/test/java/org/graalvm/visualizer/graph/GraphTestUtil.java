@@ -30,7 +30,7 @@ import static org.graalvm.visualizer.layout.LayoutTestUtil.assertVertexEquals;
 import static org.graalvm.visualizer.settings.TestUtils.*;
 import static org.junit.Assert.*;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;

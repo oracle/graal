@@ -22,9 +22,10 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import java.awt.*;
+import java.awt.Image;
 
-import javax.swing.*;
+import javax.swing.Action;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.coordinator.actions.*;
 import org.graalvm.visualizer.data.serialization.lazy.ReaderErrors;

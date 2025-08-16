@@ -32,7 +32,7 @@ import org.graalvm.visualizer.util.ListenerSupport;
 import org.openide.nodes.Children;
 import org.openide.nodes.Node;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import java.util.HashMap;
 
 /**

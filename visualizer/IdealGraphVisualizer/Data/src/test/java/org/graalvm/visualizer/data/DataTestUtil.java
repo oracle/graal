@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import jdk.graal.compiler.graphio.parsing.DataBinaryWriter;
 import jdk.graal.compiler.graphio.parsing.model.*;

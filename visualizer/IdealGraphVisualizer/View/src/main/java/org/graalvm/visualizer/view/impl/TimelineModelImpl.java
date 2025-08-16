@@ -33,7 +33,7 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.util.ListenerSupport;
 import org.graalvm.visualizer.util.RangeSliderModel;

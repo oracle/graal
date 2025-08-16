@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import java.awt.*;
+import java.awt.Image;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.coordinator.actions.RemoveCookie;
 import org.graalvm.visualizer.data.serialization.lazy.ReaderErrors;

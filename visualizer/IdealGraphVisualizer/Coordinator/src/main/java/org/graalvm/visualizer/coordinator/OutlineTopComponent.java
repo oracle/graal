@@ -63,7 +63,10 @@ import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
-import javax.swing.*;
+import javax.swing.JComponent;
+import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;

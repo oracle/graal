@@ -37,7 +37,7 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 
 import org.graalvm.visualizer.coordinator.OutlineTopComponent;

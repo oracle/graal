@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 import org.graalvm.visualizer.data.serialization.lazy.NetworkStreamContent;
 import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
