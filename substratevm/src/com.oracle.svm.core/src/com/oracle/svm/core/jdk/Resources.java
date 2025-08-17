@@ -48,6 +48,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -218,9 +219,10 @@ public final class Resources implements MultiLayeredImageSingleton {
     }
 
     /**
-     * The object used to mark a resource as reachable according to the metadata. It can be obtained
-     * when accessing the {@link Resources#resources} map, and it means that even though the
-     * resource was correctly specified in the configuration, accessing it will return null.
+     * A resource marked with the NEGATIVE_QUERY_MARKER is a resource included in the image
+     * according to the resource configuration, but it does not actually exist. Trying to access it
+     * at runtime will return {@code null} and not throw a
+     * {@link com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError}.
      */
     public static final ResourceStorageEntryBase NEGATIVE_QUERY_MARKER = new ResourceStorageEntryBase();
 
@@ -230,7 +232,7 @@ public final class Resources implements MultiLayeredImageSingleton {
      * correctly specified in the configuration, but we do not want to throw directly (for example
      * when we try to check all the modules for a resource).
      */
-    private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
+    public static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -275,23 +277,8 @@ public final class Resources implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ConditionalRuntimeValue<ResourceStorageEntryBase> getResource(ModuleResourceKey storageKey) {
-        return resources.get(storageKey);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public Iterable<ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
-        return resources.getValues();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public Iterable<ModuleResourceKey> resourceKeys() {
-        return resources.getKeys();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public int count() {
-        return resources.size();
+    public UnmodifiableEconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
+        return resources;
     }
 
     public static long getLastModifiedTime() {
@@ -642,8 +629,8 @@ public final class Resources implements MultiLayeredImageSingleton {
         } else if (entry == null) {
             return null;
         }
-        List<byte[]> data = entry.getData();
-        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+        byte[][] data = entry.getData();
+        return data.length == 0 ? null : new ByteArrayInputStream(data[0]);
     }
 
     private static ResourceStorageEntryBase findResourceForInputStream(Module module, String resourceName) {
@@ -717,8 +704,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         if (entry == null) {
             return;
         }
-        int numberOfResources = entry.getData().size();
-        for (int index = 0; index < numberOfResources; index++) {
+        for (int index = 0; index < entry.getData().length; index++) {
             resourcesURLs.add(createURL(module, canonicalResourceName, index));
         }
     }
@@ -828,7 +814,7 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources().getValues()) {
             var unconditionalEntry = entry.getValueUnconditionally();
             if (unconditionalEntry.hasData()) {
                 for (byte[] resource : unconditionalEntry.getData()) {

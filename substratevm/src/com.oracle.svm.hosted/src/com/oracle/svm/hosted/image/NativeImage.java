@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.ByteFormattingUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
@@ -503,6 +504,11 @@ public abstract class NativeImage extends AbstractImage {
              */
             boolean padImageHeap = !SpawnIsolates.getValue() || MremapImageHeap.getValue();
             long paddedImageHeapSize = padImageHeap ? NumUtil.roundUp(imageHeapSize, alignment) : imageHeapSize;
+
+            VMError.guarantee(NumUtil.isInt(paddedImageHeapSize),
+                            "The size of the image heap is %s and therefore too large. It must be smaller than %s. This can happen when very large resource files are included in the image or a build time initialized class creates a large cache.",
+                            ByteFormattingUtil.bytesToHuman(paddedImageHeapSize),
+                            ByteFormattingUtil.bytesToHuman(Integer.MAX_VALUE));
             RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(paddedImageHeapSize, objectFile.getByteOrder());
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
