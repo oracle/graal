@@ -168,7 +168,7 @@ public class HeapBreakdownProvider {
         if (!ImageLayerBuildingSupport.buildingExtensionLayer() && resourcesAreReachable) {
             /* Extract byte[] for resources. */
             int resourcesByteArrayCount = 0;
-            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources()) {
+            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources().getValues()) {
                 if (resourceList.getValueUnconditionally().hasData()) {
                     for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
                         resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
