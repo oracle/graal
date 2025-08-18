@@ -1095,8 +1095,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return espressoEnv.getThreadRegistry().activeThreads();
     }
 
-    public void registerThread(Thread host, StaticObject self) {
-        espressoEnv.getThreadRegistry().registerThread(host, self);
+    public void registerJavaThread(Thread host, StaticObject self) {
+        StaticObject guest = espressoEnv.getThreadRegistry().registerThread(host, self);
+        assert self == guest;
         if (shouldReportVMEvents()) {
             espressoEnv.getEventListener().threadStarted(self);
         }
