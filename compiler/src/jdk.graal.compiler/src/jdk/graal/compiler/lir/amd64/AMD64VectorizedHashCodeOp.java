@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VBROADCASTSS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPMOVSXBD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPMOVSXBQ;
@@ -169,12 +170,12 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static void arraysHashcodeElvcast(AMD64MacroAssembler masm, Register dst, JavaKind eltype) {
+    private static void arraysHashcodeElvcast(AMD64MacroAssembler masm, Register dst, JavaKind eltype, AVXKind.AVXSize avxSize) {
         switch (eltype) {
-            case Boolean -> vectorUnsignedCast(masm, dst, dst, YMM, JavaKind.Byte, JavaKind.Int);
-            case Byte -> vectorSignedCast(masm, dst, dst, YMM, JavaKind.Byte, JavaKind.Int);
-            case Short -> vectorSignedCast(masm, dst, dst, YMM, JavaKind.Short, JavaKind.Int);
-            case Char -> vectorUnsignedCast(masm, dst, dst, YMM, JavaKind.Short, JavaKind.Int);
+            case Boolean -> vectorUnsignedCast(masm, dst, dst, avxSize, JavaKind.Byte, JavaKind.Int);
+            case Byte -> vectorSignedCast(masm, dst, dst, avxSize, JavaKind.Byte, JavaKind.Int);
+            case Short -> vectorSignedCast(masm, dst, dst, avxSize, JavaKind.Short, JavaKind.Int);
+            case Char -> vectorUnsignedCast(masm, dst, dst, avxSize, JavaKind.Short, JavaKind.Int);
             case Int -> {
                 // do nothing
             }
@@ -237,7 +238,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static ArrayDataPointerConstant powersOf31 = pointerConstant(16, new int[]{
+    private static final int[] POWERS_OF_31_BACKWARDS = {
                     2111290369,
                     -2010103841,
                     350799937,
@@ -271,7 +272,8 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
                     961,
                     31,
                     1,
-    });
+    };
+    private static final ArrayDataPointerConstant powersOf31 = pointerConstant(16, POWERS_OF_31_BACKWARDS);
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
@@ -303,34 +305,40 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
 
         // @formatter:off
         // if (cnt1 >= 2) {
-        //   if (cnt1 >= 32) {
+        //   if (cnt1 >= elementsPerLoop) {
         //     UNROLLED VECTOR LOOP
         //   }
         //   UNROLLED SCALAR LOOP
         // }
         // SINGLE SCALAR
         // @formatter:on
-        if (supportsAVX2AndYMM()) {
-            masm.cmplAndJcc(cnt1, 32, ConditionFlag.Less, labelShortUnrolledBegin, false);
-            // cnt1 >= 32 && generate_vectorized_loop
+        if (supports(CPUFeature.AVX)) {
+            AVXKind.AVXSize avxSize = supportsAVX2AndYMM() ? YMM : XMM;
+            int elementsPerVector = avxSize.getBytes() / JavaKind.Int.getByteCount();
+            int elementsPerLoop = elementsPerVector * vresult.length;
+            int powersOf31Offset = (POWERS_OF_31_BACKWARDS.length - 1 - elementsPerLoop) * JavaKind.Int.getByteCount();
+
+            masm.cmplAndJcc(cnt1, elementsPerLoop, ConditionFlag.Less, labelShortUnrolledBegin, false);
+            // cnt1 >= elementsPerLoop
             masm.xorl(index, index);
-            // vresult = IntVector.zero(I256);
+            // vresult = IntVector.zero(species);
             for (int idx = 0; idx < 4; idx++) {
-                masm.vpxor(vresult[idx], vresult[idx], vresult[idx], YMM);
+                masm.vpxor(vresult[idx], vresult[idx], vresult[idx], avxSize);
             }
-            // vnext = IntVector.broadcast(I256, power_of_31_backwards[0]);
+            // vnext = IntVector.broadcast(species, power_of_31_backwards[0]);
+
             Register bound = tmp2;
             Register next = tmp3;
             masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
-            masm.movl(next, new AMD64Address(tmp2));
+            masm.movl(next, new AMD64Address(tmp2, powersOf31Offset));
             masm.movdl(vnext, next);
-            masm.emit(VPBROADCASTD, vnext, vnext, YMM);
+            masm.emit(supports(CPUFeature.AVX2) ? VPBROADCASTD : VBROADCASTSS, vnext, vnext, avxSize);
 
             // index = 0;
-            // bound = cnt1 & ~(32 - 1);
+            // bound = cnt1 & ~(elementsPerLoop - 1);
             masm.movl(bound, cnt1);
-            masm.andl(bound, ~(32 - 1));
-            // for (; index < bound; index += 32) {
+            masm.andl(bound, ~(elementsPerLoop - 1));
+            // for (; index < bound; index += elementsPerLoop) {
             masm.align(preferredLoopAlignment(crb));
             masm.bind(labelUnrolledVectorLoopBegin);
             // result *= next;
@@ -341,17 +349,18 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
              * a better job of prefetching, while also allowing subsequent instructions to be
              * executed while data are still being fetched.
              */
+            int bytesPerVector = elementsPerVector * elsize;
             for (int idx = 0; idx < 4; idx++) {
-                loadVector(masm, vtmp[idx], new AMD64Address(ary1, index, stride, 8 * idx * elsize), elsize * 8);
+                loadVector(masm, vtmp[idx], new AMD64Address(ary1, index, stride, idx * bytesPerVector), bytesPerVector);
             }
-            // vresult = vresult * vnext + ary1[index+8*idx:index+8*idx+7];
+            // vresult = vresult * vnext + ary1[index + idx * elementsPerVector];
             for (int idx = 0; idx < 4; idx++) {
-                masm.emit(VPMULLD, vresult[idx], vresult[idx], vnext, YMM);
-                arraysHashcodeElvcast(masm, vtmp[idx], arrayKind);
-                masm.emit(VPADDD, vresult[idx], vresult[idx], vtmp[idx], YMM);
+                masm.emit(VPMULLD, vresult[idx], vresult[idx], vnext, avxSize);
+                arraysHashcodeElvcast(masm, vtmp[idx], arrayKind, avxSize);
+                masm.emit(VPADDD, vresult[idx], vresult[idx], vtmp[idx], avxSize);
             }
-            // index += 32;
-            masm.addl(index, 32);
+            // index += elementsPerLoop;
+            masm.addl(index, elementsPerLoop);
             // index < bound;
             masm.cmplAndJcc(index, bound, ConditionFlag.Less, labelUnrolledVectorLoopBegin, false);
             // }
@@ -360,19 +369,20 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             masm.subl(cnt1, bound);
             // release bound
 
-            // vresult *= IntVector.fromArray(I256, power_of_31_backwards, 1);
+            // vresult *= IntVector.fromArray(species, power_of_31_backwards, 1);
             masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
+            int coefficientOffset = powersOf31Offset + JavaKind.Int.getByteCount();
             for (int idx = 0; idx < 4; idx++) {
-                loadVector(masm, vcoef[idx], new AMD64Address(tmp2, 0x04 + idx * JavaKind.Int.getByteCount() * 8), JavaKind.Int.getByteCount() * 8);
-                masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], YMM);
+                loadVector(masm, vcoef[idx], new AMD64Address(tmp2, coefficientOffset + idx * avxSize.getBytes()), avxSize.getBytes());
+                masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], avxSize);
             }
             // result += vresult.reduceLanes(ADD);
-            reduce(masm, YMM, JavaKind.Int, vtmp[0], vresult[0], vresult[1]);
-            reduce(masm, YMM, JavaKind.Int, vtmp[1], vresult[2], vresult[3]);
-            reduce(masm, YMM, JavaKind.Int, vresult[0], vtmp[0], vtmp[1]);
-            reduceI(masm, YMM.getBytes() / JavaKind.Int.getByteCount(), result, result, vresult[0], vtmp[2], vtmp[3]);
+            reduce(masm, avxSize, JavaKind.Int, vtmp[0], vresult[0], vresult[1]);
+            reduce(masm, avxSize, JavaKind.Int, vtmp[1], vresult[2], vresult[3]);
+            reduce(masm, avxSize, JavaKind.Int, vresult[0], vtmp[0], vtmp[1]);
+            reduceI(masm, elementsPerVector, result, result, vresult[0], vtmp[2], vtmp[3]);
         }
-        // } else if (cnt1 < 32) {
+        // } else if (cnt1 < elementsPerLoop) {
 
         masm.bind(labelShortUnrolledBegin);
         // int i = 1;
