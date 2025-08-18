@@ -219,11 +219,12 @@ public class SerializationSupport implements SerializationRegistry {
     private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub) {
+    public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub, boolean preserved) {
         synchronized (classes) {
-            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd, false));
+            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd, preserved));
             if (previous != null) {
                 previous.addCondition(cnd);
+                previous.reportReregistered(preserved);
             }
         }
     }
@@ -312,5 +313,15 @@ public class SerializationSupport implements SerializationRegistry {
     public boolean isRegisteredForSerialization0(DynamicHub dynamicHub) {
         var conditionSet = classes.get(dynamicHub.getTypeID());
         return conditionSet != null && conditionSet.satisfied();
+    }
+
+    public static boolean isPreservedForSerialization(DynamicHub dynamicHub) {
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
+            var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
+            if (conditionSet != null) {
+                return conditionSet.preserved();
+            }
+        }
+        return false;
     }
 }
