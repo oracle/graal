@@ -656,17 +656,14 @@ public class ProgressReporter {
             return null;
         }
 
-        @Override
-        public String toString() {
-            String locationSuffix = location == null ? "" : " (" + Utils.truncateName(location, 0.12) + ")";
-            double packageNameRatio = 0.19;
-            if (!javaModule.isNamed()) {
-                /* Give extra package name space if module not shown */
-                packageNameRatio += 0.13;
-            }
-            return moduleNamePrefix(javaModule) + Utils.truncateFQN(javaPackage.getName(), packageNameRatio) + locationSuffix;
+        public String renderToString(int maxLength) {
+            String locationSuffix = location == null ? "" : " (" + Utils.truncateName(location, 0.10) + ")";
+            String packageName = javaPackage == null ? "null" : javaPackage.getName();
+            String moduleNamePrefix = moduleNamePrefix(javaModule);
+            // Give remainder of space to package-part
+            int maxLengthPackage = maxLength - moduleNamePrefix.length() - locationSuffix.length();
+            return moduleNamePrefix + Utils.truncateFQN(packageName, maxLengthPackage) + locationSuffix;
         }
-
     }
 
     static String moduleNamePrefix(Module javaModule) {
@@ -676,7 +673,7 @@ public class ProgressReporter {
         if (javaModule.equals(DynamicHub.class.getModule())) {
             return "VM ";
         }
-        return Utils.truncateFQN(javaModule.getName(), 0.16) + "/";
+        return Utils.truncateFQN(javaModule.getName(), 0.10) + "/";
     }
 
     private void printBreakdowns() {
@@ -706,16 +703,18 @@ public class ProgressReporter {
         long printedHeapItems = 0;
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
-            /* <- 16% for module name -><- 19% or 32% for class FQN -><- 12% for location -> */
+            /* <- 10% for module name -><- remainder for class FQN -><- 10% for location -> */
             if (packagesBySize.hasNext()) {
                 Entry<BreakDownClassifier, Long> entry = packagesBySize.next();
-                codeSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(entry.getValue()), entry.getKey());
+                String sizeStr = String.format("%9s ", ByteFormattingUtil.bytesToHuman(entry.getValue()));
+                String entryStr = entry.getKey().renderToString(p.middle() - sizeStr.length());
+                codeSizePart = sizeStr + entryStr;
                 printedCodeBytes += entry.getValue();
                 printedCodeItems++;
             }
 
             String heapSizePart = "";
-            /* <- 16% for module name -><- 32% for class FQN -> */
+            /* <- 10% for module name -><- 29% for class FQN -> */
             if (typesBySizeInHeap.hasNext()) {
                 HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
                 String labelString = e.label.renderToString(linkStrategy);
@@ -988,7 +987,7 @@ public class ProgressReporter {
 
         private static String truncateName(String name, double maxLineRatio) {
             int length = name.length();
-            int maxLength = (int) (CHARACTERS_PER_LINE * maxLineRatio);
+            int maxLength = maxLength(maxLineRatio);
             if (length <= maxLength) {
                 return name;
             }
@@ -996,7 +995,11 @@ public class ProgressReporter {
         }
 
         static String truncateFQN(String fqn, double maxLineRatio) {
-            return truncateFQN(fqn, (int) (CHARACTERS_PER_LINE * maxLineRatio));
+            return truncateFQN(fqn, maxLength(maxLineRatio));
+        }
+
+        static int maxLength(double maxLineRatio) {
+            return (int) Math.floor(CHARACTERS_PER_LINE * maxLineRatio);
         }
 
         private static String truncateFQN(String fqn, int maxLength) {
@@ -1429,11 +1432,15 @@ public class ProgressReporter {
         }
 
         TwoColumnPrinter jumpToMiddle() {
-            int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
+            int remaining = middle() - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
             a(Utils.stringFilledWith(remaining, " "));
-            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            assert getCurrentTextLength() == middle();
             return this;
+        }
+
+        private int middle() {
+            return CHARACTERS_PER_LINE / 2;
         }
     }
 
