@@ -182,6 +182,10 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
+    /**
+     * When modifying the version values defined below, ensure that the corresponding version fields
+     * in {@code TruffleVersions} are also updated accordingly to maintain consistency.
+     */
     private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(29, 1);
     private static final int MAX_JDK_VERSION = 29;
 
@@ -192,7 +196,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides support for Truffle languages";
+        return "Provides internal support for Truffle";
     }
 
     public static Class<?> lookupClass(String className) {
@@ -327,7 +331,11 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+        /*
+         * The actual check is now performed in the Truffle API (TruffleAPIFeature). This fallback
+         * branch can be removed once all supported Truffle versions include TruffleAPIFeature.
+         */
+        if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks") && !hasTruffleAPIFeature(a)) {
             Version truffleVersion = getTruffleVersion(a);
             Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
             Version featureVersion = getSVMFeatureVersion();
@@ -375,6 +383,11 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCacheSymbol", "initialize", List.of());
 
         profilingEnabled = false;
+    }
+
+    private static boolean hasTruffleAPIFeature(AfterRegistrationAccess a) {
+        Class<?> featureClass = a.findClassByName("com.oracle.truffle.api.impl.TruffleAPIFeature");
+        return featureClass != null && ((FeatureImpl.AfterRegistrationAccessImpl) a).getFeatureHandler().containsFeature(featureClass);
     }
 
     /**
