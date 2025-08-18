@@ -2012,15 +2012,8 @@ final class TStringInternalNodes {
                     TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 0, 0, array, offset + byteArrayBaseOffset(), 0, 0, length << stride);
                 }
             }
-            final TruffleString cacheEntry;
-            if (length == javaString.length()) {
-                assert charOffset == 0;
-                cacheEntry = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
-            } else {
-                cacheEntry = null;
-            }
             int hash = fullLength ? TStringUnsafe.getJavaStringHashMasked(javaString) : 0;
-            return TruffleString.createFromByteArrayWithCacheEntry(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, cacheEntry);
+            return TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, true);
         }
     }
 
