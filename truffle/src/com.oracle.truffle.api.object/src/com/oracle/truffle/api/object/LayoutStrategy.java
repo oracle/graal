@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.object;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -85,11 +84,7 @@ abstract class LayoutStrategy {
 
     protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
         if (existing == null) {
-            if (Flags.isSeparateShape(putFlags)) {
-                return definePropertySeparateShape(oldShape, key, value, propertyFlags, putFlags);
-            } else {
-                return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
-            }
+            return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
         } else {
             if (existing.getFlags() == propertyFlags) {
                 if (existing.getLocation().canStore(value)) {
@@ -147,11 +142,7 @@ abstract class LayoutStrategy {
     }
 
     protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, int putFlags) {
-        if (Flags.isSeparateShape(putFlags)) {
-            Location newLocation = createLocationForValue(oldShape, value, putFlags);
-            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
-            return separateReplaceProperty(oldShape, oldProperty, newProperty);
-        } else if (oldProperty.getLocation().isValue()) {
+        if (oldProperty.getLocation().isValue()) {
             Location newLocation = createLocationForValue(oldShape, value, putFlags);
             Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
             // Always use direct replace for value locations to avoid shape explosion
@@ -173,12 +164,6 @@ abstract class LayoutStrategy {
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, propertyFlags);
         return replaceProperty(currentShape, oldProperty, newProperty);
-    }
-
-    private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, int putFlags) {
-        Location location = createLocationForValue(oldShape, value, putFlags);
-        Property property = Property.create(key, location, propertyFlags);
-        return createSeparateShape(oldShape).addProperty(property);
     }
 
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
@@ -280,36 +265,6 @@ abstract class LayoutStrategy {
         if (!shape.isValid()) {
             newShape.invalidateValidAssumption();
         }
-        return newShape;
-    }
-
-    protected ShapeImpl separateReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
-        shape.invalidateAllPropertyAssumptions();
-        ShapeImpl newRoot = shape.createShape(shape.getLayout(), shape.sharedData, null, shape.objectType, PropertyMap.empty(), null, shape.getLayout().createAllocator(), shape.flags);
-        ShapeImpl newShape = newRoot;
-        boolean found = false;
-        for (Iterator<Property> iterator = shape.getPropertyMap().orderedValueIterator(); iterator.hasNext();) {
-            Property p = iterator.next();
-            if (!found && p.equals(oldProperty)) {
-                p = newProperty;
-                found = true;
-            }
-            newShape = newShape.addProperty(p);
-        }
-        assert found;
-        assert newShape.isValid();
-        return newShape;
-    }
-
-    protected ShapeImpl createSeparateShape(ShapeImpl shape) {
-        shape.invalidateAllPropertyAssumptions();
-        ShapeImpl newRoot = shape.createShape(shape.getLayout(), shape.sharedData, null, shape.objectType, PropertyMap.empty(), null, shape.getLayout().createAllocator(), shape.flags);
-        ShapeImpl newShape = newRoot;
-        for (Iterator<Property> iterator = shape.getPropertyMap().orderedValueIterator(); iterator.hasNext();) {
-            Property p = iterator.next();
-            newShape = newShape.addProperty(p);
-        }
-        assert newShape.isValid();
         return newShape;
     }
 

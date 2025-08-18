@@ -521,24 +521,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeExt {
         return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, putFlags);
     }
 
-    protected ShapeImpl cloneRoot(ShapeImpl from, Object newSharedData) {
-        return createShape(from.layout, newSharedData, null, from.objectType, from.propertyMap, null, from.allocator(), from.flags);
-    }
-
-    /**
-     * Create a separate clone of a shape.
-     *
-     * @param newParent the cloned parent shape
-     */
-    protected final ShapeImpl cloneOnto(ShapeImpl newParent) {
-        ShapeImpl from = this;
-        ShapeImpl newShape = createShape(newParent.layout, newParent.sharedData, newParent, from.objectType, from.propertyMap, from.transitionFromParent, from.allocator(), newParent.flags);
-
-        shapeCloneCount.inc();
-
-        return newParent.addDirectTransition(from.transitionFromParent, newShape);
-    }
-
     public final Transition getTransitionFromParent() {
         return transitionFromParent;
     }
@@ -917,19 +899,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeExt {
         return null;
     }
 
-    /**
-     * Clone off a separate shape with new shared data.
-     *
-     */
-    @TruffleBoundary
-    public final ShapeImpl createSeparateShape(Object newSharedData) {
-        if (parent == null) {
-            return cloneRoot(this, newSharedData);
-        } else {
-            return this.cloneOnto(parent.createSeparateShape(newSharedData));
-        }
-    }
-
     @TruffleBoundary
     @Override
     protected ShapeImpl setFlags(int newShapeFlags) {
@@ -1209,7 +1178,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeExt {
     }
 
     private static final DebugCounter shapeCount = DebugCounter.create("Shapes allocated total");
-    private static final DebugCounter shapeCloneCount = DebugCounter.create("Shapes allocated cloned");
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
