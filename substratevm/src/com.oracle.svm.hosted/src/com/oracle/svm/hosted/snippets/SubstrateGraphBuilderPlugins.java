@@ -844,9 +844,9 @@ public class SubstrateGraphBuilderPlugins {
 
                 ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
                 if (b.currentBlockCatchesOOME()) {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true, true));
                 } else {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true, true));
                 }
                 return true;
             }
