@@ -122,6 +122,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         DeoptimizationEvent event = factory.createDeoptimizationEvent();
         if (event.isEnabled()) {
             event.setRootFunction(target);
+            event.setInvalidated(!target.isValid());
             event.publish();
         }
     }
