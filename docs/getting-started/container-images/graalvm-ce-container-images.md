@@ -14,10 +14,10 @@ To support container-based development, GraalVM Community Edition container imag
 
 There are different GraalVM Community Edition container images provided depending on the architecture and the Java version, and have `-community` as part of their names.
 These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
-The container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8 or 9.
+The container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8, 9, and 10.
 
 GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `24`, and so on.
-For instance, GraalVM for JDK 24 is installed in _/usr/lib64/graalvm/graalvm-community-java24/_. 
+For instance, GraalVM for JDK 24 is installed in _/usr/lib64/graalvm/graalvm-community-java24/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 > Note: For GraalVM non-RPM based images (**graalvm-community**, **python-community**, **truffleruby-community**), the installation location is under _/opt/_ (_/opt/graalvm-community-java&lt;$FeatureVersion&gt;/_, _/opt/truffleruby-&lt;$GRAALVM_VERSION&gt;/_, and _/opt/graalpy-&lt;$GRAALVM_VERSION&gt;/_ respectively).
@@ -28,13 +28,13 @@ See a full list of GraalVM Community Edition container images [here](https://git
 
 ## Tags
 
-Each repository provides multiple tags that let you choose the level of stability you need including the Java version, build number, and the Oracle Linux version. 
+Each repository provides multiple tags that let you choose the level of stability you need including the Java version, build number, and the Oracle Linux version.
 Image tags use the following naming convention:
 ```bash
 $version[-muslib(for native image only)][-$platform][-$buildnumber]
 ```
 
-The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
+The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom).
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 For example:
 ```
@@ -51,23 +51,23 @@ For example:
     ```bash
     docker pull ghcr.io/graalvm/jdk-community:24
     ```
-    
+
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
     FROM ghcr.io/graalvm/jdk-community:24
     ```
     You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler preinstalled.
 
-2. To pull the container image with the `native-image` utility for a specific JDK feature version, such as _24_, run: 
+2. To pull the container image with the `native-image` utility for a specific JDK feature version, such as _24_, run:
     ```bash
     docker pull ghcr.io/graalvm/native-image-community:24
     ```
-    
+
     Alternatively, to pull the container image with the `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, use:
     ```bash
     docker pull ghcr.io/graalvm/native-image-community:24-muslib
     ```
-    
+
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
     FROM ghcr.io/graalvm/native-image-community:24-muslib
@@ -88,7 +88,7 @@ For example:
     ```bash
     java -version
     ```
-    
+
     To check the `native-image` version, run:
     ```bash
     native-image --version
@@ -99,10 +99,10 @@ For example:
     docker pull --platform linux/aarch64 ghcr.io/graalvm/native-image-community:24
     ```
 
-## Oracle GraalVM Container Images 
+## Oracle GraalVM Container Images
 
-Oracle GraalVM container images are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html). 
-Learn more at the [Oracle Help Center](https://docs.oracle.com/en/graalvm/jdk/24/docs/getting-started/container-images/).
+Oracle GraalVM container images are published in the [Oracle Container Registry (OCR)](https://container-registry.oracle.com/ords/ocr/ba/graalvm) and include [GFTC-licensed](https://www.oracle.com/downloads/licenses/graal-free-license.html) Oracle GraalVM.
+Learn more in the [Oracle GraalVM Container Images documentation](https://docs.oracle.com/en/graalvm/jdk/24/docs/getting-started/container-images/).
 
 ### Related Documentation
 
