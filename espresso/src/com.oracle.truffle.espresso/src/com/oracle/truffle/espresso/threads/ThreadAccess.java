@@ -559,8 +559,8 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
                 } finally {
                     transition.restore(this);
                 }
+                setTerminateStatusAndNotify(thread);
             }
-            setTerminateStatusAndNotify(thread);
         } else {
             assert ThreadState.isTerminated(getState(thread));
         }
@@ -573,6 +573,11 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      * If this method returns true, the thread will have been terminated.
      */
     public boolean terminateIfStillborn(StaticObject guest) {
+        if (getContext().isClosing() || getContext().isTruffleClosed()) {
+            setState(guest, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
+            // Present the thread as started, but it will never be run.
+            return true;
+        }
         if (isStillborn(guest)) {
             setTerminateStatusAndNotify(guest);
             return true;
@@ -593,9 +598,6 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     }
 
     private boolean isStillborn(StaticObject guest) {
-        if (getContext().isClosing() || getContext().isTruffleClosed()) {
-            return true;
-        }
         /*
          * A bit of a special case. We want to make sure we observe the stillborn status
          * synchronously.
