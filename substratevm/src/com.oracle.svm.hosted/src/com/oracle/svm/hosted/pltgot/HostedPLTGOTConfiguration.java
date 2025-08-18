@@ -26,6 +26,14 @@ package com.oracle.svm.hosted.pltgot;
 
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.objectfile.SectionName;
@@ -35,6 +43,8 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunction;
 
 public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
     public static final SectionName SVM_GOT_SECTION = new SectionName.ProgbitsSectionName("svm_got");
@@ -42,7 +52,7 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
     protected MethodAddressResolutionSupport methodAddressResolutionSupport;
     private final GOTEntryAllocator gotEntryAllocator = new GOTEntryAllocator();
 
-    private PLTSectionSupport pltSectionSupport;
+    private final PLTSectionSupport pltSectionSupport;
     private HostedMetaAccess hostedMetaAccess;
 
     @SuppressWarnings("this-escape")
@@ -52,6 +62,38 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
 
     public static HostedPLTGOTConfiguration singleton() {
         return (HostedPLTGOTConfiguration) ImageSingletons.lookup(PLTGOTConfiguration.class);
+    }
+
+    public static boolean canBeCalledViaPLTGOT(SharedMethod method) {
+        if (AnnotationAccess.isAnnotationPresent(method, CEntryPoint.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method, CFunction.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method, StubCallingConvention.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), InternalVMMethod.class)) {
+            return false;
+        }
+        if (AnnotationAccess.isAnnotationPresent(method, ExplicitCallingConvention.class) &&
+                        AnnotationAccess.getAnnotation(method, ExplicitCallingConvention.class).value().equals(SubstrateCallingConventionKind.ForwardReturnValue)) {
+            /*
+             * Methods that use ForwardReturnValue calling convention can't be resolved with PLT/GOT
+             * on AMD64 because AMD64MethodAddressResolutionDispatcher.resolveMethodAddress uses the
+             * same calling convention, and we can't save the callers value of the `rax` register on
+             * AMD64 without spilling it.
+             */
+            return false;
+        }
+        return true;
     }
 
     public abstract Method getArchSpecificResolverAsMethod();
@@ -65,13 +107,14 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         this.hostedMetaAccess = metaAccess;
     }
 
-    public void initializeMethodAddressResolutionSupport(MethodAddressResolutionSupportFactory methodAddressResolutionSupportFactory) {
+    public MethodAddressResolutionSupport initializeMethodAddressResolutionSupport(MethodAddressResolutionSupport support) {
         assert methodAddressResolutionSupport == null : "The field methodAddressResolutionSupport can't be initialized twice.";
-        methodAddressResolutionSupport = methodAddressResolutionSupportFactory.create();
+        methodAddressResolutionSupport = support;
         if (PLTGOTOptions.PrintPLTGOTCallsInfo.getValue()) {
             methodAddressResolutionSupport = new CollectPLTGOTCallSitesResolutionSupport(methodAddressResolutionSupport);
         }
         methodAddressResolver = getMethodAddressResolutionSupport().createMethodAddressResolver();
+        return methodAddressResolutionSupport;
     }
 
     public MethodAddressResolutionSupport getMethodAddressResolutionSupport() {
