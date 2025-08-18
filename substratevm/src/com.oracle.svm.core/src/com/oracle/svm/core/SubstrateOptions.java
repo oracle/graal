@@ -359,8 +359,8 @@ public class SubstrateOptions {
              * precision of implicit stack traces. But for optimized release builds, including pgo
              * builds, it is a valuable image size reduction.
              */
-            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation)) {
-                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation) && newLevel == OptimizationLevel.O3) {
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, true);
             }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
