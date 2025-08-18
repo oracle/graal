@@ -97,7 +97,7 @@ public class HeapBreakdownProvider {
         this.totalHeapSize = totalHeapSize;
     }
 
-    protected void calculate(BeforeImageWriteAccessImpl access) {
+    protected void calculate(BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
         HostedMetaAccess metaAccess = access.getHostedMetaAccess();
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
 
@@ -160,10 +160,13 @@ public class HeapBreakdownProvider {
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
         ProgressReporter reporter = ProgressReporter.singleton();
-        /* GR-57350: This condition can be removed once resources are adapted for Layered Images */
-        if (!ImageLayerBuildingSupport.buildingExtensionLayer()) {
+        long resourcesByteArraySize = 0;
+        /*
+         * GR-57350: The first part of this condition can be removed once resources are adapted for
+         * Layered Images.
+         */
+        if (!ImageLayerBuildingSupport.buildingExtensionLayer() && resourcesAreReachable) {
             /* Extract byte[] for resources. */
-            long resourcesByteArraySize = 0;
             int resourcesByteArrayCount = 0;
             for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources()) {
                 if (resourceList.getValueUnconditionally().hasData()) {
@@ -173,11 +176,11 @@ public class HeapBreakdownProvider {
                     }
                 }
             }
-            reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
             if (resourcesByteArraySize > 0) {
                 addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
             }
         }
+        reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
         /* Extract byte[] for graph encodings. */
         if (graphEncodingByteLength >= 0) {
             long graphEncodingSize = objectLayout.getArraySize(JavaKind.Byte, graphEncodingByteLength, true);
