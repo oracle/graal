@@ -65,7 +65,7 @@ final class InternalResourceRoots {
     private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
     private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
     private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
-    static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
+    private static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
 
     static String overriddenComponentRootProperty(String componentId) {
         StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
@@ -253,7 +253,7 @@ final class InternalResourceRoots {
             root = findCacheRootDefault();
             kind = Root.Kind.VERSIONED;
         }
-        if (TRACE_INTERNAL_RESOURCE_EVENTS) {
+        if (isTraceInternalResourceEvents()) {
             logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
                             root.path(), root.hint(), root.hintValue());
         }
@@ -347,8 +347,16 @@ final class InternalResourceRoots {
         return container.resolve("org.graalvm.polyglot");
     }
 
+    static boolean isTraceInternalResourceEvents() {
+        /*
+         * In AOT we want to enable tracing if its enabled in the built image or using the option at
+         * runtime.
+         */
+        return TRACE_INTERNAL_RESOURCE_EVENTS || (TruffleOptions.AOT && Boolean.getBoolean("polyglotimpl.TraceInternalResources"));
+    }
+
     static void logInternalResourceEvent(String message, Object... args) {
-        assert TRACE_INTERNAL_RESOURCE_EVENTS : "need to check for TRACE_INTERNAL_RESOURCE_EVENTS before use";
+        assert isTraceInternalResourceEvents() : "need to check for TRACE_INTERNAL_RESOURCE_EVENTS before use";
         PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
     }
 

@@ -163,7 +163,7 @@ final class InternalResourceCache {
             case UNVERSIONED -> findStandaloneResourceRoot(root.path());
             case VERSIONED -> null;
         };
-        if (path != null && InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
+        if (path != null && InternalResourceRoots.isTraceInternalResourceEvents()) {
             /*
              * The path for the VERSIONED resource is logged when the resource is requested.
              * Computation of this path is expensive and involves a call to
@@ -254,7 +254,7 @@ final class InternalResourceCache {
         }
         Path target = owningRoot.path().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
         if (!Files.exists(target)) {
-            if (InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
+            if (InternalResourceRoots.isTraceInternalResourceEvents()) {
                 InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
             }
             Path parent = target.getParent();
@@ -282,7 +282,7 @@ final class InternalResourceCache {
                 }
             }
         } else {
-            if (InternalResourceRoots.TRACE_INTERNAL_RESOURCE_EVENTS) {
+            if (InternalResourceRoots.isTraceInternalResourceEvents()) {
                 InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
                                 id, resourceId, target);
             }

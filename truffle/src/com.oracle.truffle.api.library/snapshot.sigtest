@@ -124,7 +124,7 @@ meth public abstract java.lang.Object readDelegateExport(java.lang.Object)
 
 CLSS public abstract com.oracle.truffle.api.library.LibraryFactory<%0 extends com.oracle.truffle.api.library.Library>
 cons protected init(java.lang.Class<{com.oracle.truffle.api.library.LibraryFactory%0}>,java.util.List<com.oracle.truffle.api.library.Message>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="26.0")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 cons protected init(java.lang.Class<{com.oracle.truffle.api.library.LibraryFactory%0}>,java.util.List<com.oracle.truffle.api.library.Message>,boolean)
 meth protected !varargs com.oracle.truffle.api.utilities.FinalBitSet createMessageBitSet(com.oracle.truffle.api.library.Message[])
 meth protected abstract java.lang.Class<?> getDefaultClass(java.lang.Object)
