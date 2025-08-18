@@ -239,6 +239,19 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    maven:: {
+      packages+: (if self.os == "linux" && self.arch == "amd64" then {
+        maven: '==3.9.10',
+      } else {}),
+      # no maven package available on other platforms
+      downloads+: (if self.os != "linux" || self.arch != "amd64" then {
+        MAVEN_HOME: {name: 'maven', version: '3.9.10', platformspecific: false},
+      } else {}),
+      setup+: (if self.os != "linux" || self.arch != "amd64" then [
+        ['set-export', 'PATH', (if self.os == "windows" then '$MAVEN_HOME\\bin;$PATH' else '$MAVEN_HOME/bin:$PATH')],
+      ] else []),
+    },
+
     sulong:: self.cmake + {
       packages+: if self.os == "windows" then {
         msvc_source: "==14.0",
@@ -275,12 +288,11 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: self.gradle + self.cmake + {
+    graalpy:: self.gradle + self.cmake + self.maven + {
       packages+: if (self.os == "linux") then {
         libffi: '==3.2.1',
         bzip2: '==1.0.6',
         zlib: '==1.2.11',
-        maven: "==3.6.3",
       } else {},
     },
 
