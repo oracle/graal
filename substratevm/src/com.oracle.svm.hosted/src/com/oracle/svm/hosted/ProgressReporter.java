@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSource;
 import java.util.ArrayList;
@@ -664,35 +665,59 @@ public class ProgressReporter {
             int maxLengthPackage = maxLength - moduleNamePrefix.length() - locationSuffix.length();
             return moduleNamePrefix + Utils.truncateFQN(packageName, maxLengthPackage) + locationSuffix;
         }
+
+        public String[] elements() {
+            String moduleName = javaModule.isNamed() ? javaModule.getName() : "";
+            String packageName = javaPackage == null ? "" : javaPackage.getName();
+            String locationName = location == null ? "" : location;
+            return new String[]{mapToNativeImageRuntime(moduleName), packageName, locationName};
+        }
     }
 
     static String moduleNamePrefix(Module javaModule) {
-        if (!javaModule.isNamed()) {
-            return "";
+        String moduleName = javaModule.isNamed() ? javaModule.getName() : "";
+        return Utils.truncateFQN(mapToNativeImageRuntime(moduleName), 0.10) + "/";
+    }
+
+    private static String mapToNativeImageRuntime(String moduleName) {
+        String modulePrefix = "org.graalvm.nativeimage.";
+        if (moduleName.equals(modulePrefix + "builder")) {
+            return modulePrefix + "runtime";
         }
-        if (javaModule.equals(DynamicHub.class.getModule())) {
-            return "VM ";
-        }
-        return Utils.truncateFQN(javaModule.getName(), 0.10) + "/";
+        return moduleName;
     }
 
     private void printBreakdowns() {
-        if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-            return;
-        }
-        l().printLineSeparator();
         Map<BreakDownClassifier, Long> codeBreakdown = CodeBreakdownProvider.getAndClear().entrySet().stream()
                         .collect(Collectors.groupingBy(
                                         entry -> BreakDownClassifier.of(entry.getKey()),
                                         Collectors.summingLong(entry -> entry.getValue())));
 
-        Iterator<Entry<BreakDownClassifier, Long>> packagesBySize = codeBreakdown.entrySet().stream()
-                        .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
+        List<Entry<BreakDownClassifier, Long>> sortedBreakdownData = codeBreakdown.entrySet().stream()
+                        .sorted(Entry.comparingByValue(Comparator.reverseOrder())).toList();
 
-        HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
-        Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
+        if (SubstrateOptions.BuildOutputCodeBreakdownFile.getValue()) {
+            String valueSeparator = ",";
+            List<String> lines = new ArrayList<>();
+            lines.add(String.join(valueSeparator, "Size", "Module", "Package", "Location"));
+            sortedBreakdownData.forEach(entry -> {
+                lines.add(entry.getValue() + valueSeparator + String.join(valueSeparator, entry.getKey().elements()));
+            });
+            Path breakdownFile = SubstrateOptions.getImagePath().resolve(SubstrateOptions.Name.getValue() + ".code_breakdown.csv");
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, breakdownFile);
+            try {
+                Files.write(breakdownFile, lines);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Failed generating " + breakdownFile, e);
+            }
+        }
+
+        if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            return;
+        }
 
         final TwoColumnPrinter p = new TwoColumnPrinter();
+        l().printLineSeparator();
         p.l().yellowBold().a(String.format("Top %d ", MAX_NUM_BREAKDOWN)).doclink("origins", "#glossary-code-area-origins").a(" of code area:")
                         .jumpToMiddle()
                         .a(String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN)).reset().flushln();
@@ -701,6 +726,9 @@ public class ProgressReporter {
         long printedHeapBytes = 0;
         long printedCodeItems = 0;
         long printedHeapItems = 0;
+        Iterator<Entry<BreakDownClassifier, Long>> packagesBySize = sortedBreakdownData.iterator();
+        HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
+        Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
             /* <- 10% for module name -><- remainder for class FQN -><- 10% for location -> */
