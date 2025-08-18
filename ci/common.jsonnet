@@ -109,7 +109,8 @@ local common_json = import "../common.json";
     oraclejdkLatest: self["oraclejdk-latest"],
   },
 
-  # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
+  # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js).
+  # See deps.windows_devkit to add a devkit on windows conveniently.
   devkits: {
     "windows-jdk17": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
@@ -173,6 +174,12 @@ local common_json = import "../common.json";
     },
 
     # These dependencies are not included by default in any platform object
+
+    # Not included by default in $.windows_amd64 and $.windows_server_2016_amd64 because it needs jdk_name.
+    # As a note, Native Image needs this to build.
+    windows_devkit:: {
+      packages+: if self.os == "windows" then $.devkits["windows-" + self.jdk_name].packages else {},
+    },
 
     eclipse: {
       downloads+: {

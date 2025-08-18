@@ -2,7 +2,6 @@
   local common = import '../../ci/ci_common/common.jsonnet',
   local utils = import '../../ci/ci_common/common-utils.libsonnet',
   local top_level_ci = utils.top_level_ci,
-  local devkits = common.devkits,
 
   local tools_common = {
     setup+: [
@@ -90,8 +89,8 @@
     common.linux_aarch64 + common.labsjdkLatest   + tools_weekly,
     common.linux_aarch64 + common.labsjdk21   + tools_weekly,
 
-    common.windows_amd64 + common.oraclejdkLatest + tools_weekly + devkits["windows-jdkLatest"],
-    common.windows_amd64 + common.oraclejdk21 + tools_weekly + devkits["windows-jdk21"],
+    common.windows_amd64 + common.oraclejdkLatest + tools_weekly + common.deps.windows_devkit,
+    common.windows_amd64 + common.oraclejdk21 + tools_weekly + common.deps.windows_devkit,
 
     common.darwin_amd64  + common.oraclejdkLatest + tools_weekly,
     common.darwin_amd64  + common.oraclejdk21 + tools_weekly,
