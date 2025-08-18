@@ -37,7 +37,6 @@ Run `native-image --help` for help on build options.
 * `-J<flag>`: pass an option directly to the JVM running the `native-image` builder
 * `--diagnostics-mode`: enable diagnostics output: class initialization, substitutions, etc.
 * `--enable-preview`: allow classes to depend on preview features of this release
-* `--enable-native-access <module name>[,<module name>...]`: enable modules that are permitted to perform restricted native operations. `<module name>` can also be `ALL-UNNAMED`
 * `--verbose`: enable verbose output
 * `--version`: print the product version and exit
 * `--help`: print this help message
@@ -50,12 +49,14 @@ Run `native-image --help` for help on build options.
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
 * `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. A comma-separated list can contain `heapdump`, `jfr`, `jvmstat`, `jmxserver` (experimental), `jmxclient` (experimental), `threaddump`, or `all` (deprecated behavior: defaults to `all` if no argument is provided). For example: `--enable-monitoring=heapdump,jfr`.
+* `--enable-native-access <module name>[,<module name>...]`: enable modules that are permitted to perform restricted native operations. `<module name>` can also be `ALL-UNNAMED`
 * `--enable-sbom`: assemble a Software Bill of Materials (SBOM) for the executable or shared library based on the results from the static analysis. Comma-separated list can contain `embed` to store the SBOM in data sections of the binary, `export` to save the SBOM in the output directory, `classpath` to include the SBOM as a Java resource on the classpath at _META-INF/native-image/sbom.json_, `strict` to abort the build if any type (such as a class, interface, or annotation) cannot be matched to an SBOM component, `cyclonedx` (the only format currently supported), and `class-level` to include class-level metadata. Defaults to embedding an SBOM: `--enable-sbom=embed`. To disable the SBOM feature, use `--enable-sbom=false` on the command line.
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
 * `--exact-reachability-metadata`: enables exact and user-friendly handling of reflection, resources, JNI, and serialization
 * `--exact-reachability-metadata-path`: trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable
+* `--future-defaults`: enable options that are planned to become defaults in future releases. A comma-separated list can contain `all`, `run-time-initialized-jdk`, `none`.
 * `--gc=<value>`: select a Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (not available in GraalVM Community Edition); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during generation of a native executable. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at run time and not during generation. An empty string is currently not supported.
@@ -141,7 +142,7 @@ However, JDK system properties are included in generated executables and are vis
 
 For example:
 * `-D<system.property>=<value>` will only be visible at build time. If this system property is accessed in the native executable, it will return `null`.
-* `-Djava.version=24` will be visible at both build time and in the native executable because the value is copied into the binary by default.
+* `-Djava.version=25` will be visible at both build time and in the native executable because the value is copied into the binary by default.
 
 The following system properties are automatically copied into the generated executable:
 

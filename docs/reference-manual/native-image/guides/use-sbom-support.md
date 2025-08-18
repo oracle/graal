@@ -7,11 +7,10 @@ permalink: /reference-manual/native-image/guides/use-sbom-support/
 
 # Embed an SBOM in a Native Executable to Identify Its Dependencies
 
-Native Image embeds a Software Bill of Materials (SBOM) into a resulting binary.
+Native Image embeds a Software Bill of Materials (SBOM) into the resulting binary by default. (Not available in GraalVM Community Edition.)
 An SBOM is an inventory of all the components, libraries, and modules that make up your application.
-It provides detailed information about all open-source and proprietary libraries used by the application and their versions.
-It supports the CycloneDX format by default.
-(Not available in GraalVM Community Edition.)
+It provides detailed information about all open-source and proprietary libraries used by the application and their versions, and it supports the CycloneDX format by default.
+You can configure this behavior with the `--enable-sbom` option. See [Software Bill of Materials (SBOM) in Native Image](../../../security/SBOM.md) for more information.
 
 ### Prerequisites
 
