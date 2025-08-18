@@ -16,11 +16,11 @@ Options to configure Native Image are provided in the following categories:
 - Extra build options: run `native-image --help-extra` for help on extra build options.
 - Expert build options: run `native-image --expert-options` for help on expert options.
 
-Depending on the GraalVM version, the options to the `native-image` builder may differ. 
- 
+Depending on the GraalVM version, the options to the `native-image` builder may differ.
+
 Native Image options can also be categorized as **hosted** or **runtime** options.
 
-* **Hosted options**: to configure the build process&mdash;for example, influence what is included in the native binary and how it is built. 
+* **Hosted options**: to configure the build process&mdash;for example, influence what is included in the native binary and how it is built.
 These options use the prefix `-H:`.
 * **Runtime options**: to provide the initial value(s) when building the native binary, using the prefix `-R:`. At runtime, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
 
@@ -50,7 +50,7 @@ Run `native-image --help` for help on build options.
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
 * `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. A comma-separated list can contain `heapdump`, `jfr`, `jvmstat`, `jmxserver` (experimental), `jmxclient` (experimental), `threaddump`, or `all` (deprecated behavior: defaults to `all` if no argument is provided). For example: `--enable-monitoring=heapdump,jfr`.
-* `--enable-sbom`: embed a Software Bill of Materials (SBOM) in the executable or shared library for passive inspection. A comma-separated list can contain `cyclonedx`, `strict` (defaults to `cyclonedx` if no argument is provided), or `export` to save the SBOM to the native executable's output directory. The optional `strict` flag aborts the build if any class cannot be matched to a library in the SBOM. For example: `--enable-sbom=cyclonedx,strict`. (Not available in GraalVM Community Edition.)
+* `--enable-sbom`: assemble a Software Bill of Materials (SBOM) for the executable or shared library based on the results from the static analysis. Comma-separated list can contain `embed` to store the SBOM in data sections of the binary, `export` to save the SBOM in the output directory, `classpath` to include the SBOM as a Java resource on the classpath at _META-INF/native-image/sbom.json_, `strict` to abort the build if any type (such as a class, interface, or annotation) cannot be matched to an SBOM component, `cyclonedx` (the only format currently supported), and `class-level` to include class-level metadata. Defaults to embedding an SBOM: `--enable-sbom=embed`. To disable the SBOM feature, use `--enable-sbom=false` on the command line.
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
 * `--exact-reachability-metadata`: enables exact and user-friendly handling of reflection, resources, JNI, and serialization
 * `--exact-reachability-metadata-path`: trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries
