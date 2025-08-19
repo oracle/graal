@@ -16,7 +16,7 @@ For example, host code can execute untrusted guest code using the [UNTRUSTED](ht
 Host code can also execute multiple mutually distrusting instances of guest code that will be protected from one another.
 Used this way, sandboxing supports a multi-tenant scenario:
 
-![Sandbox Security Boundary](sandbox_security_boundary.png)
+![Sandbox Security Boundary](images/sandbox_security_boundary.png)
 
 Use cases that benefit from introducing a security boundary are:
 * Usage of third party code, i.e., pulling in a dependency. Third party code is typically trusted and scanned for vulnerabilities before use, but sandboxing them is an additional precaution against supply-chain attacks.
