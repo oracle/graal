@@ -627,62 +627,27 @@ abstract class ExtLocations {
         }
     }
 
-    abstract static sealed class AbstractObjectArrayLocation extends AbstractObjectLocation implements ArrayLocation {
+    /**
+     * Object array location with assumption-based type speculation.
+     */
+    static final class ObjectArrayLocation extends AbstractObjectLocation implements ArrayLocation {
 
-        AbstractObjectArrayLocation(int index, Assumption finalAssumption, TypeAssumption typeAssumption) {
+        ObjectArrayLocation(int index, Assumption finalAssumption, TypeAssumption typeAssumption) {
             super(index, finalAssumption, typeAssumption);
         }
 
-        protected static Object getArray(DynamicObject store, boolean condition) {
+        private static Object getArray(DynamicObject store, boolean condition) {
             return UnsafeAccess.unsafeCast(store.getObjectStore(), Object[].class, condition, true, true);
         }
 
-        protected final long getOffset() {
+        private long getOffset() {
             return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE * index;
         }
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            return UnsafeAccess.unsafeGetObject(getArray(store, guard), getOffset(), guard, this);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            boolean valueGuard = canStore(value);
-            if (valueGuard) {
-                setObjectInternal(store, value, guard);
-            } else {
-                throw incompatibleLocationException();
-            }
-        }
-
-        protected final void setObjectInternal(DynamicObject store, Object value, boolean guard) {
-            UnsafeAccess.unsafePutObject(getArray(store, guard), getOffset(), value, this);
-        }
-
-        @Override
-        protected final void clear(DynamicObject store) {
-            UnsafeAccess.unsafePutObject(getArray(store, false), getOffset(), null, this);
-        }
-
-        @Override
-        public final int objectArrayCount() {
-            return OBJECT_SLOT_SIZE;
-        }
-
-        @Override
-        public final void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
-        }
-    }
-
-    /**
-     * Object array location with assumption-based type speculation.
-     */
-    static final class ATypedObjectArrayLocation extends AbstractObjectArrayLocation {
-
-        ATypedObjectArrayLocation(int index, TypeAssumption typeAssumption, Assumption finalAssumption) {
-            super(index, finalAssumption, typeAssumption);
+            Object value = UnsafeAccess.unsafeGetObject(getArray(store, guard), getOffset(), guard, this);
+            return assumedTypeCast(value, guard);
         }
 
         @Override
@@ -691,25 +656,47 @@ abstract class ExtLocations {
                 maybeInvalidateFinalAssumption();
             }
             maybeInvalidateTypeAssumption(value);
-            super.setObjectInternal(store, value, guard);
+
+            boolean valueGuard = canStore(value);
+            if (valueGuard) {
+                setObjectInternal(store, value, guard);
+            } else {
+                throw incompatibleLocationException();
+            }
+        }
+
+        private void setObjectInternal(DynamicObject store, Object value, boolean guard) {
+            UnsafeAccess.unsafePutObject(getArray(store, guard), getOffset(), value, this);
         }
 
         @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return assumedTypeCast(super.get(store, guard), guard);
+        protected void clear(DynamicObject store) {
+            UnsafeAccess.unsafePutObject(getArray(store, false), getOffset(), null, this);
+        }
+
+        @Override
+        public int objectArrayCount() {
+            return OBJECT_SLOT_SIZE;
+        }
+
+        @Override
+        public void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
         }
     }
 
-    abstract static sealed class AbstractObjectFieldLocation extends AbstractObjectLocation implements FieldLocation {
-        protected final FieldInfo field;
+    /**
+     * Object field location with assumption-based type speculation.
+     */
+    static final class ObjectFieldLocation extends AbstractObjectLocation implements FieldLocation {
+        private final FieldInfo field;
 
-        AbstractObjectFieldLocation(int index, FieldInfo field, Assumption finalAssumption, TypeAssumption typeAssumption) {
+        ObjectFieldLocation(int index, FieldInfo field, Assumption finalAssumption, TypeAssumption typeAssumption) {
             super(index, finalAssumption, typeAssumption);
             this.field = Objects.requireNonNull(field);
         }
 
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
+        private Object getInternal(DynamicObject store, boolean guard) {
             if (UseVarHandle) {
                 return field.varHandle().get(store);
             }
@@ -718,7 +705,18 @@ abstract class ExtLocations {
         }
 
         @Override
+        public Object get(DynamicObject store, boolean guard) {
+            Object value = getInternal(store, guard);
+            return assumedTypeCast(value, guard);
+        }
+
+        @Override
         protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
+            if (!init) {
+                maybeInvalidateFinalAssumption();
+            }
+            maybeInvalidateTypeAssumption(value);
+
             boolean condition = canStore(value);
             if (condition) {
                 setObjectInternal(store, value);
@@ -727,7 +725,7 @@ abstract class ExtLocations {
             }
         }
 
-        protected final void setObjectInternal(DynamicObject store, Object value) {
+        private void setObjectInternal(DynamicObject store, Object value) {
             if (UseVarHandle) {
                 field.varHandle().set(store, value);
                 return;
@@ -737,17 +735,17 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected final void clear(DynamicObject store) {
+        protected void clear(DynamicObject store) {
             UnsafeAccess.unsafePutObject(store, getOffset(), null, this);
         }
 
         @Override
-        public final int objectFieldCount() {
+        public int objectFieldCount() {
             return OBJECT_SLOT_SIZE;
         }
 
         @Override
-        public final void accept(LocationVisitor locationVisitor) {
+        public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitObjectField(index, OBJECT_SLOT_SIZE);
         }
 
@@ -764,36 +762,12 @@ abstract class ExtLocations {
             if (!super.equals(obj)) {
                 return false;
             }
-            AbstractObjectFieldLocation other = (AbstractObjectFieldLocation) obj;
+            ObjectFieldLocation other = (ObjectFieldLocation) obj;
             return this.field.equals(other.field);
         }
 
-        final long getOffset() {
+        long getOffset() {
             return field.offset();
-        }
-    }
-
-    /**
-     * Object field location with assumption-based type speculation.
-     */
-    static final class ATypedObjectFieldLocation extends AbstractObjectFieldLocation {
-
-        ATypedObjectFieldLocation(int index, FieldInfo field, TypeAssumption typeAssumption, Assumption finalAssumption) {
-            super(index, field, finalAssumption, typeAssumption);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            maybeInvalidateTypeAssumption(value);
-            super.setObjectInternal(store, value);
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return assumedTypeCast(super.get(store, guard), guard);
         }
     }
 
