@@ -142,6 +142,8 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     @Override
     protected void emitCode() {
+        /* The JS backend doesn't really do any heap layouting, */
+        afterHeapLayout();
         emitJSCode();
     }
 

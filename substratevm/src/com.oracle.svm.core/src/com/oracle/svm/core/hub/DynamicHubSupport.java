@@ -30,6 +30,7 @@ import java.util.EnumSet;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
@@ -58,7 +59,13 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
-        return InstanceReferenceMapDecoder.getReferenceMap(hub.getCompressedReferenceMapOffset());
+        if (Platform.includedIn(NATIVE_ONLY.class)) {
+            return InstanceReferenceMapDecoder.getReferenceMap(hub.getCompressedReferenceMapOffset());
+        } else {
+            /* Remove once a heap base is supported, see GR-68847. */
+            byte[] referenceMapEncoding = MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, 0).referenceMapEncoding;
+            return InstanceReferenceMapDecoder.getReferenceMap(NonmovableArrays.fromImageHeap(referenceMapEncoding), hub.getCompressedReferenceMapOffset());
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

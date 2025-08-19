@@ -89,6 +89,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
@@ -956,7 +957,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         assert compressedReferenceMapOffset == -1;
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
 
-        this.compressedReferenceMapOffset = InstanceReferenceMapEncoder.computeCompressedReferenceMapOffset(currentLayerRefMapDataStart, referenceMapIndex);
+        if (Platform.includedIn(NATIVE_ONLY.class)) {
+            this.compressedReferenceMapOffset = InstanceReferenceMapEncoder.computeCompressedReferenceMapOffset(currentLayerRefMapDataStart, referenceMapIndex);
+        } else {
+            /* Remove once a heap base is supported, see GR-68847. */
+            this.compressedReferenceMapOffset = referenceMapIndex;
+        }
     }
 
     /**
