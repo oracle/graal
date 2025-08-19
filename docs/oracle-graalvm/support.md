@@ -7,14 +7,14 @@ permalink: /support/
 
 ## Available Distributions
 
-Oracle GraalVM for JDK 24 is based on Oracle JDK 24.
-Each release of Oracle GraalVM for JDK 24 includes all Oracle Java critical patch updates (CPUs), which are provided on a regular schedule to remedy defects and known vulnerabilities.
+Oracle GraalVM for JDK 25 is based on Oracle JDK 25.
+Each release of Oracle GraalVM for JDK 25 includes all Oracle Java critical patch updates (CPUs), which are provided on a regular schedule to remedy defects and known vulnerabilities.
 
-Oracle GraalVM for JDK 24 is available for Linux, macOS, and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
+Oracle GraalVM for JDK 25 is available for Linux, macOS, and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
 
 ## Certified Platforms
 
-Oracle GraalVM for JDK 24 is certified on the following platforms.
+Oracle GraalVM for JDK 25 is certified on the following platforms.
 
 **Linux**
 
@@ -25,7 +25,6 @@ Oracle GraalVM for JDK 24 is certified on the following platforms.
 | Oracle Linux 8                  | AArch64, x64        |
 | Oracle Linux 7                  | x64                 |
 | Red Hat Enterprise Linux 10     | AArch64, x64        |
-| Red Hat Enterprise Linux 9      | AArch64, x64        |
 | Red Hat Enterprise Linux 9      | AArch64, x64        |
 | Red Hat Enterprise Linux 8      | AArch64, x64        |
 | Red Hat Enterprise Linux 7      | x64                 |
@@ -55,7 +54,7 @@ See [Oracle GraalVM Support Roadmap](https://docs.oracle.com/en/graalvm/support-
 
 ## Related Technologies
 
-Additional open source language runtimes designed for use with Oracle GraalVM for JDK 24 are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
+Additional open source language runtimes designed for use with Oracle GraalVM for JDK 25 are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
 
 ## Licensing and Support
 

@@ -26,27 +26,27 @@ To work with a Build Pipeline, add statements to a [build specification file](ht
 The DevOps CI/CD platform reads the file and runs the commands one by one.
 You do not need to run a YUM package manager command manually.
 
-RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-24-native-image`.
+RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-25-native-image`.
 Each package includes the JDK and the Native Image tool.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add a command to install Oracle GraalVM for JDK 24 with Native Image and Java Development Kit (JDK):
+1. Add a command to install Oracle GraalVM for JDK 25 with Native Image and Java Development Kit (JDK):
 
     ```yml
     steps:
     - type: Command
-        name: "Install Oracle GraalVM for JDK 24"
+        name: "Install Oracle GraalVM for JDK 25"
         command: |
-        yum -y install graalvm-24-native-image
+        yum -y install graalvm-25-native-image
     ```
 
-2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 24:
+2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 25:
 
     ```yml
     env:
     variables:
-        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java24"
+        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java25"
     ```
 
 3. Add the command to set the value of the `PATH` environment variable:
@@ -68,9 +68,9 @@ Here is an example of a complete [build specification file](https://github.com/o
 
 Oracle GraalVM provides more features, each of which can be installed as an add-on.
 Use the `yum list` command to get a list of the available RPMs for your installation.
-For instance, for Oracle GraalVM for JDK 24, run:
+For instance, for Oracle GraalVM for JDK 25, run:
 ```bash
-yum list graalvm-24*
+yum list graalvm-25*
 ...
 ```
 

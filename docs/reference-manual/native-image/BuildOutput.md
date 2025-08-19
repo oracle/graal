@@ -324,7 +324,7 @@ Additionally, it safeguards against unexpected changes in future GraalVM updates
 
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
-The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/22/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
+The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/25/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
 Use the [Tracing Agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
 Otherwise, your application is unlikely to work properly.
 If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
