@@ -87,14 +87,14 @@ public @interface RecomputeFieldValue {
          */
         Reset,
         /**
-         * The object field is set to a instance of {@link #declClass} created by calling the
+         * The object field is set to an instance of {@link #declClass} created by calling the
          * default constructor.
          * 
          * @since 22.3
          */
         NewInstance,
         /**
-         * The object field is set to a instance of {@link #declClass} created by calling the
+         * The object field is set to an instance of {@link #declClass} created by calling the
          * default constructor when the target field value is not null.
          * 
          * @since 22.3
