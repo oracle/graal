@@ -441,11 +441,11 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, I16X8, I8X16, Byte.MIN_VALUE, Byte.MAX_VALUE);
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, I16X8, I8X16, (short) 0, (short) 0xff);
             case Bytecode.VECTOR_I8X16_ADD -> binop(x, y, I8X16, VectorOperators.ADD);
-            case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop(x, y, I8X16, VectorOperators.SADD);
-            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.ADD, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop_sat(x, y, I8X16, I16X8, VectorOperators.B2S, VectorOperators.ADD, Byte.MIN_VALUE, Byte.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.ADD, 0, 0xff); // GR-68891
             case Bytecode.VECTOR_I8X16_SUB -> binop(x, y, I8X16, VectorOperators.SUB);
-            case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop(x, y, I8X16, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop_sat(x, y, I8X16, I16X8, VectorOperators.B2S, VectorOperators.SUB, Byte.MIN_VALUE, Byte.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff); // GR-68891
             case Bytecode.VECTOR_I8X16_MIN_S -> binop(x, y, I8X16, VectorOperators.MIN);
             case Bytecode.VECTOR_I8X16_MIN_U -> binop(x, y, I8X16, VectorOperators.UMIN);
             case Bytecode.VECTOR_I8X16_MAX_S -> binop(x, y, I8X16, VectorOperators.MAX);
@@ -455,11 +455,11 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> narrow(x, y, I32X4, I16X8, 0, 0xffff);
             case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S, Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S -> i16x8_q15mulr_sat_s(x, y);
             case Bytecode.VECTOR_I16X8_ADD -> binop(x, y, I16X8, VectorOperators.ADD);
-            case Bytecode.VECTOR_I16X8_ADD_SAT_S -> binop(x, y, I16X8, VectorOperators.SADD);
-            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.ADD, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_ADD_SAT_S -> binop_sat(x, y, I16X8, I32X4, VectorOperators.S2I, VectorOperators.ADD, Short.MIN_VALUE, Short.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.ADD, 0, 0xffff); // GR-68891
             case Bytecode.VECTOR_I16X8_SUB -> binop(x, y, I16X8, VectorOperators.SUB);
-            case Bytecode.VECTOR_I16X8_SUB_SAT_S -> binop(x, y, I16X8, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_SUB_SAT_S -> binop_sat(x, y, I16X8, I32X4, VectorOperators.S2I, VectorOperators.SUB, Short.MIN_VALUE, Short.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff); // GR-68891
             case Bytecode.VECTOR_I16X8_MUL -> binop(x, y, I16X8, VectorOperators.MUL);
             case Bytecode.VECTOR_I16X8_MIN_S -> binop(x, y, I16X8, VectorOperators.MIN);
             case Bytecode.VECTOR_I16X8_MIN_U -> binop(x, y, I16X8, VectorOperators.UMIN);
@@ -1020,7 +1020,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
-    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes,
+    private static <E, F> ByteVector binop_sat(ByteVector xBytes, ByteVector yBytes,
                     Shape<E> shape, Shape<F> extendedShape,
                     VectorOperators.Conversion<E, F> upcast,
                     VectorOperators.Binary op, long min, long max) {
