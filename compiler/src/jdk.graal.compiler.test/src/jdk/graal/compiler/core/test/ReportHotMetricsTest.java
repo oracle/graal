@@ -54,6 +54,7 @@ public class ReportHotMetricsTest extends GraalCompilerTest {
         return result;
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testAbsNegate() {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();

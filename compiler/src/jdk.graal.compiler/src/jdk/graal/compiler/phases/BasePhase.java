@@ -392,7 +392,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return null;
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unchecked", "rawtypes"})
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         DebugContext debug = graph.getDebug();
         OptionValues options = graph.getOptions();
