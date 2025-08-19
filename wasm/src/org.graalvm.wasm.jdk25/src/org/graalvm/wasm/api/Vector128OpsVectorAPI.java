@@ -323,7 +323,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_V128_NOT -> unop(x, I8X16, VectorOperators.NOT);
             case Bytecode.VECTOR_I8X16_ABS -> unop(x, I8X16, VectorOperators.ABS);
             case Bytecode.VECTOR_I8X16_NEG -> unop(x, I8X16, VectorOperators.NEG);
-            case Bytecode.VECTOR_I8X16_POPCNT -> unop(x, I8X16, VectorOperators.BIT_COUNT);
+            case Bytecode.VECTOR_I8X16_POPCNT -> i8x16_popcnt(x); // GR-68892
             case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> extadd_pairwise(x, I8X16, VectorOperators.B2S);
             case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> extadd_pairwise(x, I8X16, VectorOperators.ZERO_EXTEND_B2S);
             case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> extend(x, 0, I8X16, VectorOperators.B2S);
@@ -745,6 +745,13 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<E> result = x.lanewise(op);
         return result.reinterpretAsBytes();
+    }
+
+    private static ByteVector i8x16_popcnt(ByteVector x) {
+        // Based on the same approach as Integer#bitCount
+        ByteVector popcnt = x.sub(x.lanewise(VectorOperators.LSHR, 1).and((byte) 0x55));
+        popcnt = popcnt.and((byte) 0x33).add(popcnt.lanewise(VectorOperators.LSHR, 2).and((byte) 0x33));
+        return popcnt.add(popcnt.lanewise(VectorOperators.LSHR, 4)).and((byte) 0x0F);
     }
 
     private static <E, F> ByteVector extadd_pairwise(ByteVector xBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv) {
