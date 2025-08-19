@@ -2963,7 +2963,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (!seen) {
-                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), method.getMethod().getSource().createSection(lineNumber));
+                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
                         seenLines[i] = lineNumber;
                         maxSeenLine = Math.max(maxSeenLine, lineNumber);
                     }
