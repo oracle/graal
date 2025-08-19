@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -204,6 +204,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public static void snippet02(@SuppressWarnings("unused") int[] arr) {
         int i = 0;
         while (true) {
+            GraalDirectives.controlFlowAnchor();
             @SuppressWarnings("unused")
             int len = field;
             if (i < 10) {
@@ -287,6 +288,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
         int res = 0;
         int i = 0;
         while (true) {
+            GraalDirectives.controlFlowAnchor();
             res = y.y;
             if (i < 10) {
                 y.y = i;
