@@ -51,6 +51,8 @@ on:
 env:
   MICRONAUT_CORE_PATH: ${{ github.workspace }}/micronaut-core
   MICRONAUT_JAVA_VERSION: 21
+  NATIVE_IMAGE_OPTIONS: '--future-defaults=all'
+
   # Enforce experimental option checking in CI (GR-47922)
   NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: 'true'
 
