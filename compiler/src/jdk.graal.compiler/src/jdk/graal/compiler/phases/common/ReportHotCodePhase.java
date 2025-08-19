@@ -58,8 +58,8 @@ import jdk.graal.compiler.phases.BasePhase;
  * Analyzes and reports performance-critical aspects of a structured graph's intermediate
  * representation (IR).
  * <p>
- * This phase traverses all sections of the code, sorts and identifies the hottest regions of the
- * IR— typically loops or frequently executed blocks—and generates a report highlighting any known
+ * This phase traverses all sections of the code, sorts and identifies the hottest regions of the IR
+ * - typically loops or frequently executed blocks - wand generates a report highlighting any known
  * performance-critical observations related to those regions (if any are present).
  * </p>
  * <p>

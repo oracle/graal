@@ -36,7 +36,7 @@ import jdk.graal.compiler.phases.BasePhase;
 
 public class ReportHotMetricsTest extends GraalCompilerTest {
 
-    public static boolean PRINT_STDOUT = false;
+    public static final boolean PRINT_STDOUT = false;
 
     static int sideEffect;
 
