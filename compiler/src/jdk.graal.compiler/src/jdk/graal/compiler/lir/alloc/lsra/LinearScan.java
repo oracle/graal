@@ -160,14 +160,14 @@ public class LinearScan {
     private Interval[] sortedIntervals;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
-     * be retrieved with {@link #instructionForId(int)} as the id is not simply an index into this
-     * array.
+     * Map from an instruction {@linkplain LIRInstruction#id() id} to the instruction. Entries
+     * should be retrieved with {@link #instructionForId(int)} as the id is not simply an index into
+     * this array.
      */
     private LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain BasicBlock
+     * Map from an instruction {@linkplain LIRInstruction#id() id} to the {@linkplain BasicBlock
      * block} containing the instruction. Entries should be retrieved with {@link #blockForId(int)}
      * as the id is not simply an index into this array.
      */
@@ -461,7 +461,7 @@ public class LinearScan {
     }
 
     /**
-     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
+     * Converts an {@linkplain LIRInstruction#id() instruction id} to an instruction index. All LIR
      * instructions in a method have an index one greater than their linear-scan order predecessor
      * with the first instruction having an index of 0.
      */
@@ -470,10 +470,10 @@ public class LinearScan {
     }
 
     /**
-     * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id id}.
+     * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id() id}.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
-     * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
+     * @return the instruction whose {@linkplain LIRInstruction#id()} {@code == id}
      */
     public LIRInstruction instructionForId(int opId) {
         assert isEven(opId) : "opId not even";
@@ -485,7 +485,7 @@ public class LinearScan {
     /**
      * Gets the block containing a given instruction.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
      * @return the block containing the instruction denoted by {@code opId}
      */
     public BasicBlock<?> blockForId(int opId) {
@@ -500,7 +500,7 @@ public class LinearScan {
     /**
      * Determines if an {@link LIRInstruction} destroys all caller saved registers.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
      * @return {@code true} if the instruction denoted by {@code id} destroys all caller saved
      *         registers.
      */
