@@ -142,6 +142,8 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.access.JavaLangReflectAccess;
@@ -578,10 +580,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         // skip vtable (special treatment)
 
-        writeObject(hub, dynamicHubOffsets.getCompanionOffset(), companion);
+        return finishInitialization(hub, companion);
+    }
 
+    /**
+     * The {@link #companion} field must be assigned last during initialization, as it determines
+     * when a class is regarded as loaded (see {@link #isLoaded()}). Once {@code isLoaded()} returns
+     * {@code true}, it is essential that other threads observe consistent and fully initialized
+     * values for every field (ensured by the {@link FenceKind#STORE_STORE} barrier).
+     *
+     * This guarantee is particularly important for scenarios where code may access newly-allocated
+     * {@code DynamicHub}s that might not be fully initialized yet (for example, during heap
+     * dumping).
+     */
+    private static DynamicHub finishInitialization(DynamicHub hub, DynamicHubCompanion companion) {
+        MembarNode.memoryBarrier(FenceKind.STORE_STORE);
+        writeObject(hub, DynamicHubOffsets.singleton().getCompanionOffset(), companion);
+
+        /* Emit a final field barrier as if we executed a normal constructor. */
         FinalFieldBarrierNode.finalFieldBarrier(hub);
-
         return hub;
     }
 
@@ -1138,7 +1155,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
-        return companion.classLoader != NO_CLASS_LOADER;
+        return companion != null && companion.classLoader != NO_CLASS_LOADER;
     }
 
     void setClassLoaderAtRuntime(ClassLoader loader) {

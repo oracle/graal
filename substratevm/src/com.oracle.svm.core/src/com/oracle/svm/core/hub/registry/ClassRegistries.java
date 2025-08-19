@@ -28,7 +28,6 @@ import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrat
 
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -92,8 +91,6 @@ public final class ClassRegistries implements ParsingContext {
     private final AbstractClassRegistry bootRegistry;
     private final EconomicMap<String, String> bootPackageToModule;
 
-    private final AtomicInteger nextTypeId = new AtomicInteger(0);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public ClassRegistries() {
         if (RuntimeClassLoading.isSupported()) {
@@ -136,17 +133,6 @@ public final class ClassRegistries implements ParsingContext {
         }
         assert i == result.length;
         return result;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setStartingTypeId(int id) {
-        singleton().nextTypeId.set(id);
-    }
-
-    public static int nextTypeId() {
-        int nextTypeId = singleton().nextTypeId.getAndIncrement();
-        VMError.guarantee(nextTypeId > 0);
-        return nextTypeId;
     }
 
     public static Class<?> findBootstrapClass(String name) {

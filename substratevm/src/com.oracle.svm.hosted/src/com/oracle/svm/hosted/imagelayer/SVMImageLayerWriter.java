@@ -327,8 +327,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         imageLayerSnapshotUtil.initializeExternalValues();
     }
 
-    public void setImageHeapSize(long imageHeapSize) {
-        snapshotBuilder.setImageHeapSize(imageHeapSize);
+    public void setEndOffset(long endOffset) {
+        snapshotBuilder.setImageHeapEndOffset(endOffset);
     }
 
     @Override

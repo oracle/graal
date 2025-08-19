@@ -69,4 +69,8 @@ public abstract class DynamicImageLayerInfo {
             return singleton().layerNumber;
         }
     }
+
+    public abstract int getPreviousMaxTypeId();
+
+    public abstract long getPreviousImageHeapEndOffset();
 }
