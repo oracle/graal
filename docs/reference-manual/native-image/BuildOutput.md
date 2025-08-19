@@ -94,7 +94,7 @@ Please report version and vendor when you [file issues](https://github.com/oracl
 The selected optimization level and targeted machine type used by the Graal compiler.
 The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
 Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling).
-This is useful during development to reduce image build time. 
+This is useful during development to reduce image build time.
 Use `-Os` to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
@@ -217,7 +217,7 @@ An origin is a group of Java sources and can be a JAR file, a package name, or a
 The [`java.base` module](https://docs.oracle.com/en/java/javase/22/docs/api/java.base/module-summary.html), for example, contains base classes from the JDK.
 The `svm.jar` file, the `org.graalvm.nativeimage.base` module, and similar origins contain internal sources for the Native Image runtime.
 To reduce the size of the code area and with that, the total size of the native executable, re-evaluate the dependencies of your application based on the code area breakdown.
-Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint. 
+Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint.
 
 #### <a name="glossary-image-heap"></a>Image Heap
 The heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
@@ -267,11 +267,11 @@ This shows whether Java deserialization is included in the native executable or 
 If not included, the attack surface of the executable is reduced as the executable cannot be exploited with attacks based on Java deserialization.
 
 #### <a name="glossary-sbom"></a><a name="glossary-embedded-sbom"></a>Software Bill of Material (SBOM)
-This section indicates whether a SBOM was assembled and in what ways it was stored. 
-The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact. 
-The SBOM feature is enabled by default and defaults to the `embed` option. 
-When embedded, the SBOM size is displayed. 
-The number of components is always displayed. 
+This section indicates whether an SBOM was assembled and in what ways it was stored.
+The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact.
+The SBOM feature is enabled by default and defaults to the `embed` option.
+When embedded, the SBOM size is displayed.
+The number of components is always displayed.
 The SBOM feature can be disabled with `--enable-sbom=false`.
 
 Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
@@ -279,7 +279,7 @@ If these types contain vulnerabilities, SBOM scanning will not detect them.
 To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
 
 Use the [build report](BuildReport.md) to view included components, their dependencies, and any unassociated types.
-For more information, see [Software Bill of Materials](../../security/native-image.md).
+For more information, see [Software Bill of Materials (SBOM) in Native Image](../../security/SBOM.md).
 
 #### <a name="glossary-obfuscation"></a>Advanced Obfuscation
 This section indicates whether advanced obfuscation was applied.
@@ -296,8 +296,11 @@ Advanced obfuscation is applied to your application code and third-party depende
 * Module and package names containing a class that loads a resource
 * Names of annotations, lambdas, and proxies
 
-To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`. 
-See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated. 
+To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`.
+Use the mapping file and the `native-image-configure deobfuscate` command to deobfuscate stack traces.
+See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated.
+
+For more information, see [Advanced Obfuscation in Native Image](../../security/Obfuscation.md).
 
 > Native Image obfuscates binaries by removing class files, applying aggressive optimizations, and eliminating dead code. The advanced obfuscation feature also obfuscates symbol names.
 
@@ -373,8 +376,8 @@ Note, however, that the overall peak throughput of the executable may be lower d
 #### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
 
 Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
-This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
-This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
+This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`.
+This effectively reduces the number of configuration entries necessary to achieve build-time initialization.
 When adopting the new mode it is best to start introducing build-time initialization from scratch.
 During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
 Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too.
