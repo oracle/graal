@@ -60,6 +60,7 @@ public class WasmImports {
     public static final ImportDescriptor.Function F64Log = new ImportDescriptor.Function(MODULE_COMPAT, "f64log", TypeUse.forUnary(f64, f64), "Math.log");
     public static final ImportDescriptor.Function F64Log10 = new ImportDescriptor.Function(MODULE_COMPAT, "f64log10", TypeUse.forUnary(f64, f64), "Math.log10");
     public static final ImportDescriptor.Function F64Sin = new ImportDescriptor.Function(MODULE_COMPAT, "f64sin", TypeUse.forUnary(f64, f64), "Math.sin");
+    public static final ImportDescriptor.Function F64Sinh = new ImportDescriptor.Function(MODULE_COMPAT, "f64sinh", TypeUse.forUnary(f64, f64), "Math.sinh");
     public static final ImportDescriptor.Function F64Cos = new ImportDescriptor.Function(MODULE_COMPAT, "f64cos", TypeUse.forUnary(f64, f64), "Math.cos");
     public static final ImportDescriptor.Function F64Tan = new ImportDescriptor.Function(MODULE_COMPAT, "f64tan", TypeUse.forUnary(f64, f64), "Math.tan");
     public static final ImportDescriptor.Function F64Tanh = new ImportDescriptor.Function(MODULE_COMPAT, "f64tanh", TypeUse.forUnary(f64, f64), "Math.tanh");

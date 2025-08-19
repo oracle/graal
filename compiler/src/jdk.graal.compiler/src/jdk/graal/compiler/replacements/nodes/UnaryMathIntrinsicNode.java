@@ -57,6 +57,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
         LOG(new ForeignCallSignature("arithmeticLog", double.class, double.class)),
         LOG10(new ForeignCallSignature("arithmeticLog10", double.class, double.class)),
         SIN(new ForeignCallSignature("arithmeticSin", double.class, double.class)),
+        SINH(new ForeignCallSignature("arithmeticSinh", double.class, double.class)),
         COS(new ForeignCallSignature("arithmeticCos", double.class, double.class)),
         TAN(new ForeignCallSignature("arithmeticTan", double.class, double.class)),
         TANH(new ForeignCallSignature("arithmeticTanh", double.class, double.class)),
@@ -75,6 +76,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                 case LOG10 -> Math.log10(value);
                 case EXP -> Math.exp(value);
                 case SIN -> Math.sin(value);
+                case SINH -> Math.sinh(value);
                 case COS -> Math.cos(value);
                 case TAN -> Math.tan(value);
                 case TANH -> Math.tanh(value);
@@ -94,6 +96,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                         boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
                         return StampFactory.forFloat(JavaKind.Double, -1.0, 1.0, nonNaN);
                     }
+                    case SINH:
                     case TAN: {
                         boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
                         return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
@@ -163,6 +166,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
             case LOG10 -> gen.emitMathLog(input, true);
             case EXP -> gen.emitMathExp(input);
             case SIN -> gen.emitMathSin(input);
+            case SINH -> gen.emitMathSinh(input);
             case COS -> gen.emitMathCos(input);
             case TAN -> gen.emitMathTan(input);
             case TANH -> gen.emitMathTanh(input);
