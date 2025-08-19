@@ -190,7 +190,13 @@ public final class CompilationAlarm implements AutoCloseable {
             cloneTree.durationNS = elapsed();
             printTree("", sb, cloneTree, true);
 
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings:%n %s <===== TIMEOUT HERE", period, sb.toString().trim());
+            // Include information about time spent in the GC if it's available.
+            String gcMessage = "";
+            if (gcTiming != null) {
+                gcMessage = String.format(" (GC time is %s ms of %s ms elapsed)", gcTiming.getGCTimeMillis(), gcTiming.getElapsedTimeMillis());
+            }
+
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds%s. %n Phase timings:%n %s <===== TIMEOUT HERE", period, gcMessage, sb.toString().trim());
         }
     }
 

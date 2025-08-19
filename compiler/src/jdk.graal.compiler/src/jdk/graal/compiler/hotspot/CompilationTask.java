@@ -73,6 +73,7 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -534,7 +535,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     @SuppressWarnings({"try"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
-        try (DebugCloseable a = CompilationTime.start(debug)) {
+        try (DebugCloseable a = CompilationTime.start(debug); DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
             if (libgraal != null) {

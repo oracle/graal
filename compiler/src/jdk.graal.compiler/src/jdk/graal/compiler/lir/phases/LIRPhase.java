@@ -36,6 +36,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -105,6 +106,15 @@ public abstract class LIRPhase<C> {
         memUseTracker = statistics.memUseTracker;
     }
 
+    static final boolean LIR_PHASE_GC_STATISTICS = true;
+
+    private DebugCloseable gcStatistics(DebugContext debug) {
+        if (LIR_PHASE_GC_STATISTICS) {
+            return GraalServices.GCTimerScope.create(debug, "LIRPhaseTime_", getClass());
+        }
+        return null;
+    }
+
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
         apply(target, lirGenRes, context, true);
     }
@@ -116,7 +126,8 @@ public abstract class LIRPhase<C> {
         try (DebugContext.Scope s = debug.scope(name, this)) {
             try (CompilerPhaseScope cps = debug.enterCompilerPhase(name, null);
                             DebugCloseable a = timer.start(debug);
-                            DebugCloseable c = memUseTracker.start(debug)) {
+                            DebugCloseable c = memUseTracker.start(debug);
+                            DebugCloseable d = gcStatistics(debug)) {
                 run(target, lirGenRes, context);
                 if (dumpLIR && debug.areScopesEnabled()) {
                     dumpAfter(lirGenRes);
