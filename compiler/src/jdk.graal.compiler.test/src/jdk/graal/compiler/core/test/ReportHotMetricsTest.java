@@ -59,7 +59,7 @@ public class ReportHotMetricsTest extends GraalCompilerTest {
     public void testAbsNegate() {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(bos))) {
-            OptionValues opt = new OptionValues(getInitialOptions(), BasePhase.PhaseOptions.ReportHotMetricsAfterPhases, "BoxNodeIdentity=*.snippet01");
+            OptionValues opt = new OptionValues(getInitialOptions(), BasePhase.PhaseOptions.ReportHotMetrics, true, BasePhase.PhaseOptions.ReportHotMetricsAfterPhases, "BoxNodeIdentity=*.snippet01");
             test(opt, "snippet01", 100);
         }
         // the missing profile
