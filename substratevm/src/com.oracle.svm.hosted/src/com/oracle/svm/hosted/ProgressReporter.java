@@ -77,7 +77,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -745,7 +744,7 @@ public class ProgressReporter {
             /* <- 10% for module name -><- 29% for class FQN -> */
             if (typesBySizeInHeap.hasNext()) {
                 HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
-                String labelString = e.label.renderToString(linkStrategy);
+                String labelString = e.getLabel(true).renderToString(linkStrategy);
                 long byteSize = e.byteSize;
                 heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), labelString);
                 printedHeapBytes += byteSize;

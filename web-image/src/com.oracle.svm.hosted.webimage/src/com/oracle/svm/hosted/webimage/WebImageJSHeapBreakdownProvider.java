@@ -56,7 +56,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
         for (ConstantIdentityMapping.IdentityNode node : identityMapping.identityNodes()) {
             HostedClass type = (HostedClass) providers.getMetaAccess().lookupJavaType(node.getDefinition().getConstant());
             long size = node.getDefinition().getSize();
-            objectTypeEntries.computeIfAbsent(type, HeapBreakdownEntry::new).add(size);
+            objectTypeEntries.computeIfAbsent(type, HeapBreakdownEntry::of).add(size);
             totalByteSize += size;
         }
 

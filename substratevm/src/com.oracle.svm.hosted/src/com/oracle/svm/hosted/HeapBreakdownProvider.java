@@ -114,7 +114,7 @@ public class HeapBreakdownProvider {
             }
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
-            classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
+            classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of).add(objectSize);
             if (reportStringBytesConstant && o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
@@ -140,24 +140,24 @@ public class HeapBreakdownProvider {
         long heapAlignmentSize = getTotalHeapSize() - totalObjectSize;
         assert heapAlignmentSize >= 0 : "Incorrect heap alignment detected: " + heapAlignmentSize;
         if (heapAlignmentSize > 0) {
-            HeapBreakdownEntry heapAlignmentEntry = new HeapBreakdownEntry("", "heap alignment", "#glossary-heap-alignment");
+            HeapBreakdownEntry heapAlignmentEntry = HeapBreakdownEntry.of("", "heap alignment", "#glossary-heap-alignment");
             heapAlignmentEntry.add(heapAlignmentSize);
             entries.add(heapAlignmentEntry);
         }
 
         /* Extract byte[] for Strings. */
         if (stringByteArrayTotalSize > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "string data"), stringByteArrayTotalSize, stringByteArrayTotalCount);
+            addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX + "string data"), stringByteArrayTotalSize, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
         List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
         long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
-        addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
+        addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
         int metadataByteLength = ImageSingletons.lookup(RuntimeMetadataDecoder.class).getMetadataByteLength();
         if (metadataByteLength > 0) {
             long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
+            addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
         ProgressReporter reporter = ProgressReporter.singleton();
         long resourcesByteArraySize = 0;
@@ -177,7 +177,7 @@ public class HeapBreakdownProvider {
                 }
             }
             if (resourcesByteArraySize > 0) {
-                addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+                addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
             }
         }
         reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
@@ -185,11 +185,11 @@ public class HeapBreakdownProvider {
         if (graphEncodingByteLength >= 0) {
             long graphEncodingSize = objectLayout.getArraySize(JavaKind.Byte, graphEncodingByteLength, true);
             reporter.recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingSize);
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "graph encodings", "#glossary-graph-encodings"), graphEncodingSize, 1);
+            addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "graph encodings", "#glossary-graph-encodings"), graphEncodingSize, 1);
         }
         /* Add remaining byte[]. */
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
-        addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), byteArrayEntry.byteSize, byteArrayEntry.count);
+        addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), byteArrayEntry.byteSize, byteArrayEntry.count);
         assert byteArrayEntry.byteSize == 0 && byteArrayEntry.count == 0;
         setBreakdownEntries(entries);
     }
@@ -209,27 +209,23 @@ public class HeapBreakdownProvider {
         }
     }
 
-    public static class HeapBreakdownEntry {
-        final HeapBreakdownLabel label;
+    public abstract static class HeapBreakdownEntry {
         long byteSize;
         int count;
 
-        public HeapBreakdownEntry(HostedClass hostedClass) {
-            this(ProgressReporter.moduleNamePrefix(hostedClass.getJavaClass().getModule()) +
-                            ProgressReporter.Utils.truncateFQN(hostedClass.toJavaName(true), 0.29));
+        public static HeapBreakdownEntry of(HostedClass hostedClass) {
+            return new HeapBreakdownEntryForClass(hostedClass.getJavaClass());
         }
 
-        public HeapBreakdownEntry(String name) {
-            label = new SimpleHeapObjectKindName(name);
+        public static HeapBreakdownEntry of(String name) {
+            return new HeapBreakdownEntryFixed(new SimpleHeapObjectKindName(name));
         }
 
-        HeapBreakdownEntry(String prefix, String name, String htmlAnchor) {
-            label = new LinkyHeapObjectKindName(prefix, name, htmlAnchor);
+        public static HeapBreakdownEntry of(String prefix, String name, String htmlAnchor) {
+            return new HeapBreakdownEntryFixed(new LinkyHeapObjectKindName(prefix, name, htmlAnchor));
         }
 
-        public HeapBreakdownLabel getLabel() {
-            return label;
-        }
+        public abstract HeapBreakdownLabel getLabel(boolean truncate);
 
         public long getByteSize() {
             return byteSize;
@@ -251,6 +247,39 @@ public class HeapBreakdownProvider {
         void remove(long subByteSize, int subCount) {
             this.byteSize -= subByteSize;
             this.count -= subCount;
+        }
+    }
+
+    static class HeapBreakdownEntryFixed extends HeapBreakdownEntry {
+
+        private final HeapBreakdownLabel label;
+
+        HeapBreakdownEntryFixed(HeapBreakdownLabel label) {
+            this.label = label;
+        }
+
+        @Override
+        public HeapBreakdownLabel getLabel(boolean unused) {
+            return label;
+        }
+    }
+
+    static class HeapBreakdownEntryForClass extends HeapBreakdownEntry {
+
+        private final Class<?> clazz;
+
+        HeapBreakdownEntryForClass(Class<?> clazz) {
+            this.clazz = clazz;
+        }
+
+        @Override
+        public HeapBreakdownLabel getLabel(boolean truncate) {
+            if (truncate) {
+                return new SimpleHeapObjectKindName(ProgressReporter.moduleNamePrefix(clazz.getModule()) +
+                                ProgressReporter.Utils.truncateFQN(clazz.getTypeName(), 0.29));
+            } else {
+                return new SimpleHeapObjectKindName(clazz.getTypeName());
+            }
         }
     }
 
