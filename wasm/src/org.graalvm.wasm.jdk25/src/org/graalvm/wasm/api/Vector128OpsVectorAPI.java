@@ -537,7 +537,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I16X8_BITMASK -> bitmask(x, I16X8);
             case Bytecode.VECTOR_I32X4_ALL_TRUE -> all_true(x, I32X4);
             case Bytecode.VECTOR_I32X4_BITMASK -> bitmask(x, I32X4);
-            case Bytecode.VECTOR_I64X2_ALL_TRUE -> all_true(x, I64X2);
+            case Bytecode.VECTOR_I64X2_ALL_TRUE -> fallbackOps.vectorToInt(x.toArray(), vectorOpcode); // GR-68893
             case Bytecode.VECTOR_I64X2_BITMASK -> bitmask(x, I64X2);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
