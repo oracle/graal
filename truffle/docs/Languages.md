@@ -35,6 +35,7 @@ The following language implementations exist already (in alphabetical order):
 * [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
 * [Cover](https://github.com/gerard-/cover), a Safe Subset of C++.
 * [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
+* [GraalTCL](https://github.com/Dufgui/graaltcl), an implementation of TCL (Tool Command Language).
 * [Heap Language](https://github.com/jaroslavtulach/heapdump), a tutorial showing the embedding of Truffle languages via interoperability.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
 * [islisp-truffle](https://github.com/arvyy/islisp-truffle), an implemention of the ISLISP 2007 standard.
