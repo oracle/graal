@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.SubstrateOptions.MremapImageHeap;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -50,7 +49,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.ByteFormattingUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
@@ -107,6 +105,7 @@ import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ByteFormattingUtil;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -445,12 +444,10 @@ public abstract class NativeImage extends AbstractImage {
 
             int pageSize = objectFile.getPageSize();
 
-            long imageHeapSize = getImageHeapSize();
-
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 ImageSingletons.lookup(ImageLayerSectionFeature.class).createSection(objectFile, heapLayout);
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeapSize(imageHeapSize);
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setEndOffset(heapLayout.getEndOffset());
                 }
             }
 
@@ -493,26 +490,16 @@ public abstract class NativeImage extends AbstractImage {
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
 
             // - Write the heap to its own section.
-            // Dynamic linkers/loaders generally don't ensure any alignment to more than page
-            // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
-            int alignment = pageSize;
+            long imageHeapSize = getImageHeapSize();
+            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(imageHeapSize, objectFile.getByteOrder());
 
-            /*
-             * Manually add padding to the SVM_HEAP section, because when SpawnIsolates are disabled
-             * we operate with mprotect on it with page size granularity. Similarly, using mremap
-             * aligns up the page boundary and may reset memory outside of the image heap.
-             */
-            boolean padImageHeap = !SpawnIsolates.getValue() || MremapImageHeap.getValue();
-            long paddedImageHeapSize = padImageHeap ? NumUtil.roundUp(imageHeapSize, alignment) : imageHeapSize;
-
-            VMError.guarantee(NumUtil.isInt(paddedImageHeapSize),
+            VMError.guarantee(NumUtil.isInt(imageHeapSize),
                             "The size of the image heap is %s and therefore too large. It must be smaller than %s. This can happen when very large resource files are included in the image or a build time initialized class creates a large cache.",
-                            ByteFormattingUtil.bytesToHuman(paddedImageHeapSize),
+                            ByteFormattingUtil.bytesToHuman(imageHeapSize),
                             ByteFormattingUtil.bytesToHuman(Integer.MAX_VALUE));
-            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(paddedImageHeapSize, objectFile.getByteOrder());
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
-            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, true, false, heapSectionImpl);
+            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), pageSize, true, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
@@ -886,7 +873,7 @@ public abstract class NativeImage extends AbstractImage {
 
     @Override
     public long getImageHeapSize() {
-        return heapLayout.getImageHeapSize();
+        return heapLayout.getSize();
     }
 
     @Override

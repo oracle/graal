@@ -27,15 +27,21 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 
-/** Common options that can be specified for both the serial and the epsilon GC. */
+/**
+ * Common options that can be specified for both the serial and the epsilon GC. Some of these
+ * options are validated at build-time in {@link HeapParameters#initialize}.
+ */
 public final class SerialAndEpsilonGCOptions {
     @Option(help = "The maximum heap size as percent of physical memory. Serial and epsilon GC only.", type = OptionType.User) //
     public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new NotifyGCRuntimeOptionKey<>(80, SerialAndEpsilonGCOptions::validateSerialOrEpsilonRuntimeOption);
@@ -70,6 +76,42 @@ public final class SerialAndEpsilonGCOptions {
 
     @Option(help = "Print information about TLABs. Printed when The TLABs are retired before a GC, and during the resizing of the TLABs. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> PrintTLAB = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
+
+    /** Query these options only through an appropriate method. */
+    public static class ConcealedOptions {
+        /** Use {@link #getReservedMetaspaceSize} instead. */
+        @Option(help = "Determines the maximum size in bytes of the metaspace. 0 means set ergonomically.")//
+        public static final HostedOptionKey<Integer> MaxMetaspaceSize = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
+    }
+
+    @Fold
+    public static int getNullRegionSize() {
+        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue()) {
+            /*
+             * The image heap will be mapped in a way that there is a memory protected gap between
+             * the heap base and the start of the image heap. The gap won't need any memory in the
+             * native image file.
+             */
+            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        }
+        return 0;
+    }
+
+    @Fold
+    public static int getReservedMetaspaceSize() {
+        if (!Metaspace.isSupported()) {
+            return 0;
+        }
+
+        int value = SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
+        if (value != 0) {
+            return value;
+        }
+
+        /* Use roughly 32 MB as the default. */
+        long result = NumUtil.roundUp(32L * 1024 * 1024, SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        return NumUtil.safeToInt(result);
+    }
 
     private SerialAndEpsilonGCOptions() {
     }

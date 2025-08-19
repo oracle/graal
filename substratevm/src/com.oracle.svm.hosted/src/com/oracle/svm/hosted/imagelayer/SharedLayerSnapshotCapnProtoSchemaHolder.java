@@ -4883,10 +4883,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(5, value);
       }
 
-      public final long getImageHeapSize() {
+      public final long getImageHeapEndOffset() {
         return _getLongField(3);
       }
-      public final void setImageHeapSize(long value) {
+      public final void setImageHeapEndOffset(long value) {
         _setLongField(3, value);
       }
 
@@ -5114,7 +5114,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(5);
       }
 
-      public final long getImageHeapSize() {
+      public final long getImageHeapEndOffset() {
         return _getLongField(3);
       }
 

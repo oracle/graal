@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 
@@ -68,10 +67,5 @@ public class ClassRegistryFeature implements InternalFeature {
         if (RuntimeClassLoading.isSupported() || ClassForNameSupport.isCurrentLayerRegisteredClass(cls.getName())) {
             ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(cls.getClassLoader()), cls);
         }
-    }
-
-    @Override
-    public void afterCompilation(AfterCompilationAccess access) {
-        ClassRegistries.setStartingTypeId(DynamicHubSupport.currentLayer().getMaxTypeId() + 1);
     }
 }

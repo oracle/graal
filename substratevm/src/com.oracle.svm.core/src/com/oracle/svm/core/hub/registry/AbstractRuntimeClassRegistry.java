@@ -353,7 +353,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * @formatter:on
          */
         DynamicHub superHub = DynamicHub.fromClass(superClass);
-        int typeID = ClassRegistries.nextTypeId();
+        int typeID = TypeIDs.singleton().nextTypeId();
         short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
         short numClassTypes;
         short typeIDDepth;

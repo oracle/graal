@@ -29,6 +29,7 @@ import static jdk.graal.compiler.word.Word.zero;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -51,15 +52,16 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
 
     @Override
     @Uninterruptible(reason = "Still being initialized.")
-    public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
+    public int initialize(WordPointer heapBaseOut, IsolateArguments arguments) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             int result = protectSingleIsolateImageHeap();
             if (result == CEntryPointErrors.NO_ERROR) {
-                heapBasePointer.write(Isolates.IMAGE_HEAP_BEGIN.get());
+                heapBaseOut.write(Isolates.IMAGE_HEAP_BEGIN.get());
             }
             return result;
         }
-        return ImageHeapProvider.get().initialize(nullPointer(), zero(), heapBasePointer, nullPointer());
+        WordPointer imageHeapEndOut = StackValue.get(WordPointer.class);
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), heapBaseOut, imageHeapEndOut);
     }
 
     @Override
@@ -72,6 +74,12 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
     }
 
     @Override
+    public UnsignedWord getCollectedHeapAddressSpaceSize() {
+        assert getReservedAddressSpaceSize().aboveOrEqual(ImageHeapProvider.get().getImageHeapEndOffsetInAddressSpace());
+        return getReservedAddressSpaceSize().subtract(ImageHeapProvider.get().getImageHeapEndOffsetInAddressSpace());
+    }
+
+    @Override
     public UnsignedWord getReservedAddressSpaceSize() {
         UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord optionValue = Word.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
@@ -79,10 +87,5 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
             return UnsignedUtils.min(optionValue, maxAddressSpaceSize);
         }
         return maxAddressSpaceSize;
-    }
-
-    @Override
-    protected UnsignedWord getReservedMetaspaceSize() {
-        return Word.zero();
     }
 }

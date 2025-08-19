@@ -1752,8 +1752,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return getOrCreateConstant(snapshot.getStaticObjectFieldsConstantId());
     }
 
-    public long getImageHeapSize() {
-        return snapshot.getImageHeapSize();
+    public int getMaxTypeId() {
+        return snapshot.getNextTypeId() - 1;
+    }
+
+    public long getImageHeapEndOffset() {
+        return snapshot.getImageHeapEndOffset();
     }
 
     @Override
