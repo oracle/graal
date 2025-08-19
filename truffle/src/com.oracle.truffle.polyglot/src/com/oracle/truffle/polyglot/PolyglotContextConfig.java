@@ -235,7 +235,7 @@ final class PolyglotContextConfig {
                         null,
                         false,
                         false,
-                        false,
+                        Boolean.getBoolean("polyglot.image-build-time.PreinitializeAllowExperimentalOptions"),
                         null,
                         Collections.emptyMap(),
                         Collections.emptySet(),
