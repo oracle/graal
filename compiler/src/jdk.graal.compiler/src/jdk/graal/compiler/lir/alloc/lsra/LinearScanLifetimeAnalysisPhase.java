@@ -43,9 +43,12 @@ import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.util.BitMap2D;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.CounterKey;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.lir.InstructionStateProcedure;
 import jdk.graal.compiler.lir.InstructionValueConsumer;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -69,6 +72,14 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
+    private static final TimerKey numberInstructions = DebugContext.timer("numberInstructions");
+    private static final TimerKey computeLocalLiveSets = DebugContext.timer("computeLocalLiveSets");
+    private static final TimerKey computeGlobalLiveSets = DebugContext.timer("computeGlobalLiveSets");
+    private static final TimerKey buildIntervals = DebugContext.timer("buildIntervals");
+
+    private static final CounterKey computeGlobalLiveSetsBlocksProcessed = DebugContext.counter("computeGlobalLiveSetsBlocksProcessed");
+    private static final CounterKey computeGlobalLiveSetsBlocks = DebugContext.counter("computeGlobalLiveSetsBlocks");
+
     protected final LinearScan allocator;
     protected final DebugContext debug;
 
@@ -80,13 +91,22 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         debug = allocator.getDebug();
     }
 
+    @SuppressWarnings("try")
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-        numberInstructions();
+        try (DebugCloseable t = numberInstructions.start(allocator.debug)) {
+            numberInstructions();
+        }
         debug.dump(DebugContext.VERBOSE_LEVEL, lirGenRes.getLIR(), "Before register allocation");
-        computeLocalLiveSets();
-        computeGlobalLiveSets();
-        buildIntervals(Assertions.detailedAssertionsEnabled(allocator.getOptions()));
+        try (DebugCloseable t = computeLocalLiveSets.start(allocator.debug)) {
+            computeLocalLiveSets();
+        }
+        try (DebugCloseable t = computeGlobalLiveSets.start(allocator.debug)) {
+            computeGlobalLiveSets();
+        }
+        try (DebugCloseable t = buildIntervals.start(allocator.debug)) {
+            buildIntervals(Assertions.detailedAssertionsEnabled(allocator.getOptions()));
+        }
     }
 
     /**
@@ -387,6 +407,9 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
                 verifyLiveness();
             }
+            // Every block is processed on each iteration
+            computeGlobalLiveSetsBlocksProcessed.add(allocator.debug, iterationCount * (long) numBlocks);
+            computeGlobalLiveSetsBlocks.add(allocator.debug, numBlocks);
 
             // check that the liveIn set of the first block is empty
             BasicBlock<?> startBlock = allocator.getLIR().getControlFlowGraph().getStartBlock();
@@ -600,12 +623,12 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             }
         }
 
-        changeSpillDefinitionPos(op, operand, interval, defPos);
+        changeSpillDefinitionPos(interval, defPos);
         if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal() && isStackSlot(operand)) {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
         }
-        interval.addMaterializationValue(getMaterializedValue(op, operand, interval));
+        interval.addMaterializationValue(getMaterializedValue(op, interval));
 
         if (debug.isLogEnabled()) {
             debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
@@ -665,11 +688,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
     /**
      * Eliminates moves from register to stack if the stack slot is known to be correct.
-     *
-     * @param op
-     * @param operand
      */
-    protected void changeSpillDefinitionPos(LIRInstruction op, AllocatableValue operand, Interval interval, int defPos) {
+    protected void changeSpillDefinitionPos(Interval interval, int defPos) {
         assert interval.isSplitParent() : "can only be called for split parents";
 
         switch (interval.spillState()) {
@@ -908,12 +928,11 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
      * Returns a value for a interval definition, which can be used for re-materialization.
      *
      * @param op An instruction which defines a value
-     * @param operand The destination operand of the instruction
      * @param interval The interval for this defined value.
      * @return Returns the value which is moved to the instruction and which can be reused at all
      *         reload-locations in case the interval of this instruction is spilled.
      */
-    protected Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected Constant getMaterializedValue(LIRInstruction op, Interval interval) {
         if (StandardOp.LoadConstantOp.isLoadConstantOp(op)) {
             StandardOp.LoadConstantOp move = StandardOp.LoadConstantOp.asLoadConstantOp(op);
 
