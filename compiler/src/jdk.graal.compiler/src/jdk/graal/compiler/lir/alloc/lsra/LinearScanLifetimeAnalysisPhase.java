@@ -105,7 +105,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             computeGlobalLiveSets();
         }
         try (DebugCloseable t = buildIntervals.start(allocator.debug)) {
-            buildIntervals(Assertions.detailedAssertionsEnabled(allocator.getOptions()));
+            buildIntervals();
         }
     }
 
@@ -215,9 +215,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             }
                         }
 
-                        if (allocator.detailedAsserts) {
-                            verifyInput(block, liveKillScratch, operand);
-                        }
+                        assert verifyInput(block, liveKillScratch, operand);
                     };
                     ValueConsumer stateConsumer = (operand, mode, flags) -> {
                         if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
@@ -242,14 +240,12 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             }
                         }
 
-                        if (allocator.detailedAsserts) {
-                            /*
-                             * Fixed intervals are never live at block boundaries, so they need not
-                             * be processed in live sets. Process them only in debug mode so that
-                             * this can be checked
-                             */
-                            verifyTemp(liveKillScratch, operand);
-                        }
+                        /*
+                         * Fixed intervals are never live at block boundaries, so they need not be
+                         * processed in live sets. Process them only in debug mode so that this can
+                         * be checked
+                         */
+                        assert verifyTemp(liveKillScratch, operand);
                     };
 
                     // iterate all instructions of the block
@@ -288,29 +284,35 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
     }
 
-    private void verifyTemp(BitSet liveKill, Value operand) {
-        /*
-         * Fixed intervals are never live at block boundaries, so they need not be processed in live
-         * sets. Process them only in debug mode so that this can be checked
-         */
-        if (isRegister(operand)) {
-            if (allocator.isProcessed(operand)) {
-                liveKill.set(getOperandNumber(operand));
+    private boolean verifyTemp(BitSet liveKill, Value operand) {
+        if (allocator.isDetailedAsserts()) {
+            /*
+             * Fixed intervals are never live at block boundaries, so they need not be processed in
+             * live sets. Process them only in debug mode so that this can be checked
+             */
+            if (isRegister(operand)) {
+                if (allocator.isProcessed(operand)) {
+                    liveKill.set(getOperandNumber(operand));
+                }
             }
         }
+        return true;
     }
 
-    private void verifyInput(BasicBlock<?> block, BitSet liveKill, Value operand) {
-        /*
-         * Fixed intervals are never live at block boundaries, so they need not be processed in live
-         * sets. This is checked by these assertions to be sure about it. The entry block may have
-         * incoming values in registers, which is ok.
-         */
-        if (isRegister(operand) && block != allocator.getLIR().getControlFlowGraph().getStartBlock()) {
-            if (allocator.isProcessed(operand)) {
-                assert liveKill.get(getOperandNumber(operand)) : "using fixed register " + asRegister(operand) + " that is not defined in this block " + block;
+    private boolean verifyInput(BasicBlock<?> block, BitSet liveKill, Value operand) {
+        if (allocator.isDetailedAsserts()) {
+            /*
+             * Fixed intervals are never live at block boundaries, so they need not be processed in
+             * live sets. This is checked by these assertions to be sure about it. The entry block
+             * may have incoming values in registers, which is ok.
+             */
+            if (isRegister(operand) && block != allocator.getLIR().getControlFlowGraph().getStartBlock()) {
+                if (allocator.isProcessed(operand)) {
+                    assert liveKill.get(getOperandNumber(operand)) : "using fixed register " + asRegister(operand) + " that is not defined in this block " + block;
+                }
             }
         }
+        return true;
     }
 
     protected int getOperandNumber(Value operand) {
@@ -404,9 +406,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
             } while (changeOccurred);
 
-            if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
-                verifyLiveness();
-            }
+            assert verifyLiveness();
+
             // Every block is processed on each iteration
             computeGlobalLiveSetsBlocksProcessed.add(allocator.debug, iterationCount * (long) numBlocks);
             computeGlobalLiveSetsBlocks.add(allocator.debug, numBlocks);
@@ -414,7 +415,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             // check that the liveIn set of the first block is empty
             BasicBlock<?> startBlock = allocator.getLIR().getControlFlowGraph().getStartBlock();
             if (allocator.getBlockData(startBlock).liveIn.cardinality() != 0) {
-                if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
+                if (allocator.isDetailedAsserts()) {
                     reportFailure(numBlocks);
                 }
                 BitSet bs = allocator.getBlockData(startBlock).liveIn;
@@ -538,19 +539,22 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
     }
 
-    protected void verifyLiveness() {
-        /*
-         * Check that fixed intervals are not live at block boundaries (live set must be empty at
-         * fixed intervals).
-         */
-        for (int blockId : allocator.sortedBlocks()) {
-            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
-            for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
-                assert !allocator.getBlockData(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
-                assert !allocator.getBlockData(block).liveOut.get(j) : "liveOut set of fixed register must be empty";
-                assert !allocator.getBlockData(block).liveGen.get(j) : "liveGen set of fixed register must be empty";
+    protected boolean verifyLiveness() {
+        if (allocator.isDetailedAsserts()) {
+            /*
+             * Check that fixed intervals are not live at block boundaries (live set must be empty
+             * at fixed intervals).
+             */
+            for (int blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
+                for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
+                    assert !allocator.getBlockData(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
+                    assert !allocator.getBlockData(block).liveOut.get(j) : "liveOut set of fixed register must be empty";
+                    assert !allocator.getBlockData(block).liveGen.get(j) : "liveGen set of fixed register must be empty";
+                }
             }
         }
+        return true;
     }
 
     protected void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, ValueKind<?> kind, boolean detailedAsserts) {
@@ -644,7 +648,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             StandardOp.ValueMoveOp move = StandardOp.ValueMoveOp.asValueMoveOp(op);
             if (optimizeMethodArgument(move.getInput())) {
                 StackSlot slot = asStackSlot(move.getInput());
-                if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
+                if (allocator.isDetailedAsserts()) {
                     assert op.id() > 0 : "invalid id";
                     assert allocator.blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
                     assert LIRValueUtil.isVariable(move.getResult()) : "result of move must be a variable";
@@ -755,8 +759,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     }
 
     @SuppressWarnings("try")
-    protected void buildIntervals(boolean detailedAsserts) {
-
+    protected void buildIntervals() {
+        final boolean detailedAsserts = allocator.isDetailedAsserts();
         try (Indent indent = debug.logAndIndent("build intervals")) {
             InstructionValueConsumer outputConsumer = (op, operand, mode, flags) -> {
                 if (LinearScan.isVariableOrRegister(operand)) {

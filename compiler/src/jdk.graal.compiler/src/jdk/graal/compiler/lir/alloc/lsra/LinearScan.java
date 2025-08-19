@@ -75,6 +75,10 @@ import jdk.vm.ci.meta.Value;
  */
 public class LinearScan {
 
+    protected boolean isDetailedAsserts() {
+        return Assertions.assertionsEnabled() && detailedAsserts;
+    }
+
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
@@ -188,7 +192,7 @@ public class LinearScan {
      */
     protected final Interval intervalEndMarker;
     public final Range rangeEndMarker;
-    public final boolean detailedAsserts;
+    private final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
     @SuppressWarnings("this-escape")
@@ -740,14 +744,14 @@ public class LinearScan {
 
                 sortIntervalsAfterAllocation();
 
-                if (detailedAsserts) {
+                if (isDetailedAsserts()) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (detailedAsserts) {
+                if (isDetailedAsserts()) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {
