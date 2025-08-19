@@ -257,7 +257,7 @@ public class TruffleCompilerOptions implements OptionsContainer {
     @Option(help = "Stop partial evaluation when the graph exceeded this size, disabled if < 0. (default: -1, syntax: [-inf, inf))", type = OptionType.Debug) //
     public static final OptionKey<Integer> MaximumGraalGraphSize = new OptionKey<>(-1);
 
-    
+
     private static final String EXPANSION_SYNTAX = "(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)";
 
     private static final String EXPANSION_VALUES = "Accepted values are:%n" +
@@ -380,14 +380,16 @@ public class TruffleCompilerOptions implements OptionsContainer {
         options = new OptionValues(options, BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers, false);
 
         EconomicMap<OptionKey<?>, Object> extraPairs = OptionValues.asMap(BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers, false);
-        // Forward the truffle timeout to the compiler
-        double compilationExpiration;
-        if (parsedTruffleOptions.containsKey(CompilationTimeout)) {
-            compilationExpiration = (double) parsedTruffleOptions.get(CompilationTimeout);
-        } else {
-            compilationExpiration = CompilationTimeout.getValue(options);
+        if (!CompilationAlarm.Options.CompilationExpirationPeriod.hasBeenSet(options)) {
+            // Forward the truffle timeout to the compiler
+            double compilationExpiration;
+            if (parsedTruffleOptions.containsKey(CompilationTimeout)) {
+                compilationExpiration = (double) parsedTruffleOptions.get(CompilationTimeout);
+            } else {
+                compilationExpiration = CompilationTimeout.getValue(options);
+            }
+            extraPairs.put(CompilationAlarm.Options.CompilationExpirationPeriod, compilationExpiration);
         }
-        extraPairs.put(CompilationAlarm.Options.CompilationExpirationPeriod, compilationExpiration);
         return new OptionValues(options, extraPairs);
     }
 
