@@ -69,7 +69,7 @@ public final class DeoptTestSnippets extends SubstrateTemplates implements Snipp
                 return;
             }
 
-            Arguments args = new Arguments(deoptTest, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(deoptTest, node.graph(), tool.getLoweringStage());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

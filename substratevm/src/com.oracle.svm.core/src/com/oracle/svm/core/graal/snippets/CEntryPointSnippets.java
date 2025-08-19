@@ -939,21 +939,21 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
-                    args = new Arguments(createIsolate, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(createIsolate, node.graph(), tool.getLoweringStage());
                     args.add("parameters", node.getParameter());
                     break;
                 case AttachThread:
-                    args = new Arguments(attachThread, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(attachThread, node.graph(), tool.getLoweringStage());
                     args.add("isolate", node.getParameter());
                     args.add("startedByIsolate", node.getStartedByIsolate());
                     args.add("ensureJavaThread", node.getEnsureJavaThread());
                     break;
                 case EnterByIsolate:
-                    args = new Arguments(enterByIsolate, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(enterByIsolate, node.graph(), tool.getLoweringStage());
                     args.add("isolate", node.getParameter());
                     break;
                 case Enter:
-                    args = new Arguments(enter, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(enter, node.graph(), tool.getLoweringStage());
                     assert node.getParameter() != null;
                     args.add("thread", node.getParameter());
                     break;
@@ -975,16 +975,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             Arguments args;
             switch (node.getLeaveAction()) {
                 case Leave:
-                    args = new Arguments(returnFromJavaToC, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(returnFromJavaToC, node.graph(), tool.getLoweringStage());
                     break;
                 case DetachThread:
-                    args = new Arguments(detachCurrentThread, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(detachCurrentThread, node.graph(), tool.getLoweringStage());
                     break;
                 case TearDownIsolate:
-                    args = new Arguments(tearDownIsolate, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(tearDownIsolate, node.graph(), tool.getLoweringStage());
                     break;
                 case ExceptionAbort:
-                    args = new Arguments(reportException, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(reportException, node.graph(), tool.getLoweringStage());
                     args.add("exception", node.getException());
                     break;
                 default:
@@ -1004,11 +1004,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             Arguments args;
             switch (node.getUtilityAction()) {
                 case IsAttached:
-                    args = new Arguments(isAttached, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(isAttached, node.graph(), tool.getLoweringStage());
                     args.add("isolate", node.getParameter0());
                     break;
                 case FailFatally:
-                    args = new Arguments(failFatally, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(failFatally, node.graph(), tool.getLoweringStage());
                     args.add("code", node.getParameter0());
                     args.add("message", node.getParameter1());
                     break;
