@@ -40,8 +40,15 @@ IGV is free to use and has to be built on user's machine with the [`mx` tool](ht
     ```shell
     mx --version 
     ```
-    
-4. Launch IGV with `mx`:
+4. Install a JDK 21
+    ```shell
+    mx fetch-jdk
+    ```
+    and set the JAVA_HOME as proposed by the script
+    ```shell
+    export JAVA_HOME=/path/to/jdk
+    ```
+6. Launch IGV with `mx`:
     ```shell
     mx -p graal/compiler igv
     ```
