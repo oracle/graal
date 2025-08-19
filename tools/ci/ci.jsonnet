@@ -25,10 +25,11 @@
   local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
     name: 'gate-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
-    targets: ["gate"],
+    targets: [if (self.jdk_name == "jdk-latest") then "tier2" else "tier3"],
     guard+: {
         includes+: ["**.jsonnet"],
-    }
+    },
+    notify_groups:: ["tools"],
   },
 
   local tools_weekly = tools_common + {
@@ -48,7 +49,8 @@
       ["mx", "build"],
       ["mx", "javadoc"],
     ],
-    targets: ["gate"]
+    targets: ["tier1"],
+    notify_groups:: ["tools"],
   },
 
   local coverage_whitelisting = [

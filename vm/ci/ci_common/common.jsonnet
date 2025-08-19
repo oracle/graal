@@ -577,7 +577,7 @@ local devkits = graal_common.devkits;
     #
     # Gates
     #
-    vm.vm_java_Latest + graal_common.deps.eclipse + graal_common.deps.jdt + graal_common.deps.spotbugs + self.vm_base('linux', 'amd64', 'gate') + galahad.exclude + {
+    vm.vm_java_Latest + graal_common.deps.eclipse + graal_common.deps.jdt + graal_common.deps.spotbugs + self.vm_base('linux', 'amd64', 'tier1') + galahad.exclude + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
