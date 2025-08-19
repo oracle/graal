@@ -734,6 +734,10 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
         if self.uses_musl_swcfi_toolchain:
+            # Use $$ to escape the $ from expansion by mx. If we use musl swcfi
+            # and their libc, the libc++, libc++abi and libunwind must be
+            # either in the LD_LIBRARY_PATH (which takes precedence) or in the
+            # lib folder of the standalone.
             _dynamic_ldflags.append(r"-Wl,-rpath,'$$ORIGIN/../lib'")
         return super().ldflags + _dynamic_ldflags
 
