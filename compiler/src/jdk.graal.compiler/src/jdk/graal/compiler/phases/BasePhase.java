@@ -205,7 +205,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
         @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey(null, null);        
+        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey("DominatorBasedGlobalValueNumberingPhase=*", null);
+        @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> ReportHotMetrics = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -498,7 +500,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 }
             }
 
-            if (PhaseOptions.ReportHotMetricsAfterPhases.matches(options, this, graph)) {
+            if (PhaseOptions.ReportHotMetrics.getValue(options) && PhaseOptions.ReportHotMetricsAfterPhases.matches(options, this, graph)) {
                 String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
                 TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
                 new ReportHotCodePhase().apply(graph, context);
