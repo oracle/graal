@@ -103,7 +103,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                 debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
             }
 
-            if (allocator.detailedAsserts) {
+            if (allocator.isDetailedAsserts()) {
                 assert allocator.getLIR().getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 /*
