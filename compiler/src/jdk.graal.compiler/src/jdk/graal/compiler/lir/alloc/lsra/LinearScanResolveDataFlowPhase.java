@@ -65,7 +65,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
         int numOperands = allocator.operandSize();
-        BitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
+        SparseBitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
         for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {

@@ -32,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
@@ -94,7 +93,7 @@ public class LinearScan {
          * block. The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value)
          * operand number}.
          */
-        public BitSet liveIn;
+        public SparseBitSet liveIn;
 
         /**
          * Bit map specifying which operands are live upon exit from this block. These are values
@@ -102,20 +101,20 @@ public class LinearScan {
          * to this block. The bit index of an operand is its
          * {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveOut;
+        public SparseBitSet liveOut;
 
         /**
          * Bit map specifying which operands are used (before being defined) in this block. That is,
          * these are the values that are live upon entry to the block. The bit index of an operand
          * is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveGen;
+        public SparseBitSet liveGen;
 
         /**
          * Bit map specifying which operands are defined/overwritten in this block. The bit index of
          * an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveKill;
+        public SparseBitSet liveKill;
     }
 
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
