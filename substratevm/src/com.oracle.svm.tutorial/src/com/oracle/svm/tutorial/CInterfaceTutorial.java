@@ -25,10 +25,12 @@
 package com.oracle.svm.tutorial;
 
 import java.nio.file.Path;
-import java.util.Collections;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
@@ -52,6 +54,7 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -89,7 +92,6 @@ public class CInterfaceTutorial {
         /* Read access of a field. A call to the function is replaced with a raw memory load. */
         @CField("f_primitive")
         int getPrimitive();
-
         /* Write access of a field. A call to the function is replaced with a raw memory store. */
         @CField("f_primitive")
         void setPrimitive(int value);
@@ -100,21 +102,36 @@ public class CInterfaceTutorial {
 
         @CField("f_cstr")
         CCharPointer getCString();
-
         @CField("f_cstr")
         void setCString(CCharPointer value);
 
         @CField("f_java_object_handle")
         ObjectHandle getJavaObject();
-
         @CField("f_java_object_handle")
         void setJavaObject(ObjectHandle value);
 
         @CField("f_print_function")
         PrintFunctionPointer getPrintFunction();
-
         @CField("f_print_function")
         void setPrintFunction(PrintFunctionPointer printFunction);
+
+        /* Note that for enum setters and getters you must use
+           primitive type not the java Enum type you defined */
+        @CField("f_day")
+        int getDay();
+        @CField("f_day")
+        void setDay(int day);
+
+        /* Setters and getters for sub struct member */
+        @CField("f_sub_struct")
+        MySubStruct getSubStruct();
+        @CField("f_sub_struct")
+        void setSubStruct(MySubStruct subStruct);
+
+        /* Getter for ptr for string array, setter is not needed
+           as you can set via the returned pointer */
+        @CFieldAddress("f_str_array")
+        CCharPointerPointer addressOfStringArray();
     }
 
     @CEnum("day_of_the_week_t")
@@ -136,6 +153,15 @@ public class CInterfaceTutorial {
 
         @CEnumLookup
         public static native DayOfTheWeek fromCValue(int value);
+    }
+
+    @CStruct("my_sub_t")
+    interface MySubStruct extends PointerBase {
+        @CField("f_sub_primitive")
+        int getSubPrimitive();
+
+        @CField("f_sub_primitive")
+        void setSubPrimitive(int value);
     }
 
     /* Import of a C function pointer type. */
@@ -172,7 +198,7 @@ public class CInterfaceTutorial {
     protected static CCharPointerHolder pin;
 
     protected static void dump(MyData data) {
-        System.out.format("**** In Java ****%n");
+        System.out.format("**** In Java: dump ****%n");
         System.out.format("primitive: %d%n", data.getPrimitive());
         System.out.format("length: %d%n", getDataLength());
         for (int i = 0; i < getDataLength(); i++) {
@@ -191,11 +217,20 @@ public class CInterfaceTutorial {
         }
         /* Call a C function indirectly via function pointer. */
         data.getPrintFunction().invoke(currentThread, data.getCString());
+
+        System.out.println("f_day: " + DayOfTheWeek.fromCValue(data.getDay()));
+        System.out.println("f_sub_struct->f_sub_primitive: " + data.getSubStruct().getSubPrimitive());
+        // print string array
+        CCharPointerPointer strArray = data.addressOfStringArray();
+        for (int i = 0; i < getDataLength(); i++) {
+            System.out.println("f_str_array[" + i + "] = " + CTypeConversion.toJavaString(strArray.read(i)));
+        }
     }
 
     /* Java function that can be called directly from C code. */
     @CEntryPoint(name = "java_entry_point")
     protected static void javaEntryPoint(@SuppressWarnings("unused") IsolateThread thread, MyData data) {
+        System.out.println("**** In Java: java_entry_point, demonstrating modifying incoming c struct ****");
         /* Allocate a C structure in our stack frame. */
         MyData copy = StackValue.get(MyData.class);
 
@@ -222,11 +257,26 @@ public class CInterfaceTutorial {
 
         /* Create a handle to a Java object. */
         data.setJavaObject(ObjectHandles.getGlobal().create(javaString));
+
+        /* Modify an enum value */
+        data.setDay(DayOfTheWeek.TUESDAY.getCValue());
+
+        /* Modify a sub struct value */
+        MySubStruct subStruct = data.getSubStruct();
+        subStruct.setSubPrimitive(100);
+        data.setSubStruct(subStruct);
+
+        /* Modify string array */
+        CCharPointerPointer strArray = data.addressOfStringArray();
+        for (int i = 0; i < getDataLength(); i++) {
+            strArray.write(i, CTypeConversion.toCString("str " + i*2).get());
+        }
     }
 
     /* Java function that can be called directly from C code. */
     @CEntryPoint(name = "java_release_data")
     protected static void releaseData(@SuppressWarnings("unused") IsolateThread thread, MyData data) {
+        System.out.println("**** In Java: java_release_data ****");
         dump(data);
 
         /* Retrieve the object we have stored in a handle. */
@@ -250,6 +300,7 @@ public class CInterfaceTutorial {
     /* Java function for which C enum values are automatically converted to Java enum constants. */
     @CEntryPoint(name = "java_print_day")
     protected static void printDay(@SuppressWarnings("unused") IsolateThread thread, DayOfTheWeek day) {
+        System.out.println("*** In Java: java_print_day ***");
         System.out.format("Day: %s (Java ordinal: %d, C value: %d)%n", day.name(), day.ordinal(), day.getCValue());
         if (!Platform.includedIn(Platform.WINDOWS.class)) {
             /*
@@ -339,7 +390,7 @@ public class CInterfaceTutorial {
 
     @CEntryPoint(name = "java_entry_point2")
     protected static void javaEntryPoint2(@SuppressWarnings("unused") IsolateThread thread, Substruct1 s1, Substruct2 s2) {
-        System.out.println("*** In Java, demonstrating inheritance with @CStruct class");
+        System.out.println("*** In Java: java_entry_point2, demonstrating inheritance with @CStruct class");
         CCharPointer tp1 = s1.typePtr();
         CCharPointer tp2 = s2.header().typePtr();
         System.out.println("tp1 = 0x" + Long.toHexString(tp1.rawValue()) + " tp2 = 0x" + Long.toHexString(tp2.rawValue()));
@@ -352,7 +403,7 @@ public class CInterfaceTutorial {
 
         System.out.println("s1.header.type = " + s1.type() + "  ((Header) s2).type = " + s2.header().type());
 
-        System.out.println("*** In Java, demonstrating @CFieldOffset");
+        System.out.println("*** In Java: demonstrating @CFieldOffset");
         System.out.println("offset_of(s1.header) = " + Substruct1.offsetOfHeader());
         System.out.println("offset_of(s2.header) = " + s2.offsetOfHeader());
         System.out.println("offset_of(s2.f1) = " + s2.offsetOff1().rawValue());
@@ -416,7 +467,7 @@ public class CInterfaceTutorial {
 
     @CEntryPoint(name = "java_entry_point3")
     protected static void javaEntryPoint3(@SuppressWarnings("unused") IsolateThread thread, DU du1, DU du2, D1 d1, D2 d2) {
-        System.out.println("*** In Java, demonstrating access to union type member with @CStruct class");
+        System.out.println("*** In Java: java_entry_point3, demonstrating access to union type member with @CStruct class");
 
         if (du1.getD1().notEqual(d1)) {
             System.out.println("*** Error with Union test1: du1 should be equal to d1");
@@ -480,6 +531,7 @@ public class CInterfaceTutorial {
 
     @CEntryPoint(name = "java_entry_point4")
     protected static void javaEntryPoint4(@SuppressWarnings("unused") IsolateThread thread, SUData sudata) {
+        System.out.println("*** In Java: java_entry_point4, demonstrating access to unsigned integer types in @CStruct class");
         int i = 0;
         UnsignedWord u = sudata.getUB1Unsigned();
         SignedWord s = sudata.getSB1Signed();

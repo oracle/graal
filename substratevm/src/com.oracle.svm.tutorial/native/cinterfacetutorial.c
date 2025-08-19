@@ -39,6 +39,7 @@ void c_print(void *thread, char* cstr) {
 
 void fill(my_data* data) {
     int i;
+    printf("**** In C: fill ****\n");
     data->f_primitive = 42;
     for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
       data->f_array[i] = i * 2;
@@ -46,11 +47,30 @@ void fill(my_data* data) {
 
     data->f_cstr = "Hello World";
     data->f_print_function = &c_print;
+
+    // additional examples
+    // enum
+    data->f_day = MONDAY;
+
+    // sub struct member
+    data->f_sub_struct->f_sub_primitive = 43;
+
+    // array of strings
+    data->f_str_array[0] = "str 0";
+    data->f_str_array[1] = "str 1";
+    data->f_str_array[2] = "str 2";
+    data->f_str_array[3] = "str 3";
+
+    // init members from an array of sub structs
+    for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
+        data->f_sub_struct_array[i].f_sub_primitive = i;
+    }
+
 }
 
 void dump(void *thread, my_data* data) {
     int i;
-    printf("**** In C ****\n");
+    printf("**** In C: dump ****\n");
     printf("primitive: %d\n", data->f_primitive);
     printf("length: %d\n", DATA_ARRAY_LENGTH);
     for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
@@ -60,6 +80,15 @@ void dump(void *thread, my_data* data) {
 
     /* Call a function pointer. When set to a Java function, this transparently calls a Java function. */
     data->f_print_function(thread, data->f_cstr);
+
+    printf("f_day: %d\n", data->f_day);
+    printf("f_sub_struct->f_sub_primitive: %d\n", data->f_sub_struct->f_sub_primitive);
+    for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
+        printf("f_str_array[%d]: %s\n", i, data->f_str_array[i]);
+    }
+    for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
+        printf("f_sub_struct_array[%d].f_sub_primitive: %d\n", i, data->f_sub_struct_array[i].f_sub_primitive);
+    }
 }
 
 day_of_the_week_t day_of_the_week_add(day_of_the_week_t day, int offset) {
@@ -68,7 +97,7 @@ day_of_the_week_t day_of_the_week_add(day_of_the_week_t day, int offset) {
 
 du_t* makeUnion(unsigned char type) {
 	du_t* result;
-	printf("**** In C ****\n");
+	printf("**** In C: makeUnion ****\n");
 	switch(type) {
 	case 1:
 		result = (du_t*) malloc(sizeof(d1_t));
