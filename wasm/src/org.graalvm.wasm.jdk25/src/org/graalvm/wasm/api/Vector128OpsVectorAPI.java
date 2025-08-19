@@ -447,9 +447,9 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop_sat(x, y, I8X16, I16X8, VectorOperators.B2S, VectorOperators.SUB, Byte.MIN_VALUE, Byte.MAX_VALUE); // GR-68891
             case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff); // GR-68891
             case Bytecode.VECTOR_I8X16_MIN_S -> binop(x, y, I8X16, VectorOperators.MIN);
-            case Bytecode.VECTOR_I8X16_MIN_U -> binop(x, y, I8X16, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I8X16_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I8X16_MAX_S -> binop(x, y, I8X16, VectorOperators.MAX);
-            case Bytecode.VECTOR_I8X16_MAX_U -> binop(x, y, I8X16, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I8X16_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I8X16_AVGR_U -> avgr_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S);
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> narrow(x, y, I32X4, I16X8, Short.MIN_VALUE, Short.MAX_VALUE);
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> narrow(x, y, I32X4, I16X8, 0, 0xffff);
@@ -462,9 +462,9 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff); // GR-68891
             case Bytecode.VECTOR_I16X8_MUL -> binop(x, y, I16X8, VectorOperators.MUL);
             case Bytecode.VECTOR_I16X8_MIN_S -> binop(x, y, I16X8, VectorOperators.MIN);
-            case Bytecode.VECTOR_I16X8_MIN_U -> binop(x, y, I16X8, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I16X8_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I16X8_MAX_S -> binop(x, y, I16X8, VectorOperators.MAX);
-            case Bytecode.VECTOR_I16X8_MAX_U -> binop(x, y, I16X8, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I16X8_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I16X8_AVGR_U -> avgr_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> extmul(x, y, I8X16, VectorOperators.B2S, 0);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> extmul(x, y, I8X16, VectorOperators.ZERO_EXTEND_B2S, 0);
@@ -474,9 +474,9 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I32X4_SUB -> binop(x, y, I32X4, VectorOperators.SUB);
             case Bytecode.VECTOR_I32X4_MUL -> binop(x, y, I32X4, VectorOperators.MUL);
             case Bytecode.VECTOR_I32X4_MIN_S -> binop(x, y, I32X4, VectorOperators.MIN);
-            case Bytecode.VECTOR_I32X4_MIN_U -> binop(x, y, I32X4, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I32X4_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I32X4_MAX_S -> binop(x, y, I32X4, VectorOperators.MAX);
-            case Bytecode.VECTOR_I32X4_MAX_U -> binop(x, y, I32X4, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I32X4_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I32X4_DOT_I16X8_S -> i32x4_dot_i16x8_s(x, y);
             case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S -> extmul(x, y, I16X8, VectorOperators.S2I, 0);
             case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U -> extmul(x, y, I16X8, VectorOperators.ZERO_EXTEND_S2I, 0);
