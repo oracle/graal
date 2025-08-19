@@ -1042,8 +1042,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
                     Shape<E> shape, Shape<F> extendedShape,
                     VectorOperators.Conversion<E, F> upcast) {
         Vector<F> one = extendedShape.broadcast(1);
-        Vector<F> two = extendedShape.broadcast(2);
-        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> x.add(y).add(one).div(two));
+        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> x.add(y).add(one).lanewise(VectorOperators.LSHR, 1));
     }
 
     private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
