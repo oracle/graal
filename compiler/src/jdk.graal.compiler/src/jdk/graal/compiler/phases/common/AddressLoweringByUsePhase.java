@@ -37,13 +37,11 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.memory.AbstractWriteNode;
-import jdk.graal.compiler.nodes.memory.FloatingReadNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -85,11 +83,6 @@ public class AddressLoweringByUsePhase extends AddressLoweringPhase {
                 Stamp stamp = javaReadNode.stamp(NodeView.DEFAULT);
                 address = javaReadNode.getAddress();
                 lowered = lowering.lower(javaReadNode, stamp, address);
-            } else if (node instanceof FloatingReadNode) {
-                FloatingReadNode floatingReadNode = (FloatingReadNode) node;
-                Stamp stamp = floatingReadNode.getAccessStamp(NodeView.DEFAULT);
-                address = floatingReadNode.getAddress();
-                lowered = lowering.lower(floatingReadNode, stamp, address);
             } else if (node instanceof AbstractWriteNode) {
                 AbstractWriteNode abstractWriteNode = (AbstractWriteNode) node;
                 Stamp stamp = abstractWriteNode.value().stamp(NodeView.DEFAULT);

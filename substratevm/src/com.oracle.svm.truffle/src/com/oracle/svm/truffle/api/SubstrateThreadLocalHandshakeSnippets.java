@@ -89,7 +89,7 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 StructuredGraph graph = node.graph();
-                Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(pollSnippet, graph, tool.getLoweringStage());
                 args.add("node", node.location());
                 SnippetTemplate template = template(tool, node, args);
                 template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);

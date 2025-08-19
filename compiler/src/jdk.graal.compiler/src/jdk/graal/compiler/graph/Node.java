@@ -825,7 +825,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    void initialize(Graph newGraph) {
+    final void initialize(Graph newGraph) {
         assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);

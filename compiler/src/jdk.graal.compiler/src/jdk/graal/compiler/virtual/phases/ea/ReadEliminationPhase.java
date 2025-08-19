@@ -28,8 +28,9 @@ import static jdk.graal.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
 import java.util.Optional;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * This phase performs read and (simple) write elimination on a graph. It operates on multiple
@@ -82,7 +82,7 @@ public class ReadEliminationPhase extends EffectsPhase<CoreProviders> {
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         super.notApplicableTo(graphState),
-                        NotApplicable.when(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
+                        NotApplicable.when(graphState.allowsFloatingReads(),
                                         "This phase must not be applied while reads are floating"));
     }
 
