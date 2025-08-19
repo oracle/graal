@@ -31,7 +31,6 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -188,8 +187,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
 
         try {
-            final BitSet liveGenScratch = new BitSet(liveSize);
-            final BitSet liveKillScratch = new BitSet(liveSize);
+            final SparseBitSet liveGenScratch = new SparseBitSet();
+            final SparseBitSet liveKillScratch = new SparseBitSet();
             // iterate all blocks
             for (int blockId : allocator.sortedBlocks()) {
                 BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
@@ -266,11 +265,10 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     } // end of instruction iteration
 
                     BlockData blockSets = allocator.getBlockData(block);
-                    blockSets.liveGen = trimClone(liveGenScratch);
-                    blockSets.liveKill = trimClone(liveKillScratch);
-                    // sticky size, will get non-sticky in computeGlobalLiveSets
-                    blockSets.liveIn = new BitSet(0);
-                    blockSets.liveOut = new BitSet(0);
+                    blockSets.liveGen = new SparseBitSet(liveGenScratch);
+                    blockSets.liveKill = new SparseBitSet(liveKillScratch);
+                    blockSets.liveIn = new SparseBitSet();
+                    blockSets.liveOut = new SparseBitSet();
 
                     if (debug.isLogEnabled()) {
                         debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
@@ -284,7 +282,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
     }
 
-    private boolean verifyTemp(BitSet liveKill, Value operand) {
+    private boolean verifyTemp(SparseBitSet liveKill, Value operand) {
         if (allocator.isDetailedAsserts()) {
             /*
              * Fixed intervals are never live at block boundaries, so they need not be processed in
@@ -299,7 +297,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         return true;
     }
 
-    private boolean verifyInput(BasicBlock<?> block, BitSet liveKill, Value operand) {
+    private boolean verifyInput(BasicBlock<?> block, SparseBitSet liveKill, Value operand) {
         if (allocator.isDetailedAsserts()) {
             /*
              * Fixed intervals are never live at block boundaries, so they need not be processed in
@@ -330,7 +328,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             boolean changeOccurred;
             boolean changeOccurredInBlock;
             int iterationCount = 0;
-            BitSet scratch = new BitSet(allocator.liveSetSize()); // scratch set for calculations
+            // scratch set for calculations
+            SparseBitSet scratch = new SparseBitSet();
 
             /*
              * Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
@@ -361,7 +360,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             }
 
                             if (!blockSets.liveOut.equals(scratch)) {
-                                blockSets.liveOut = trimClone(scratch);
+                                blockSets.liveOut = new SparseBitSet(scratch);
 
                                 changeOccurred = true;
                                 changeOccurredInBlock = true;
@@ -378,16 +377,14 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                              *
                              * Note: liveIn set can only grow, never shrink. No need to clear it.
                              */
-                            BitSet liveIn = blockSets.liveIn;
+                            SparseBitSet liveIn = blockSets.liveIn;
                             /*
-                             * BitSet#or will call BitSet#ensureSize (since the bit set is of length
-                             * 0 initially) and set sticky to false
+                             * SparseBitSet#or will call SparseBitSet#ensureSize (since the bit set
+                             * is of length 0 initially) and set sticky to false
                              */
                             liveIn.or(blockSets.liveOut);
                             liveIn.andNot(blockSets.liveKill);
                             liveIn.or(blockSets.liveGen);
-
-                            liveIn.clone(); // trimToSize()
 
                             if (debug.isLogEnabled()) {
                                 debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
@@ -418,7 +415,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 if (allocator.isDetailedAsserts()) {
                     reportFailure(numBlocks);
                 }
-                BitSet bs = allocator.getBlockData(startBlock).liveIn;
+                SparseBitSet bs = allocator.getBlockData(startBlock).liveIn;
                 StringBuilder sb = new StringBuilder();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
                     int variableNumber = allocator.getVariableNumber(i);
@@ -433,23 +430,9 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     }
                 }
                 // bailout if this occurs in product mode.
-                throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn + " Live operands:" + sb.toString());
+                throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn + " Live operands:" + sb);
             }
         }
-    }
-
-    /**
-     * Creates a trimmed copy a bit set.
-     *
-     * {@link BitSet#clone()} cannot be used since it will not {@linkplain BitSet#trimToSize trim}
-     * the array if the bit set is {@linkplain BitSet#sizeIsSticky sticky}.
-     */
-    @SuppressWarnings("javadoc")
-    private static BitSet trimClone(BitSet set) {
-        BitSet trimmedSet = new BitSet(0); // zero-length words array, sticky
-        trimmedSet.or(set); // words size ensured to be words-in-use of set,
-                            // also makes it non-sticky
-        return trimmedSet;
     }
 
     @SuppressWarnings("try")
@@ -457,7 +440,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         try (DebugContext.Scope s = debug.forceLog()) {
             try (Indent indent = debug.logAndIndent("report failure")) {
 
-                BitSet startBlockLiveIn = allocator.getBlockData(allocator.getLIR().getControlFlowGraph().getStartBlock()).liveIn;
+                SparseBitSet startBlockLiveIn = allocator.getBlockData(allocator.getLIR().getControlFlowGraph().getStartBlock()).liveIn;
                 try (Indent indent2 = debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
                     for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                         Interval interval = allocator.intervalFor(operandNum);
@@ -851,7 +834,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     assert blockTo == instructions.get(instructions.size() - 1).id() : Assertions.errorMessage(blockTo, instructions.get(instructions.size() - 1).id());
 
                     // Update intervals for operands live at the end of this block;
-                    BitSet live = allocator.getBlockData(block).liveOut;
+                    SparseBitSet live = allocator.getBlockData(block).liveOut;
                     for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                         assert live.get(operandNum) : "should not stop here otherwise";
                         AllocatableValue operand = allocator.intervalFor(operandNum).operand;
