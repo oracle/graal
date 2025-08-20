@@ -115,6 +115,12 @@ public class LinearScan {
          * an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
         public SparseBitSet liveKill;
+
+        /**
+         * State used during {@link LinearScanLifetimeAnalysisPhase#computeGlobalLiveSets()} to
+         * create a worklist.
+         */
+        boolean dirty = true;
     }
 
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
