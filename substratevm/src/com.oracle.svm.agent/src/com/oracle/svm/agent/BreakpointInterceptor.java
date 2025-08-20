@@ -1229,18 +1229,6 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * This method should be intercepted before JDK 24 when we are predefining a lambda class. This
-     * is the only spot in the lambda-class creation pipeline where we can get lambda-class bytecode
-     * so the class can be predefined. We do not want to predefine all lambda classes, but only the
-     * ones that are actually created at runtime, so we have a method that checks whether the lambda
-     * should be predefined or not.
-     */
-    private static boolean onMethodHandleClassFileInit(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        LambdaClassNameAndBytecode lambdaClassNameAndBytecode = getLambdaClassNameAndBytecodeFromThread(jni, thread, 3);
-        return lambdaPredefinition(state, lambdaClassNameAndBytecode.lambdaClassName(), lambdaClassNameAndBytecode.lambdaClassBytecode());
-    }
-
-    /**
      * This method should be intercepted on JDK 24 or later when we are predefining a lambda class.
      * We do not want to predefine all lambda classes, but only the ones that are actually created
      * at runtime, so we have a method that checks whether the lambda should be predefined or not.
@@ -1954,8 +1942,6 @@ final class BreakpointInterceptor {
     };
 
     private static final BreakpointSpecification[] CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS = {
-                    optionalBrk("java/lang/invoke/MethodHandles$Lookup$ClassFile", "<init>", "(Ljava/lang/String;I[B)V",
-                                    BreakpointInterceptor::onMethodHandleClassFileInit),
                     optionalBrk("java/lang/invoke/MethodHandles$Lookup", "makeHiddenClassDefiner",
                                     "(Ljava/lang/String;[BZLjdk/internal/util/ClassFileDumper;I)Ljava/lang/invoke/MethodHandles$Lookup$ClassDefiner;", BreakpointInterceptor::makeHiddenClassDefiner)
     };
