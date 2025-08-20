@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package org.graalvm.wasm.utils;
+
+import static org.graalvm.wasm.utils.SystemProperties.WAT_TO_WASM_VERBOSE;
 
 import java.io.File;
 import java.io.IOException;
@@ -188,7 +190,9 @@ public class WasmBinaryTools {
                             map(Path::of).map(p -> p.resolve(WAT_TO_WASM_EXECUTABLE_NAME)).filter(Files::isExecutable).findFirst();
             if (executableInPath.isPresent()) {
                 String pathAsString = executableInPath.get().toString();
-                System.err.println(String.format("Using %s from %s", WAT_TO_WASM_EXECUTABLE_NAME, pathAsString));
+                if (WAT_TO_WASM_VERBOSE) {
+                    System.err.println(String.format("Using %s from %s", WAT_TO_WASM_EXECUTABLE_NAME, pathAsString));
+                }
                 return pathAsString;
             }
         }
@@ -222,8 +226,10 @@ public class WasmBinaryTools {
             try {
                 return wat2wasmFromString(program, options);
             } catch (RuntimeException e) {
-                System.err.println(e);
-                System.err.println("wat2wasm compilation via stdin+stdout failed, retrying with temporary files");
+                if (WAT_TO_WASM_VERBOSE) {
+                    System.err.println(e);
+                    System.err.println("wat2wasm compilation via stdin+stdout failed, retrying with temporary files");
+                }
                 compileUsingStdInOut = false;
             }
         }
