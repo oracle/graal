@@ -99,7 +99,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -110,6 +109,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
@@ -594,16 +594,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             ResolvedJavaType objectType = universe.getOriginalMetaAccess().lookupJavaType(Object.class);
             Annotation[] annotations = getAnnotations(td.getAnnotationList());
 
-            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
+            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
                             enclosingType, componentType, superClass, interfaces, objectType, annotations);
         });
     }
 
-    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
+    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> reader) {
         return CapnProtoAdapters.toArray(reader, this::getAnnotation, Annotation[]::new);
     }
 
-    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader a) {
+    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader a) {
         String typeName = a.getTypeName().toString();
         Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
         Map<String, Object> annotationValuesMap = new HashMap<>();
@@ -614,7 +614,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
     }
 
-    private Object getAnnotationValue(AnnotationValue.Reader v) {
+    private Object getAnnotationValue(PersistedAnnotationElement.Reader v) {
         return switch (v.which()) {
             case STRING -> v.getString().toString();
             case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
@@ -695,7 +695,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
          * initialization kind, even in ways that would otherwise be considered compatible, e.g.,
          * RUN_TIME -> BUILD_TIME. Similarly, if a different initialization kind was already
          * registered in this layer registration will fail.
-         * 
+         *
          * Note that this is done after the app-layer class initialization specification is applied,
          * so we don't have to traverse all types. Moreover, for package-level specification this
          * should also be OK, because package-level specification is only a suggestion and the

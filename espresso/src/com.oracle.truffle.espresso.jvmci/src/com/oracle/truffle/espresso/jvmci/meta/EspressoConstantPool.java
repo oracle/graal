@@ -158,7 +158,11 @@ public final class EspressoConstantPool implements ConstantPool {
     private native int getNumIndyEntries();
 
     @Override
-    public native JavaType lookupType(int cpi, int opcode);
+    public JavaType lookupType(int cpi, @SuppressWarnings("unused") int opcode) {
+        return lookupType(cpi);
+    }
+
+    native JavaType lookupType(int cpi);
 
     @Override
     public native String lookupUtf8(int cpi);

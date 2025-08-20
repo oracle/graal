@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,64 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.annotation;
+package jdk.graal.compiler.annotation;
 
+import java.lang.annotation.AnnotationFormatError;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 
-import jdk.internal.reflect.ConstantPool;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class TypeAnnotationValue {
-    private final byte[] targetInfo;
-    private final byte[] locationInfo;
-    private final AnnotationValue annotation;
+/**
+ * Parser for class file type annotations that produces {@link TypeAnnotationValue} objects.
+ * <p>
+ * This is a cut down version of {@code sun.reflect.annotation.TypeAnnotationParser}.
+ */
+final class TypeAnnotationValueParser {
 
-    // Values copied from TypeAnnotationParser
+    public static List<TypeAnnotationValue> parseTypeAnnotations(byte[] rawAnnotations,
+                    ConstantPool cp,
+                    ResolvedJavaType container) {
+        if (rawAnnotations == null) {
+            return List.of();
+        }
+
+        ByteBuffer buf = ByteBuffer.wrap(rawAnnotations);
+        int annotationCount = buf.getShort() & 0xFFFF;
+        List<TypeAnnotationValue> typeAnnotations = new ArrayList<>(annotationCount);
+
+        for (int i = 0; i < annotationCount; i++) {
+            TypeAnnotationValue ta = parseTypeAnnotation(buf, cp, container);
+            if (ta != null) {
+                typeAnnotations.add(ta);
+            }
+        }
+
+        return List.copyOf(typeAnnotations);
+    }
+
+    private static TypeAnnotationValue parseTypeAnnotation(ByteBuffer buf,
+                    ConstantPool cp,
+                    ResolvedJavaType container) {
+        try {
+            byte[] targetInfo = parseTargetInfo(buf);
+            byte[] typePath = parseTypePath(buf);
+            AnnotationValue a = AnnotationValueParser.parseAnnotation(buf, cp, container, false);
+            // Ignore not well-formed type annotations like
+            // TypeAnnotationParser.mapTypeAnnotations does
+            if (a == null) {
+                return null;
+            }
+            return new TypeAnnotationValue(targetInfo, typePath, a);
+        } catch (IllegalArgumentException | BufferUnderflowException e) {
+            throw new AnnotationFormatError(e);
+        }
+    }
+
+    // Values copied from sun.reflect.annotation.TypeAnnotationParser
     // Regular type parameter annotations
     private static final byte CLASS_TYPE_PARAMETER = 0x00;
     private static final byte METHOD_TYPE_PARAMETER = 0x01;
@@ -43,7 +87,7 @@ public final class TypeAnnotationValue {
     private static final byte CLASS_EXTENDS = 0x10;
     private static final byte CLASS_TYPE_PARAMETER_BOUND = 0x11;
     private static final byte METHOD_TYPE_PARAMETER_BOUND = 0x12;
-    private static final byte FIELD = 0x13;
+    /* private */ static final byte FIELD = 0x13;
     private static final byte METHOD_RETURN = 0x14;
     private static final byte METHOD_RECEIVER = 0x15;
     private static final byte METHOD_FORMAL_PARAMETER = 0x16;
@@ -62,35 +106,39 @@ public final class TypeAnnotationValue {
     private static final byte CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT = (byte) 0x4A;
     private static final byte METHOD_REFERENCE_TYPE_ARGUMENT = (byte) 0x4B;
 
-    private static byte[] extractTargetInfo(ByteBuffer buf) {
+    private static byte[] parseTargetInfo(ByteBuffer buf) {
         int startPos = buf.position();
         int posCode = buf.get() & 0xFF;
         switch (posCode) {
             case CLASS_TYPE_PARAMETER:
             case METHOD_TYPE_PARAMETER:
             case METHOD_FORMAL_PARAMETER:
-            case EXCEPTION_PARAMETER:
+            case EXCEPTION_PARAMETER: {
                 buf.get();
                 break;
+            }
             case CLASS_EXTENDS:
             case THROWS:
             case INSTANCEOF:
             case NEW:
             case CONSTRUCTOR_REFERENCE:
-            case METHOD_REFERENCE:
+            case METHOD_REFERENCE: {
                 buf.getShort();
                 break;
+            }
             case CLASS_TYPE_PARAMETER_BOUND:
-            case METHOD_TYPE_PARAMETER_BOUND:
+            case METHOD_TYPE_PARAMETER_BOUND: {
                 buf.get();
                 buf.get();
                 break;
+            }
             case FIELD:
             case METHOD_RETURN:
-            case METHOD_RECEIVER:
+            case METHOD_RECEIVER: {
                 break;
+            }
             case LOCAL_VARIABLE:
-            case RESOURCE_VARIABLE:
+            case RESOURCE_VARIABLE: {
                 short length = buf.getShort();
                 for (int i = 0; i < length; ++i) {
                     buf.getShort();
@@ -98,16 +146,18 @@ public final class TypeAnnotationValue {
                     buf.getShort();
                 }
                 break;
+            }
             case CAST:
             case CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT:
             case METHOD_INVOCATION_TYPE_ARGUMENT:
             case CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT:
-            case METHOD_REFERENCE_TYPE_ARGUMENT:
+            case METHOD_REFERENCE_TYPE_ARGUMENT: {
                 buf.getShort();
                 buf.get();
                 break;
+            }
             default:
-                throw new IllegalArgumentException("Invalid target info code");
+                throw new AnnotationFormatError("Could not parse bytes for type annotations");
         }
         int endPos = buf.position();
         byte[] targetInfo = new byte[endPos - startPos];
@@ -115,7 +165,7 @@ public final class TypeAnnotationValue {
         return targetInfo;
     }
 
-    private static byte[] extractLocationInfo(ByteBuffer buf) {
+    private static byte[] parseTypePath(ByteBuffer buf) {
         int startPos = buf.position();
         int depth = buf.get() & 0xFF;
         for (int i = 0; i < depth; i++) {
@@ -123,54 +173,8 @@ public final class TypeAnnotationValue {
             buf.get();
         }
         int endPos = buf.position();
-        byte[] locationInfo = new byte[endPos - startPos];
-        buf.position(startPos).get(locationInfo).position(endPos);
-        return locationInfo;
-    }
-
-    static TypeAnnotationValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container) {
-        byte[] targetInfo = extractTargetInfo(buf);
-        byte[] locationInfo = extractLocationInfo(buf);
-        AnnotationValue annotation = AnnotationValue.extract(buf, cp, container, false, false);
-
-        return new TypeAnnotationValue(targetInfo, locationInfo, annotation);
-    }
-
-    TypeAnnotationValue(byte[] targetInfo, byte[] locationInfo, AnnotationValue annotation) {
-        this.targetInfo = targetInfo;
-        this.locationInfo = locationInfo;
-        this.annotation = annotation;
-    }
-
-    public byte[] getTargetInfo() {
-        return targetInfo;
-    }
-
-    public byte[] getLocationInfo() {
-        return locationInfo;
-    }
-
-    public AnnotationValue getAnnotationData() {
-        return annotation;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        TypeAnnotationValue that = (TypeAnnotationValue) o;
-        return Arrays.equals(targetInfo, that.targetInfo) && Arrays.equals(locationInfo, that.locationInfo) && Objects.equals(annotation, that.annotation);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = Objects.hash(annotation);
-        result = 31 * result + Arrays.hashCode(targetInfo);
-        result = 31 * result + Arrays.hashCode(locationInfo);
-        return result;
+        byte[] typePath = new byte[endPos - startPos];
+        buf.position(startPos).get(typePath).position(endPos);
+        return typePath;
     }
 }

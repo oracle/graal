@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,30 @@ import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface AnnotationExtractor {
+    /**
+     * Determines if {@code element} has an annotation of type {@code annotationType}. This method
+     * includes inherited annotations in its search.
+     *
+     * @see AnnotatedElement#isAnnotationPresent(Class)
+     */
     boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
 
+    /**
+     * Gets {@code element}'s annotation of type {@code annotationType} if such an annotation is
+     * <em>present</em> ({@code declaredOnly == false}) or <em>directly present</em>
+     * ({@code declaredOnly == true}), else null.
+     *
+     * @param declaredOnly if true, this method ignores inherited annotations
+     * @see AnnotatedElement#getAnnotation
+     * @see AnnotatedElement#getDeclaredAnnotation
+     */
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
 
+    /**
+     * Gets the {@link Annotation#annotationType()}s for all annotations on {@code element}. This
+     * method includes inherited annotations.
+     *
+     * @see Annotation#annotationType()
+     */
     Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element);
 }
