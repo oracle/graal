@@ -221,7 +221,7 @@ public class SerializationSupport implements SerializationRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub) {
         synchronized (classes) {
-            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd));
+            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd, false));
             if (previous != null) {
                 previous.addCondition(cnd);
             }
@@ -244,7 +244,7 @@ public class SerializationSupport implements SerializationRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerLambdaCapturingClass(AccessCondition cnd, String lambdaCapturingClass) {
         synchronized (lambdaCapturingClasses) {
-            var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd));
+            var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd, false));
             if (previousConditions != null) {
                 previousConditions.addCondition(cnd);
             }

@@ -116,7 +116,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ProxyCacheKey key = new ProxyCacheKey(intfs);
 
         if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
+            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), createProxyClass(intfs)));
         }
         proxyCache.get(key).getConditions().addCondition(condition);
     }

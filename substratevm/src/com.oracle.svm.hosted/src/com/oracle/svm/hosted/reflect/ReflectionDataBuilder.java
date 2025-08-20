@@ -479,7 +479,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean registered = false;
         ConditionalRuntimeValue<Executable> conditionalValue = classMethods.get(analysisMethod);
         if (conditionalValue == null) {
-            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectExecutable);
+            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectExecutable);
             conditionalValue = classMethods.putIfAbsent(analysisMethod, newConditionalValue);
             if (conditionalValue == null) {
                 conditionalValue = newConditionalValue;
@@ -643,7 +643,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         var classFields = registeredFields.computeIfAbsent(declaringClass, _ -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
-        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
+        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectField));
         if (!exists) {
             registerTypesForField(analysisField, reflectField, queriedOnly);
 

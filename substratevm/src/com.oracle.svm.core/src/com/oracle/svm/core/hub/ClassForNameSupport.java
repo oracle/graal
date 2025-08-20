@@ -244,7 +244,7 @@ public final class ClassForNameSupport {
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
                     AccessCondition additionalCondition) {
         if (existingConditionalValue == null) {
-            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition), newValue);
+            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition, false), newValue);
         } else {
             existingConditionalValue.getConditions().addCondition(additionalCondition);
             existingConditionalValue.updateValue(newValue);
@@ -286,7 +286,7 @@ public final class ClassForNameSupport {
         synchronized (knownClassNames) {
             RuntimeConditionSet existingConditions = knownClassNames.get(className);
             if (existingConditions == null) {
-                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition));
+                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition, false));
             } else {
                 existingConditions.addCondition(condition);
             }
@@ -298,7 +298,7 @@ public final class ClassForNameSupport {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
             if (!previousLayerUnsafe.contains(clazz.getName())) {
-                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
+                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition, false));
                 if (conditionSet != null) {
                     conditionSet.addCondition(condition);
                 }
@@ -308,7 +308,7 @@ public final class ClassForNameSupport {
 
     private void updateCondition(AccessCondition condition, String className, Object value) {
         synchronized (knownClasses) {
-            var cond = new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value);
+            var cond = new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition, false), value);
             addKnownClass(className, (map) -> {
                 var runtimeConditions = map.putIfAbsent(className, cond);
                 if (runtimeConditions != null) {

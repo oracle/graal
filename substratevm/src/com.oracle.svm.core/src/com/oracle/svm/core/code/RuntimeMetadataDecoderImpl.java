@@ -404,7 +404,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf, int layerId) {
         var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
-        return RuntimeConditionSet.createDecoded(conditionTypes);
+        return RuntimeConditionSet.createDecoded(conditionTypes, false);
     }
 
     /**

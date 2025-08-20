@@ -284,7 +284,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName) {
-        RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet();
+        RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet(false);
         var registered = registeredBundles.putIfAbsent(baseName, conditionSet);
         (registered == null ? conditionSet : registered).addCondition(condition);
     }

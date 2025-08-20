@@ -45,24 +45,26 @@ import com.oracle.svm.util.LogUtils;
  * <p>
  * If any of the {@link #conditions} is satisfied then the whole set becomes also
  * {@link #satisfied}. {@link RuntimeConditionSet}s can be created at build time
- * {@link #createHosted(AccessCondition)} and stored to the image heap, or it can be encoded
- * ({@link #getTypesForEncoding()} and later decoded at run time ({@link #createDecoded(Object[])}.
- * The current implementation does not cache {@link #conditions}, although this will be implemented
- * in the future (GR-49526)
+ * {@link #createHosted(AccessCondition,boolean)} and stored to the image heap, or it can be encoded
+ * ({@link #getTypesForEncoding()} and later decoded at run time
+ * ({@link #createDecoded(Object[], boolean)}. The current implementation does not cache
+ * {@link #conditions}, although this will be implemented in the future (GR-49526)
  */
 public class RuntimeConditionSet {
 
     private Object[] conditions;
     private boolean satisfied;
+    private volatile boolean preserved;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static RuntimeConditionSet emptySet() {
-        return new RuntimeConditionSet(new Object[0]);
+    public static RuntimeConditionSet emptySet(boolean preserved) {
+        return new RuntimeConditionSet(new Object[0], preserved);
+
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static RuntimeConditionSet createHosted(AccessCondition condition) {
-        var conditionSet = new RuntimeConditionSet(new Object[0]);
+    public static RuntimeConditionSet createHosted(AccessCondition condition, boolean preserved) {
+        var conditionSet = new RuntimeConditionSet(new Object[0], preserved);
         conditionSet.addCondition(condition);
         return conditionSet;
     }
@@ -103,8 +105,8 @@ public class RuntimeConditionSet {
         return UnmodifiableRuntimeConditionSet.UNMODIFIABLE_EMPTY_SET;
     }
 
-    public static RuntimeConditionSet createDecoded(Object[] conditions) {
-        return new RuntimeConditionSet(conditions);
+    public static RuntimeConditionSet createDecoded(Object[] conditions, boolean preserved) {
+        return new RuntimeConditionSet(conditions, preserved);
     }
 
     /**
@@ -143,14 +145,30 @@ public class RuntimeConditionSet {
         return result;
     }
 
+    public boolean preserved() {
+        return preserved;
+    }
+
+    /**
+     * Updates the "preserved" state when the value is re-registered.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void reportReregistered(boolean reregisterPreserved) {
+        // State can only ever go from "preserved" to "not preserved".
+        if (!reregisterPreserved) {
+            this.preserved = false;
+        }
+    }
+
     @Override
     public String toString() {
         String conditionsString = this.conditions == null ? "[]" : Arrays.toString(this.conditions);
         return conditionsString + " = " + satisfied;
     }
 
-    private RuntimeConditionSet(Object[] conditions) {
+    private RuntimeConditionSet(Object[] conditions, boolean preserved) {
         setConditions(conditions);
+        this.preserved = preserved;
     }
 
     private void setConditions(Object[] conditions) {
@@ -191,7 +209,7 @@ public class RuntimeConditionSet {
         private static final RuntimeConditionSet UNMODIFIABLE_EMPTY_SET = new UnmodifiableRuntimeConditionSet(new Object[0]);
 
         private UnmodifiableRuntimeConditionSet(Object[] conditions) {
-            super(conditions);
+            super(conditions, false);
         }
 
         @Override

@@ -348,7 +348,7 @@ public final class Resources {
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
             ModuleResourceKey key = createStorageKey(m, resourceName);
-            RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet();
+            RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet(false);
             ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
             if (isNegativeQuery) {
                 if (entry == null) {
@@ -409,7 +409,7 @@ public final class Resources {
         ModuleResourceKey key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
-            addResource(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), new ResourceExceptionEntry(e)));
+            addResource(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(false), new ResourceExceptionEntry(e)));
         }
     }
 
@@ -428,7 +428,7 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
-            addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
+            addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition, false));
         }
     }
 
