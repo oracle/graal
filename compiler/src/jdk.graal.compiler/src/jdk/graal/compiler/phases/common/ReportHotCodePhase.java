@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedGuardNode;
@@ -72,6 +71,8 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         //@formatter:off
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ReportHotCodePartsToIGV = new OptionKey<>(false);
+        @Option(help = "", type = OptionType.Debug)
+        public static final OptionKey<Integer> ReportHotCodIGVLevel = new OptionKey<>(1);
         //@formatter:on
     }
 
@@ -90,6 +91,10 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         BEGIN_NODE,
         GLOBAL_FREQUENCY,
     }
+
+    private static final String INFO_KEY = "[HOT CODE INFO]";
+
+    private static final String WARNING_KEY = "[HOT CODE WARNING]";
 
     private static String blocksToString(List<HIRBlock> blocks, BlockToStringMode mode) {
         StringBuilder sb = new StringBuilder();
@@ -140,6 +145,18 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
 
     private static final int REPORT_HOT_FIRST_N = 3;
 
+    private static int getLengthCap(int len, int cap) {
+        return len > cap ? cap : len;
+    }
+
+    private static void info(String format, Object... args) {
+        TTY.printf(INFO_KEY + format, args);
+    }
+
+    private static void warn(String format, Object... args) {
+        TTY.printf(WARNING_KEY + format, args);
+    }
+
     @Override
     protected void run(StructuredGraph graph, C c) {
         if (!(c instanceof CoreProviders)) {
@@ -170,30 +187,36 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         hottestGlobalLoops.sort((x, y) -> Double.compare(y.getCFGLoop().getHeader().getRelativeFrequency(), x.getCFGLoop().getHeader().getRelativeFrequency()));
 
         final List<HIRBlock> hottestFirstBlocks = takeUntil(hottestBlocks, REPORT_HOT_FIRST_N);
-        String hottestGlobalBlocksString = String.format("Hottest 3 blocks are %s %s %s", hottestFirstBlocks,
-                        blocksToString(hottestFirstBlocks, BlockToStringMode.BEGIN_NODE),
-                        blocksToString(hottestFirstBlocks, BlockToStringMode.GLOBAL_FREQUENCY));
-        TTY.printf("[Hot Code Warning] %s\n", hottestGlobalBlocksString);
-        if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, hottestGlobalBlocksString);
+        if (!hottestFirstBlocks.isEmpty()) {
+            String hottestGlobalBlocksString = String.format("Hottest %s blocks are %s %s %s", getLengthCap(hottestFirstBlocks.size(), 3), hottestFirstBlocks,
+                            blocksToString(hottestFirstBlocks, BlockToStringMode.BEGIN_NODE),
+                            blocksToString(hottestFirstBlocks, BlockToStringMode.GLOBAL_FREQUENCY));
+            info("%s\n", hottestGlobalBlocksString);
+            if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
+                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
+            }
         }
 
         final List<Loop> hottestFirstLocalLoops = takeUntil(hottestLocalLoops, REPORT_HOT_FIRST_N);
-        String hottestLocalLoopString = String.format("Hottest 3 local loops are %s %s",
-                        loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.BLOCK),
-                        loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.LOCAL_FREQUENCY));
-        TTY.printf("[Hot Code Warning] %s\n", hottestLocalLoopString);
-        if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, hottestLocalLoopString);
+        if (!hottestFirstLocalLoops.isEmpty()) {
+            String hottestLocalLoopString = String.format("Hottest %s local loops are %s %s", getLengthCap(hottestFirstLocalLoops.size(), 3),
+                            loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.BLOCK),
+                            loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.LOCAL_FREQUENCY));
+            info("%s\n", hottestLocalLoopString);
+            if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
+                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
+            }
         }
 
         final List<Loop> hottestFirstGlobalLoops = takeUntil(hottestGlobalLoops, REPORT_HOT_FIRST_N);
-        String hottestGlobalLoopString = String.format("Hottest 3 global loops are %s %s",
-                        loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.BLOCK),
-                        loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.GLOBAL_FREQUENCY));
-        TTY.printf("[Hot Code Warning] %s\n", hottestGlobalLoopString);
-        if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, hottestGlobalLoopString);
+        if (!hottestGlobalLoops.isEmpty()) {
+            String hottestGlobalLoopString = String.format("Hottest %s global loops are %s %s", getLengthCap(hottestGlobalLoops.size(), 3),
+                            loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.BLOCK),
+                            loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.GLOBAL_FREQUENCY));
+            info("%s\n", hottestGlobalLoopString);
+            if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
+                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
+            }
         }
 
         reportHotLoopGuardsInside(hottestGlobalLoops);
@@ -222,7 +245,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
     private static void reportUnknownProfile(Loop l, Node inside, ControlFlowGraph cfg) {
         if (inside instanceof IfNode ifNode) {
             if (ifNode.profileSource().isUnknown()) {
-                TTY.printf("[Hot Code Warning] Unknown profile for %s with f=%s in hot loop %s, nsp is %n\t%s%n", ifNode, cfg.blockFor(inside).getRelativeFrequency(), l,
+                warn("Unknown profile for %s with f=%s in hot loop %s, nsp is %n\t%s%n", ifNode, cfg.blockFor(inside).getRelativeFrequency(), l,
                                 ifNode.getNodeSourcePosition());
             }
         }
@@ -240,7 +263,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         if (inside instanceof IfNode ifNode) {
             LogicNode logicNode = ifNode.condition();
             if (!l.whole().contains(logicNode)) {
-                TTY.printf("[Hot Code Warning] If %s with condition %s is inside loop %s while condition is not%n", ifNode, logicNode, l);
+                warn("If %s with condition %s is inside loop %s while condition is not%n", ifNode, logicNode, l);
             }
         }
     }
@@ -266,9 +289,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                 if (sk.getKilledLocationIdentity().isAny()) {
                     if (inside instanceof FixedNode) {
                         // else we dont have a cfg position
-                        TTY.printf("[Hot Code Warning] Node %s kills any and has relative f=%s  in loop %s %n", inside, cfg.blockFor(inside).getRelativeFrequency(), l);
+                        warn("Node %s kills any and has relative f=%s  in loop %s %n", inside, cfg.blockFor(inside).getRelativeFrequency(), l);
                     } else {
-                        TTY.printf("[Hot Code Warning] Node %s kills any in loop %s %n", inside, l);
+                        warn("Node %s kills any in loop %s %n", inside, l);
                     }
                 }
             }
@@ -314,7 +337,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                     }
 
                     if (iv != null && limit != null) {
-                        TTY.printf("[Hot Code Warning] Guard %s condition %s inside loop with iv %s and limit %s%n", inside, compare, iv, limit);
+                        warn("Guard %s condition %s inside loop with iv %s and limit %s%n", inside, compare, iv, limit);
                     }
                 }
             }
