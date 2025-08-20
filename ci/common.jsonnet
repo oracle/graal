@@ -247,12 +247,14 @@ local common_json = import "../common.json";
     },
 
     maven:: {
+      local this = self,
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
         maven: '==3.9.10',
       } else {}),
       # no maven package available on other platforms
       downloads+: (if self.os != "linux" || self.arch != "amd64" then {
-        MAVEN_HOME: {name: 'maven', version: '3.9.10', platformspecific: false},
+        # GR-68921: 3.9.10 does not work on Windows
+        MAVEN_HOME: {name: 'maven', version: (if this.os == "windows" then '3.3.9' else '3.9.10'), platformspecific: false},
       } else {}),
       setup+: (if self.os != "linux" || self.arch != "amd64" then [
         ['set-export', 'PATH', (if self.os == "windows" then '$MAVEN_HOME\\bin;$PATH' else '$MAVEN_HOME/bin:$PATH')],
