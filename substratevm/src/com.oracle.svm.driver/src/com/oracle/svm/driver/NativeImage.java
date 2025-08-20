@@ -1903,7 +1903,7 @@ public class NativeImage {
         Path jdkRoot = config.rootDir;
         try {
             var reader = ImageReader.open(jdkRoot.resolve("lib/modules"));
-            return new LinkedHashSet<>(List.of(reader.getModuleNames()));
+            return new LinkedHashSet<>(reader.findNode("/modules").getChildNames().map(s -> s.substring("/modules/".length())).toList());
         } catch (IOException e) {
             throw showError("Unable to determine builtin modules of JDK in " + jdkRoot, e);
         }
