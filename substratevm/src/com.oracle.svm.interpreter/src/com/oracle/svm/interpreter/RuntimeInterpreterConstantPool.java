@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter.constantpool;
+package com.oracle.svm.interpreter;
 
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
@@ -32,9 +32,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.svm.interpreter.CremaLinkResolver;
-import com.oracle.svm.interpreter.CremaRuntimeAccess;
-import com.oracle.svm.interpreter.SemanticJavaException;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
