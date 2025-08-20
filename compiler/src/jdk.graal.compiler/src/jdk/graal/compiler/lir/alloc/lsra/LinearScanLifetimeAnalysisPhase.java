@@ -325,6 +325,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     protected void computeGlobalLiveSets() {
         try (Indent indent = debug.logAndIndent("compute global live sets")) {
             int numBlocks = allocator.blockCount();
+            int blocksProcessed = 0;
             boolean changeOccurred;
             boolean changeOccurredInBlock;
             int iterationCount = 0;
@@ -344,8 +345,13 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     for (int i = numBlocks - 1; i >= 0; i--) {
                         BasicBlock<?> block = allocator.blockAt(i);
                         BlockData blockSets = allocator.getBlockData(block);
+                        if (!blockSets.dirty) {
+                            continue;
+                        }
+                        blockSets.dirty = false;
 
-                        changeOccurredInBlock = false;
+                        changeOccurredInBlock = iterationCount == 0;
+                        blocksProcessed++;
 
                         /*
                          * liveOut(block) is the union of liveIn(sux), for successors sux of block.
@@ -367,7 +373,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             }
                         }
 
-                        if (iterationCount == 0 || changeOccurredInBlock) {
+                        if (changeOccurredInBlock) {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
@@ -389,6 +395,13 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             if (debug.isLogEnabled()) {
                                 debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
                             }
+                            int predecessorCount = block.getPredecessorCount();
+                            for (int p = 0; p < predecessorCount; p++) {
+                                BasicBlock<? extends BasicBlock<?>> predecessor = block.getPredecessorAt(p);
+                                BlockData predBlockSet = allocator.getBlockData(predecessor);
+                                // Process this block on the next iteration
+                                predBlockSet.dirty = true;
+                            }
                         }
                     }
                     iterationCount++;
@@ -405,8 +418,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
             assert verifyLiveness();
 
-            // Every block is processed on each iteration
-            computeGlobalLiveSetsBlocksProcessed.add(allocator.debug, iterationCount * (long) numBlocks);
+            computeGlobalLiveSetsBlocksProcessed.add(allocator.debug, blocksProcessed);
             computeGlobalLiveSetsBlocks.add(allocator.debug, numBlocks);
 
             // check that the liveIn set of the first block is empty
@@ -431,6 +443,14 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
                 // bailout if this occurs in product mode.
                 throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn + " Live operands:" + sb);
+            }
+
+            // The gen/kill information is no longer needed.
+            for (int i = numBlocks - 1; i >= 0; i--) {
+                BasicBlock<?> block = allocator.blockAt(i);
+                BlockData blockSets = allocator.getBlockData(block);
+                blockSets.liveGen = null;
+                blockSets.liveKill = null;
             }
         }
     }
