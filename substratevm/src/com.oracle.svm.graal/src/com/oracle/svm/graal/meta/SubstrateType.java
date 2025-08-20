@@ -46,6 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateType implements SharedType {
@@ -175,6 +176,16 @@ public class SubstrateType implements SharedType {
     @Override
     public boolean isEnum() {
         throw VMError.unimplemented("Enum support not implemented");
+    }
+
+    @Override
+    public boolean isRecord() {
+        throw VMError.unimplemented("Record support not implemented");
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -34,6 +35,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -79,6 +81,14 @@ public final class MetaAccessProviderProxy extends CompilationProxyBase implemen
     @Override
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
         return (ResolvedJavaType) handle(lookupJavaTypeConstantMethod, lookupJavaTypeConstantInvokable, constant);
+    }
+
+    private static final SymbolicMethod lookupJavaRecordComponentMethod = method("lookupJavaRecordComponent", RecordComponent.class);
+    private static final InvokableMethod lookupJavaRecordComponentInvokable = (receiver, args) -> ((MetaAccessProvider) receiver).lookupJavaRecordComponent((RecordComponent) args[0]);
+
+    @Override
+    public ResolvedJavaRecordComponent lookupJavaRecordComponent(RecordComponent recordComponent) {
+        return (ResolvedJavaRecordComponent) handle(lookupJavaRecordComponentMethod, lookupJavaRecordComponentInvokable, recordComponent);
     }
 
     private static final SymbolicMethod getMemorySizeMethod = method("getMemorySize", JavaConstant.class);

@@ -27,11 +27,10 @@ package com.oracle.svm.hosted.code;
 import static com.oracle.svm.core.meta.SharedField.LOC_UNINITIALIZED;
 
 import com.oracle.svm.core.configure.RuntimeConditionSet;
-import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.vm.ci.meta.JavaConstant;
 
 final class ReflectionRuntimeMetadata {
@@ -158,12 +157,12 @@ final class ReflectionRuntimeMetadata {
         final boolean hiding;
         final String name;
         final HostedType returnType;
-        final AnnotationMemberValue annotationDefault;
+        final Object annotationDefault;
 
         private MethodMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name,
                         Object[] parameterTypes, int modifiers,
                         HostedType returnType, HostedType[] exceptionTypes, String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
-                        AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations, Object reflectParameters, JavaConstant accessor) {
+                        Object annotationDefault, TypeAnnotationValue[] typeAnnotations, Object reflectParameters, JavaConstant accessor) {
             super(conditions, complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations,
                             reflectParameters,
                             accessor);
@@ -176,7 +175,7 @@ final class ReflectionRuntimeMetadata {
         /* Method registered for reflection */
         MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType, HostedType[] exceptionTypes,
                         String signature,
-                        AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations,
+                        AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, Object annotationDefault, TypeAnnotationValue[] typeAnnotations,
                         Object reflectParameters, JavaConstant accessor) {
             this(conditions, true, false, false, null, declaringClass, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations, annotationDefault,
                             typeAnnotations, reflectParameters, accessor);
@@ -184,7 +183,7 @@ final class ReflectionRuntimeMetadata {
 
         /* Method in heap */
         MethodMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
-                        AnnotationMemberValue annotationDefault,
+                        Object annotationDefault,
                         TypeAnnotationValue[] typeAnnotations, Object reflectParameters) {
             this(conditions, registered, false, false, heapObject, null, null, null, 0, null, null, null, annotations, parameterAnnotations, annotationDefault,
                             typeAnnotations,

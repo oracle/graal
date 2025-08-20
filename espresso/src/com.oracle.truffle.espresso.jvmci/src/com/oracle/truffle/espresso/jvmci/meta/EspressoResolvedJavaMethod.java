@@ -23,6 +23,10 @@
 package com.oracle.truffle.espresso.jvmci.meta;
 
 import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.ANNOTATION_DEFAULT_VALUE;
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.DECLARED_ANNOTATIONS;
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.PARAMETER_ANNOTATIONS;
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.TYPE_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType.NO_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.BRIDGE;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SCOPED_METHOD;
@@ -54,6 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     private static final int JVM_METHOD_MODIFIERS = PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | SYNCHRONIZED | BRIDGE | VARARGS | NATIVE | ABSTRACT | STRICT | SYNTHETIC;
@@ -285,6 +290,10 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
 
     private native boolean hasAnnotations();
 
+    private native boolean hasParameterAnnotations();
+
+    private native boolean hasDefaultAnnotations();
+
     @Override
     public Annotation[] getAnnotations() {
         if (!hasAnnotations()) {
@@ -338,6 +347,35 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     public boolean isScoped() {
         return (getFlags() & SCOPED_METHOD) != 0;
     }
+
+    @Override
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        if (!hasAnnotations()) {
+            return null;
+        }
+        byte[] bytes = getRawAnnotationBytes(DECLARED_ANNOTATIONS);
+        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        byte[] bytes = getRawAnnotationBytes(TYPE_ANNOTATIONS);
+        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
+    }
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        byte[] bytes = getRawAnnotationBytes(ANNOTATION_DEFAULT_VALUE);
+        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
+        byte[] bytes = getRawAnnotationBytes(PARAMETER_ANNOTATIONS);
+        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
+    }
+
+    private native byte[] getRawAnnotationBytes(int category);
 
     @Override
     public boolean equals(Object o) {

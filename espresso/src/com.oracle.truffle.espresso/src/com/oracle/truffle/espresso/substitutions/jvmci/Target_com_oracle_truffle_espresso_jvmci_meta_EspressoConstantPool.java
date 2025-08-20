@@ -203,7 +203,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
     }
 
     @Substitution(hasReceiver = true, methodName = "lookupType")
-    public static @JavaType(internalName = "Ljdk/vm/ci/meta/JavaType;") StaticObject lookupTypeSubst(StaticObject self, int cpi, @SuppressWarnings("unused") int opcode,
+    public static @JavaType(internalName = "Ljdk/vm/ci/meta/JavaType;") StaticObject lookupTypeSubst(StaticObject self, int cpi,
                     @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();

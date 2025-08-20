@@ -76,7 +76,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMethodHandleAc
         }
         StaticObject methodHandle = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(methodHandleMirror);
         if (!InterpreterToVM.instanceOf(methodHandle, meta.java_lang_invoke_MethodHandle)) {
-            LOGGER.info(() -> "EMHAP.resolveInvokeBasicTarget0 not a MethodHandle");
+            LOGGER.fine(() -> "EMHAP.resolveInvokeBasicTarget0 not a MethodHandle");
             return StaticObject.NULL;
         }
         StaticObject form = meta.java_lang_invoke_MethodHandle_form.getObject(methodHandle);

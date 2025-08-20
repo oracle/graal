@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Implementation of {@link Signature} that caches espresso types. Mostly a copy of
- * {@link jdk.vm.ci.hotspot.HotSpotSignature}.
+ * jdk.vm.ci.hotspot.HotSpotSignature.
  */
 public final class EspressoSignature implements Signature {
     private final List<String> parameters = new ArrayList<>();

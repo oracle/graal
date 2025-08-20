@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
@@ -81,7 +82,7 @@ import com.oracle.truffle.espresso.shared.meta.FieldAccess;
  * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
-public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, Method, Field> {
+public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, Method, Field>, AttributedElement {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
@@ -203,6 +204,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         }
     }
 
+    @Override
     public final Attribute getAttribute(Symbol<Name> attrName) {
         return linkedField.getAttribute(attrName);
     }

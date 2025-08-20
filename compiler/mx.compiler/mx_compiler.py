@@ -821,11 +821,18 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
     def __init__(self):
         super(GraalUnittestConfig, self).__init__('graal')
 
+    def _replace_graal_test_deps(self, cp):
+        """
+        Updates the classpath `cp` to replace the path for GRAAL_TEST_COMPILETIME's jar
+        with the path for GRAAL_TEST_RUNTIME's jar.
+        """
+        return cp.replace(mx.distribution("GRAAL_TEST_COMPILETIME").path, mx.distribution("GRAAL_TEST_RUNTIME").path)
+
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
         cpIndex, cp = mx.find_classpath_arg(vmArgs)
         if cp:
-            cp = _remove_redundant_entries(cp)
+            cp = self._replace_graal_test_deps(_remove_redundant_entries(cp))
 
             vmArgs[cpIndex] = cp
             # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late

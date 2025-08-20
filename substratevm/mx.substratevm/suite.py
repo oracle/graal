@@ -718,6 +718,7 @@ suite = {
                     "jdk.internal.event",
                     "jdk.internal.loader",
                     "jdk.internal.misc",
+                    "jdk.internal.vm",
                     "jdk.internal.vm.annotation",
                     "jdk.internal.foreign",
                     "sun.net.www",
@@ -742,6 +743,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.hotspot",
@@ -802,7 +804,8 @@ suite = {
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ],
             },
             "javaCompliance" : "24+",
@@ -847,6 +850,7 @@ suite = {
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.amd64",
                 ],
             },
@@ -2583,6 +2587,7 @@ suite = {
                 ],
                 "requires" : [
                     "org.graalvm.nativeimage.builder",
+                    "org.graalvm.nativeimage.configure",
                     "org.graalvm.collections",
                 ],
                 "exports" : [

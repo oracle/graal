@@ -42,12 +42,12 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -67,7 +67,7 @@ import jdk.vm.ci.meta.Signature;
  * {@link ForeignFunctionsRuntime#linkToNative}) --- done by
  * {@link ForeignGraphKit#unboxArguments};</li>
  * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
- * {@link AbiUtils.adapt}</li>
+ * {@link AbiUtils#adapt}</li>
  * <li>Perform a C-function call:</li>
  * <ul>
  * <li>Setup the frame anchor and capture call state --- Implemented in
@@ -109,11 +109,11 @@ class DowncallStub extends NonBytecodeMethod {
     private static void uninterruptibleAnnotationForAllowHeapAccessHolder() {
     }
 
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationForAllowHeapAccessHolder")));
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         /*
          * When allowHeapAccess is enabled, a HeapMemorySegmentImpl may be passed to a downcall. In
          * that case, the downcall stub will generate a native pointer to the backing object. Thus,

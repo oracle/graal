@@ -44,6 +44,7 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -210,6 +211,16 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
 
     @Override
     public final boolean isEnum() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public final boolean isRecord() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
         throw VMError.intentionallyUnimplemented();
     }
 

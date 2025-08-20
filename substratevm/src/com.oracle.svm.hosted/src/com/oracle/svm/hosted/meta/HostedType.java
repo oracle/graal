@@ -42,6 +42,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
@@ -144,7 +145,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
      * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
      * cannot be strengthened.
-     * 
+     *
      * For open world the strengthen stamp type is equal to this type itself if the type is not a
      * leaf type, i.e., it cannot be extended.
      */
@@ -521,6 +522,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public HostedMethod[] getDeclaredConstructors(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
@@ -554,6 +560,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public void link() {
         wrapped.link();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
     }
 
     @Override

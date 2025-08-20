@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -967,6 +968,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isEnum() {
         return wrapped.isEnum();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -99,9 +99,6 @@ import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
@@ -117,6 +114,8 @@ import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
@@ -483,7 +482,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnalysisMethod analysisMethod = hostedMethod.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisMethod);
         AnnotationValue[][] parameterAnnotations = registerParameterAnnotationValues(analysisMethod);
-        AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues(analysisMethod) : null;
+        Object annotationDefault = isMethod ? registerAnnotationDefaultValues(analysisMethod) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisMethod);
         Object reflectParameters = registerReflectParameters(reflectMethod);
         JavaConstant accessorConstant = null;
@@ -523,7 +522,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationValue[] annotations = registerAnnotationValues(analysisObject);
         AnnotationValue[][] parameterAnnotations = isExecutable ? registerParameterAnnotationValues((AnalysisMethod) analysisObject) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
-        AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
+        Object annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
         Object reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
         AccessibleObject holder = RuntimeMetadataEncoder.getHolder(object);
         JavaConstant heapObjectConstant = snippetReflection.forObject(holder);
@@ -580,8 +579,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return parameterAnnotations;
     }
 
-    private AnnotationMemberValue registerAnnotationDefaultValues(AnalysisMethod method) {
-        AnnotationMemberValue annotationDefault = dataBuilder.getAnnotationDefaultData(method);
+    private Object registerAnnotationDefaultValues(AnalysisMethod method) {
+        Object annotationDefault = dataBuilder.getAnnotationDefaultData(method);
         if (annotationDefault != null) {
             registerValues(annotationDefault);
         }
@@ -591,13 +590,13 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private TypeAnnotationValue[] registerTypeAnnotationValues(AnnotatedElement element) {
         TypeAnnotationValue[] typeAnnotations = dataBuilder.getTypeAnnotationData(element);
         for (TypeAnnotationValue typeAnnotation : typeAnnotations) {
-            registerValues(typeAnnotation.getAnnotationData());
+            AnnotationMetadataEncoder.registerTypeAnnotation(typeAnnotation, encoders);
         }
         return typeAnnotations;
     }
 
-    private void registerValues(AnnotationMemberValue annotationValue) {
-        AnnotationMetadataEncoder.registerAnnotationMember(annotationValue, encoders, snippetReflection);
+    private void registerValues(Object annotationValue) {
+        AnnotationMetadataEncoder.registerAnnotationMember(annotationValue, encoders);
     }
 
     private Object registerReflectParameters(Executable executable) {
@@ -850,13 +849,13 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             AccessibleObject heapObject = snippetReflection.asObject(AccessibleObject.class, metadata.heapObject);
             annotationsEncodings.put(heapObject, encodeAnnotations(metadata.annotations));
             typeAnnotationsEncodings.put(heapObject, encodeTypeAnnotations(metadata.typeAnnotations));
-            if (metadata instanceof ExecutableMetadata) {
-                parameterAnnotationsEncodings.put((Executable) heapObject, encodeParameterAnnotations(((ExecutableMetadata) metadata).parameterAnnotations));
-                if (((ExecutableMetadata) metadata).reflectParameters != null) {
-                    reflectParametersEncodings.put((Executable) heapObject, encodeReflectParameters(((ExecutableMetadata) metadata).reflectParameters));
+            if (metadata instanceof ExecutableMetadata em) {
+                parameterAnnotationsEncodings.put((Executable) heapObject, encodeParameterAnnotations(em.parameterAnnotations));
+                if (em.reflectParameters != null) {
+                    reflectParametersEncodings.put((Executable) heapObject, encodeReflectParameters(em.reflectParameters));
                 }
-                if (metadata instanceof MethodMetadata) {
-                    annotationDefaultEncodings.put((Method) heapObject, encodeAnnotationDefault(((MethodMetadata) metadata).annotationDefault));
+                if (metadata instanceof MethodMetadata mmd) {
+                    annotationDefaultEncodings.put((Method) heapObject, encodeAnnotationDefault(mmd.annotationDefault));
                 }
             }
         }
@@ -1107,10 +1106,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     /**
-     * The following methods encode annotations attached to a method or parameter in a format based
-     * on the one used internally by the JDK ({@link sun.reflect.annotation.AnnotationParser}). The
-     * format we use differs from that one on a few points, based on the fact that the JDK encoding
-     * is based on constant pool indices, which are not available in that form at runtime.
+     * The following methods encode annotations in a format based on the class file format parsed by
+     * {@link sun.reflect.annotation.AnnotationParser}. The format we use differs from that one on a
+     * few points, based on the fact that the JDK encoding is based on constant pool indices, which
+     * are not available in that form at runtime.
      *
      * Class and String values are represented by their index in the source metadata encoders
      * instead of their constant pool indices. Additionally, Class objects are encoded directly
@@ -1143,7 +1142,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return buf.toArray();
     }
 
-    private byte[] encodeAnnotationDefault(AnnotationMemberValue annotationDefault) {
+    private byte[] encodeAnnotationDefault(Object annotationDefault) {
         if (annotationDefault == null) {
             return null;
         }

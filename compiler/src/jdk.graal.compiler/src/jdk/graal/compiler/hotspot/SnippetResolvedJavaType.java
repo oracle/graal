@@ -31,13 +31,13 @@ import java.util.Objects;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -60,6 +60,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private SnippetResolvedJavaType arrayOfType;
 
     public SnippetResolvedJavaType(Class<?> javaClass) {
+        assert !javaClass.isRecord() : javaClass;
         this.javaClass = javaClass;
     }
 
@@ -317,6 +318,16 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
             return new ResolvedJavaMethod[0];
         }
         return methods.clone();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return false;
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        return null;
     }
 
     @Override
