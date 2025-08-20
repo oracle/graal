@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerInstrumentController;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -98,18 +99,23 @@ public final class JDWPContextImpl implements JDWPContext {
         this.ids = new Ids<>(StaticObject.NULL);
     }
 
+    private static DebuggerInstrumentController getInstrumentController(TruffleLanguage.Env env) {
+        return env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerInstrumentController.class);
+    }
+
     public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl eventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-        this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
+        DebuggerInstrumentController instrumentController = getInstrumentController(env);
+        this.controller = instrumentController.createContextController(debugger, context.getEspressoEnv().JDWPOptions, env.getContext(), this, mainThread, eventListener);
         vmEventListener = eventListener;
         eventListener.activate(mainThread, controller, this);
-        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, eventListener);
     }
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
             if (controller != null) { // in case we exited before initializing the controller field
-                controller.disposeDebugger(false);
+                TruffleLanguage.Env env = context.getEnv();
+                getInstrumentController(env).disposeController(env.getContext());
             }
         }
     }
@@ -118,6 +124,8 @@ public final class JDWPContextImpl implements JDWPContext {
     public void replaceController(DebuggerController newController) {
         this.controller = newController;
         vmEventListener.replaceController(newController);
+        TruffleLanguage.Env env = context.getEnv();
+        getInstrumentController(env).replaceController(env.getContext(), newController);
     }
 
     @Override
