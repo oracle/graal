@@ -161,18 +161,17 @@ local devkits = graal_common.devkits;
   full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm,
 
   graalvm_complete_build_deps(edition, os, arch, java_version, espresso_java_version=25, espresso_extra_java_version=[21]):
-      local java_deps(edition) = {
+      local java_deps(edition) =
+        # adds downloads.JAVA_HOME
+        graal_common.jdks['labsjdk-' + edition + '-' + java_version] +
+        # add downloads.TOOLS_JAVA_HOME
+        graal_common.deps.proguard +
+      {
         downloads+: {
-          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
           ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version],
         } + (
           if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
             ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version + '-llvm'],
-          } else {
-          }
-        ) + (
-          if (java_version == 'latest') then {
-            TOOLS_JAVA_HOME: graal_common.jdks_data['oraclejdk21'],
           } else {
           }
         ) + (
