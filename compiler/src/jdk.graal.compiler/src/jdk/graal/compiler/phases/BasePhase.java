@@ -205,7 +205,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
         @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey("DominatorBasedGlobalValueNumberingPhase=*", null);
+        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey(null, null);
+        @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final PhaseFilterKey ReportHotMetricsBeforePhases = new PhaseFilterKey("HighTierLoweringPhase=*", null);
         @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
         public static final OptionKey<Boolean> ReportHotMetrics = new OptionKey<>(false);
         // @formatter:on
@@ -454,6 +456,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
 
+            if (PhaseOptions.ReportHotMetrics.getValue(options) && PhaseOptions.ReportHotMetricsBeforePhases.matches(options, this, graph)) {
+                // if there is a method filter set we must also match that one
+                if (graph.getDebug().methodFilterMatchesCurrentMethod()) {
+                    String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                    TTY.println("Reporting hot metrics before " + getName() + " during compilation of " + label);
+                    new ReportHotCodePhase().apply(graph, context);
+                }
+            }
+
             // This is a manual version of a try/resource pattern since the close operation might
             // want to know whether the run call completed with an exception or not.
             ApplyScope applyScope = applyScope(graph, context);
@@ -501,9 +512,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
 
             if (PhaseOptions.ReportHotMetrics.getValue(options) && PhaseOptions.ReportHotMetricsAfterPhases.matches(options, this, graph)) {
-                String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
-                TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
-                new ReportHotCodePhase().apply(graph, context);
+                // if there is a method filter set we must also match that one
+                if (graph.getDebug().methodFilterMatchesCurrentMethod()) {
+                    String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                    TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
+                    new ReportHotCodePhase().apply(graph, context);
+                }
             }
 
         } catch (Throwable t) {
