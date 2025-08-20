@@ -65,6 +65,7 @@ local common_json = import "../common.json";
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {
     'graalvm-ee-21': jdk_base + common_json.jdks["graalvm-ee-21"] + { jdk_version:: 21 },
+    'graalvm-ee-25-ea': jdk_base + common_json.jdks["graalvm-ee-25-ea"] + { jdk_version:: 25 },
   },
   # We do not want to expose galahad-jdk
   assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
