@@ -275,8 +275,8 @@ public class HeapBreakdownProvider {
         @Override
         public HeapBreakdownLabel getLabel(boolean truncate) {
             if (truncate) {
-                return new SimpleHeapObjectKindName(ProgressReporter.moduleNamePrefix(clazz.getModule()) +
-                                ProgressReporter.Utils.truncateFQN(clazz.getTypeName(), 0.29));
+                return new SimpleHeapObjectKindName(ProgressReporterUtils.moduleNamePrefix(clazz.getModule()) +
+                                ProgressReporterUtils.truncateFQN(clazz.getTypeName(), 0.29));
             } else {
                 return new SimpleHeapObjectKindName(clazz.getTypeName());
             }
