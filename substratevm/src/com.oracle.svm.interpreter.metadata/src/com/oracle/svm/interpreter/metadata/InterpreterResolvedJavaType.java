@@ -34,6 +34,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -210,6 +211,16 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
 
     @Override
     public final boolean isEnum() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public final boolean isRecord() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public List<? extends CremaResolvedJavaRecordComponent> getRecordComponents() {
         throw VMError.intentionallyUnimplemented();
     }
 

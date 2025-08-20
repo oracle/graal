@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaType {
@@ -304,6 +305,16 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     @Override
     public boolean isArray() {
         return false;
+    }
+
+    @Override
+    public boolean isRecord() {
+        return false;
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return null;
     }
 
     @Override

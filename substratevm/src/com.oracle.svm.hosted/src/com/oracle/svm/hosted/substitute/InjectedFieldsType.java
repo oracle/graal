@@ -40,6 +40,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -130,6 +131,16 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public boolean isEnum() {
         return original.isEnum();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return original.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return original.getRecordComponents();
     }
 
     @Override

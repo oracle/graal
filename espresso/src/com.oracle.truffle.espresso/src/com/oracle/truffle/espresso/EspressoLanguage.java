@@ -665,7 +665,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
                     }
                     if (useTRegex && !version.java21OrLater()) {
-                        throw EspressoError.fatal("UseTRegex is not available for context running Java version < 21.");
+                        throw EspressoError.fatal("UseTRegex is not available for a context running Java version < 21.");
+                    }
+                    if (internalJvmciEnabled && !version.java21OrLater()) {
+                        throw EspressoError.fatal("EnableJVMCI is not available for a context running Java version < 21.");
                     }
                     this.javaVersion = ref = version;
                 }

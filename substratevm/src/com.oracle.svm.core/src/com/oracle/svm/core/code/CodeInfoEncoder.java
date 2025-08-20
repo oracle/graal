@@ -130,6 +130,17 @@ public class CodeInfoEncoder {
         }
     }
 
+    public record Encodings(
+                    JavaConstant[] objectConstantsArray,
+                    Class<?>[] classesArray,
+                    String[] memberNamesArray,
+                    String[] otherStringsArray) {
+    }
+
+    /**
+     * Encapsulates {@link FrequencyEncoder}s for values that are referenced by an index, just like
+     * Java bytecode instructions reference entries in a constant pool via their index.
+     */
     public static final class Encoders {
         static final Class<?> INVALID_CLASS = null;
         static final String INVALID_METHOD_NAME = "";
@@ -142,11 +153,11 @@ public class CodeInfoEncoder {
         public final FrequencyEncoder<JavaConstant> objectConstants;
         public final FrequencyEncoder<Class<?>> classes;
         /**
-         * Own encoder for method and field name strings because they have different characteristics
-         * than most {@linkplain #otherStrings other strings} and can be separated from them without
-         * much duplication, which results in lower indexes for both kinds of strings that can in
-         * turn be {@linkplain TypeWriter#putUV encoded in fewer bytes}, also in the
-         * {@linkplain #encodeMethodTable() method table}.
+         * Dedicated encoder for method and field name strings because they have different
+         * characteristics than most {@linkplain #otherStrings other strings} and can be separated
+         * from them without much duplication, which results in lower indexes for both kinds of
+         * strings that can in turn be {@linkplain TypeWriter#putUV encoded in fewer bytes}, also in
+         * the {@linkplain #encodeMethodTable() method table}.
          */
         public final FrequencyEncoder<String> memberNames;
         /**
@@ -158,7 +169,7 @@ public class CodeInfoEncoder {
         private final FrequencyEncoder<Member> methods;
         private Member[] encodedMethods;
 
-        public Encoders(boolean imageCode, Consumer<Class<?>> classVerifier) {
+        public Encoders(boolean imageCode, Consumer<Class<?>> classVerifier, boolean forceEncodeAllMethodMetadata) {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
 
             /*
@@ -175,7 +186,7 @@ public class CodeInfoEncoder {
                 this.methods.addObject(null);
                 this.classes.addObject(INVALID_CLASS);
                 this.memberNames.addObject(INVALID_METHOD_NAME);
-                if (shouldEncodeAllMethodMetadata()) {
+                if (forceEncodeAllMethodMetadata || shouldEncodeAllMethodMetadata()) {
                     this.otherStrings.addObject(INVALID_METHOD_SIGNATURE);
                 }
             }
@@ -206,11 +217,16 @@ public class CodeInfoEncoder {
             return Stream.of(encodedMethods).map(m -> (m != null) ? m.method() : null).toArray(ResolvedJavaMethod[]::new);
         }
 
+        public Encodings encodeAll() {
+            return new Encodings(
+                            encodeArray(objectConstants, JavaConstant[]::new),
+                            encodeArray(classes, Class[]::new),
+                            encodeArray(memberNames, String[]::new),
+                            encodeArray(otherStrings, String[]::new));
+        }
+
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
-            JavaConstant[] objectConstantsArray = encodeArray(objectConstants, JavaConstant[]::new);
-            Class<?>[] classesArray = encodeArray(classes, Class[]::new);
-            String[] memberNamesArray = encodeArray(memberNames, String[]::new);
-            String[] otherStringsArray = encodeArray(otherStrings, String[]::new);
+            Encodings encodings = encodeAll();
 
             int methodTableFirstId;
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
@@ -222,7 +238,7 @@ public class CodeInfoEncoder {
             }
             NonmovableArray<Byte> methodTable = encodeMethodTable();
 
-            install(target, objectConstantsArray, classesArray, memberNamesArray, otherStringsArray, methodTable, methodTableFirstId, adjuster);
+            install(target, encodings, methodTable, methodTableFirstId, adjuster);
         }
 
         private static <T> T[] encodeArray(FrequencyEncoder<T> encoder, IntFunction<T[]> allocator) {
@@ -289,13 +305,13 @@ public class CodeInfoEncoder {
         }
 
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-        private static void install(CodeInfo target, JavaConstant[] objectConstantsArray, Class<?>[] classesArray, String[] memberNamesArray,
-                        String[] otherStringsArray, NonmovableArray<Byte> methodTable, int methodTableFirstId, ReferenceAdjuster adjuster) {
+        private static void install(CodeInfo target, Encodings encodings, NonmovableArray<Byte> methodTable, int methodTableFirstId, ReferenceAdjuster adjuster) {
 
-            NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray, NmtCategory.Code);
-            NonmovableObjectArray<Class<?>> classes = (classesArray != null) ? adjuster.copyOfObjectArray(classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> memberNames = (memberNamesArray != null) ? adjuster.copyOfObjectArray(memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> otherStrings = (otherStringsArray != null) ? adjuster.copyOfObjectArray(otherStringsArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(encodings.objectConstantsArray, NmtCategory.Code);
+            NonmovableObjectArray<Class<?>> classes = (encodings.classesArray != null) ? adjuster.copyOfObjectArray(encodings.classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> memberNames = (encodings.memberNamesArray != null) ? adjuster.copyOfObjectArray(encodings.memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> otherStrings = (encodings.otherStringsArray != null) ? adjuster.copyOfObjectArray(encodings.otherStringsArray, NmtCategory.Code)
+                            : NonmovableArrays.nullArray();
 
             CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTable, methodTableFirstId);
         }

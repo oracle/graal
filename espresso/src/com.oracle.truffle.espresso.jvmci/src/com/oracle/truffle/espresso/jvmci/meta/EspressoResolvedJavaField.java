@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.DECLARED_ANNOTATIONS;
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.TYPE_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType.NO_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.ENUM;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.HIDDEN;
@@ -41,8 +43,8 @@ import java.lang.reflect.Field;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public final class EspressoResolvedJavaField implements ResolvedJavaField {
     private static final int JVM_FIELDS_MODIFIERS = PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | ENUM | SYNTHETIC;
@@ -105,7 +107,7 @@ public final class EspressoResolvedJavaField implements ResolvedJavaField {
     private native JavaType getType0(UnresolvedJavaType unresolved);
 
     @Override
-    public ResolvedJavaType getDeclaringClass() {
+    public EspressoResolvedInstanceType getDeclaringClass() {
         return holder;
     }
 
@@ -151,6 +153,22 @@ public final class EspressoResolvedJavaField implements ResolvedJavaField {
     }
 
     private native Field getMirror0();
+
+    @Override
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        byte[] bytes = getRawAnnotationBytes(DECLARED_ANNOTATIONS);
+        EspressoResolvedInstanceType container = getDeclaringClass();
+        return AnnotationsInfo.make(bytes, container.getConstantPool(), container);
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        byte[] bytes = getRawAnnotationBytes(TYPE_ANNOTATIONS);
+        EspressoResolvedInstanceType container = getDeclaringClass();
+        return AnnotationsInfo.make(bytes, container.getConstantPool(), container);
+    }
+
+    private native byte[] getRawAnnotationBytes(int category);
 
     @Override
     public boolean equals(Object o) {

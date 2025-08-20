@@ -27,12 +27,14 @@ package jdk.graal.compiler.libgraal.truffle;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
@@ -41,9 +43,9 @@ import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import jdk.vm.ci.meta.AnnotationData;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
@@ -100,27 +102,12 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
             TruffleKnownHostTypes hostTypes = types();
-            List<AnnotationData> annotationDataList = method.getAnnotationData(hostTypes.TruffleBoundary, hostTypes.BytecodeInterpreterSwitch,
-                            hostTypes.BytecodeInterpreterSwitchBoundary, hostTypes.InliningCutoff);
-            boolean isTruffleBoundary = false;
-            boolean isBytecodeInterpreterSwitch = false;
-            boolean isBytecodeInterpreterSwitchBoundary = false;
-            boolean isInliningCutoff = false;
-            boolean isInliningRoot = false;
-            for (AnnotationData annotationData : annotationDataList) {
-                String annotationTypeFqn = annotationData.getAnnotationType().getName();
-                if (hostTypes.TruffleBoundary.getName().equals(annotationTypeFqn)) {
-                    isTruffleBoundary = true;
-                } else if (hostTypes.BytecodeInterpreterSwitch.getName().equals(annotationTypeFqn)) {
-                    isBytecodeInterpreterSwitch = true;
-                } else if (hostTypes.BytecodeInterpreterSwitchBoundary.getName().equals(annotationTypeFqn)) {
-                    isBytecodeInterpreterSwitchBoundary = true;
-                } else if (hostTypes.InliningCutoff.getName().equals(annotationTypeFqn)) {
-                    isInliningCutoff = true;
-                } else if (hostTypes.InliningRoot != null && hostTypes.InliningRoot.getName().equals(annotationTypeFqn)) {
-                    isInliningRoot = true;
-                }
-            }
+            Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationValueSupport.getDeclaredAnnotationValues(method);
+            boolean isTruffleBoundary = annotations.containsKey(hostTypes.TruffleBoundary);
+            boolean isBytecodeInterpreterSwitch = annotations.containsKey(hostTypes.BytecodeInterpreterSwitch);
+            boolean isBytecodeInterpreterSwitchBoundary = annotations.containsKey(hostTypes.BytecodeInterpreterSwitchBoundary);
+            boolean isInliningCutoff = annotations.containsKey(hostTypes.InliningCutoff);
+            boolean isInliningRoot = annotations.containsKey(hostTypes.InliningRoot);
             return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
         }
 

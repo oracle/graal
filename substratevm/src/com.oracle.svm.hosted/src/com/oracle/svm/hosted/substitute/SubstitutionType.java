@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -146,6 +147,16 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean isEnum() {
         return annotated.isEnum();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return annotated.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return annotated.getRecordComponents();
     }
 
     @Override

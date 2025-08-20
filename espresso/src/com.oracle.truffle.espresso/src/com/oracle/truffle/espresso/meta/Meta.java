@@ -2221,6 +2221,10 @@ public final class Meta extends ContextAccessImpl
 
         public final ObjectKlass EspressoResolvedInstanceType;
         public final Method EspressoResolvedInstanceType_init;
+        public final int EspressoResolvedInstanceType_DECLARED_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_TYPE_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE;
         public final Field HIDDEN_OBJECTKLASS_MIRROR;
 
         public final ObjectKlass EspressoResolvedJavaField;
@@ -2231,6 +2235,9 @@ public final class Meta extends ContextAccessImpl
         public final Method EspressoResolvedJavaMethod_init;
         public final Field EspressoResolvedJavaMethod_holder;
         public final Field HIDDEN_METHOD_MIRROR;
+
+        public final ObjectKlass EspressoResolvedJavaRecordComponent;
+        public final Method EspressoResolvedJavaRecordComponent_init;
 
         public final ObjectKlass EspressoResolvedArrayType;
         public final Method EspressoResolvedArrayType_init;
@@ -2294,6 +2301,10 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedInstanceType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
             EspressoResolvedInstanceType_init = EspressoResolvedInstanceType.requireDeclaredMethod(Names._init_, Signatures._void);
             HIDDEN_OBJECTKLASS_MIRROR = EspressoResolvedInstanceType.requireHiddenField(Names.HIDDEN_OBJECTKLASS_MIRROR);
+            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.DECLARED_ANNOTATIONS);
+            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.PARAMETER_ANNOTATIONS);
+            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.TYPE_ANNOTATIONS);
+            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType, Names.ANNOTATION_DEFAULT_VALUE);
 
             EspressoResolvedJavaField = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
             EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);
@@ -2303,6 +2314,9 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_boolean);
             HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Names.HIDDEN_METHOD_MIRROR);
             EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Names.holder, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+
+            EspressoResolvedJavaRecordComponent = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRecordComponent);
+            EspressoResolvedJavaRecordComponent_init = EspressoResolvedJavaRecordComponent.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_int_int_int);
 
             EspressoResolvedArrayType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayType);
             EspressoResolvedArrayType_init = EspressoResolvedArrayType.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedJavaType_int_Class);
@@ -2993,6 +3007,18 @@ public final class Meta extends ContextAccessImpl
             throw throwException(java_lang_IllegalAccessError);
         }
         return klass;
+    }
+
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
+        Field f = klass.lookupDeclaredField(constant, Types._int);
+        if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
+            throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
+        }
+        int constantValueIndex = f.getConstantValueIndex();
+        if (constantValueIndex != 0) {
+            return klass.getConstantPool().intAt(constantValueIndex);
+        }
+        return f.getInt(klass.tryInitializeAndGetStatics());
     }
 
     public String toHostString(StaticObject str) {

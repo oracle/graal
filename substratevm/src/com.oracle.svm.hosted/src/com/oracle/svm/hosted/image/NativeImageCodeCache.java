@@ -375,7 +375,7 @@ public abstract class NativeImageCodeCache {
                     throw VMError.shouldNotReachHere("Type added to the runtime metadata without being seen by the analysis: %s", clazz);
                 }
             }
-        });
+        }, false);
         HostedConstantAccess hostedConstantAccess = new HostedConstantAccess(snippetReflection);
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders, hostedConstantAccess);
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);

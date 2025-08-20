@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -299,6 +300,14 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isPrimitiveMethod, isPrimitiveInvokable);
     }
 
+    private static final SymbolicMethod isRecordMethod = method("isRecord");
+    private static final InvokableMethod isRecordInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isRecord();
+
+    @Override
+    public boolean isRecord() {
+        return (boolean) handle(isRecordMethod, isRecordInvokable);
+    }
+
     public static final SymbolicMethod getJavaKindMethod = method("getJavaKind");
     public static final InvokableMethod getJavaKindInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getJavaKind();
 
@@ -379,6 +388,15 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getEnclosingType() {
         return (HotSpotResolvedObjectType) handle(getEnclosingTypeMethod, getEnclosingTypeInvokable);
+    }
+
+    private static final SymbolicMethod getRecordComponentsMethod = method("getRecordComponents");
+    private static final InvokableMethod getRecordComponentsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getRecordComponents();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return (List<ResolvedJavaRecordComponent>) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
     private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
