@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -42,7 +43,7 @@ public class SubstrateDebugTypeEntrySupport {
      * debug info generation. We can't get ElementInfo at run-time, but we can reuse the type
      * entries produced during the native image build for run-time debug info generation.
      */
-    @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
+    @UnknownObjectField(availability = AfterAnalysis.class, fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
     private Map<Long, TypeEntry> typeEntryMap = new HashMap<>();
 
     @Fold

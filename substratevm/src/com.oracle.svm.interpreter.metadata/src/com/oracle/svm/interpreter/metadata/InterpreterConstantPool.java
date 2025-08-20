@@ -31,6 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -60,7 +61,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     final ParserConstantPool parserConstantPool;
 
     // Assigned after analysis.
-    @UnknownObjectField(types = Object[].class) protected Object[] cachedEntries;
+    @UnknownObjectField(availability = AfterAnalysis.class, types = Object[].class) protected Object[] cachedEntries;
 
     Object objAt(int cpi) {
         if (cpi == 0) {
