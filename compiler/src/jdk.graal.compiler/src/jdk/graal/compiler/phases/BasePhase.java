@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -66,6 +67,7 @@ import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.contract.PhaseSizeContract;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -205,11 +207,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
         @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey(null, null);
+        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);;
         @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final PhaseFilterKey ReportHotMetricsBeforePhases = new PhaseFilterKey("HighTierLoweringPhase=*", null);
+        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<String>("HighTierLoweringPhase");
         @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> ReportHotMetrics = new OptionKey<>(false);
+        public static final OptionKey<String> ReportHotMetrics = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -456,12 +458,23 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
 
-            if (PhaseOptions.ReportHotMetrics.getValue(options) && PhaseOptions.ReportHotMetricsBeforePhases.matches(options, this, graph)) {
-                // if there is a method filter set we must also match that one
-                if (graph.getDebug().methodFilterMatchesCurrentMethod()) {
-                    String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
-                    TTY.println("Reporting hot metrics before " + getName() + " during compilation of " + label);
-                    new ReportHotCodePhase().apply(graph, context);
+            String reportHotMetricsMethodFilter = PhaseOptions.ReportHotMetrics.getValue(options);
+            boolean logHotMetricsForGraph = false;
+            if (reportHotMetricsMethodFilter != null) {
+                jdk.graal.compiler.debug.MethodFilter hotMetricsMethodFilter = null;
+                hotMetricsMethodFilter = jdk.graal.compiler.debug.MethodFilter.parse(reportHotMetricsMethodFilter);
+                logHotMetricsForGraph = graph.method() != null && hotMetricsMethodFilter.matches(graph.method());
+                if (!logHotMetricsForGraph) {
+                    CompilationIdentifier id = graph.compilationId();
+                    JavaMethod idMethod = id.asJavaMethod();
+                    logHotMetricsForGraph = idMethod != null && hotMetricsMethodFilter.matches(idMethod);
+                }
+                if (logHotMetricsForGraph) {
+                    if (PhaseOptions.ReportHotMetricsBeforePhases.getValue(graph.getOptions()).equals(getClass().getSimpleName())) {
+                        String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                        TTY.println("Reporting hot metrics before " + getName() + " during compilation of " + label);
+                        new ReportHotCodePhase().apply(graph, context);
+                    }
                 }
             }
 
@@ -511,9 +524,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 }
             }
 
-            if (PhaseOptions.ReportHotMetrics.getValue(options) && PhaseOptions.ReportHotMetricsAfterPhases.matches(options, this, graph)) {
-                // if there is a method filter set we must also match that one
-                if (graph.getDebug().methodFilterMatchesCurrentMethod()) {
+            if (logHotMetricsForGraph) {
+                String reportAfterPhase = PhaseOptions.ReportHotMetricsAfterPhases.getValue(graph.getOptions());
+                if (reportAfterPhase != null && reportAfterPhase.equals(getClass().getSimpleName())) {
                     String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
                     TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
                     new ReportHotCodePhase().apply(graph, context);
