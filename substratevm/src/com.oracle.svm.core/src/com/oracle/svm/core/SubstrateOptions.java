@@ -361,6 +361,12 @@ public class SubstrateOptions {
              */
             if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation) && newLevel == OptimizationLevel.O3) {
                 SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, true);
+            } else if (newLevel == OptimizationLevel.BUILD_TIME) {
+                /*
+                 * Disable in economy mode as there is no final canonicalizer which is required for
+                 * cleanup up after this phase.
+                 */
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, false);
             }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
