@@ -59,13 +59,13 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase;
  * representation (IR).
  * <p>
  * This phase traverses all sections of the code, sorts and identifies the hottest regions of the IR
- * - typically loops or frequently executed blocks - wand generates a report highlighting any known
+ * - typically loops or frequently executed blocks - and generates a report highlighting any known
  * performance-critical observations related to those regions (if any are present).
  * </p>
  * <p>
  * The resulting report can be used to guide further performance analysis or optimization efforts.
  * </p>
- * 
+ *
  * The phase is written in an agnostic way so it can be applied at any point in time in the
  * compilation pipeline.
  */
@@ -77,7 +77,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         public static final OptionKey<Boolean> ReportHotCodePartsToIGV = new OptionKey<>(false);
         @Option(help = "Specifies the debug level for dumping hottest code parts to the Ideal Graph Visualizer (IGV).", type = OptionType.Debug)
         public static final OptionKey<Integer> ReportHotCodIGVLevel = new OptionKey<>(1);
-        @Option(help = "", type = OptionType.Debug)
+        @Option(help = "Specifies the minimum relative frequency for reporting hot code regions.", type = OptionType.Debug)
         public static final OptionKey<Double> MinimalFrequencyToReport = new OptionKey<>(1D);
         //@formatter:on
     }
@@ -206,17 +206,15 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         // report the 3 hottest blocks and the 3 hottest loops and 3 hottest loops by local loop
         // frequency
         final List<HIRBlock> hottestBlocks = new ArrayList<>();
-        final List<Loop> hottestLocalLoops = new ArrayList<>();
-        final List<Loop> hottestGlobalLoops = new ArrayList<>();
 
         Collections.addAll(hottestBlocks, cfg.reversePostOrder());
         hottestBlocks.sort((x, y) -> Double.compare(y.getRelativeFrequency(), x.getRelativeFrequency()));
 
         ld.detectCountedLoops();
-        hottestLocalLoops.addAll(ld.loops());
+        final List<Loop> hottestLocalLoops = new ArrayList<>(ld.loops());
         hottestLocalLoops.sort((x, y) -> Double.compare(y.localLoopFrequency(), x.localLoopFrequency()));
 
-        hottestGlobalLoops.addAll(ld.loops());
+        final List<Loop> hottestGlobalLoops = new ArrayList<>(ld.loops());
         hottestGlobalLoops.sort((x, y) -> Double.compare(y.getCFGLoop().getHeader().getRelativeFrequency(), x.getCFGLoop().getHeader().getRelativeFrequency()));
 
         final List<HIRBlock> hottestFirstBlocks = takeUntil(hottestBlocks, REPORT_HOT_FIRST_N);
@@ -326,7 +324,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                 SingleMemoryKill sk = MemoryKill.asSingleMemoryKill(inside);
                 if (sk.getKilledLocationIdentity().isAny()) {
                     if (inside instanceof FixedNode) {
-                        // else we dont have a cfg position
+                        // else we don't have a cfg position
                         warn("Node %s kills any and has relative f=%s  in loop %s %n\tPotential Action Item: Determine if operation is required and replace with less intrusive memory effect if possible.%n",
                                         inside, cfg.blockFor(inside).getRelativeFrequency(), l);
                     } else {
