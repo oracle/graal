@@ -180,8 +180,8 @@ final class CVSymbolSubsectionBuilder {
         for (LocalEntry paramInfo : method.getParams()) {
             final TypeEntry paramType = paramInfo.type();
             final int typeIndex = method.isThisParam(paramInfo)
-                    ? cvDebugInfo.getCVTypeSection().getIndexForPointer(paramType)
-                    : cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
+                            ? cvDebugInfo.getCVTypeSection().getIndexForPointer(paramType)
+                            : cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
             emitLocal(paramInfo, varRangeMap, paramInfo.name(), paramType, typeIndex, true, externalName, primaryRange);
         }
     }
@@ -220,17 +220,19 @@ final class CVSymbolSubsectionBuilder {
                         short cvreg = CVRegisterUtil.getCVRegister(v.regIndex(), typeEntry);
                         /*
                          * It could be that Graal has allocated a register that we don't know how to
-                         * represent in CodeView. In that case, getCVRegister() will return a negative
-                         * number and no local variable record is issued.
+                         * represent in CodeView. In that case, getCVRegister() will return a
+                         * negative number and no local variable record is issued.
                          */
                         if (cvreg >= 0) {
-                            currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()), (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                            currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
+                                            (short) (subrange.getHi() - subrange.getLo()), cvreg);
                             addSymbolRecord(currentRecord);
                         }
                     }
                     case StackValueEntry v -> {
-                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()), (short) (subrange.getHi() - subrange.getLo()),
-                                v.stackSlot());
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
+                                        (short) (subrange.getHi() - subrange.getLo()),
+                                        v.stackSlot());
                         addSymbolRecord(currentRecord);
                     }
                     case ConstantValueEntry v -> {
