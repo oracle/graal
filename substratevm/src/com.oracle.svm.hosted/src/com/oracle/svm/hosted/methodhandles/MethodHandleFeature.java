@@ -259,10 +259,12 @@ public class MethodHandleFeature implements InternalFeature {
                                 for (var entry : cache.entrySet()) {
                                     SoftReference<Object> value = entry.getValue();
                                     Object object = value.get();
-                                    MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
-                                    MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
-                                    if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
-                                        result.put(entry.getKey(), value);
+                                    if (object != null) {
+                                        MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
+                                        MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
+                                        if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
+                                            result.put(entry.getKey(), value);
+                                        }
                                     }
                                 }
 
