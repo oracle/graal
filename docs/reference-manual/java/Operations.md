@@ -14,7 +14,7 @@ The first thing to confirm when measuring performance is that the Java Virtual M
 
 GraalVM is configured to use the Graal JIT compiler as the top tier compiler by default.
 
-To enable the Graal JIT compiler for use in the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html){:target="_blank"}, use the [`-XX:+UseGraalJIT`](https://download.java.net/java/early_access/jdk23/docs/specs/man/java.html#enabling-the-graal-jit-compiler){:target="_blank"} option.
+To enable the Graal JIT compiler for use in the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/25/vm/java-virtual-machine-technology-overview.html){:target="_blank"}, use the [`-XX:+UseGraalJIT`](https://download.java.net/java/early_access/jdk25/docs/specs/man/java.html#enabling-the-graal-jit-compiler){:target="_blank"} option.
 (The `-XX:+UseGraalJIT` option has to be used together with the `-XX:+UnlockExperimentalVMOptions` option that unlocks this experimental integration.)
 
 The following example runs the Java application `com.example.myapp` with the Graal JIT compiler enabled:
