@@ -1961,10 +1961,12 @@ class LibffiBuildTask(mx_native.TargetArchBuildTask):
         mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.out_dir)
 
         mx.log('Applying patches...')
-        git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
-                     os.path.join(os.path.realpath(self.out_dir), self.srcDir)]
-        for patch in self.subject.patches(self.delegate.toolchain):
-            mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
+        patch_dir = os.path.join(os.path.realpath(self.out_dir), self.srcDir)
+        for patch_file in self.subject.patches(self.delegate.toolchain):
+            mx.log(f"Applying patch: {patch_file}")
+            with open(patch_file, 'r') as pf:
+                patch_content = pf.read()
+            mx.run(['patch', '-d', patch_dir, '-p1'], cwd=self.subject.suite.vc_dir, stdin=patch_content)
 
         self.delegate.logBuild()
         self.delegate.build()
