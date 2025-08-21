@@ -111,7 +111,7 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
 
     @Test
     public void testMemCmp() {
-        testWithNative(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
+        testWithNative(getMemcmpWithStride(), null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

@@ -415,20 +415,22 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return data instanceof AbstractTruffleString.LazyLong;
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
-        return forwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding) {
+        return forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, 0);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding,
+                    TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, errorHandling, 0);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
-        return backwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding) {
+        return backwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, a.length());
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding,
+                    TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, errorHandling, lengthA);
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
@@ -492,35 +494,35 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheckByteIndexS0(int byteIndex) {
-        assert stride() == 0;
-        boundsCheckI(byteIndex, length());
+    static void boundsCheckByteIndexS0(int lengthA, int strideA, int byteIndex) {
+        assert strideA == 0;
+        boundsCheckI(byteIndex, lengthA);
     }
 
-    final void boundsCheckByteIndexUTF16(int byteIndex) {
-        boundsCheckI(byteIndex, length() << TruffleString.Encoding.UTF_16.naturalStride);
+    static void boundsCheckByteIndexUTF16(int lengthA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << TruffleString.Encoding.UTF_16.naturalStride);
     }
 
-    final void boundsCheckByteIndexUTF32(int byteIndex) {
-        boundsCheckI(byteIndex, length() << TruffleString.Encoding.UTF_32.naturalStride);
+    static void boundsCheckByteIndexUTF32(int lengthA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << TruffleString.Encoding.UTF_32.naturalStride);
     }
 
-    final void boundsCheckRaw(int index) {
-        boundsCheckI(index, length());
+    static void boundsCheckRawIndex(int lengthA, int index) {
+        boundsCheckI(index, lengthA);
     }
 
-    final void boundsCheckRawLength(int index) {
-        if (Integer.compareUnsigned(index, length()) > 0) {
-            throw InternalErrors.indexOutOfBounds(length(), index);
+    static void boundsCheckRawLength(int lengthA, int index) {
+        if (Integer.compareUnsigned(index, lengthA) > 0) {
+            throw InternalErrors.indexOutOfBounds(lengthA, index);
         }
     }
 
-    final void boundsCheckRaw(int fromIndex, int toIndex) {
-        boundsCheckI(fromIndex, toIndex, length());
+    static void boundsCheckRawRange(int lengthA, int fromIndex, int toIndex) {
+        boundsCheckI(fromIndex, toIndex, lengthA);
     }
 
-    final void boundsCheckRegionRaw(int fromIndex, int regionLength) {
-        boundsCheckRegionI(fromIndex, regionLength, length());
+    static void boundsCheckRawRegion(int lengthA, int fromIndex, int regionLength) {
+        boundsCheckRegionI(fromIndex, regionLength, lengthA);
     }
 
     static void boundsCheckI(int index, int arrayLength) {

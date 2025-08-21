@@ -109,10 +109,7 @@ final class IndexOfCodePointSet {
             if (isSingleValue(ranges)) {
                 int codepoint = getMin(ranges);
                 byte[] encoded = Encodings.utf8Encode(codepoint);
-                int codeRange = Encodings.isUTF16Surrogate(codepoint) ? TSCodeRange.getBrokenMultiByte() : TSCodeRange.getValidMultiByte();
-                int codepointLength = Encodings.isUTF16Surrogate(codepoint) ? encoded.length : 1;
-                return new IndexOfNode[]{IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
-                                TruffleString.createFromByteArray(encoded, encoded.length, 0, Encoding.UTF_8, codepointLength, codeRange))};
+                return new IndexOfNode[]{IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(), encoded, 0)};
             } else {
                 IndexOfNode ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE);
                 IndexOfRangesNode nonAscii = IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges);
@@ -132,8 +129,7 @@ final class IndexOfCodePointSet {
                         } else {
                             assert codepoint > 0xffff;
                             byte[] encoded = Encodings.utf16Encode(codepoint);
-                            addOrReplaceLast(nodes, IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
-                                            TruffleString.createFromByteArray(encoded, encoded.length >> 1, 1, Encoding.UTF_16, 1, TSCodeRange.getValidMultiByte())));
+                            addOrReplaceLast(nodes, IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(), encoded, 1));
                         }
                     } else {
                         addOrReplaceLast(nodes, IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges));
@@ -585,28 +581,29 @@ final class IndexOfCodePointSet {
 
     abstract static class IndexOfStringNode extends OptimizedIndexOfNode {
 
-        final TruffleString str;
+        final byte[] str;
+        final byte stride;
 
-        IndexOfStringNode(int maxCodeRange, TruffleString string) {
+        IndexOfStringNode(int maxCodeRange, byte[] string, int stride) {
             super(maxCodeRange);
             this.str = string;
+            this.stride = (byte) stride;
         }
 
         @Override
         int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
-            assert str.isManaged() && str.isMaterialized() && str.offset() == 0;
             return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA,
-                            (byte[]) str.data(), byteArrayBaseOffset(), str.length(), str.stride(), fromIndex, toIndex, null);
+                            str, byteArrayBaseOffset(), str.length >> stride, stride, fromIndex, toIndex, null);
         }
 
         @Override
         boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfStringNode && str.equals(((IndexOfStringNode) other).str);
+            return other instanceof IndexOfStringNode && Arrays.equals(str, ((IndexOfStringNode) other).str) && stride == ((IndexOfStringNode) other).stride;
         }
 
         @Override
         IndexOfNode shallowCopy() {
-            return IndexOfStringNodeGen.create(maxCodeRange, str);
+            return IndexOfStringNodeGen.create(maxCodeRange, str, stride);
         }
     }
 

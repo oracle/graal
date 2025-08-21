@@ -89,25 +89,6 @@ final class TStringOps {
         }
     }
 
-    static int readValue(AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int i) {
-        return readValue(arrayA, offsetA, a.length(), stride, i);
-    }
-
-    static int readS0(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 0, i);
-        return uInt(TStringUnsafe.getByte(arrayA, offsetA + i));
-    }
-
-    static char readS1(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 1, i);
-        return TStringUnsafe.getChar(arrayA, offsetA + ((long) i << 1));
-    }
-
-    static int readS2(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 2, i);
-        return TStringUnsafe.getInt(arrayA, offsetA + ((long) i << 2));
-    }
-
     static int readS0(byte[] array, long offset, int length, int i) {
         assert validateRegionIndexWithBaseOffset(array, offset, length, 0, i);
         return uInt(TStringUnsafe.getByte(array, offset + i));
@@ -189,12 +170,11 @@ final class TStringOps {
         }
     }
 
-    static int indexOfAnyByte(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int toIndex, byte[] values) {
-        assert a.stride() == 0;
+    static int indexOfAnyByte(Node location, byte[] arrayA, long offsetA, int fromIndex, int toIndex, byte[] values) {
         return indexOfAnyByteIntl(location, arrayA, offsetA, toIndex, fromIndex, values);
     }
 
-    private static int indexOfAnyByteIntl(Node location, byte[] array, long offset, int length, int fromIndex, byte[] values) {
+    static int indexOfAnyByteIntl(Node location, byte[] array, long offset, int length, int fromIndex, byte[] values) {
         final boolean isNative = array == null;
         assert validateRegionIndexWithBaseOffset(array, offset, length, 0, fromIndex);
         switch (values.length) {
@@ -417,14 +397,6 @@ final class TStringOps {
     }
 
     static int indexOfStringWithOrMaskWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        return indexOfStringWithOrMaskWithStride(location,
-                        arrayA, offsetA, a.length(), strideA,
-                        arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, maskB);
-    }
-
-    static int indexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
         int offsetMask = byteArrayBaseOffset();
@@ -445,7 +417,7 @@ final class TStringOps {
             if (index < 0) {
                 return -1;
             }
-            if (lengthB == 2 || regionEqualsWithOrMaskWithStrideIntl(location,
+            if (lengthB == 2 || regionEqualsWithOrMaskWithStride(location,
                             arrayA, offsetA, lengthA, strideA, index,
                             arrayB, offsetB, lengthB, strideB, 0, maskB, lengthB)) {
                 return index;
@@ -508,7 +480,7 @@ final class TStringOps {
                 return -1;
             }
             index += 2;
-            if (lengthB == 2 || regionEqualsWithOrMaskWithStrideIntl(location,
+            if (lengthB == 2 || regionEqualsWithOrMaskWithStride(location,
                             arrayA, offsetA, lengthA, strideA, index - lengthB,
                             arrayB, offsetB, lengthB, strideB, 0, maskB, lengthB)) {
                 return index - lengthB;
@@ -520,15 +492,6 @@ final class TStringOps {
     }
 
     static boolean regionEqualsWithOrMaskWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int fromIndexA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int fromIndexB,
-                    byte[] maskB, int lengthCMP) {
-        return regionEqualsWithOrMaskWithStrideIntl(location,
-                        arrayA, offsetA, a.length(), strideA, fromIndexA,
-                        arrayB, offsetB, b.length(), strideB, fromIndexB, maskB, lengthCMP);
-    }
-
-    private static boolean regionEqualsWithOrMaskWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA, int fromIndexA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndexB, byte[] maskB, int lengthCMP) {
         if (!rangeInBounds(fromIndexA, lengthCMP, lengthA) || !rangeInBounds(fromIndexB, lengthCMP, lengthB)) {
@@ -555,14 +518,6 @@ final class TStringOps {
     }
 
     static int memcmpWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
-        assert lengthCMP <= a.length();
-        assert lengthCMP <= b.length();
-        return memcmpWithStrideIntl(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    private static int memcmpWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int strideA,
                     byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
         if (lengthCMP == 0) {
@@ -578,14 +533,6 @@ final class TStringOps {
     }
 
     static int memcmpBytesWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
-        assert lengthCMP <= a.length();
-        assert lengthCMP <= b.length();
-        return memcmpBytesWithStrideIntl(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    private static int memcmpBytesWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int strideA,
                     byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
         if (lengthCMP == 0) {
@@ -662,9 +609,8 @@ final class TStringOps {
         }
     }
 
-    static int hashCodeWithStride(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride) {
-        int length = a.length();
-        return hashCodeWithStrideIntl(location, arrayA, offsetA, length, stride);
+    static int hashCodeWithStride(Node location, byte[] arrayA, long offsetA, int lengthA, int stride) {
+        return hashCodeWithStrideIntl(location, arrayA, offsetA, lengthA, stride);
     }
 
     private static int hashCodeWithStrideIntl(Node location, byte[] array, long offset, int length, int stride) {
