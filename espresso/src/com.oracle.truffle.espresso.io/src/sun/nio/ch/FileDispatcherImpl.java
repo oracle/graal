@@ -34,8 +34,7 @@ import java.nio.channels.SelectableChannel;
  * descriptors used this class are purely virtual and should not be passed down to native code.
  *
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+
  */
 final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
 

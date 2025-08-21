@@ -22,31 +22,22 @@
  */
 package sun.nio.fs;
 
-import java.nio.file.FileSystem;
+import java.io.Closeable;
+import java.io.FileDescriptor;
+import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
+import java.util.Set;
 
-/**
- * Replaces JDK's own {@link DefaultFileSystemProvider} to link to a Truffle-based
- * {@code FileSystem}.
- * <p>
- * This file must be compatible with 21+.
- */
-public final class DefaultFileSystemProvider {
-    private static final TruffleFileSystemProvider INSTANCE = new TruffleFileSystemProvider();
-
-    private DefaultFileSystemProvider() {
+public class NewFileChannelHelper {
+    public static FileChannel open(FileDescriptor fd, String path,
+                    boolean readable, boolean writable,
+                    boolean sync, boolean direct, Closeable parent) {
+        // should be implemented in the overlay project since its version specific.
+        throw new IllegalStateException("Should not reach here!");
     }
 
-    /**
-     * Returns the platform's default file system provider.
-     */
-    public static TruffleFileSystemProvider instance() {
-        return INSTANCE;
-    }
-
-    /**
-     * Returns the platform's default file system.
-     */
-    public static FileSystem theFileSystem() {
-        return INSTANCE.theFileSystem();
+    public static boolean getDirectOption(Set<? extends OpenOption> options) {
+        // should be implemented in the overlay project since its version specific.
+        throw new IllegalStateException("Should not reach here!");
     }
 }

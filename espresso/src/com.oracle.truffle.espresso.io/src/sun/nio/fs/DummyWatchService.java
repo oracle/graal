@@ -22,31 +22,19 @@
  */
 package sun.nio.fs;
 
-import java.nio.file.FileSystem;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
 
-/**
- * Replaces JDK's own {@link DefaultFileSystemProvider} to link to a Truffle-based
- * {@code FileSystem}.
- * <p>
- * This file must be compatible with 21+.
- */
-public final class DefaultFileSystemProvider {
-    private static final TruffleFileSystemProvider INSTANCE = new TruffleFileSystemProvider();
-
-    private DefaultFileSystemProvider() {
+class DummyWatchService extends AbstractWatchService {
+    @Override
+    WatchKey register(Path path, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+        return null;
     }
 
-    /**
-     * Returns the platform's default file system provider.
-     */
-    public static TruffleFileSystemProvider instance() {
-        return INSTANCE;
-    }
+    @Override
+    void implClose() throws IOException {
 
-    /**
-     * Returns the platform's default file system.
-     */
-    public static FileSystem theFileSystem() {
-        return INSTANCE.theFileSystem();
     }
 }

@@ -22,43 +22,15 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.io.FileDescriptor;
-import java.io.IOException;
-
-import com.oracle.truffle.espresso.io.FDAccess;
-import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
-import com.oracle.truffle.espresso.substitutions.Inject;
-import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = FileDescriptor.class, group = LibJava.class)
-public final class Target_java_io_FileDescriptor {
-
+@EspressoSubstitutions(type = "Ljdk/internal/vm/ContinuationSupport;", group = LibJava.class)
+public final class Target_jdk_internal_vm_ContinuationSupport {
     @Substitution
-    public static void initIDs() {
-        // Do nothing.
-    }
-
-    @Substitution
-    public static long getHandle(@SuppressWarnings("unused") int d) {
-        // Not obtainable.
-        return -1;
-    }
-
-    @Substitution
-    public static boolean getAppend(@SuppressWarnings("unused") int fd) {
-        // Not obtainable.
+    public static boolean isSupported0() {
+        // GR-54288 Currently virtual threads are just platform threads in Espresso
         return false;
-    }
-
-    @Substitution(hasReceiver = true)
-    @Throws(IOException.class)
-    public static void close0(@JavaType(FileDescriptor.class) StaticObject self,
-                    @Inject TruffleIO io) {
-        io.close(self, FDAccess.forFileDescriptor());
     }
 }

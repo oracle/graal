@@ -27,9 +27,7 @@ package java.io;
  * <p>
  * Its native methods are provided by Espresso's custom {@code libjava} implementation.
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
- *
+ * This file must be compatible with 21+.
  */
 final class TruffleFileSystem extends FileSystem {
 
@@ -73,7 +71,13 @@ final class TruffleFileSystem extends FileSystem {
 
     @Override
     public String fromURIPath(String path) {
-        return fromURIPath0(path);
+        // copy pasted from UnixFileSystem
+        String p = path;
+        if (p.endsWith("/") && (p.length() > 1)) {
+            // "/foo/" --> "/foo", but "/" --> "/"
+            p = p.substring(0, p.length() - 1);
+        }
+        return p;
     }
 
     @Override
