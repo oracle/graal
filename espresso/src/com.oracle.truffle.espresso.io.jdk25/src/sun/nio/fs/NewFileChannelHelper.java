@@ -22,31 +22,16 @@
  */
 package sun.nio.fs;
 
-import java.nio.file.FileSystem;
+import java.io.Closeable;
+import java.io.FileDescriptor;
+import java.nio.channels.FileChannel;
 
-/**
- * Replaces JDK's own {@link DefaultFileSystemProvider} to link to a Truffle-based
- * {@code FileSystem}.
- * <p>
- * This file must be compatible with 21+.
- */
-public final class DefaultFileSystemProvider {
-    private static final TruffleFileSystemProvider INSTANCE = new TruffleFileSystemProvider();
+import sun.nio.ch.FileChannelImpl;
 
-    private DefaultFileSystemProvider() {
-    }
-
-    /**
-     * Returns the platform's default file system provider.
-     */
-    public static TruffleFileSystemProvider instance() {
-        return INSTANCE;
-    }
-
-    /**
-     * Returns the platform's default file system.
-     */
-    public static FileSystem theFileSystem() {
-        return INSTANCE.theFileSystem();
+public class NewFileChannelHelper {
+    public static FileChannel open(FileDescriptor fd, String path,
+                    boolean readable, boolean writable,
+                    boolean sync, boolean direct, Closeable parent) {
+        return FileChannelImpl.open(fd, path, readable, writable, sync, direct, parent);
     }
 }

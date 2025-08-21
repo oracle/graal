@@ -112,6 +112,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         }
     }
 
+    public Runtime.Version toRunTimeVersion() {
+        return Runtime.Version.parse(toString());
+    }
+
     private static JavaVersion forVersion(Runtime.Version version) {
         return forVersion(version.feature());
     }
@@ -182,6 +186,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public boolean java20OrEarlier() {
         return version <= 20;
+    }
+
+    public boolean java21Or25() {
+        return version == 21 || version == 25;
     }
 
     public boolean java21OrLater() {

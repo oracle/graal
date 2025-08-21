@@ -32,8 +32,7 @@ import java.util.function.Predicate;
  * Small utility to apply map + filter operations, in that order, to a base iterator.
  *
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 final class MapFilterIterator<From, To> implements Iterator<To> {
 
