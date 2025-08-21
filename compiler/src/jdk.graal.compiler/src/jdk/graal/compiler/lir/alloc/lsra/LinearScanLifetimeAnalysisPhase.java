@@ -384,10 +384,6 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                              * Note: liveIn set can only grow, never shrink. No need to clear it.
                              */
                             SparseBitSet liveIn = blockSets.liveIn;
-                            /*
-                             * SparseBitSet#or will call SparseBitSet#ensureSize (since the bit set
-                             * is of length 0 initially) and set sticky to false
-                             */
                             liveIn.addAll(blockSets.liveOut);
                             liveIn.removeAll(blockSets.liveKill);
                             liveIn.addAll(blockSets.liveGen);

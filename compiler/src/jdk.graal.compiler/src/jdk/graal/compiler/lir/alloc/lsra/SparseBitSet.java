@@ -32,8 +32,8 @@ import java.util.Arrays;
  * in the set can be quite large, reaching over 100000 in extreme cases. Since lifetime analysis
  * uses 4 bitsets per block and the number of blocks can also be very large, space efficiency can
  * play a major role in performance. A simple sorted list of integers performs significantly better
- * for large numbers of intervals and blocks while only modestly affecting the perform for small
- * values.
+ * for large numbers of intervals and blocks while having no measurable performance impact for small
+ * numbers of intervals when compared to {@link java.util.BitSet}.
  */
 public class SparseBitSet {
 
@@ -52,8 +52,14 @@ public class SparseBitSet {
      */
     private int iterator = 0;
 
+    /**
+     * The sets are almost never empty and commonly contain just a few elements so start at a small
+     * initial size.
+     */
+    static final int INITIAL_SIZE = 4;
+
     public SparseBitSet() {
-        elements = new int[4];
+        elements = new int[INITIAL_SIZE];
     }
 
     public SparseBitSet(SparseBitSet other) {
@@ -75,9 +81,10 @@ public class SparseBitSet {
             size = other.size;
         } else {
             ensureCapacity(other.size);
-            int otherIndex = 0;
             int originalSize = size;
-            for (int index = 0; index < originalSize && otherIndex < other.size;) {
+            int index = 0;
+            int otherIndex = 0;
+            while (index < originalSize && otherIndex < other.size) {
                 int value = elements[index];
                 int otherValue = other.elements[otherIndex];
                 if (value == otherValue) {
@@ -108,17 +115,13 @@ public class SparseBitSet {
 
     private void ensureCapacity(int minCapacity) {
         if (minCapacity > elements.length) {
-            grow(minCapacity);
+            int oldCapacity = elements.length;
+            elements = Arrays.copyOf(elements, oldCapacity + Math.max(minCapacity - oldCapacity, oldCapacity >> 1));
         }
     }
 
-    private void grow(int minCapacity) {
-        int oldCapacity = elements.length;
-        elements = Arrays.copyOf(elements, oldCapacity + Math.max(minCapacity - oldCapacity, oldCapacity >> 1));
-    }
-
     /**
-     * Remove all the value that are seting {@ocde other} from this set.
+     * Remove all the values that are set in {@ocde other} from this set.
      */
     public void removeAll(SparseBitSet other) {
         int otherIndex = 0;
@@ -173,12 +176,17 @@ public class SparseBitSet {
      * Sets the bit at the specified index to {@code true}.
      */
     public void set(int bitIndex) {
+        if (bitIndex < 0) {
+            throw new IllegalArgumentException("negative values are not permitted");
+        }
         int location = Arrays.binarySearch(elements, 0, size, bitIndex);
         if (location < 0) {
+            /*
+             * If an element isn't found, binarySearch returns the proper insertion location as
+             * (-(insertion point) - 1 so reverse this computation and insert it.
+             */
             int insertPoint = -(location + 1);
-            if (size == elements.length) {
-                grow(size + 1);
-            }
+            ensureCapacity(size + 1);
             System.arraycopy(elements, insertPoint, elements, insertPoint + 1, size - insertPoint);
             elements[insertPoint] = bitIndex;
             size++;
