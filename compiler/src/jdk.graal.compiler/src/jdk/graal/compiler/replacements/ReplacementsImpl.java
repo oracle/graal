@@ -57,7 +57,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Node;
@@ -111,7 +111,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     protected Providers providers;
     public final TargetDescription target;
     protected GraphBuilderConfiguration.Plugins graphBuilderPlugins;
-    private final DebugHandlersFactory debugHandlersFactory;
+    private final DebugDumpHandlersFactory debugHandlersFactory;
     private final Map<SnippetTemplate.CacheKey, SnippetTemplate> templatesCache;
 
     @Override
@@ -242,7 +242,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
     @SuppressWarnings("this-escape")
-    public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
+    public ReplacementsImpl(DebugDumpHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
         this.providers = providers.copyWith(this);
         this.target = target;
         this.snippetGraphs = new ConcurrentHashMap<>();

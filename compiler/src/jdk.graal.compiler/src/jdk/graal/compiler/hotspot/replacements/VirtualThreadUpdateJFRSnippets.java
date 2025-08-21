@@ -64,7 +64,7 @@ import jdk.vm.ci.code.Register;
  * Snippet for updating JFR thread local data on {@code Thread#setCurrentThread} events.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3618-L3746",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0ad919c1e54895b000b58f6a1b54d79f76970845/src/hotspot/share/opto/library_call.cpp#L3621-L3749",
           sha1 = "59f07096cdbe1aac79b1248db345e9616b54f4a4")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {
@@ -152,7 +152,7 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
         }
 
         public void lower(VirtualThreadUpdateJFRNode virtualThreadUpdateJFRNode, HotSpotRegistersProvider registers, LoweringTool tool) {
-            Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph(), tool.getLoweringStage());
             args.add("javaThreadRegister", registers.getThreadRegister());
             args.add("threadObj", virtualThreadUpdateJFRNode.getThread());
 

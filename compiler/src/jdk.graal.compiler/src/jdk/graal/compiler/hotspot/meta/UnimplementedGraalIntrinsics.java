@@ -153,6 +153,8 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore,
                             // JDK-8355644
                             "java/lang/Math.cbrt(D)D",
+                            // JDK-8360559
+                            "java/lang/Math.sinh(D)D",
                             // JDK-8338694
                             "java/lang/Math.tanh(D)D",
                             // JDK-8309130

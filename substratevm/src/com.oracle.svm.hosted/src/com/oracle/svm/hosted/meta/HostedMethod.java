@@ -309,7 +309,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean forceIndirectCall() {
-        return isCompiledInPriorLayer();
+        /*
+         * Methods delayed to the application layer need to be called indirectly as they are not
+         * available in the current layer.
+         */
+        return isCompiledInPriorLayer() || wrapped.isDelayed();
     }
 
     @Override

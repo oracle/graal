@@ -3,14 +3,15 @@ layout: docs
 toc_group: security-guide
 link_title: Jipher JCE with Native Image
 permalink: /security-guide/native-image/Jipher/
+redirect_to: https://docs.oracle.com/en/java/java-components/jipher/10/jipher-user-guide/what-is-oracle-jipher.html
 ---
 
 # Jipher JCE with Native Image
 
-Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a preconfigured and FIPS validated version of OpenSSL 3.0. 
-The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS provider. 
+Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a preconfigured and FIPS validated version of OpenSSL 3.0.
+The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS provider.
 Jipher provides competitive performance compared to Bouncy Castle or the default JDK providers.
-It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used. 
+It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used.
 Note that some algorithms are allowed by FIPS for specific use cases only. As a result, some algorithms provided by Jipher might not be allowed by FIPS for all purposes.
 
 > Note: Jipher is not available in GraalVM Community Edition. It is supported on Linux and macOS (macOS 10.15 and higher) on both AMD64 and AArch64 architectures.
@@ -22,9 +23,9 @@ This page describes how to use Jipher with GraalVM Native Image.
 
 ## Build a Native Executable with Jipher
 
-JCA algorithms rely on reflection. 
+JCA algorithms rely on reflection.
 To include all required code paths in the native executable during ahead-of-time compilation, the `native-image` tool needs to be made aware of any dynamically accessed Java code at run time, via reflection, as well as the native code which may be invoked. (Learn more [here](../reference-manual/native-image/NativeImageBasics.md#static-analysis)).
-This can be done by providing the JSON-based [metadata collected by the agent](../reference-manual/native-image/AutomaticMetadataCollection.md). 
+This can be done by providing the JSON-based [metadata collected by the agent](../reference-manual/native-image/AutomaticMetadataCollection.md).
 Any dynamically-accessed JCA services through Jipher are automatically registered by the agent too.
 
 The steps below show how to embedded Jipher in a native executable, using a simple Java application that does some RSA based signature creation and validation.
@@ -47,12 +48,12 @@ The steps below show how to embedded Jipher in a native executable, using a simp
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", jipher);
             keyGen.initialize(4096);
             KeyPair keypair = keyGen.generateKeyPair();
-            
+
             Signature signer = Signature.getInstance("SHA512withRSA", jipher);
             signer.initSign(keypair.getPrivate());
             signer.update(data);
             byte[] signature = signer.sign();
-            
+
             Signature verifier = Signature.getInstance("SHA512withRSA", jipher);
             verifier.initVerify(keypair.getPublic());
             verifier.update(data);
@@ -73,8 +74,8 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     java -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar:. -agentlib:native-image-agent=config-output-dir=<path> JipherExample
     ```
     Where `<path>` should point to the directory in which to store the configuration files.
-    It is recommended that the output directory is `/META-INF/native-image/` (if you build with Maven or Gradle, then `/resources/META-INF/native-image/`). 
-    Later, when building a native executable, the `native-image` builder will pick up the files from that location automatically. 
+    It is recommended that the output directory is `/META-INF/native-image/` (if you build with Maven or Gradle, then `/resources/META-INF/native-image/`).
+    Later, when building a native executable, the `native-image` builder will pick up the files from that location automatically.
 
     For this Java application, the agent creates the _reachability-metadata.json_ file with the following contents:
     ```json
@@ -106,7 +107,7 @@ The steps below show how to embedded Jipher in a native executable, using a simp
       ]
     }
    ```
-    
+
 4. For the agent to discover all possible calls to Jipher, re-run the application with the agent on the JVM (you can re-run the agent as many times as needed). This will regenerate the entire configuration suite including any negative test cases (to allow for exception classes to be captured). For the subsequent runs, use this command:
 
     ```shell
@@ -129,8 +130,8 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     ```shell
     ./jipherexample
     ```
-        
-When Jipher **is not** embedded in a native executable, but is instead being loaded by the JVM, it extracts the native libraries and the _openssl.cnf_ file embedded in the JAR to the filesystem and then dynamically loads them into the JVM process. 
+
+When Jipher **is not** embedded in a native executable, but is instead being loaded by the JVM, it extracts the native libraries and the _openssl.cnf_ file embedded in the JAR to the filesystem and then dynamically loads them into the JVM process.
 When Jipher **is** embedded in a native executable, it continues to extract the native libraries and the _openssl.cnf_ file to the filesystem and dynamically load them into the native process.
 Jipher is recommended for GraalVM Native Image when only FIPS-allowed algorithm should be used. Learn more about JCA services support in Native Image [here](../reference-manual/native-image/JCASecurityServices.md).
 

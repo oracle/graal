@@ -84,7 +84,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodOffset;
@@ -94,7 +93,6 @@ import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -671,6 +669,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @SuppressWarnings("try")
     private void initializeBaseLayerTypeBeforePublishing(AnalysisType type, PersistedAnalysisType.Reader typeData) {
         assert !(type.getWrapped() instanceof BaseLayerType);
+        VMError.guarantee(type.isLinked() == typeData.getIsLinked());
         /*
          * For types reachable in this layer register the *computed* initialization kind extracted
          * from the previous layer. This will cause base layer types to have a *strict*
@@ -687,20 +686,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);
         if (typeData.getIsInitialized()) {
             classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+        } else if (typeData.getIsFailedInitialization()) {
+            /*
+             * In the previous layer this class was configured with --initialize-at-build-time but
+             * its initialization failed so it was registered as run time initialized. We attempt to
+             * init it again in this layer and verify that it fails. This will allow the class to be
+             * configured again in this layer with --initialize-at-build-time, either before or
+             * after this step.
+             */
+            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+            VMError.guarantee(classInitializationSupport.isFailedInitialization(clazz), "Expected the initialization to fail for %s, as it has failed in a previous layer.", clazz);
+        } else if (typeData.getIsSuccessfulSimulation() || typeData.getIsFailedSimulation()) {
+            /*
+             * Simulation for this type was tried in a previous layer, and regardless whether it
+             * succeeded or failed there's nothing to do here. We'll record the result in the
+             * simulation registry when its simulation state is queried. We can do this lazily since
+             * there is no API to modify simulation state, unlike for initialization.
+             */
         } else {
-            if (typeData.getIsFailedInitialization()) {
-                /*
-                 * In the previous layer this class was configured with --initialize-at-build-time
-                 * but its initialization failed so it was registered as run time initialized. We
-                 * attempt to init it again in this layer and verify that it fails. This will allow
-                 * the class to be configured again in this layer with --initialize-at-build-time,
-                 * either before or after this step.
-                 */
-                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
-                VMError.guarantee(classInitializationSupport.isFailedInitialization(clazz), "Expected the initialization to fail for %s, as it has failed in a previous layer.", clazz);
-            } else {
-                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
-            }
+            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
         }
 
         /* Extract and record the base layer identity hashcode for this type. */
@@ -1004,6 +1008,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
         registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
         registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+
+        AnalysisMethod.CompilationBehavior compilationBehavior = AnalysisMethod.CompilationBehavior.values()[md.getCompilationBehaviorOrdinal()];
+        analysisMethod.setCompilationBehavior(compilationBehavior);
     }
 
     private PersistedAnalysisMethod.Reader getMethodData(AnalysisMethod analysisMethod) {
@@ -1017,6 +1024,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo.Reader> getDynamicHubInfos() {
         return snapshot.getDynamicHubInfos();
+    }
+
+    public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> getCGlobals() {
+        return snapshot.getCGlobals();
     }
 
     public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
@@ -1083,10 +1094,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            Object obj = encodedGraph.getObject(i);
-            if (obj instanceof CGlobalDataInfo cGlobalDataInfo) {
-                encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
-            } else if (buildingApplicationLayer && obj instanceof LoadImageSingletonDataImpl data) {
+            if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof LoadImageSingletonDataImpl data) {
                 data.setApplicationLayerConstant();
             }
         }
@@ -1744,8 +1752,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return getOrCreateConstant(snapshot.getStaticObjectFieldsConstantId());
     }
 
-    public long getImageHeapSize() {
-        return snapshot.getImageHeapSize();
+    public int getMaxTypeId() {
+        return snapshot.getNextTypeId() - 1;
+    }
+
+    public long getImageHeapEndOffset() {
+        return snapshot.getImageHeapEndOffset();
     }
 
     @Override
@@ -1800,8 +1812,35 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
     }
 
+    public record LayeredSimulationResult(boolean successful, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {
+    }
+
+    public LayeredSimulationResult getSimulationResult(AnalysisType type) {
+        PersistedAnalysisType.Reader typeData = findType(getBaseLayerTypeId(type));
+
+        if (typeData.getIsSuccessfulSimulation()) {
+            EconomicMap<AnalysisField, JavaConstant> staticFieldValues = EconomicMap.create();
+            for (ResolvedJavaField field : type.getStaticFields()) {
+                AnalysisField aField = (AnalysisField) field;
+                PersistedAnalysisField.Reader fieldData = getFieldData(aField);
+                if (fieldData.hasSimulatedFieldValue()) {
+                    JavaConstant simulatedFieldValue = readConstant(fieldData.getSimulatedFieldValue());
+                    staticFieldValues.put(aField, simulatedFieldValue);
+                }
+            }
+            return new LayeredSimulationResult(true, staticFieldValues);
+        } else if (typeData.getIsFailedSimulation()) {
+            return new LayeredSimulationResult(false, null);
+        }
+        return null;
+    }
+
     public ClassInitializationInfo getClassInitializationInfo(AnalysisType aType) {
         PersistedAnalysisType.Reader typeData = findType(getBaseLayerTypeId(aType));
+        if (!typeData.getHasClassInitInfo()) {
+            /* Type metadata was not initialized in base layer. */
+            return null;
+        }
         var initInfo = typeData.getClassInitializationInfo();
         if (initInfo.getIsNoInitializerNoTracking()) {
             return ClassInitializationInfo.forNoInitializerInfo(false);
@@ -1828,6 +1867,51 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
     }
 
+    /**
+     * Check that the class initialization info reconstructed from the loaded metadata matches the
+     * info created in this layer. This doesn't do a complete equality check between
+     * {@link ClassInitializationInfo} objects, just of fields related to the state.
+     */
+    public boolean isInitializationInfoStable(AnalysisType type, ClassInitializationInfo newInfo) {
+        ClassInitializationInfo previousInfo = getClassInitializationInfo(type);
+        if (previousInfo == null) {
+            /* Type metadata was not initialized in base layer. */
+            return true;
+        }
+        boolean equal = newInfo.getInitState() == previousInfo.getInitState() &&
+                        newInfo.isBuildTimeInitialized() == previousInfo.isBuildTimeInitialized() &&
+                        newInfo.isSlowPathRequired() == previousInfo.isSlowPathRequired() &&
+                        newInfo.hasInitializer() == previousInfo.hasInitializer() &&
+                        newInfo.getTypeReached() == previousInfo.getTypeReached();
+        if (!equal) {
+            Function<ClassInitializationInfo, String> asString = (info) -> "ClassInitializationInfo {" +
+                            ", initState = " + info.getInitState() +
+                            ", buildTimeInit = " + info.isBuildTimeInitialized() +
+                            ", slowPathRequired = " + info.isSlowPathRequired() +
+                            ", hasInitializer = " + info.hasInitializer() +
+                            ", typeReached = " + info.getTypeReached() + '}';
+            throw VMError.shouldNotReachHere("Class initialization info not stable between layers for type %s.\nPrevious info: %s.\nNew info: %s",
+                            type, asString.apply(previousInfo), asString.apply(newInfo));
+        }
+        return true;
+    }
+
+    private JavaConstant readConstant(ConstantReference.Reader constantReference) {
+        return switch (constantReference.which()) {
+            case OBJECT_CONSTANT -> {
+                int id = constantReference.getObjectConstant().getConstantId();
+                yield id == 0 ? null : getOrCreateConstant(id);
+            }
+            case NULL_POINTER -> JavaConstant.NULL_POINTER;
+            case PRIMITIVE_VALUE -> {
+                PrimitiveValue.Reader pv = constantReference.getPrimitiveValue();
+                yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
+            }
+            default ->
+                throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantReference.which());
+        };
+    }
+
     public static class JavaConstantSupplier {
         private final ConstantReference.Reader constantReference;
 
@@ -1836,19 +1920,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
 
         public JavaConstant get(SVMImageLayerLoader imageLayerLoader) {
-            return switch (constantReference.which()) {
-                case OBJECT_CONSTANT -> {
-                    int id = constantReference.getObjectConstant().getConstantId();
-                    yield id == 0 ? null : imageLayerLoader.getOrCreateConstant(id);
-                }
-                case NULL_POINTER -> JavaConstant.NULL_POINTER;
-                case PRIMITIVE_VALUE -> {
-                    PrimitiveValue.Reader pv = constantReference.getPrimitiveValue();
-                    yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
-                }
-                default -> throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantReference.which());
-            };
+            return imageLayerLoader.readConstant(constantReference);
         }
+
     }
 
     public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {

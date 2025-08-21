@@ -45,15 +45,25 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
     public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.create(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
+    private final boolean originUnsafeAllocateInstance;
 
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+        this(clazz, fillContents, false);
+    }
+
+    public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance) {
         super(TYPE, StampFactory.objectNonNull(), fillContents, null);
         this.clazz = clazz;
+        this.originUnsafeAllocateInstance = originUnsafeAllocateInstance;
         assert ((ObjectStamp) clazz.stamp(NodeView.DEFAULT)).nonNull();
     }
 
     public ValueNode getInstanceType() {
         return clazz;
+    }
+
+    public boolean isOriginUnsafeAllocateInstance() {
+        return originUnsafeAllocateInstance;
     }
 
     static ResolvedJavaType tryConvertToNonDynamic(ValueNode clazz, CoreProviders tool) {

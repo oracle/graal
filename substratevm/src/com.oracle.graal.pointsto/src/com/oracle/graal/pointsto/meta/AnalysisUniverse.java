@@ -216,7 +216,7 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
-            if (hostVM.useBaseLayer() && result.isInBaseLayer()) {
+            if (hostVM.buildingExtensionLayer() && result.isInBaseLayer()) {
                 imageLayerLoader.initializeBaseLayerType(result);
             }
         }
@@ -308,7 +308,7 @@ public class AnalysisUniverse implements Universe {
              * ensures that typesById doesn't contain any null values. This could happen since the
              * AnalysisType constructor increments the nextTypeId counter.
              */
-            if (hostVM.useBaseLayer() && imageLayerLoader.hasDynamicHubIdentityHashCode(newValue.getId())) {
+            if (hostVM.buildingExtensionLayer() && imageLayerLoader.hasDynamicHubIdentityHashCode(newValue.getId())) {
                 hostVM.registerType(newValue, imageLayerLoader.getDynamicHubIdentityHashCode(newValue.getId()));
             } else {
                 hostVM.registerType(newValue);

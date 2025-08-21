@@ -452,7 +452,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1PreWriteBarrierNode barrier, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             AddressNode address = barrier.getAddress();
             args.add("address", address);
             if (address instanceof OffsetAddressNode) {
@@ -475,7 +475,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ReferentFieldReadBarrierNode barrier, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             // This is expected to be lowered before address lowering
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
             args.add("address", address);
@@ -499,7 +499,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 return;
             }
 
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             AddressNode address = barrier.getAddress();
             args.add("address", address);
             if (address instanceof OffsetAddressNode) {
@@ -523,7 +523,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePreWriteBarrierNode barrier, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
             args.add("elementStride", barrier.getElementStride());
@@ -532,7 +532,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePostWriteBarrierNode barrier, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
             args.add("elementStride", barrier.getElementStride());

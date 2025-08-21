@@ -51,7 +51,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.DeoptBciSupplier;
@@ -83,7 +83,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     protected final OptionValues options;
     protected final DebugContext debug;
-    private final List<DebugHandlersFactory> debugHandlerFactories;
+    private final List<DebugDumpHandlersFactory> debugHandlerFactories;
 
     protected final HostVM hostVM;
     protected final UnsupportedFeatures unsupportedFeatures;
@@ -272,7 +272,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public List<DebugHandlersFactory> getDebugHandlerFactories() {
+    public List<DebugDumpHandlersFactory> getDebugHandlerFactories() {
         return debugHandlerFactories;
     }
 
@@ -338,7 +338,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
             }
 
             @Override
-            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+            public DebugContext getDebug(OptionValues opts, List<DebugDumpHandlersFactory> factories) {
                 assert opts == getOptions() : opts + " != " + getOptions();
                 return DebugContext.disabled(opts);
             }

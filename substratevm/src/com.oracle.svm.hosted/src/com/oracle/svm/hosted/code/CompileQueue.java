@@ -89,7 +89,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -285,7 +285,7 @@ public class CompileQueue {
 
     protected interface Task extends DebugContextRunnable {
         @Override
-        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        default DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();
         }
     }
@@ -304,7 +304,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
@@ -367,7 +367,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
     }
@@ -860,10 +860,10 @@ public class CompileQueue {
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
         if (!SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
             /*
-             * We have compiled this method in a prior layer, but don't have the graph available
-             * here.
+             * We have compiled this method in a prior layer or this method's compilation is delayed
+             * to the application layer, but don't have the graph available here.
              */
-            assert callee.isCompiledInPriorLayer() : method;
+            assert callee.isCompiledInPriorLayer() || callee.wrapped.isDelayed() : method;
             return false;
         }
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
@@ -1205,9 +1205,10 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
-        if (method.isCompiledInPriorLayer()) {
+        if (method.isCompiledInPriorLayer() || method.wrapped.isDelayed()) {
             /*
-             * Since this method was compiled in a prior layer we should not compile it again.
+             * Since this method was compiled in a prior layer or its compilation is delayed to the
+             * application layer we should not compile it.
              */
             return;
         }

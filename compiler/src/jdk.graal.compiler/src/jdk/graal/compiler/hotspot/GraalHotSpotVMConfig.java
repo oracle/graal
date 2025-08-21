@@ -195,6 +195,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Compressed Oops related values.
     public final boolean useCompressedOops = getFlag("UseCompressedOops", Boolean.class);
     public final boolean useCompressedClassPointers = getFlag("UseCompressedClassPointers", Boolean.class);
+
+    public final boolean useClassMetaspaceForAllClasses = getFlag("UseClassMetaspaceForAllClasses", Boolean.class);
+
     // JDK-8305895 allows storing the compressed class pointer in the upper 22 bits of the mark
     // word. This runtime optimization is guarded by the flag UseCompactObjectHeaders. It depends
     // on compressed class pointers, meaning that if useCompactObjectHeaders is true,
@@ -662,6 +665,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
+    public final long arithmeticSinhAddress = getFieldValue("CompilerToVM::Data::dsinh", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
     public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address");

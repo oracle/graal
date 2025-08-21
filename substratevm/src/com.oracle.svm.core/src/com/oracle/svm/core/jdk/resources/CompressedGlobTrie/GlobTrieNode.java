@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
@@ -42,11 +43,11 @@ import com.oracle.svm.util.GlobUtils;
 public class GlobTrieNode<C> {
 
     private String content;
-    @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
+    @UnknownObjectField(availability = AfterAnalysis.class, fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
     private Map<String, GlobTrieNode<C>> children;
-    @UnknownPrimitiveField //
+    @UnknownPrimitiveField(availability = AfterAnalysis.class) //
     private boolean isLeaf;
-    @UnknownPrimitiveField //
+    @UnknownPrimitiveField(availability = AfterAnalysis.class) //
     private boolean isNewLevel;
 
     /*

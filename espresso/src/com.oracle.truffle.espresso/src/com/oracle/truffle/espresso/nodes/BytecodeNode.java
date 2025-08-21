@@ -2517,7 +2517,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     private ResolvedInvoke getResolvedInvoke(int opcode, char cpi) {
-        assert !lockIsHeld();
+        // (GR-67109) assert !lockIsHeld();
         // During resolution of the symbolic reference to the method, any of the exceptions
         // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
         ObjectKlass declaringKlass = getDeclaringKlass();
@@ -2963,7 +2963,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (!seen) {
-                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), method.getMethod().getSource().createSection(lineNumber));
+                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
                         seenLines[i] = lineNumber;
                         maxSeenLine = Math.max(maxSeenLine, lineNumber);
                     }

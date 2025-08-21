@@ -58,7 +58,7 @@ import org.junit.rules.Timeout;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -318,12 +318,23 @@ public class GraalTest {
      * @see "https://bugs.openjdk.java.net/browse/JDK-8076557"
      */
     public static void assumeManagementLibraryIsLoadable() {
+        Throwable unloadableReason = isManagementLibraryIsLoadable();
+        if (unloadableReason != null) {
+            throw new AssumptionViolatedException("Management interface is unavailable: " + unloadableReason);
+        }
+    }
+
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8076557"
+     */
+    public static Throwable isManagementLibraryIsLoadable() {
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             GraalServices.getCurrentThreadAllocatedBytes();
         } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
-            throw new AssumptionViolatedException("Management interface is unavailable: " + e);
+            return e;
         }
+        return null;
     }
 
     /**
@@ -476,9 +487,9 @@ public class GraalTest {
     }
 
     /**
-     * Gets the {@link DebugHandlersFactory}s available for a {@link DebugContext}.
+     * Gets the {@link DebugDumpHandlersFactory}s available for a {@link DebugContext}.
      */
-    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
+    protected Collection<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         return Collections.emptyList();
     }
 

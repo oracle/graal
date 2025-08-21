@@ -32,7 +32,7 @@ import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
@@ -76,7 +76,7 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
      * @param compilable the input to the compilation
      * @param logStream the log stream to use in this context
      */
-    DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugHandlersFactory> factories, PrintStream logStream);
+    DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugDumpHandlersFactory> factories, PrintStream logStream);
 
     /**
      * Gets the option values associated with this runtime.

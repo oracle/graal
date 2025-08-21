@@ -17,7 +17,7 @@ Using Oracle GraalVM Native Image, the same object consumes only 8 bytes, offeri
 However, in case of Native Image, the object size heavily depends on the used garbage collector (GC), the allocated instance type, and the state of compressed references.
 Compressed references use 32-bit instead of 64-bit, and are enabled by default in Oracle GraalVM.
 
-To observe the memory usage differences, consider this example application that measures thread-allocated bytes using the [ThreadMXBean API](https://docs.oracle.com/en/java/javase/21/docs/api/java.management/java/lang/management/ThreadMXBean.html):
+To observe the memory usage differences, consider this example application that measures thread-allocated bytes using the [ThreadMXBean API](https://docs.oracle.com/en/java/javase/25/docs/api/java.management/java/lang/management/ThreadMXBean.html):
 ```java
 import com.sun.management.ThreadMXBean;
 import java.lang.management.ManagementFactory;

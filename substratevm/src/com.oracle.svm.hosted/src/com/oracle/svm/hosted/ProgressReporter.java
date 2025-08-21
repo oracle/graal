@@ -52,6 +52,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -506,9 +508,21 @@ public class ProgressReporter {
         String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
-        if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
+        if (numForeignDowncalls > 0 || numForeignUpcalls > 0) {
             l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
                             .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
+        }
+        int resourceCount = Resources.currentLayer().resources().size();
+        long totalResourceSize = 0;
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> value : Resources.currentLayer().resources().getValues()) {
+            if (value.getValueUnconditionally().hasData()) {
+                for (byte[] bytes : value.getValueUnconditionally().getData()) {
+                    totalResourceSize += bytes.length;
+                }
+            }
+        }
+        if (resourceCount > 0) {
+            l().a("%,9d %s registered with %s total size", resourceCount, resourceCount == 1 ? "resource access" : "resource accesses", ByteFormattingUtil.bytesToHuman(totalResourceSize)).println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
@@ -536,7 +550,7 @@ public class ProgressReporter {
 
     private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {
         Stream<T> reachableElements = elements.stream().filter(elementsFilter);
-        return universe.hostVM().useBaseLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
+        return universe.hostVM().buildingExtensionLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
     }
 
     public ReporterClosable printUniverse() {
@@ -578,10 +592,15 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        int numResources = Resources.currentLayer().count();
+        int numResources = 0;
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources().getValues()) {
+            if (entry.getValueUnconditionally() != Resources.NEGATIVE_QUERY_MARKER && entry.getValueUnconditionally() != Resources.MISSING_METADATA_MARKER) {
+                numResources++;
+            }
+        }
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
-                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();
+                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resource%s", heapObjectCount, numResources, numResources == 1 ? "" : "s").println();
         long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric

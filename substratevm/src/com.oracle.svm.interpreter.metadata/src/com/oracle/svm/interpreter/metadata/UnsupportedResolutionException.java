@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.debug;
+package com.oracle.svm.interpreter.metadata;
+
+import java.io.Serial;
 
 /**
- * Performs some kind of verification on an object.
+ * Thrown when CP resolution is not supported for a specific entry in a constant pool, this is
+ * usually for constant pools derived, at build time, from JVMCI data structures.
  */
-public interface DebugVerifyHandler extends DebugHandler {
+public final class UnsupportedResolutionException extends UnsupportedOperationException {
 
-    /**
-     * Verifies that a given object satisfies some invariants.
-     *
-     * @param object object to verify
-     * @param debug the debug context requesting the dump
-     * @param format a format string specifying a title that describes the context of the
-     *            verification (e.g., the compiler phase in which request is made)
-     * @param arguments arguments referenced by the format specifiers in {@code format}
-     */
-    void verify(DebugContext debug, Object object, String format, Object... arguments);
+    @Serial private static final long serialVersionUID = 999753019083783068L;
+
+    @Override
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
+        return this;
+    }
 }

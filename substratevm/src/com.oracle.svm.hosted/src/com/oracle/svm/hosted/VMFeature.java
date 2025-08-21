@@ -41,6 +41,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -117,7 +118,16 @@ public class VMFeature implements InternalFeature {
 
         if (!Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(Word.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
-            CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                /*
+                 * GR-55032: currently in layered images we must register this symbol as global so
+                 * that it is visible from JvmFuncs.c linked in any layer. In the future we will
+                 * ensure JvmFunc.c is linked in the initial layer.
+                 */
+                CGlobalDataFeature.singleton().registerWithGlobalSymbol(isStaticBinaryMarker);
+            } else {
+                CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+            }
         }
     }
 

@@ -24,12 +24,18 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /** Platform independent image heap provider that deep-copies the image heap memory. */
 public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
@@ -38,5 +44,20 @@ public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
     protected int copyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
         UnmanagedMemoryUtil.copy(loadedImageHeap, newImageHeap, imageHeapSize);
         return CEntryPointErrors.NO_ERROR;
+    }
+
+    /**
+     * Only called from legacy code, see GR-68584. This method does something fundamentally
+     * different than the method with the same name in {@link AbstractImageHeapProvider}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected UnsignedWord getImageHeapAddressSpaceSize() {
+        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+        int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        assert imageHeapOffset >= 0;
+        UnsignedWord size = Word.unsigned(imageHeapOffset);
+        size = size.add(getImageHeapSizeInFile());
+        size = UnsignedUtils.roundUp(size, pageSize);
+        return size;
     }
 }

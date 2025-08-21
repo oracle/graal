@@ -262,7 +262,9 @@ public final class GraphState {
         builder.append(valueStringAsDiff(previous.frameStateVerification, this.frameStateVerification, "Frame state verification: ", ", "));
         builder.append(newFlagsToString(previous.futureRequiredStages, this.futureRequiredStages, "+", "Future required stages: "));
         builder.append(newFlagsToString(this.futureRequiredStages, previous.futureRequiredStages, "-", ""));
-        builder.setLength(builder.length() - 2);
+        if (builder.length() > 1) {
+            builder.setLength(builder.length() - 2);
+        }
         builder.append('}');
         return builder.toString();
     }
@@ -559,6 +561,16 @@ public final class GraphState {
      */
     public boolean isExplicitExceptionsNoDeopt() {
         return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
+    }
+
+    /**
+     * Determines if {@link jdk.graal.compiler.nodes.memory.FloatingReadNode FloatingReadNodes} are
+     * allowed to be inserted. They should only be manually inserted if
+     * {@link jdk.graal.compiler.phases.common.FloatingReadPhase} has been run and
+     * {@link jdk.graal.compiler.phases.common.FixReadsPhase} has not.
+     */
+    public boolean allowsFloatingReads() {
+        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
     }
 
     /**

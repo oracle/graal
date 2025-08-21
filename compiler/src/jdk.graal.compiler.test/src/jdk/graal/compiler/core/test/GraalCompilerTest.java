@@ -81,7 +81,7 @@ import jdk.graal.compiler.core.phases.fuzzing.PhasePlanSerializer;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
@@ -490,7 +490,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     @Override
-    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
+    protected Collection<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         return Collections.singletonList(new GraalDebugHandlersFactory(getSnippetReflection()));
     }
 

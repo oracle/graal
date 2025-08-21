@@ -94,7 +94,7 @@ public class UnsafeSnippets implements Snippets {
 
         public void lower(UnsafeCopyMemoryNode copyMemoryNode, LoweringTool tool) {
             StructuredGraph graph = copyMemoryNode.graph();
-            Arguments args = new Arguments(copyMemory, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(copyMemory, graph, tool.getLoweringStage());
             args.add("receiver", copyMemoryNode.receiver);
             args.add("srcBase", copyMemoryNode.srcBase);
             args.add("srcOffset", copyMemoryNode.srcOffset);
@@ -107,7 +107,7 @@ public class UnsafeSnippets implements Snippets {
 
         public void lower(UnsafeSetMemoryNode setMemoryNode, LoweringTool tool) {
             StructuredGraph graph = setMemoryNode.graph();
-            Arguments args = new Arguments(setMemory, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(setMemory, graph, tool.getLoweringStage());
             args.add("receiver", setMemoryNode.receiver);
             args.add("objBase", setMemoryNode.obj);
             args.add("objOffset", setMemoryNode.offset);

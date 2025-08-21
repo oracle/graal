@@ -246,6 +246,10 @@ final class TruffleFromLibGraalEntryPoints {
         return ((TruffleCompilable) compilable).getSuccessfulCompilationCount();
     }
 
+    static boolean canBeInlined(Object compilable) {
+        return ((TruffleCompilable) compilable).canBeInlined();
+    }
+
     @TruffleFromLibGraal(GetURI)
     static String getURI(Object position) {
         URI uri = ((TruffleSourceLanguagePosition) position).getURI();

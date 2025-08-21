@@ -473,7 +473,7 @@ class NativeImageBuildTask(mx.BuildTask):
         ts = TimeStampFile(self.subject.output_file())
         if not ts.exists():
             return True, f"{ts.path} does not exist"
-        if ts.isOlderThan(newestInput):
+        if newestInput and ts.isOlderThan(newestInput):
             return True, f"{ts} is older than {newestInput}"
         previous_build_args = []
         command_file = self._get_command_file()
@@ -565,9 +565,14 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         self.relative_extracted_lib_paths = {k: v.replace('/', os.sep) for k, v in kw_args.pop('relative_extracted_lib_paths', {}).items()}
         self.liblang_relpath = _pop_path(kw_args, 'relative_liblang_path', None)
         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
-        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
-        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
-        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
+
+        if not kw_args.get('multitarget'):
+            # We use our LLVM toolchain on Linux by default because we want to statically link the C++ standard library,
+            # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+            toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
+        else:
+            toolchain = None
+
         super().__init__(
             suite,
             name,
@@ -599,6 +604,15 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         return False
 
     @property
+    def uses_llvm_toolchain(self):
+        return len(self.toolchains) == 1 and mx.dependency('LLVM_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
+
+    @property
+    def uses_musl_swcfi_toolchain(self):
+        # once GR-67435 is fixed we can revisit if we can statically link just like in the branches guarded by uses_llvm_toolchain
+        return len(self.toolchains) == 1 and mx.dependency('BOOTSTRAP_MUSL_SWCFI_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
+
+    @property
     def cflags(self):
         _dynamic_cflags = [
             ('/std:c++17' if mx.is_windows() else '-std=c++17'),
@@ -610,7 +624,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
-        if mx.is_linux():
+        if mx.is_linux() and self.uses_llvm_toolchain:
             _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
@@ -719,12 +733,18 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldflags = []
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
+        if self.uses_musl_swcfi_toolchain:
+            # Use $$ to escape the $ from expansion by mx. If we use musl swcfi
+            # and their libc, the libc++, libc++abi and libunwind must be
+            # either in the LD_LIBRARY_PATH (which takes precedence) or in the
+            # lib folder of the standalone.
+            _dynamic_ldflags.append(r"-Wl,-rpath,'$$ORIGIN/../lib'")
         return super().ldflags + _dynamic_ldflags
 
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if mx.is_linux():
+        if mx.is_linux() and self.uses_llvm_toolchain:
             # Link libc++ statically
             _dynamic_ldlibs += [
                 '-stdlib=libc++',

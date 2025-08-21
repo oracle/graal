@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.debug;
+package com.oracle.svm.hosted.imagelayer;
 
 /**
- * This interface exists to unify {@link DebugDumpHandler} and {@link DebugVerifyHandler} for the
- * sake of {@link DebugHandlersFactory#createHandlers}.
+ * Stores information used to match a given code location across layers.
  */
-public interface DebugHandler {
+public record CodeLocation(int bci, String name) {
+
+    public static CodeLocation fromStackFrame(StackWalker.StackFrame stackFrame) {
+        return new CodeLocation(stackFrame.getByteCodeIndex(), stackFrame.toString());
+    }
 }

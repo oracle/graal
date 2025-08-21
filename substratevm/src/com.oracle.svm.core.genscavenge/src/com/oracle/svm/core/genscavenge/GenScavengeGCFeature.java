@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package com.oracle.svm.core.genscavenge;
 
 import java.util.Arrays;
 import java.util.List;
@@ -37,15 +37,10 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
-import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
-import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
-import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.HeapVerifier;
-import com.oracle.svm.core.genscavenge.ImageHeapInfo;
-import com.oracle.svm.core.genscavenge.PinnedObjectSupportImpl;
-import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.core.genscavenge.TlabOptionCache;
+import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
+import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSnippets;
+import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSupport;
+import com.oracle.svm.core.genscavenge.graal.GenScavengeRelatedMXBeans;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
@@ -62,6 +57,7 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
@@ -73,6 +69,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
@@ -100,9 +97,7 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
 
         if (RuntimeClassLoading.isSupported()) {
-            MetaspaceImpl metaspace = new MetaspaceImpl();
-            ImageSingletons.add(Metaspace.class, metaspace);
-            ImageSingletons.add(MetaspaceImpl.class, metaspace);
+            ImageSingletons.add(Metaspace.class, new MetaspaceImpl());
         }
     }
 
@@ -123,6 +118,8 @@ class GenScavengeGCFeature implements InternalFeature {
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
             ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
         }
+
+        HeapParameters.initialize();
     }
 
     @Override
@@ -162,8 +159,17 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getCurrentLayerImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getCurrentLayerImageHeapInfo(), getCurrentLayerImageHeapStartOffset());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
+    }
+
+    private static long getCurrentLayerImageHeapStartOffset() {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /* To avoid unnecessary padding, each layer's image heap starts at an aligned offset. */
+            return NumUtil.roundUp(DynamicImageLayerInfo.singleton().getPreviousImageHeapEndOffset(), Heap.getHeap().getImageHeapAlignment());
+        } else {
+            return Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        }
     }
 
     @Override

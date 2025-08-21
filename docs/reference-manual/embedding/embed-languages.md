@@ -503,7 +503,7 @@ Here is a Maven profile configuration example:
                 <plugin>
                     <groupId>org.graalvm.buildtools</groupId>
                     <artifactId>native-maven-plugin</artifactId>
-                    <version>0.10.1</version>
+                    <version>${native.maven.plugin.version}</version>
                     <extensions>true</extensions>
                     <executions>
                         <execution>
@@ -1059,7 +1059,7 @@ with the corresponding `assembly.xml`:
             <handlerName>metaInf-services</handlerName>
         </containerDescriptorHandler>
     </containerDescriptorHandlers>
-</assembly
+</assembly>
 ```
 
 ## Compatibility with JSR-223 ScriptEngine
@@ -1085,6 +1085,7 @@ There are only two lines to adapt to your project:
 ```java
 public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
+    }
 ```
 
 Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "js" for GraalJS).

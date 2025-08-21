@@ -178,6 +178,10 @@ public final class GuestAllocator implements LanguageAccess {
             meta.java_lang_Class_modifiers.setChar(newObj, (char) klass.getClassModifiers());
             meta.java_lang_Class_primitive.setBoolean(newObj, klass.isPrimitive());
         }
+        if (lang.getJavaVersion().java26OrLater()) {
+            assert meta.java_lang_Class_classFileAccessFlags != null;
+            meta.java_lang_Class_classFileAccessFlags.setChar(newObj, (char) VM.getClassAccessFlags(klass));
+        }
         return trackAllocation(klass, newObj);
     }
 

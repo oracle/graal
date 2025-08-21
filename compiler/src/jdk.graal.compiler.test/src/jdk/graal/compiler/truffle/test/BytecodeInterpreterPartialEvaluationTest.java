@@ -644,7 +644,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     @Override
     protected OptionValues getGraalOptions() {
-        return new OptionValues(super.getGraalOptions(), DebugOptions.Count, "", DebugOptions.Time, "");
+        return new OptionValues(super.getGraalOptions(), DebugOptions.Counters, "", DebugOptions.Timers, "");
     }
 
     public abstract static class Inst {

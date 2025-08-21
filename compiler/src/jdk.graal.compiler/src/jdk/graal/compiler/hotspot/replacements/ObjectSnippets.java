@@ -111,7 +111,7 @@ public class ObjectSnippets implements Snippets {
                 StructuredGraph graph = (StructuredGraph) n.graph();
                 FrameState stateDuringCall = fn.stateDuring();
                 assert stateDuringCall != null : "Must have valid state for snippet recursive notify call";
-                Arguments args = new Arguments(fn.isNotifyAll() ? notifyAllSnippet : notifySnippet, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(fn.isNotifyAll() ? notifyAllSnippet : notifySnippet, graph, tool.getLoweringStage());
                 args.add("thisObj", fn.object);
                 SnippetTemplate template = template(tool, fn, args);
                 graph.getDebug().log("Lowering fast notify in %s: node=%s, template=%s, arguments=%s", graph, fn, template, args);

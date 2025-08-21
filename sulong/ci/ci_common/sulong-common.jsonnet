@@ -80,10 +80,7 @@ local sulong_deps = common.deps.sulong;
   linux_aarch64:: linux_aarch64 + sulong_deps,
   darwin_amd64:: darwin_amd64 + sulong_deps,
   darwin_aarch64:: darwin_aarch64 + sulong_deps,
-  windows_amd64:: windows_amd64 + sulong_deps + {
-    local jdk = if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name,
-    packages+: common.devkits["windows-" + jdk].packages
-  },
+  windows_amd64:: windows_amd64 + sulong_deps + common.deps.windows_devkit,
 
   sulong_notifications:: {
     notify_groups:: ["sulong"],

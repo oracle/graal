@@ -53,6 +53,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
@@ -361,7 +362,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupMetaspace() {
-        if (!MetaspaceImpl.isSupported()) {
+        if (!Metaspace.isSupported()) {
             return;
         }
 

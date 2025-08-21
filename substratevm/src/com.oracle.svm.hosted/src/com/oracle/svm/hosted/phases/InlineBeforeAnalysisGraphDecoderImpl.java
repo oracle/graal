@@ -72,7 +72,7 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
         AnalysisType type = (AnalysisType) node.constantTypeOrNull(bb.getConstantReflectionProvider());
         if (type != null) {
             processClassInitializer(type);
-            if (simulateClassInitializerSupport.isClassInitializerSimulated(type) && !ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type)) {
+            if (simulateClassInitializerSupport.isSimulatedOrInitializedAtBuildTime(type) && !ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type)) {
                 return null;
             }
         }
@@ -121,7 +121,7 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
 
     private Node handleIsStaticFinalFieldInitializedNode(IsStaticFinalFieldInitializedNode node) {
         var field = (AnalysisField) node.getField();
-        if (simulateClassInitializerSupport.isClassInitializerSimulated(field.getDeclaringClass())) {
+        if (simulateClassInitializerSupport.isSimulatedOrInitializedAtBuildTime(field.getDeclaringClass())) {
             return ConstantNode.forBoolean(true);
         }
         return node;

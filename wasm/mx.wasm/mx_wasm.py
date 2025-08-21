@@ -39,6 +39,8 @@
 # SOFTWARE.
 #
 import os
+import pathlib
+import re
 import shutil
 import stat
 import tempfile
@@ -129,7 +131,7 @@ def wabt_test_args():
     if not wabt_dir:
         mx.warn("No WABT_DIR specified")
         return []
-    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, mx.exe_suffix("wat2wasm"))]
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, mx.exe_suffix("wat2wasm")), "-Dwasmtest.watToWasmVerbose=true"]
 
 
 def graal_wasm_gate_runner(args, tasks):
@@ -326,11 +328,14 @@ class WatBuildTask(GraalWasmBuildTask):
                 mx.warn("No WABT_DIR specified.")
             mx.abort("Could not check the wat2wasm version.")
 
-        wat2wasm_version = str(out.data).split(".")
-        major = int(wat2wasm_version[0])
-        build = int(wat2wasm_version[2])
-        if major <= 1 and build <= 24:
-            bulk_memory_option = "--enable-bulk-memory"
+        try:
+            wat2wasm_version = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', str(out.data)).groups()
+
+            major, minor, build = wat2wasm_version
+            if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
+                bulk_memory_option = "--enable-bulk-memory"
+        except:
+            mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
 
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
@@ -629,7 +634,10 @@ def emscripten_init(args):
     parser = ArgumentParser(prog='mx emscripten-init', description='initialize the Emscripten environment.')
     parser.add_argument('config_path', help='path of the config file to be generated')
     parser.add_argument('emsdk_path', help='path of the emsdk')
-    parser.add_argument('--local', action='store_true', help='Generates config file for local dev environment')
+
+    path_mode_group = parser.add_mutually_exclusive_group()
+    path_mode_group.add_argument('--detect', action='store_true', help='Try to detect the necessary directories in the emsdk automatically')
+    path_mode_group.add_argument('--local', action='store_true', help='Generates config file for local dev environment')
     args = parser.parse_args(args)
     config_path = os.path.join(os.getcwd(), args.config_path)
     emsdk_path = args.emsdk_path
@@ -638,6 +646,21 @@ def emscripten_init(args):
     binaryen_root = os.path.join(emsdk_path, "binaryen", "master_64bit_binaryen")
     emscripten_root = os.path.join(emsdk_path, "emscripten", "master")
     node_js = os.path.join(emsdk_path, "node", "12.9.1_64bit", "bin", "node")
+
+    def find_executable(exe_name):
+        for root, _, files in os.walk(args.emsdk_path):
+            if exe_name in files:
+                full_path = pathlib.Path(root, exe_name)
+                if os.access(full_path, os.X_OK):
+                    return full_path
+
+        mx.abort(f"Unable to find {exe_name} in {args.emsdk_path}")
+
+    if args.detect:
+        llvm_root = str(find_executable("llvm-ar").parent)
+        binaryen_root = str(find_executable("binaryen-lit").parent.parent)
+        emscripten_root = str(find_executable("emcc").parent)
+        node_js = str(find_executable("node"))
 
     if args.local:
         llvm_root = os.path.join(emsdk_path, "upstream", "bin")

@@ -138,11 +138,6 @@ public final class ScopeImpl implements DebugContext.Scope {
 
     private static final char SCOPE_SEP = '.';
 
-    private boolean countEnabled;
-    private boolean timeEnabled;
-    private boolean memUseTrackingEnabled;
-    private boolean verifyEnabled;
-
     private int currentDumpLevel;
     private int currentLogLevel;
 
@@ -197,25 +192,9 @@ public final class ScopeImpl implements DebugContext.Scope {
         return currentDumpLevel >= dumpLevel;
     }
 
-    boolean isVerifyEnabled() {
-        return verifyEnabled;
-    }
-
     boolean isLogEnabled(int logLevel) {
         assert NumUtil.assertPositiveInt(logLevel);
         return currentLogLevel >= logLevel;
-    }
-
-    boolean isCountEnabled() {
-        return countEnabled;
-    }
-
-    boolean isTimeEnabled() {
-        return timeEnabled;
-    }
-
-    boolean isMemUseTrackingEnabled() {
-        return memUseTrackingEnabled;
     }
 
     public void log(int logLevel, String msg, Object... args) {
@@ -239,21 +218,6 @@ public final class ScopeImpl implements DebugContext.Scope {
 
     private DebugConfig getConfig() {
         return owner.currentConfig;
-    }
-
-    /**
-     * @see DebugContext#verify(Object, String)
-     */
-    public void verify(Object object, String formatString, Object... args) {
-        if (isVerifyEnabled()) {
-            DebugConfig config = getConfig();
-            if (config != null) {
-                String message = String.format(formatString, args);
-                for (DebugVerifyHandler handler : config.verifyHandlers()) {
-                    handler.verify(owner, object, message);
-                }
-            }
-        }
     }
 
     /**
@@ -337,27 +301,15 @@ public final class ScopeImpl implements DebugContext.Scope {
 
     void updateFlags(DebugConfigImpl config) {
         if (config == null) {
-            countEnabled = false;
-            memUseTrackingEnabled = false;
-            timeEnabled = false;
-            verifyEnabled = false;
             currentDumpLevel = -1;
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
             output = TTY.out;
         } else if (isEmptyScope()) {
-            countEnabled = parent.countEnabled;
-            memUseTrackingEnabled = parent.memUseTrackingEnabled;
-            timeEnabled = parent.timeEnabled;
-            verifyEnabled = parent.verifyEnabled;
             output = parent.output;
             currentDumpLevel = parent.currentDumpLevel;
             currentLogLevel = parent.currentLogLevel;
         } else {
-            countEnabled = config.isCountEnabled(this);
-            memUseTrackingEnabled = config.isMemUseTrackingEnabled(this);
-            timeEnabled = config.isTimeEnabled(this);
-            verifyEnabled = config.isVerifyEnabled(this);
             output = config.output();
             currentDumpLevel = config.getDumpLevel(this);
             currentLogLevel = config.getLogLevel(this);

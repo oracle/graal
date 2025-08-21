@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,51 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.tstring;
+package com.oracle.truffle.api.impl;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
+import org.graalvm.home.Version;
 
-public class JsJsonBenchmark extends TStringBenchmarkBase {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
-    @State(Scope.Benchmark)
-    public static class BenchState {
-        Context context;
-        final Value jsonParse;
+/**
+ * Provides support for verifying compatibility between the Truffle API, Truffle compiler, and
+ * Truffle SubstrateVM feature versions.
+ */
+public final class TruffleVersions {
 
-        public BenchState() {
-            context = Context.newBuilder("js").build();
-            context.enter();
-            context.eval("js", """
-                            const OBJECT_SIZE = 500;
-                            const obj = {};
-
-                            for (let i = 0; i < OBJECT_SIZE; i++) {
-                                obj["double_key" + i] = Math.random();
-                                obj["str_key" + i] = '#'.repeat(50);
-                            };
-
-                            function jsonParseStringify() {
-                                return JSON.parse(JSON.stringify(obj));
-                            };
-                            """);
-            jsonParse = context.parse("js", "jsonParseStringify()");
-        }
-
-        @TearDown
-        public void tearDown() {
-            context.leave();
-            context.close();
+    public static final int MIN_JDK_VERSION = 21;
+    public static final int MAX_JDK_VERSION = 29;
+    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
+    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
+    public static final Version TRUFFLE_API_VERSION;
+    static {
+        if (isVersionCheckEnabled()) {
+            InputStream in = TruffleVersions.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
+            if (in == null) {
+                throw new InternalError("Truffle API must have a version file.");
+            }
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                TRUFFLE_API_VERSION = Version.parse(r.readLine());
+            } catch (IOException ioe) {
+                throw new InternalError(ioe);
+            }
+        } else {
+            TRUFFLE_API_VERSION = null;
         }
     }
 
-    @Benchmark
-    public Value jsonParse(BenchState state) {
-        return state.jsonParse.execute();
+    private TruffleVersions() {
     }
 
+    /**
+     * Determines whether version checks are currently enabled.
+     */
+    public static boolean isVersionCheckEnabled() {
+        return !Boolean.getBoolean("polyglotimpl.DisableVersionChecks");
+    }
 }

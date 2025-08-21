@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -107,6 +108,8 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
     public void aggregateMethods(Collection<AnalysisMethod> methods) {
         assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
         Map<AnalysisMethod, RestrictionInfo> aggregation = new HashMap<>();
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
+        watchdog.recordActivity();
         for (AnalysisMethod method : methods) {
             if (method.isAnnotationPresent(RestrictHeapAccess.class)) {
                 setMethodRestrictionInfo(method, aggregation);
@@ -114,6 +117,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         }
         MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
+        watchdog.recordActivity();
         for (AnalysisMethod method : aggregation.keySet().toArray(AnalysisMethod.EMPTY_ARRAY)) {
             walker.walkMethod(method, visitor);
         }

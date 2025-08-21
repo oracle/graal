@@ -73,7 +73,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -201,7 +201,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();
         }
 
