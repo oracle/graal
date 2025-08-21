@@ -102,8 +102,8 @@ final class ExtLayout extends LayoutImpl {
     }
 
     @Override
-    protected ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption constantObjectAssumption) {
-        return new ShapeExt(this, sharedData, objectType, flags, constantObjectAssumption);
+    protected Shape newShape(Object objectType, Object sharedData, int flags, Assumption constantObjectAssumption) {
+        return new Shape(this, objectType, sharedData, flags, constantObjectAssumption);
     }
 
     @Override

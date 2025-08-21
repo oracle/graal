@@ -54,12 +54,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-@SuppressWarnings("deprecation")
 class Debug {
 
-    private static Collection<ShapeImpl> allShapes;
+    private static Collection<Shape> allShapes;
 
-    static void trackShape(ShapeImpl newShape) {
+    static void trackShape(Shape newShape) {
         allShapes.add(newShape);
     }
 
@@ -68,14 +67,14 @@ class Debug {
         ShapeProfiler.getInstance().track(obj);
     }
 
-    static Iterable<ShapeImpl> getAllShapes() {
+    static Iterable<Shape> getAllShapes() {
         return allShapes;
     }
 
     private static void dumpDOT() throws FileNotFoundException, UnsupportedEncodingException {
         try (PrintWriter out = new PrintWriter(getOutputFile("dot"), "UTF-8")) {
             GraphvizShapeVisitor visitor = new GraphvizShapeVisitor();
-            for (ShapeImpl shape : getAllShapes()) {
+            for (Shape shape : getAllShapes()) {
                 visitor.visitShape(shape);
             }
             out.println(visitor);
@@ -91,13 +90,13 @@ class Debug {
     }
 
     interface DebugShapeVisitor<R> {
-        default R visitShape(ShapeImpl shape) {
-            Map<Transition, ShapeImpl> snapshot = new LinkedHashMap<>();
+        default R visitShape(Shape shape) {
+            Map<Transition, Shape> snapshot = new LinkedHashMap<>();
             shape.forEachTransition(snapshot::put);
             return visitShape(shape, Collections.unmodifiableMap(snapshot));
         }
 
-        R visitShape(ShapeImpl shape, Map<? extends Transition, ? extends ShapeImpl> transitions);
+        R visitShape(Shape shape, Map<? extends Transition, ? extends Shape> transitions);
     }
 
     static class GraphvizShapeVisitor implements DebugShapeVisitor<GraphvizShapeVisitor> {
@@ -109,7 +108,7 @@ class Debug {
         }
 
         @Override
-        public GraphvizShapeVisitor visitShape(ShapeImpl shape, Map<? extends Transition, ? extends ShapeImpl> transitions) {
+        public GraphvizShapeVisitor visitShape(Shape shape, Map<? extends Transition, ? extends Shape> transitions) {
             if (!drawn.add(shape)) {
                 return this;
             }
@@ -139,8 +138,8 @@ class Debug {
             }
             sb.append("];");
 
-            for (Entry<? extends Transition, ? extends ShapeImpl> entry : transitions.entrySet()) {
-                ShapeImpl dst = entry.getValue();
+            for (Entry<? extends Transition, ? extends Shape> entry : transitions.entrySet()) {
+                Shape dst = entry.getValue();
                 this.visitShape(dst);
                 assert drawn.contains(dst);
 

@@ -71,7 +71,7 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return clazz;
     }
 
-    protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
+    protected abstract Shape newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
 
     public boolean isAllowedIntToDouble() {
         return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;

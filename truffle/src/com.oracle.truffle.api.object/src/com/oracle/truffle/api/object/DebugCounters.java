@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,48 +40,18 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.lang.invoke.MethodHandles.Lookup;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
-
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
-
-@SuppressWarnings("static-method")
-final class LayoutFactory {
-
-    void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
-        ExtLayout.registerLayoutClass(subclass, layoutLookup);
+final class DebugCounters {
+    private DebugCounters() {
     }
 
-    LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
-        return ExtLayout.createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
-    }
-
-    Shape createShape(Class<? extends DynamicObject> layoutClass,
-                    int implicitCastFlags,
-                    Object dynamicType,
-                    Object sharedData,
-                    int shapeFlags,
-                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
-                    Assumption singleContextAssumption,
-                    Lookup layoutLookup) {
-
-        CompilerAsserts.neverPartOfCompilation();
-        LayoutImpl impl = createLayout(layoutClass, layoutLookup, implicitCastFlags);
-        Shape shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
-
-        if (constantProperties != null) {
-            var cursor = constantProperties.getEntries();
-            while (cursor.advance()) {
-                Object key = cursor.getKey();
-                Object value = cursor.getValue().getLeft();
-                int flags = cursor.getValue().getRight();
-                shape = shape.addProperty(new PropertyImpl(key, new ExtLocations.ConstantLocation(value), flags));
-            }
-        }
-
-        return shape;
-    }
+    static final DebugCounter shapeCount = DebugCounter.create("Shapes allocated total");
+    static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
+    static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
+    static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
+    static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
+    static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
+    static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter propertyAssumptionsBlocked = DebugCounter.create("Property assumptions blocked");
+    static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
+    static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 }

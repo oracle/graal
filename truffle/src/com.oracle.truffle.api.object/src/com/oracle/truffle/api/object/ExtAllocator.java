@@ -70,7 +70,6 @@ import com.oracle.truffle.api.object.ExtLocations.LongLocation;
 import com.oracle.truffle.api.object.ExtLocations.ObjectArrayLocation;
 import com.oracle.truffle.api.object.ExtLocations.ObjectFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.TypeAssumption;
-import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 
 import sun.misc.Unsafe;
 
@@ -79,7 +78,7 @@ final class ExtAllocator extends BaseAllocator {
     /** Placeholder for when no value is available or no type speculation should be performed. */
     private static final Object NO_VALUE = new Object();
 
-    ExtAllocator(ShapeImpl shape) {
+    ExtAllocator(Shape shape) {
         super(shape);
     }
 

@@ -58,7 +58,6 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 import com.oracle.truffle.api.object.Transition.AbstractReplacePropertyTransition;
 import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
@@ -103,8 +102,8 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     }
 
     @Override
-    protected ShapeImpl ensureValid(ShapeImpl newShape) {
-        ShapeImpl nextShape = newShape;
+    protected Shape ensureValid(Shape newShape) {
+        Shape nextShape = newShape;
         // if it's been obsoleted (cached shape), skip over
         if (!nextShape.isValid()) {
             nextShape = getObsoletedBy(nextShape);
@@ -114,12 +113,12 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     }
 
     @Override
-    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, int putFlags) {
+    protected Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
         return super.definePropertyGeneralize(oldShape, oldProperty, value, putFlags);
     }
 
     @Override
-    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl oldShape, ShapeImpl newShape, int putFlags) {
+    protected Shape generalizeProperty(Property oldProperty, Object value, Shape oldShape, Shape newShape, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             return super.generalizeProperty(oldProperty, value, oldShape, newShape, putFlags);
         } else {
@@ -132,11 +131,11 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     }
 
     @Override
-    protected ShapeImpl generalizePropertyWithFlags(ShapeImpl oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
+    protected Shape generalizePropertyWithFlags(Shape oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             return super.generalizePropertyWithFlags(oldShape, oldProperty, value, propertyFlags, putFlags);
         } else {
-            ShapeImpl generalizedShape = generalizeHelper(oldProperty, value, oldShape, putFlags);
+            Shape generalizedShape = generalizeHelper(oldProperty, value, oldShape, putFlags);
             Property generalizedProperty = generalizedShape.getProperty(oldProperty.getKey());
             Property propertyWithFlags = Property.create(oldProperty.getKey(), generalizedProperty.getLocation(), propertyFlags);
             return replaceProperty(generalizedShape, generalizedProperty, propertyWithFlags);
@@ -144,7 +143,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     }
 
     @Override
-    protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
+    protected Shape replaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         if (shape.isShared() || oldProperty.getLocation().isValue()) {
             return directReplaceProperty(shape, oldProperty, newProperty);
         } else {
@@ -152,22 +151,22 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    private ShapeImpl indirectReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
+    private Shape indirectReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         assert !shape.isShared();
         assert oldProperty.getKey().equals(newProperty.getKey());
         Object key = newProperty.getKey();
 
         var replacePropertyTransition = new Transition.IndirectReplacePropertyTransition(oldProperty, newProperty);
         shape.onPropertyTransition(replacePropertyTransition);
-        ShapeImpl cachedShape = shape.queryTransition(replacePropertyTransition);
+        Shape cachedShape = shape.queryTransition(replacePropertyTransition);
         if (cachedShape != null) {
             return cachedShape;
         }
 
-        ShapeImpl oldParent = shape;
-        ShapeImpl root = shape.getRoot();
+        Shape oldParent = shape;
+        Shape root = shape.getRoot();
         List<Transition> transitionList = new ArrayList<>();
-        ShapeImpl newParent = null;
+        Shape newParent = null;
 
         while (oldParent != root) {
             Transition transition = oldParent.getTransitionFromParent();
@@ -190,7 +189,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
             throw new IllegalArgumentException("property not found");
         }
 
-        ShapeImpl newShape = newParent;
+        Shape newShape = newParent;
         boolean obsolete = false;
         for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
             if (!newShape.isValid()) {
@@ -214,20 +213,20 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     }
 
     @Override
-    protected BaseAllocator createAllocator(ShapeImpl shape) {
+    protected BaseAllocator createAllocator(Shape shape) {
         return new ExtAllocator(shape);
     }
 
-    private ShapeImpl getObsoletedBy(ShapeImpl shape) {
+    private Shape getObsoletedBy(Shape shape) {
         if (shape.isValid()) {
             return null;
         }
 
         assert !shape.isShared();
-        ShapeImpl ret = ((ShapeExt) shape).getSuccessorShape();
+        Shape ret = shape.getSuccessorShape();
         while (ret == null || !ret.isValid()) {
             if (ret != null) {
-                ShapeImpl next = ((ShapeExt) ret).getSuccessorShape();
+                Shape next = ret.getSuccessorShape();
                 assert ret != next; // cycle
                 ret = next;
             } else {
@@ -252,18 +251,18 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         CompilerAsserts.neverPartOfCompilation();
         reshapeCount.inc();
 
-        final ShapeImpl oldShape = (ShapeImpl) store.getShape();
+        final Shape oldShape = store.getShape();
         assert !oldShape.isValid() && !oldShape.isShared();
 
-        final Deque<ShapeImpl> affectedShapes = new ArrayDeque<>();
-        ShapeImpl goodAncestor = oldShape;
+        final Deque<Shape> affectedShapes = new ArrayDeque<>();
+        Shape goodAncestor = oldShape;
         while (!goodAncestor.isValid()) {
             affectedShapes.addFirst(goodAncestor);
             goodAncestor = goodAncestor.getParent();
         }
 
-        final ShapeImpl offendingShape = affectedShapes.removeFirst();
-        final ShapeImpl obsoletedBy = getObsoletedBy(offendingShape);
+        final Shape offendingShape = affectedShapes.removeFirst();
+        final Shape obsoletedBy = getObsoletedBy(offendingShape);
 
         if (TraceReshape) {
             out().printf("RESHAPE\nGOOD ANCESTOR: %s\nOFFENDING SHAPE: %s\nOBSOLETED BY: %s\n",
@@ -272,9 +271,9 @@ final class ObsolescenceStrategy extends LayoutStrategy {
                             obsoletedBy.toStringLimit(TRACE_RESHAPE_LIMIT));
         }
 
-        ShapeImpl newShape = obsoletedBy;
+        Shape newShape = obsoletedBy;
 
-        for (ShapeImpl affectedShape : affectedShapes) {
+        for (Shape affectedShape : affectedShapes) {
             Transition transition = affectedShape.getTransitionFromParent();
             newShape = applyTransition(newShape, transition, true);
             // shape should be valid, but we cannot assert this due to a possible race
@@ -308,11 +307,11 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         assert checkExtensionArrayInvariants(store, newShape);
     }
 
-    private static void resizeStore(DynamicObject store, final ShapeImpl oldShape, ShapeImpl newShape) {
+    private static void resizeStore(DynamicObject store, final Shape oldShape, Shape newShape) {
         DynamicObjectSupport.resize(store, oldShape, newShape);
     }
 
-    static boolean checkExtensionArrayInvariants(DynamicObject store, ShapeImpl newShape) {
+    static boolean checkExtensionArrayInvariants(DynamicObject store, Shape newShape) {
         assert store.getShape() == newShape;
         Object[] objectArray = store.getObjectStore();
         assert (objectArray == null && newShape.getObjectArrayCapacity() == 0) || (objectArray != null && objectArray.length == newShape.getObjectArrayCapacity());
@@ -323,32 +322,32 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         return true;
     }
 
-    private ShapeImpl makeSuccessorShape(ShapeImpl oldShape) {
+    private Shape makeSuccessorShape(Shape oldShape) {
         makeSuccessorShapeCount.inc();
 
         assert !oldShape.isValid();
 
-        final Deque<ShapeImpl> affectedShapes = new ArrayDeque<>();
-        ShapeImpl goodAncestor = oldShape;
+        final Deque<Shape> affectedShapes = new ArrayDeque<>();
+        Shape goodAncestor = oldShape;
         while (!goodAncestor.isValid()) {
             affectedShapes.addFirst(goodAncestor);
             goodAncestor = goodAncestor.getParent();
         }
 
-        final ShapeImpl offendingShape = affectedShapes.removeFirst();
-        final ShapeImpl obsoletedBy = getObsoletedBy(offendingShape);
+        final Shape offendingShape = affectedShapes.removeFirst();
+        final Shape obsoletedBy = getObsoletedBy(offendingShape);
 
         if (TraceReshape) {
-            out().printf("REBUILING SHAPE: %s\nGOOD ANCESTOR: %s\nOFFENDING SHAPE: %s\nOBSOLETED BY: %s\n",
+            out().printf("REBUILDING SHAPE: %s\nGOOD ANCESTOR: %s\nOFFENDING SHAPE: %s\nOBSOLETED BY: %s\n",
                             oldShape.toStringLimit(TRACE_RESHAPE_LIMIT),
                             goodAncestor.toStringLimit(TRACE_RESHAPE_LIMIT),
                             offendingShape.toStringLimit(TRACE_RESHAPE_LIMIT),
                             obsoletedBy.toStringLimit(TRACE_RESHAPE_LIMIT));
         }
 
-        ShapeImpl newShape = obsoletedBy;
+        Shape newShape = obsoletedBy;
 
-        for (ShapeImpl affectedShape : affectedShapes) {
+        for (Shape affectedShape : affectedShapes) {
             Transition transition = affectedShape.getTransitionFromParent();
             newShape = applyTransition(newShape, transition, true);
             // shape should be valid, but we cannot assert this due to a possible race
@@ -369,7 +368,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         return newShape;
     }
 
-    private static List<Object> prepareCopy(DynamicObject fromObject, ShapeImpl fromShape, ShapeImpl toShape) {
+    private static List<Object> prepareCopy(DynamicObject fromObject, Shape fromShape, Shape toShape) {
         List<Object> toCopy = new ArrayList<>();
         PropertyMap fromMap = fromShape.getPropertyMap();
         for (Iterator<Property> toMapIt = toShape.getPropertyMap().orderedValueIterator(); toMapIt.hasNext();) {
@@ -409,7 +408,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
 
     private boolean migrateObsoleteShape(Shape currentShape, DynamicObject store) {
         CompilerAsserts.neverPartOfCompilation();
-        synchronized (((ShapeImpl) currentShape).getMutex()) {
+        synchronized (currentShape.getMutex()) {
             if (!currentShape.isValid()) {
                 assert !currentShape.isShared();
                 reshape(store);
@@ -419,7 +418,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    private ShapeImpl rebuildObsoleteShape(ShapeImpl oldShape, ShapeImpl owningShape) {
+    private Shape rebuildObsoleteShape(Shape oldShape, Shape owningShape) {
         assert !owningShape.isValid();
         if (oldShape.isValid()) {
             // The shape is not marked obsolete despite the parent shape owning the property being
@@ -427,7 +426,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
             // But there can be race between the shape and its descendants being marked obsolete
             // and a new transition being added.
             // Correct the situation by marking all shapes descending from this parent obsolete.
-            ShapeImpl current = oldShape;
+            Shape current = oldShape;
             while (current != owningShape && current != null) {
                 Obsolescence.invalidateShape(current);
                 current = current.getParent();
@@ -437,20 +436,20 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         return makeSuccessorShape(oldShape);
     }
 
-    private ShapeImpl generalizeHelper(Property currentProperty, Object value, ShapeImpl currentShape, int putFlags) {
-        ShapeImpl oldShape = currentShape;
+    private Shape generalizeHelper(Property currentProperty, Object value, Shape currentShape, int putFlags) {
+        Shape oldShape = currentShape;
         Property oldProperty = currentProperty;
         assert !oldProperty.getLocation().canStore(value);
         while (true) { // TERMINATION ARGUMENT: loop will terminate once value can be stored
-            final ShapeImpl owningShape = getOwningShape(oldShape, oldProperty);
+            final Shape owningShape = getOwningShape(oldShape, oldProperty);
             synchronized (oldShape.getMutex()) {
                 if (owningShape.isValid()) {
-                    ShapeImpl oldParentShape = owningShape.getParent();
-                    Location newLocation = ((ExtAllocator) oldParentShape.allocator()).locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
+                    Shape oldParentShape = owningShape.getParent();
+                    Location newLocation = oldParentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
                     Property newProperty = Property.create(oldProperty.getKey(), newLocation, oldProperty.getFlags());
                     return obsoleteAndMakeShapeWithProperty(oldProperty, oldShape, owningShape, newProperty);
                 } else {
-                    ShapeImpl newShape = rebuildObsoleteShape(oldShape, owningShape);
+                    Shape newShape = rebuildObsoleteShape(oldShape, owningShape);
                     Property newPropertyAfterReshape = newShape.getProperty(oldProperty.getKey());
                     if (newPropertyAfterReshape.getLocation().canStore(value)) {
                         return newShape;
@@ -486,16 +485,16 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    private ShapeImpl obsoleteAndMakeShapeWithProperty(Property oldProperty, ShapeImpl oldShape, ShapeImpl owningShape, Property newProperty) {
-        ShapeImpl newOwningShape = makeNewOwningShape(owningShape, newProperty);
+    private Shape obsoleteAndMakeShapeWithProperty(Property oldProperty, Shape oldShape, Shape owningShape, Property newProperty) {
+        Shape newOwningShape = makeNewOwningShape(owningShape, newProperty);
         assert owningShape != newOwningShape;
         // both owning shapes should be valid, but we cannot assert this due to a possible race
         Obsolescence.markObsolete(owningShape, newOwningShape, oldProperty, newProperty);
         return rebuildObsoleteShape(oldShape, owningShape);
     }
 
-    private ShapeImpl makeNewOwningShape(ShapeImpl owningShape, Property newProperty) {
-        ShapeImpl oldParentShape = owningShape.getParent();
+    private Shape makeNewOwningShape(Shape owningShape, Property newProperty) {
+        Shape oldParentShape = owningShape.getParent();
         Transition transitionFromParent = owningShape.getTransitionFromParent();
         if (transitionFromParent instanceof DirectReplacePropertyTransition) {
             return directReplaceProperty(oldParentShape, ((AbstractReplacePropertyTransition) transitionFromParent).getPropertyBefore(), newProperty);
@@ -505,12 +504,12 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    private static ShapeImpl generalizeHelperWithShape(Property oldProperty, Object value, ShapeImpl oldShapeBefore, ShapeImpl oldShapeAfter, int putFlags) {
+    private static Shape generalizeHelperWithShape(Property oldProperty, Object value, Shape oldShapeBefore, Shape oldShapeAfter, int putFlags) {
         assert !(oldProperty.getLocation().isDeclared());
-        Location newLocation = ((ExtAllocator) oldShapeBefore.allocator()).locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
+        Location newLocation = oldShapeBefore.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, oldProperty.getFlags());
         synchronized (oldShapeBefore.getMutex()) {
-            final ShapeImpl newShapeAfter = oldShapeBefore.addProperty(newProperty);
+            final Shape newShapeAfter = oldShapeBefore.addProperty(newProperty);
             assert oldShapeAfter != newShapeAfter;
             Obsolescence.markObsolete(oldShapeAfter, newShapeAfter, oldProperty, newProperty);
             assert oldProperty.getKey().equals(newShapeAfter.getLastProperty().getKey());
@@ -522,9 +521,9 @@ final class ObsolescenceStrategy extends LayoutStrategy {
     /**
      * Get the (parent) shape that holds the given property.
      */
-    private static ShapeImpl getOwningShape(ShapeImpl shape, Property prop) {
-        ShapeImpl current = shape;
-        ShapeImpl root = shape.getRoot();
+    private static Shape getOwningShape(Shape shape, Property prop) {
+        Shape current = shape;
+        Shape root = shape.getRoot();
         while (current != root) {
             Transition transitionFromParent = current.getTransitionFromParent();
             if (transitionFromParent instanceof AddPropertyTransition) {

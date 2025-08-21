@@ -49,9 +49,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Assert;
 
@@ -71,7 +73,9 @@ public abstract class DOTestAsserts {
     @SuppressWarnings("unchecked")
     public static <T> T invokeMethod(String methodName, Object receiver, Object... args) {
         try {
-            Method method = Arrays.stream(receiver.getClass().getMethods()).filter(m -> m.getName().equals(methodName)).findFirst().get();
+            Method method = Stream.concat(Arrays.stream(receiver.getClass().getMethods()), Arrays.stream(receiver.getClass().getDeclaredMethods())).filter(
+                            m -> m.getName().equals(methodName)).findFirst().orElseThrow(
+                                            () -> new NoSuchElementException("Method " + methodName + " not found in " + receiver.getClass()));
             method.setAccessible(true);
             return (T) method.invoke(receiver, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
