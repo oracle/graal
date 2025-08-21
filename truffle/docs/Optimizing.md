@@ -822,19 +822,15 @@ These are similar to Truffle performance warnings but may surface later in the p
 ### Enabling Compiler-Level Metrics
 To enable reporting of these metrics, launch your application with:
 ```
---vm.Djdk.graal.ReportHotMetrics=true
+--vm.Djdk.graal.ReportHotMetrics=<method filter>
 ```
 This prints warnings and hot spots to `stdout` for all compilation units.
 
-To narrow output to specific methods or functions, combine with:
+To narrow output to specific methods or functions use known method names like:
 ```
---vm.Djdk.graal.MethodFilter='<filter>'
+--vm.Djdk.graal.ReportHotMetrics='*wasm-function:5311*'
 ```
-For example:
-```
---vm.Djdk.graal.MethodFilter='*wasm-function:3708*'
-```
-
+To improve the quality of the generated data run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
 
 ### Example Output
 ```

@@ -31,6 +31,7 @@ import java.util.Optional;
 
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
@@ -280,9 +281,15 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
     private static void reportUnknownProfile(Loop l, Node inside, ControlFlowGraph cfg) {
         if (inside instanceof IfNode ifNode) {
             if (ifNode.profileSource().isUnknown()) {
-                warn("Unknown profile for %s with f=%s in hot loop %s, nsp is %n%s%n\tPotential Action Item: Add profile to the top-of-stack source location.%n", ifNode,
-                                cfg.blockFor(inside).getRelativeFrequency(), l,
-                                ifNode.getNodeSourcePosition().toString("\t"));
+                NodeSourcePosition nsp = ifNode.getNodeSourcePosition();
+                if (nsp == null) {
+                    warn("Unknown profile for %s with f=%s in hot loop %s, NO NODE SOURCE POSITION%n\tPotential Action Item: Determine lack of node source position and profile.%n", ifNode,
+                                    cfg.blockFor(inside).getRelativeFrequency(), l);
+                } else {
+                    warn("Unknown profile for %s with f=%s in hot loop %s, nsp is %n%s%n\tPotential Action Item: Add profile to the top-of-stack source location.%n", ifNode,
+                                    cfg.blockFor(inside).getRelativeFrequency(), l,
+                                    ifNode.getNodeSourcePosition().toString("\t"));
+                }
             }
         }
     }
