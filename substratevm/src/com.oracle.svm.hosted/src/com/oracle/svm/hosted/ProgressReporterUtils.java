@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted;
 
+import java.net.URL;
 import java.security.CodeSource;
 
 final class ProgressReporterUtils {
@@ -53,15 +54,6 @@ final class ProgressReporterUtils {
         return part / (double) total * 100;
     }
 
-    private static String truncateName(String name, double maxLineRatio) {
-        int length = name.length();
-        int maxLength = maxLength(maxLineRatio);
-        if (length <= maxLength) {
-            return name;
-        }
-        return TRUNCATION_PLACEHOLDER + name.substring(length - maxLength + TRUNCATION_PLACEHOLDER.length(), length);
-    }
-
     static String truncateFQN(String fqn, double maxLineRatio) {
         return truncateFQN(fqn, maxLength(maxLineRatio));
     }
@@ -70,7 +62,7 @@ final class ProgressReporterUtils {
         return (int) Math.floor(ProgressReporter.CHARACTERS_PER_LINE * maxLineRatio);
     }
 
-    private static String truncateFQN(String fqn, int maxLength) {
+    static String truncateFQN(String fqn, int maxLength) {
         int classNameLength = fqn.length();
         if (classNameLength <= maxLength) {
             return fqn;
@@ -103,8 +95,11 @@ final class ProgressReporterUtils {
     }
 
     static String moduleNamePrefix(Module javaModule) {
-        String moduleName = javaModule.isNamed() ? javaModule.getName() : "";
-        return truncateFQN(mapToNativeImageRuntime(moduleName), 0.10) + "/";
+        if (!javaModule.isNamed()) {
+            return "";
+        }
+        String moduleName = javaModule.getName();
+        return truncateFQN(mapToNativeImageRuntime(moduleName), 0.12) + "/";
     }
 
     private static String mapToNativeImageRuntime(String moduleName) {
@@ -122,21 +117,21 @@ final class ProgressReporterUtils {
 
         private static String sourcePath(Class<?> clazz) {
             CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
-            if (codeSource != null && codeSource.getLocation() != null) {
-                String path = codeSource.getLocation().getPath();
-                // Use String API to determine basename of path to handle both / and \.
-                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
+            if (codeSource != null) {
+                URL sourceLocation = codeSource.getLocation();
+                if (sourceLocation != null && !"jrt".equals(sourceLocation.getProtocol())) {
+                    return sourceLocation.getPath();
+                }
             }
             return null;
         }
 
         public String renderToString(int maxLength) {
-            String locationSuffix = location == null ? "" : " (" + truncateName(location, 0.10) + ")";
             String packageName = javaPackage == null ? "null" : javaPackage.getName();
             String moduleNamePrefix = moduleNamePrefix(javaModule);
             // Give remainder of space to package-part
-            int maxLengthPackage = maxLength - moduleNamePrefix.length() - locationSuffix.length();
-            return moduleNamePrefix + truncateFQN(packageName, maxLengthPackage) + locationSuffix;
+            int maxLengthPackage = maxLength - moduleNamePrefix.length();
+            return moduleNamePrefix + truncateFQN(packageName, maxLengthPackage);
         }
 
         public String[] elements() {

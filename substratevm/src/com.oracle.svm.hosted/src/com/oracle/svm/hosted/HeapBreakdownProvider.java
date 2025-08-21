@@ -225,7 +225,7 @@ public class HeapBreakdownProvider {
             return new HeapBreakdownEntryFixed(new LinkyHeapObjectKindName(prefix, name, htmlAnchor));
         }
 
-        public abstract HeapBreakdownLabel getLabel(boolean truncate);
+        public abstract HeapBreakdownLabel getLabel(int maxLength);
 
         public long getByteSize() {
             return byteSize;
@@ -259,7 +259,7 @@ public class HeapBreakdownProvider {
         }
 
         @Override
-        public HeapBreakdownLabel getLabel(boolean unused) {
+        public HeapBreakdownLabel getLabel(int unused) {
             return label;
         }
     }
@@ -273,10 +273,12 @@ public class HeapBreakdownProvider {
         }
 
         @Override
-        public HeapBreakdownLabel getLabel(boolean truncate) {
-            if (truncate) {
-                return new SimpleHeapObjectKindName(ProgressReporterUtils.moduleNamePrefix(clazz.getModule()) +
-                                ProgressReporterUtils.truncateFQN(clazz.getTypeName(), 0.29));
+        public HeapBreakdownLabel getLabel(int maxLength) {
+            if (maxLength >= 0) {
+                String moduleNamePrefix = ProgressReporterUtils.moduleNamePrefix(clazz.getModule());
+                int maxLengthClassName = maxLength - moduleNamePrefix.length();
+                String truncatedClassName = ProgressReporterUtils.truncateFQN(clazz.getTypeName(), maxLengthClassName);
+                return new SimpleHeapObjectKindName(moduleNamePrefix + truncatedClassName);
             } else {
                 return new SimpleHeapObjectKindName(clazz.getTypeName());
             }

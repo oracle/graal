@@ -684,10 +684,10 @@ public class ProgressReporter {
         Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
-            /* <- 10% for module name -><- remainder for class FQN -><- 10% for location -> */
+            /* <- 12% for module name -><- remainder for package FQN -> */
             if (packagesBySize.hasNext()) {
                 Entry<ProgressReporterUtils.BreakDownClassifier, Long> entry = packagesBySize.next();
-                String sizeStr = String.format("%9s ", ByteFormattingUtil.bytesToHuman(entry.getValue()));
+                String sizeStr = getBreakdownSizeString(entry.getValue());
                 String entryStr = entry.getKey().renderToString(p.middle() - sizeStr.length());
                 codeSizePart = sizeStr + entryStr;
                 printedCodeBytes += entry.getValue();
@@ -695,12 +695,13 @@ public class ProgressReporter {
             }
 
             String heapSizePart = "";
-            /* <- 10% for module name -><- 29% for class FQN -> */
+            /* <- 12% for module name -><- remainder for class FQN -> */
             if (typesBySizeInHeap.hasNext()) {
                 HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
-                String labelString = e.getLabel(true).renderToString(linkStrategy);
                 long byteSize = e.byteSize;
-                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), labelString);
+                String sizeStr = getBreakdownSizeString(byteSize);
+                String labelStr = e.getLabel(CHARACTERS_PER_LINE - p.middle() - sizeStr.length()).renderToString(linkStrategy);
+                heapSizePart = sizeStr + labelStr;
                 printedHeapBytes += byteSize;
                 printedHeapItems++;
             }
@@ -718,6 +719,10 @@ public class ProgressReporter {
                         .jumpToMiddle()
                         .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes), numHeapItems - printedHeapItems))
                         .flushln();
+    }
+
+    private static String getBreakdownSizeString(long sizeInBytes) {
+        return String.format("%9s ", ByteFormattingUtil.bytesToHuman(sizeInBytes));
     }
 
     private void printRecommendations() {
