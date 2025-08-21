@@ -52,11 +52,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 final class LayoutFactory {
 
     void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
-        ExtLayout.registerLayoutClass(subclass, layoutLookup);
+        LayoutImpl.registerLayoutClass(subclass, layoutLookup);
     }
 
     LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
-        return ExtLayout.createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
+        return LayoutImpl.createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
     }
 
     Shape createShape(Class<? extends DynamicObject> layoutClass,

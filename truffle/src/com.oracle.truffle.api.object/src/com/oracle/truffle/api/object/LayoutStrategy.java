@@ -403,7 +403,7 @@ abstract sealed class LayoutStrategy permits ObsolescenceStrategy {
     }
 
     protected static boolean assertLocationInRange(final Shape shape, final Location location) {
-        final ExtLayout layout = (ExtLayout) shape.getLayout();
+        final LayoutImpl layout = shape.getLayout();
         if (location instanceof LocationImpl) {
             ((LocationImpl) location).accept(new LocationImpl.LocationVisitor() {
                 @Override

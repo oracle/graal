@@ -82,8 +82,8 @@ final class ExtAllocator extends BaseAllocator {
         super(shape);
     }
 
-    private ExtLayout getLayout() {
-        return (ExtLayout) layout;
+    private LayoutImpl getLayout() {
+        return layout;
     }
 
     @Override
@@ -122,7 +122,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newObjectLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (InObjectFields) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             int insertPos = objectFieldSize;
             if (insertPos + OBJECT_SLOT_SIZE <= l.getObjectFieldCount()) {
                 FieldInfo fieldInfo = l.getObjectField(insertPos);
@@ -145,7 +145,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newTypedObjectLocation(Class<?> type, boolean nonNull, boolean decorateFinal, Location oldLocation, Object value) {
         if (InObjectFields) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             int insertPos = objectFieldSize;
             if (insertPos + OBJECT_SLOT_SIZE <= l.getObjectFieldCount()) {
                 FieldInfo fieldInfo = l.getObjectField(insertPos);
@@ -223,7 +223,7 @@ final class ExtAllocator extends BaseAllocator {
         return Assumption.NEVER_VALID;
     }
 
-    private static int tryAllocatePrimitiveSlot(ExtLayout l, int startIndex, final int desiredBytes) {
+    private static int tryAllocatePrimitiveSlot(LayoutImpl l, int startIndex, final int desiredBytes) {
         if (desiredBytes > l.getPrimitiveFieldMaxSize()) {
             // no primitive fields in this layout that are wide enough
             return -1;
@@ -253,7 +253,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newIntLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (PrimitiveLocations && IntegerLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Integer.BYTES);
                 if (fieldIndex >= 0) {
@@ -279,7 +279,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newDoubleLocation(boolean decorateFinal, boolean allowIntToDouble, Location oldLocation, Object value) {
         if (PrimitiveLocations && DoubleLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Double.BYTES);
                 if (fieldIndex >= 0) {
@@ -324,7 +324,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newLongLocation(boolean decorateFinal, boolean allowIntToLong, Location oldLocation, Object value) {
         if (PrimitiveLocations && LongLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Long.BYTES);
                 if (fieldIndex >= 0) {
@@ -351,7 +351,7 @@ final class ExtAllocator extends BaseAllocator {
 
     private Location newBooleanLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (PrimitiveLocations && BooleanLocations && InObjectFields) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Integer.BYTES);
             if (fieldIndex >= 0) {
                 FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
