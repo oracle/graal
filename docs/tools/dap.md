@@ -76,8 +76,6 @@ code .
 
 8&#46; Start debugging (F5).
 
-The other approach is to use VS Code with the GraalVM extension installed.
-Follow the steps described in [Node.js and JavaScript Debugging](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm#javascript-and-node.js-debugging), and launch the application being debugged directly from VS Code.
 When debugging a guest language application from VS Code, a user can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
 To connect to the open DAP port in this scenario, the content of the _launch.json_ should be:
 

@@ -174,7 +174,7 @@ This information can be useful for:
 * **Advanced vulnerability scanning:** When the affected classes or methods of a vulnerability are published as part of a CVE, the class-level metadata can be checked to determine if a native executable with the affected SBOM component is actually vulnerable, thereby reducing the false positive rate of vulnerability scanning.
 * **Understanding image contents:** Quickly browse and search the class-level metadata to examine what is included in the native executable.
 
-> Including class-level metadata increases the SBOM size substantially. For this [Micronaut Hello World Rest](https://github.com/graalvm/graalvm-demos/tree/master/micronaut-hello-rest-maven) application, the SBOM size is 1.1 MB when embedded, and 13.7 MB when exported. The SBOM without class-level metadata is 3.5 kB when embedded, and 64 kB when exported. The size of the native image without an embedded SBOM is around 52 MB.
+> Including class-level metadata increases the SBOM size substantially. For this [Micronaut Hello World Rest](https://github.com/graalvm/graalvm-demos/tree/master/native-image/microservices/micronaut-hello-rest-maven) application, the SBOM size is 1.1 MB when embedded, and 13.7 MB when exported. The SBOM without class-level metadata is 3.5 kB when embedded, and 64 kB when exported. The size of the native image without an embedded SBOM is around 52 MB.
 
 Note that including class-level metadata is not supported by [Syft](#syft), as the nested components field containing this metadata is removed from the extracted SBOM.
 This limitation affects only metadata visibility in extracted SBOMs; it does not impact vulnerability scanning functionality.
