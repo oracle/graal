@@ -31,14 +31,13 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
-abstract class JNIAccessibleMember extends JNIAccessibleElement {
+abstract class JNIAccessibleMember {
     private final JNIAccessibleClass declaringClass;
 
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true, availability = ReadyForCompilation.class) //
     private EconomicSet<Class<?>> hidingSubclasses;
 
-    JNIAccessibleMember(boolean preserved, JNIAccessibleClass declaringClass) {
-        super(preserved);
+    JNIAccessibleMember(JNIAccessibleClass declaringClass) {
         this.declaringClass = declaringClass;
     }
 

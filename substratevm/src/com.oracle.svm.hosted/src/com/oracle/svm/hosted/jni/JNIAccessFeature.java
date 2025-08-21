@@ -475,7 +475,7 @@ public class JNIAccessFeature implements Feature {
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
                 nonvirtualVariantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), true, method);
             }
-            JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(preserved, jniClass, method.getModifiers());
+            JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(jniClass, method.getModifiers(), preserved);
             calledJavaMethods.add(new JNICallableJavaMethod(descriptor, jniMethod, targetMethod, callWrapperMethod, newObjectMethod, variantWrappers, nonvirtualVariantWrappers));
             return jniMethod;
         });
@@ -513,7 +513,7 @@ public class JNIAccessFeature implements Feature {
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), preserved, access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
-        jniClass.addOrUpdateField(field.getName(), preserved, _ -> new JNIAccessibleField(preserved, jniClass, field.getJavaKind(), field.getModifiers()));
+        jniClass.addOrUpdateField(field.getName(), preserved, _ -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers(), preserved));
         field.registerAsRead("it is registered for as JNI accessed");
         if (writable) {
             field.registerAsWritten("it is registered as JNI writable");

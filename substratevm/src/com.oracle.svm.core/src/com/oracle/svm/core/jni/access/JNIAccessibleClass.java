@@ -39,21 +39,21 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Information on a class that can be looked up and accessed via JNI.
  */
-public final class JNIAccessibleClass extends JNIAccessibleElement {
+public final class JNIAccessibleClass implements PreservableJNIElement {
     private final Class<?> classObject;
     private EconomicMap<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
     private EconomicMap<CharSequence, JNIAccessibleField> fields;
+    private boolean preserved;
 
     @Platforms(HOSTED_ONLY.class)
     public JNIAccessibleClass(Class<?> clazz, boolean preserved) {
-        super(preserved);
         assert clazz != null;
         this.classObject = clazz;
+        this.preserved = preserved;
     }
 
     @Platforms(HOSTED_ONLY.class)
     JNIAccessibleClass() {
-        super(false);
         /* For negative queries */
         this.classObject = null;
     }
@@ -126,5 +126,18 @@ public final class JNIAccessibleClass extends JNIAccessibleElement {
 
     String getJNIName() {
         return ClassNameSupport.reflectionNameToJNIName(classObject.getName());
+    }
+
+    @Override
+    public boolean isPreserved() {
+        return preserved;
+    }
+
+    @Override
+    public void reportReregistered(boolean updatedPreserved) {
+        // State can only ever go from "preserved" to "not preserved".
+        if (!updatedPreserved) {
+            this.preserved = false;
+        }
     }
 }

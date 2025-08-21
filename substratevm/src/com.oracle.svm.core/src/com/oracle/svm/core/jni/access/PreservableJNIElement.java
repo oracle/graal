@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.jni.access;
 
-public abstract class JNIAccessibleElement {
-    private volatile boolean preserved;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    protected JNIAccessibleElement(boolean preserved) {
-        this.preserved = preserved;
-    }
+/**
+ * Represents a JNI element that can be included in the image by
+ * {@link com.oracle.svm.core.SubstrateOptions#Preserve}. Records whether it was preserved or
+ * actually registered in the image.
+ *
+ * @since 25.1
+ */
+public interface PreservableJNIElement {
 
-    public void reportReregistered(boolean reregisterPreserved) {
-        // State can only ever go from "preserved" to "not preserved".
-        if (!reregisterPreserved) {
-            this.preserved = false;
-        }
-    }
+    boolean isPreserved();
 
-    public boolean isPreserved() {
-        return preserved;
-    }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void reportReregistered(boolean updatedPreserved);
 }
