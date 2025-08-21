@@ -52,7 +52,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
@@ -278,14 +278,14 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return new HotSpotTruffleCompilationIdentifier(request, task, compilable);
     }
 
-    private volatile List<DebugHandlersFactory> factories;
+    private volatile List<DebugDumpHandlersFactory> factories;
 
-    private List<DebugHandlersFactory> getDebugHandlerFactories() {
+    private List<DebugDumpHandlersFactory> getDebugHandlerFactories() {
         if (factories == null) {
             // Multiple initialization by racing threads is harmless
-            List<DebugHandlersFactory> list = new ArrayList<>();
+            List<DebugDumpHandlersFactory> list = new ArrayList<>();
             list.add(new GraalDebugHandlersFactory(getSnippetReflection()));
-            for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
+            for (DebugDumpHandlersFactory factory : DebugDumpHandlersFactory.LOADER) {
                 // Ignore other instances of GraalDebugHandlersFactory
                 if (!(factory instanceof GraalDebugHandlersFactory)) {
                     list.add(factory);

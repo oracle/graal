@@ -32,26 +32,26 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
 
 /**
- * Factory for creating {@link DebugHandler}s.
+ * Factory for creating {@link DebugDumpHandler}s.
  */
 @LibGraalService
-public interface DebugHandlersFactory {
+public interface DebugDumpHandlersFactory {
 
     /**
-     * Creates {@link DebugHandler}s based on {@code options}.
+     * Creates {@link DebugDumpHandler}s based on {@code options}.
      *
      * @param options options to control type and name of the channel
      * @return list of debug handers that have been created
      */
-    List<DebugHandler> createHandlers(OptionValues options);
+    List<DebugDumpHandler> createHandlers(OptionValues options);
 
     /**
-     * Loads {@link DebugHandlersFactory}s on demand via {@link GraalServices#load(Class)}.
+     * Loads {@link DebugDumpHandlersFactory}s on demand via {@link GraalServices#load(Class)}.
      */
-    Iterable<DebugHandlersFactory> LOADER = new Iterable<>() {
+    Iterable<DebugDumpHandlersFactory> LOADER = new Iterable<>() {
         @Override
-        public Iterator<DebugHandlersFactory> iterator() {
-            return GraalServices.load(DebugHandlersFactory.class).iterator();
+        public Iterator<DebugDumpHandlersFactory> iterator() {
+            return GraalServices.load(DebugDumpHandlersFactory.class).iterator();
         }
     };
 }

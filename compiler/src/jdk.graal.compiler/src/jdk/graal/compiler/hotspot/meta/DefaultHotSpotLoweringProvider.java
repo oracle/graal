@@ -63,7 +63,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -253,7 +253,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                         OptionValues options,
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
-                        Iterable<DebugHandlersFactory> factories);
+                        Iterable<DebugDumpHandlersFactory> factories);
     }
 
     /**
@@ -315,13 +315,13 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+    public void initialize(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         initialize(options, factories, providers, config,
                         new HotSpotArraycopySnippets.Templates(new HotSpotArraycopySnippets(), runtime, options, providers),
                         new HotSpotAllocationSnippets.Templates(new HotSpotAllocationSnippets(config, providers.getRegisters()), options, runtime, providers, config));
     }
 
-    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+    public void initialize(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         super.initialize(options, runtime, providers);
@@ -350,7 +350,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public final void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+    public final void initializeExtensions(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     Iterable<Extensions> iterableExtensions) throws GraalError {
         for (Extensions ep : iterableExtensions) {
             for (Extension ext : ep.createExtensions()) {

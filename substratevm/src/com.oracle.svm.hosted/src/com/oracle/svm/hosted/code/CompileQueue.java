@@ -89,7 +89,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -285,7 +285,7 @@ public class CompileQueue {
 
     protected interface Task extends DebugContextRunnable {
         @Override
-        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        default DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();
         }
     }
@@ -304,7 +304,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
@@ -367,7 +367,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
     }

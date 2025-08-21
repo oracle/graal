@@ -106,15 +106,6 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static final class InvalidVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "%s", graph.toString());
-        }
-
-    }
-
     private static final class InvalidConcatLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
@@ -148,15 +139,6 @@ public class VerifyDebugUsageTest {
 
     }
 
-    static class InvalidConcatVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "error " + graph);
-        }
-
-    }
-
     static class ValidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
@@ -186,15 +168,6 @@ public class VerifyDebugUsageTest {
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
             debug.dump(DebugContext.BASIC_LEVEL, graph, "%s", graph);
-        }
-
-    }
-
-    static class ValidVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "%s", graph);
         }
 
     }
@@ -240,11 +213,6 @@ public class VerifyDebugUsageTest {
     }
 
     @Test(expected = VerificationError.class)
-    public void testVerifyInvalid() {
-        testDebugUsageClass(InvalidVerifyUsagePhase.class);
-    }
-
-    @Test(expected = VerificationError.class)
     public void testDumpInvalid() {
         testDebugUsageClass(InvalidDumpUsagePhase.class);
     }
@@ -270,11 +238,6 @@ public class VerifyDebugUsageTest {
     }
 
     @Test(expected = VerificationError.class)
-    public void testVerifyInvalidConcat() {
-        testDebugUsageClass(InvalidConcatVerifyUsagePhase.class);
-    }
-
-    @Test(expected = VerificationError.class)
     public void testDumpInvalidConcat() {
         testDebugUsageClass(InvalidConcatDumpUsagePhase.class);
     }
@@ -287,11 +250,6 @@ public class VerifyDebugUsageTest {
     @Test()
     public void testLogAndIndentValid() {
         testDebugUsageClass(ValidLogAndIndentUsagePhase.class);
-    }
-
-    @Test
-    public void testVerifyValid() {
-        testDebugUsageClass(ValidVerifyUsagePhase.class);
     }
 
     @Test
