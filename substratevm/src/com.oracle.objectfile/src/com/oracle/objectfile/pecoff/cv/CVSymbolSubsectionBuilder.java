@@ -49,7 +49,6 @@ import static com.oracle.objectfile.pecoff.cv.CVRegisterUtil.CV_AMD64_R8;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
-import static com.oracle.objectfile.pecoff.cv.CVRegisterUtil.CV_AMD64_R8;
 
 final class CVSymbolSubsectionBuilder {
 
