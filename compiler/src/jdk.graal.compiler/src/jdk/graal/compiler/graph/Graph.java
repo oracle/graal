@@ -49,6 +49,7 @@ import jdk.graal.compiler.graph.Node.NodeInsertionStackTrace;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -83,6 +84,7 @@ public class Graph implements EventCounter {
      */
     public final boolean verifyGraphs;
     public final boolean verifyGraphEdges;
+    public final boolean verifyKillCFGUnusedNodes;
 
     /**
      * Cached actual value of {@link GraalOptions#TrackNodeInsertion} to avoid expensive map lookup
@@ -335,6 +337,7 @@ public class Graph implements EventCounter {
 
         verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
         verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
+        verifyKillCFGUnusedNodes = GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options);
 
         trackNodeInsertion = TrackNodeInsertion.getValue(options);
     }
