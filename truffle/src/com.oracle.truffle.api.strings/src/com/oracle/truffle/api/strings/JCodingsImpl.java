@@ -43,8 +43,6 @@ package com.oracle.truffle.api.strings;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
 import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
 import static com.oracle.truffle.api.strings.TStringGuards.isReturnNegative;
-import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
-import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
@@ -190,7 +188,7 @@ final class JCodingsImpl implements JCodings {
             cpi++;
             TStringConstants.truffleSafePointPoll(location, cpi);
         }
-        return TStringInternalNodes.CodePointIndexToRawNode.atEnd(a, extraOffsetRaw, index, isLength, cpi);
+        return TStringInternalNodes.CodePointIndexToRawNode.atEnd(a.length(), extraOffsetRaw, index, isLength, cpi);
     }
 
     @Override
@@ -270,13 +268,15 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static Encoding getBytesEncoding(AbstractTruffleString a) {
+        final int strideA = a.stride();
+        final int encodingA = a.encoding();
         JCodingsImpl impl = (JCodingsImpl) JCodings.getInstance();
-        if (isUTF16Or32(a.encoding()) && isStride0(a)) {
+        if (isUTF16Or32(encodingA) && strideA == 0) {
             return impl.get(TruffleString.Encoding.ISO_8859_1);
-        } else if (isUTF32(a.encoding()) && isStride1(a)) {
+        } else if (isUTF32(encodingA) && strideA == 1) {
             return impl.get(TruffleString.Encoding.UTF_16);
         } else {
-            return impl.get(TruffleString.Encoding.get(a.encoding()));
+            return impl.get(TruffleString.Encoding.get(encodingA));
         }
     }
 

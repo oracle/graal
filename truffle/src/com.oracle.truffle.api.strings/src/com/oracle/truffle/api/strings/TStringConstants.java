@@ -53,11 +53,9 @@ final class TStringConstants {
     static final int MAX_ARRAY_SIZE_S2 = MAX_ARRAY_SIZE >> 2;
 
     @CompilationFinal(dimensions = 2) private static final byte[][] SINGLE_BYTE_ARRAYS = new byte[256][1];
-    @CompilationFinal(dimensions = 1) private static final byte[] INFINITY_BYTES = {'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'};
-    @CompilationFinal(dimensions = 1) private static final byte[] NaN_BYTES = {'N', 'a', 'N'};
+    @CompilationFinal(dimensions = 1) static final byte[] INFINITY_BYTES = {'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'};
+    @CompilationFinal(dimensions = 1) static final byte[] NaN_BYTES = {'N', 'a', 'N'};
 
-    private static final TruffleString INFINITY = TruffleString.createConstant(INFINITY_BYTES, INFINITY_BYTES.length, 0, Encoding.US_ASCII, INFINITY_BYTES.length, TSCodeRange.get7Bit());
-    private static final TruffleString NaN = TruffleString.createConstant(NaN_BYTES, NaN_BYTES.length, 0, Encoding.US_ASCII, NaN_BYTES.length, TSCodeRange.get7Bit());
     @CompilationFinal(dimensions = 2) private static final TruffleString[][] SINGLE_BYTE = new TruffleString[Encodings.SUPPORTED_ENCODINGS_MAX_NUM][];
 
     /**
@@ -93,20 +91,6 @@ final class TStringConstants {
             return TSCodeRange.getBrokenMultiByte();
         }
         return TSCodeRange.get8Bit();
-    }
-
-    static TruffleString getInfinity(int encoding) {
-        if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(INFINITY_BYTES, Encoding.get(encoding));
-        }
-        return INFINITY;
-    }
-
-    static TruffleString getNaN(int encoding) {
-        if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(NaN_BYTES, Encoding.get(encoding));
-        }
-        return NaN;
     }
 
     static TruffleString getSingleByteAscii(Encoding encoding, int value) {
