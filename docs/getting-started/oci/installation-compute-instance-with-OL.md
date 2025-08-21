@@ -16,7 +16,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 ## Install Oracle GraalVM
 
-For convenience, the RPM package for Oracle GraalVM for JDK 24 is available in the Oracle YUM repository with the package name `graalvm-24-native-image`.
+For convenience, the RPM package for Oracle GraalVM for JDK 25 is available in the Oracle YUM repository with the package name `graalvm-25-native-image`.
 This distribution includes a JDK and Native Image.
 It is self-contained and all the required dependencies will be automatically resolved during the installation.
 
@@ -42,7 +42,7 @@ sudo yum update -y oraclelinux-release-el10
 sudo yum config-manager --set-enabled el10_codeready_builder
 ```
 ```bash
-sudo yum install graalvm-24-native-image
+sudo yum install graalvm-25-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -54,7 +54,7 @@ sudo dnf update -y oraclelinux-release-el10
 sudo dnf config-manager --set-enabled el10_codeready_builder
 ```
 ```bash
-sudo dnf install graalvm-24-native-image
+sudo dnf install graalvm-25-native-image
 ```
 
 ### Oracle Linux 9
@@ -67,7 +67,7 @@ sudo yum update -y oraclelinux-release-el9
 sudo yum config-manager --set-enabled ol9_codeready_builder
 ```
 ```bash
-sudo yum install graalvm-24-native-image
+sudo yum install graalvm-25-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -79,7 +79,7 @@ sudo dnf update -y oraclelinux-release-el9
 sudo dnf config-manager --set-enabled ol9_codeready_builder
 ```
 ```bash
-sudo dnf install graalvm-24-native-image
+sudo dnf install graalvm-25-native-image
 ```
 
 ### Oracle Linux 8
@@ -92,7 +92,7 @@ sudo yum update -y oraclelinux-release-el8
 sudo yum config-manager --set-enabled ol8_codeready_builder
 ```
 ```bash
-sudo yum install graalvm-24-native-image
+sudo yum install graalvm-25-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -104,7 +104,7 @@ sudo dnf update -y oraclelinux-release-el8
 sudo dnf config-manager --set-enabled ol8_codeready_builder
 ```
 ```bash
-sudo dnf install graalvm-24-native-image
+sudo dnf install graalvm-25-native-image
 ```
 
 ### Oracle Linux 7
@@ -126,7 +126,7 @@ sudo dnf install graalvm-24-native-image
    ```
 4. Install the latest Oracle GraalVM:
    ```
-   sudo yum install graalvm-24-native-image
+   sudo yum install graalvm-25-native-image
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -138,7 +138,7 @@ After installation, the package files are placed in the _/usr/lib64/graalvm_ dir
 
 1. Set the values of the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to the location of the Oracle GraalVM installation with the following commands:
    ```bash
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java24" >> ~/.bashrc
+   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java25" >> ~/.bashrc
    ```
    ```bash
    echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc

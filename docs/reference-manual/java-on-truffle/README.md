@@ -10,7 +10,7 @@ redirect_from: /reference-manual/java-on-truffle/
 
 Using GraalVM, you can run Java applications normally [on HotSpot](../java/README.md), in [Native Image](../native-image/README.md), and on Truffle.
 
-Espresso, also known as Java on Truffle, is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html), [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), [Java SE 17](https://docs.oracle.com/javase/specs/jvms/se17/html/index.html), and [Java SE 21](https://docs.oracle.com/javase/specs/jvms/se21/html/index.html) built upon GraalVM as a Truffle interpreter.
+Espresso, also known as Java on Truffle, is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html), [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), [Java SE 17](https://docs.oracle.com/javase/specs/jvms/se17/html/index.html), [Java SE 21](https://docs.oracle.com/javase/specs/jvms/se21/html/index.html), and [Java SE 25](https://docs.oracle.com/javase/specs/jvms/se25/html/index.html) built upon GraalVM as a Truffle interpreter.
 It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses the existing standard library.
 See the [Implementation Details](ImplementationDetails.md) for more information.
 
@@ -21,7 +21,7 @@ With Espresso, Java can be executed by the same principle as other languages in 
 Besides complete language interoperability, with Espresso you can:
 
 - run Java bytecode in a separate context from the host Java VM.
-- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed, for example, a Java 17 context in a Java 21 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
+- run either a Java 8, Java 11, Java 17, Java 21, or Java 25 guest JVM, allowing to embed, for example, a Java 17 context in a Java 21 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecode.
@@ -33,13 +33,13 @@ Espresso passes the Java Compatibility Kit (JCK or TCK for Java SE).
 Espresso is available as a standalone distribution that provides a Java 21 environment.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition.
 
-1. Download the Espresso 24.2.1 standalone for your operating system:
+1. Download the Espresso 25.0.0 standalone for your operating system:
 
-   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.1-linux-amd64.tar.gz)
-   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.1-linux-aarch64.tar.gz)
-   * [macOS x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.1-macos-amd64.tar.gz)
-   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.1-macos-aarch64.tar.gz)
-   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.1-windows-amd64.zip)
+   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-25.0.0-linux-amd64.tar.gz)
+   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-25.0.0-linux-aarch64.tar.gz)
+   * [macOS x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-25.0.0-macos-amd64.tar.gz)
+   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-25.0.0-macos-aarch64.tar.gz)
+   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-25.0.0-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -79,7 +79,7 @@ java [options] sourcefile
 ```
 
 By default, Espresso runs with the standard library included in the standalone, but it is possible to specify a different Java installation directory (`java.home`).
-It will automatically switch versions as long as the new Java home is a supported version (8, 11, 17, or 21).
+It will automatically switch versions as long as the new Java home is a supported version (8, 11, 17, 21, or 25).
 ```shell
 java --java.JavaHome=/path/to/java/home -version
 ```
