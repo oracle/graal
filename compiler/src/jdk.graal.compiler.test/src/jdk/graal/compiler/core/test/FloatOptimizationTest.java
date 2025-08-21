@@ -29,7 +29,7 @@ import org.junit.Test;
 
 /**
  * Check for incorrect elimination of 0.0 and -0.0 from computations. They can affect the sign of
- * the result of an add or substract.
+ * the result of an add or subtract.
  */
 public class FloatOptimizationTest extends GraalCompilerTest {
 

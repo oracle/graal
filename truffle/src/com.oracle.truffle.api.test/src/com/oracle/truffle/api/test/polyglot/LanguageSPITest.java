@@ -1344,7 +1344,7 @@ public class LanguageSPITest {
             c = builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{"innerArgs"}).build();
             prev = c.enter(null);
             try {
-                // if set for inner contexts application arguments are availble
+                // if set for inner contexts application arguments are available
                 assertArrayEquals(new String[]{"innerArgs"}, CONTEXT_REFERENCE.get(null).env.getApplicationArguments());
             } finally {
                 c.leave(null, prev);
@@ -1641,7 +1641,7 @@ public class LanguageSPITest {
                 c1.close();
             }
 
-            // not exisiting language
+            // not existing language
             var builder0 = env.newInnerContextBuilder("$$$invalidLanguage$$$");
             assertFails(() -> builder0.build(), IllegalArgumentException.class, (e) -> {
                 assertTrue(e.getMessage(),
@@ -2417,7 +2417,7 @@ public class LanguageSPITest {
         }
         c.close();
 
-        // test lazyness when using meta-data
+        // test laziness when using meta-data
         getOptionDescriptors.set(0);
         iterator.set(0);
         get.set(0);

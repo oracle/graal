@@ -266,7 +266,7 @@ public final class ScopeImpl implements DebugContext.Scope {
 
                     // Checks that the action really is undone
                     assert owner.currentScope == this : Assertions.errorMessageContext("owner", owner, "owner.currentScope", owner.currentScope, "this", this);
-                    assert lastClosed == ownerLastClosedScope : Assertions.errorMessageContext("lastClosed", lastClosed, "owener.lastClosedScope", ownerLastClosedScope);
+                    assert lastClosed == ownerLastClosedScope : Assertions.errorMessageContext("lastClosed", lastClosed, "owner.lastClosedScope", ownerLastClosedScope);
 
                     if (newException == null) {
                         owner.lastExceptionThrown = e;

@@ -415,7 +415,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
     static class ExportsTestObjectError6 {
 
         @ExportMessage
-        @ExpectError({"The message name 'foo' is ambiguous for libraries ExportsTestLibrary1 and ExportsTestLibrary2. Disambiguate the library by specifying the library explicitely using " +
+        @ExpectError({"The message name 'foo' is ambiguous for libraries ExportsTestLibrary1 and ExportsTestLibrary2. Disambiguate the library by specifying the library explicitly using " +
                         "@ExportMessage(library=Library.class)."})
         String foo() {
             return "foo";
@@ -473,7 +473,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
             return 42;
         }
 
-        // wront class type
+        // wrong class type
         @ExportMessage
         public TestClass classArg(@ExpectError("Invalid parameter type. Expected 'TestClass' but was 'Object'.%") Object arg) {
             return (TestClass) arg;
@@ -502,7 +502,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary5.class)
-    @ExpectError("Type ExportsTestObjectError12 is not compatible with the receiver type 'CharSequence' of exported library 'ExportsTestLibrary5'. Inhert from type 'CharSequence' to resolve this.")
+    @ExpectError("Type ExportsTestObjectError12 is not compatible with the receiver type 'CharSequence' of exported library 'ExportsTestLibrary5'. Inherit from type 'CharSequence' to resolve this.")
     static class ExportsTestObjectError12 {
         @ExportMessage
         public int intArg(int arg) {

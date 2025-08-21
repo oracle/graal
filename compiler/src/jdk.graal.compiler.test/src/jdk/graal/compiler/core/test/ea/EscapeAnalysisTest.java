@@ -203,7 +203,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public int testMergeAllocationsInt2Snippet(int a) {
         /*
          * The initial object in obj exists until the end of the function, but it can still be
-         * merged with the one allocated in the else block because noone can observe the identity.
+         * merged with the one allocated in the else block because no one can observe the identity.
          */
         TestClassInt obj = new TestClassInt(1, 2);
         if (a < 0) {
