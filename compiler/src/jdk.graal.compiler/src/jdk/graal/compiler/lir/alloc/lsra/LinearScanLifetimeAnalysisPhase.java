@@ -362,7 +362,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             // block has successors
                             for (int j = 0; j < block.getSuccessorCount(); j++) {
                                 BasicBlock<?> successor = block.getSuccessorAt(j);
-                                scratch.or(allocator.getBlockData(successor).liveIn);
+                                scratch.addAll(allocator.getBlockData(successor).liveIn);
                             }
 
                             if (!blockSets.liveOut.equals(scratch)) {
@@ -388,9 +388,9 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                              * SparseBitSet#or will call SparseBitSet#ensureSize (since the bit set
                              * is of length 0 initially) and set sticky to false
                              */
-                            liveIn.or(blockSets.liveOut);
-                            liveIn.andNot(blockSets.liveKill);
-                            liveIn.or(blockSets.liveGen);
+                            liveIn.addAll(blockSets.liveOut);
+                            liveIn.removeAll(blockSets.liveKill);
+                            liveIn.addAll(blockSets.liveGen);
 
                             if (debug.isLogEnabled()) {
                                 debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
@@ -429,7 +429,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
                 SparseBitSet bs = allocator.getBlockData(startBlock).liveIn;
                 StringBuilder sb = new StringBuilder();
-                for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+                for (int i = bs.iterateValues(0); i >= 0; i = bs.iterateValues(i + 1)) {
                     int variableNumber = allocator.getVariableNumber(i);
                     if (variableNumber >= 0) {
                         sb.append("v").append(variableNumber);
@@ -462,7 +462,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
                 SparseBitSet startBlockLiveIn = allocator.getBlockData(allocator.getLIR().getControlFlowGraph().getStartBlock()).liveIn;
                 try (Indent indent2 = debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
-                    for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+                    for (int operandNum = startBlockLiveIn.iterateValues(0); operandNum >= 0; operandNum = startBlockLiveIn.iterateValues(operandNum + 1)) {
                         Interval interval = allocator.intervalFor(operandNum);
                         if (interval != null) {
                             Value operand = interval.operand;
@@ -474,7 +474,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
 
                 // print some additional information to simplify debugging
-                for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+                for (int operandNum = startBlockLiveIn.iterateValues(0); operandNum >= 0; operandNum = startBlockLiveIn.iterateValues(operandNum + 1)) {
                     Interval interval = allocator.intervalFor(operandNum);
                     Value operand = null;
                     Object valueForOperandFromDebugContext = null;
@@ -855,7 +855,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
                     // Update intervals for operands live at the end of this block;
                     SparseBitSet live = allocator.getBlockData(block).liveOut;
-                    for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
+                    for (int operandNum = live.iterateValues(0); operandNum >= 0; operandNum = live.iterateValues(operandNum + 1)) {
                         assert live.get(operandNum) : "should not stop here otherwise";
                         AllocatableValue operand = allocator.intervalFor(operandNum).operand;
                         if (debug.isLogEnabled()) {

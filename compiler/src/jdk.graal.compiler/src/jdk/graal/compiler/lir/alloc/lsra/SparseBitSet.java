@@ -25,25 +25,17 @@
 package jdk.graal.compiler.lir.alloc.lsra;
 
 import java.util.Arrays;
-import java.util.BitSet;
-
-import jdk.graal.compiler.debug.Assertions;
 
 /**
  * This class implements a very simple sparse bitset that's optimized for the measured usage by
  * linear scan. In practice the bitset cardinality is at most 60 elements while the range of values
  * in the set can be quite large, reaching over 100000 in extreme cases. Since lifetime analysis
  * uses 4 bitsets per block and the number of blocks can also be very large, space efficiency can
- * plays a major role in performance. A simple sorted list of integers performs significantly better
+ * play a major role in performance. A simple sorted list of integers performs significantly better
  * for large numbers of intervals and blocks while only modestly affecting the perform for small
  * values.
  */
 public class SparseBitSet {
-
-    /**
-     * A bitset used to verify the operation of this set.
-     */
-    private BitSet sanity;
 
     /**
      * The number of elements in the set.
@@ -55,51 +47,25 @@ public class SparseBitSet {
      */
     protected int[] elements;
 
-    private boolean checkBitSet() {
-        if (sanity != null) {
-            assert sanity.cardinality() == cardinality() : sanity + " " + this;
-            for (int bit = sanity.nextSetBit(0); bit >= 0; bit = sanity.nextSetBit(bit + 1)) {
-                boolean found = false;
-                for (int i = 0; i < size; i++) {
-                    if (elements[i] == bit) {
-                        found = true;
-                        break;
-                    }
-                }
-                assert found : sanity + " " + this;
-            }
-        }
-        return true;
-    }
+    /**
+     * Internal element iterator value used by {@link #iterateValues(int)}.
+     */
+    private int iterator = 0;
 
     public SparseBitSet() {
         elements = new int[4];
-        if (Assertions.assertionsEnabled()) {
-            sanity = new BitSet();
-        }
     }
 
     public SparseBitSet(SparseBitSet other) {
         elements = other.elements.clone();
         size = other.size;
-        if (other.sanity != null) {
-            sanity = (BitSet) other.sanity.clone();
-        }
         iterator = 0;
     }
 
-    private boolean checkOr(SparseBitSet other) {
-        if (sanity != null) {
-            sanity.or(other.sanity);
-            checkBitSet();
-        }
-        return true;
-    }
-
-    public void or(SparseBitSet other) {
-        assert checkBitSet();
-        assert other.checkBitSet();
-
+    /**
+     * Adds all elements from {@code other} to this set.
+     */
+    public void addAll(SparseBitSet other) {
         if (size == 0) {
             if (elements.length < other.size) {
                 elements = other.elements.clone();
@@ -138,8 +104,6 @@ public class SparseBitSet {
                 size += newElements;
             }
         }
-
-        assert checkOr(other);
     }
 
     private void ensureCapacity(int minCapacity) {
@@ -148,30 +112,15 @@ public class SparseBitSet {
         }
     }
 
-    /**
-     * Increases the capacity to ensure that it can hold at least the number of elements specified
-     * by the minimum capacity argument.
-     *
-     * @param minCapacity the desired minimum capacity
-     * @throws OutOfMemoryError if minCapacity is less than zero
-     */
-    private int[] grow(int minCapacity) {
+    private void grow(int minCapacity) {
         int oldCapacity = elements.length;
-        /* minimum growth */
-        /* preferred growth */
-        int newCapacity = oldCapacity + Math.max(minCapacity - oldCapacity, oldCapacity >> 1);
-        return elements = Arrays.copyOf(elements, newCapacity);
+        elements = Arrays.copyOf(elements, oldCapacity + Math.max(minCapacity - oldCapacity, oldCapacity >> 1));
     }
 
-    private boolean checkAndNot(SparseBitSet other) {
-        if (sanity != null) {
-            sanity.andNot(other.sanity);
-            checkBitSet();
-        }
-        return true;
-    }
-
-    public void andNot(SparseBitSet other) {
+    /**
+     * Remove all the value that are seting {@ocde other} from this set.
+     */
+    public void removeAll(SparseBitSet other) {
         int otherIndex = 0;
         int firstDeleted = -1;
         for (int index = 0; index < size && otherIndex < other.size;) {
@@ -202,48 +151,47 @@ public class SparseBitSet {
             }
             size -= shift;
         }
-        assert checkAndNot(other);
     }
 
+    /**
+     * Returns the number of bits set to {@code true} in this set.
+     */
     public int cardinality() {
         return size;
     }
 
-    public boolean get(int value) {
-        return Arrays.binarySearch(elements, 0, size, value) >= 0;
+    /**
+     * Returns the bitIndex of the bit with the specified index. The bitIndex is {@code true} if the
+     * bit with the index {@code bitIndex} is currently set in this {@code BitSet}; otherwise, the
+     * result is {@code false}.
+     */
+    public boolean get(int bitIndex) {
+        return Arrays.binarySearch(elements, 0, size, bitIndex) >= 0;
     }
 
-    private boolean checkSet(int value) {
-        if (value < 0) {
-            throw new IllegalArgumentException();
-        }
-        if (sanity != null) {
-            sanity.set(value);
-            checkBitSet();
-        }
-        return true;
-    }
-
-    public void set(int value) {
-        int location = Arrays.binarySearch(elements, 0, size, value);
+    /**
+     * Sets the bit at the specified index to {@code true}.
+     */
+    public void set(int bitIndex) {
+        int location = Arrays.binarySearch(elements, 0, size, bitIndex);
         if (location < 0) {
-            insertAt(value, -(location + 1));
+            int insertPoint = -(location + 1);
+            if (size == elements.length) {
+                grow(size + 1);
+            }
+            System.arraycopy(elements, insertPoint, elements, insertPoint + 1, size - insertPoint);
+            elements[insertPoint] = bitIndex;
+            size++;
         }
-        assert checkSet(value);
     }
 
-    private void insertAt(int value, int insertPoint) {
-        if (size == elements.length) {
-            grow(size + 1);
-        }
-        System.arraycopy(elements, insertPoint, elements, insertPoint + 1, size - insertPoint);
-        elements[insertPoint] = value;
-        size++;
-    }
-
-    private int iterator = 0;
-
-    public int nextSetBit(int i) {
+    /**
+     * Uses an internal iterator to visit the values in the set in order. {@code iterateValues(0)}
+     * starts the iteration and returns the first value. Repeated calls of {@code iterateValues}
+     * with non-zero values return the next element in the set. It returns -1 when there are no more
+     * elements to visit.
+     */
+    public int iterateValues(int i) {
         if (i == 0) {
             iterator = 0;
         }
@@ -253,11 +201,11 @@ public class SparseBitSet {
         return -1;
     }
 
+    /**
+     * Remove all values from the bit set.
+     */
     public void clear() {
         size = 0;
-        if (Assertions.assertionsEnabled() && sanity != null) {
-            sanity.clear();
-        }
     }
 
     @Override
@@ -266,9 +214,7 @@ public class SparseBitSet {
             if (size != bs.size) {
                 return false;
             }
-            int result = Arrays.compare(elements, 0, size, bs.elements, 0, size);
-            assert sanity == null || sanity.equals(bs.sanity) == (result == 0) : sanity + " " + bs.sanity;
-            return result == 0;
+            return Arrays.compare(elements, 0, size, bs.elements, 0, size) == 0;
         }
         return false;
     }
@@ -276,14 +222,14 @@ public class SparseBitSet {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("set(size=").append(size).append(", {");
+        sb.append("{");
         for (int i = 0; i < size; i++) {
             if (i > 0) {
                 sb.append(',');
             }
             sb.append(elements[i]);
         }
-        sb.append("})");
+        sb.append("}");
         return sb.toString();
     }
 
