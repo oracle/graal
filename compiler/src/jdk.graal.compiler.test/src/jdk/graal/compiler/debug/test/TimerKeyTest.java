@@ -83,7 +83,7 @@ public class TimerKeyTest {
     @Test
     public void test2() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(DebugOptions.Time, "");
+        map.put(DebugOptions.Timers, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options, NO_CONFIG_CUSTOMIZERS).build();
 

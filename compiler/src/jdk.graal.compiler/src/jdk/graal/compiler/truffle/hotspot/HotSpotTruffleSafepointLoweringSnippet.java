@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -174,7 +174,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         OptionValues options,
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
-                        Iterable<DebugHandlersFactory> factories) {
+                        Iterable<DebugDumpHandlersFactory> factories) {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
                 this.templates = new Templates(options, providers, config.jvmciReserved0Offset);

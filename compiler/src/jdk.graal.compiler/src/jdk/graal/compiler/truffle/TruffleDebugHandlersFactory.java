@@ -30,8 +30,7 @@ import java.util.Map;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.graphio.GraphOutput;
@@ -39,12 +38,12 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.util.EconomicHashMap;
 
-@ServiceProvider(DebugHandlersFactory.class)
-public class TruffleDebugHandlersFactory implements DebugHandlersFactory {
+@ServiceProvider(DebugDumpHandlersFactory.class)
+public class TruffleDebugHandlersFactory implements DebugDumpHandlersFactory {
 
     @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
-        return List.<DebugHandler> of(new TruffleASTDumpHandler());
+    public List<DebugDumpHandler> createHandlers(OptionValues options) {
+        return List.<DebugDumpHandler> of(new TruffleASTDumpHandler());
     }
 
     private final class TruffleASTDumpHandler implements DebugDumpHandler {

@@ -41,7 +41,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.gen.LIRGenerationProvider;
 import jdk.graal.compiler.debug.DebugCloseable;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -120,7 +120,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
             foreignCalls.initialize(providers, options);
         }
         try (InitTimer st = timer("lowerer.initialize"); DebugCloseable c = ReplayCompilationSupport.enterSnippetContext(providers)) {
-            Iterable<DebugHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
+            Iterable<DebugDumpHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
             lowerer.initialize(options, factories, providers, config);
         }
         providers.getReplacements().closeSnippetRegistration();

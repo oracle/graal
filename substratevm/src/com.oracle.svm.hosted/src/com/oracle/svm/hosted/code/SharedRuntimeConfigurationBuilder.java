@@ -51,7 +51,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
@@ -140,8 +140,8 @@ public abstract class SharedRuntimeConfigurationBuilder {
             backends.put(config, GraalConfiguration.runtimeInstance().createBackend(newProviders));
         }
 
-        List<DebugHandlersFactory> handlers = new ArrayList<>();
-        for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
+        List<DebugDumpHandlersFactory> handlers = new ArrayList<>();
+        for (DebugDumpHandlersFactory factory : DebugDumpHandlersFactory.LOADER) {
             if (factory instanceof GraalDebugHandlersFactory) {
                 handlers.add(new GraalDebugHandlersFactory(snippetReflection));
             } else {
