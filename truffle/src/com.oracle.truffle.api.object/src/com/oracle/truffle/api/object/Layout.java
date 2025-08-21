@@ -40,12 +40,6 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
-import java.util.List;
-
-import com.oracle.truffle.api.Assumption;
-
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
  *
@@ -55,62 +49,17 @@ abstract class Layout {
 
     public static final String OPTION_PREFIX = "truffle.object.";
 
-    private static final Iterable<LayoutFactory> LAYOUT_FACTORIES = List.of(new ExtLayoutFactory());
-
-    private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
+    private static final LayoutFactory LAYOUT_FACTORY = new ExtLayoutFactory();
 
     static final int INT_TO_DOUBLE_FLAG = 1;
     static final int INT_TO_LONG_FLAG = 2;
 
-    /**
-     * Constructor for subclasses.
-     *
-     * @since 0.8 or earlier
-     */
-    protected Layout() {
+    Layout() {
     }
 
     public abstract Class<? extends DynamicObject> getType();
 
-    /**
-     * Create a root shape.
-     *
-     * @since 20.2.0
-     */
-    @SuppressWarnings("unused")
-    protected Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
-        throw new UnsupportedOperationException();
-    }
-
     protected static LayoutFactory getFactory() {
         return LAYOUT_FACTORY;
-    }
-
-    private static LayoutFactory loadLayoutFactory() {
-        LayoutFactory layoutFactory = selectLayoutFactory(LAYOUT_FACTORIES);
-        if (layoutFactory == null) {
-            throw shouldNotReachHere("LayoutFactory not found");
-        }
-        return layoutFactory;
-    }
-
-    private static LayoutFactory selectLayoutFactory(Iterable<LayoutFactory> availableLayoutFactories) {
-        String layoutFactoryImplName = System.getProperty(OPTION_PREFIX + "LayoutFactory");
-        LayoutFactory bestLayoutFactory = null;
-        for (LayoutFactory currentLayoutFactory : availableLayoutFactories) {
-            if (layoutFactoryImplName != null) {
-                if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
-                    return currentLayoutFactory;
-                }
-            } else {
-                if (bestLayoutFactory == null) {
-                    bestLayoutFactory = currentLayoutFactory;
-                } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                    assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                    bestLayoutFactory = currentLayoutFactory;
-                }
-            }
-        }
-        return bestLayoutFactory;
     }
 }

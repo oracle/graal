@@ -42,19 +42,7 @@ package com.oracle.truffle.api.object;
 
 import java.lang.invoke.MethodHandles.Lookup;
 
-class ExtLayoutFactory extends CoreLayoutFactory {
-
-    static boolean isLayoutSupported() {
-        return true;
-    }
-
-    @Override
-    public int getPriority() {
-        if (isLayoutSupported()) {
-            return 100;
-        }
-        return Integer.MIN_VALUE;
-    }
+final class ExtLayoutFactory extends LayoutFactory {
 
     @Override
     protected void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {

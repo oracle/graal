@@ -71,11 +71,6 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return clazz;
     }
 
-    @Override
-    protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
-        return newShape(dynamicType, sharedData, flags, null);
-    }
-
     protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
 
     public boolean isAllowedIntToDouble() {
@@ -127,7 +122,7 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass, MethodHandles.Lookup lookup) {
         assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
-        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
+        getFactory().registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
     }
 
     protected static final Map<Class<? extends DynamicObject>, Object> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
