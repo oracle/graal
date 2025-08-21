@@ -68,7 +68,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
         SparseBitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
-        for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
+        for (int operandNum = liveAtEdge.iterateValues(0); operandNum >= 0; operandNum = liveAtEdge.iterateValues(operandNum + 1)) {
             assert operandNum < numOperands : "live information set for not exisiting interval";
             assert allocator.getBlockData(fromBlock).liveOut.get(operandNum) && allocator.getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
