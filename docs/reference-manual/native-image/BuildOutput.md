@@ -23,58 +23,60 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (2.8s @ 0.15GB)
- Java version: 25+13, vendor version: GraalVM CE 25-dev+13.1
+[1/8] Initializing...                                            (2.0s @ 0.19GB)
+ Java version: 26+9, vendor version: GraalVM CE 26-dev+9.1
  Graal compiler: optimization level: 2, target machine: x86-64-v3
- C compiler: gcc (linux, x86_64, 12.2.0)
+ C compiler: gcc (linux, x86_64, 15.2.1)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
- Build resources:
- - 13.24GB of memory (42.7% of system memory, using available memory)
- - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
-[2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
-    3,158 types,   3,625 fields, and  14,804 methods found reachable
-    1,012 types,      36 fields, and     377 methods registered for reflection
-       57 types,      57 fields, and      52 methods registered for JNI access
+Build resources:
+ - 28.45GB of memory (42.5% of system memory, using available memory)
+ - 20 thread(s) (100.0% of 20 available processor(s), determined at start)
+[2/8] Performing analysis...  [******]                           (3.4s @ 0.40GB)
+    3,297 types,   3,733 fields, and  15,247 methods found reachable
+    1,066 types,      36 fields, and     415 methods registered for reflection
+       58 types,      59 fields, and      52 methods registered for JNI access
         0 downcalls and 0 upcalls registered for foreign access
         4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (0.8s @ 0.99GB)
-[4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
-[5/8] Inlining methods...     [***]                              (0.3s @ 0.32GB)
-[6/8] Compiling methods...    [**]                               (3.7s @ 0.60GB)
-[7/8] Laying out methods...   [*]                                (0.8s @ 0.83GB)
-[8/8] Creating image...       [**]                               (3.1s @ 0.58GB)
-   5.32MB (24.22%) for code area:     8,702 compilation units
-   7.03MB (32.02%) for image heap:   93,301 objects and 5 resources
-   8.96MB (40.83%) for debug info generated in 1.0s
- 659.13kB ( 2.93%) for other data
-  21.96MB in total image size, 21.04MB in total file size
+[3/8] Building universe...                                       (1.0s @ 0.60GB)
+[4/8] Parsing methods...      [*]                                (0.4s @ 0.62GB)
+[5/8] Inlining methods...     [****]                             (0.2s @ 0.59GB)
+[6/8] Compiling methods...    [**]                               (3.7s @ 0.66GB)
+[7/8] Laying out methods...   [*]                                (0.7s @ 0.60GB)
+[8/8] Creating image...       [**]                               (2.3s @ 0.65GB)
+   5.24MB (21.86%) for code area:     8,788 compilation units
+   7.67MB (32.01%) for image heap:   90,323 objects and 55 resources
+   9.43MB (39.34%) for debug info generated in 0.3s
+  11.05MB (46.13%) for other data
+  23.96MB in total image size, 13.31MB in total file size
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
-   4.03MB java.base                        1.14MB byte[] for code metadata
- 927.05kB svm.jar (Native Image)         927.31kB java.lang.String
- 111.71kB java.logging                   839.68kB byte[] for general heap data
-  63.38kB org.graalvm.nativeimage.base   736.91kB java.lang.Class
-  47.59kB jdk.proxy1                     713.13kB byte[] for java.lang.String
-  35.85kB jdk.proxy3                     272.85kB c.o.s.c.h.DynamicHubCompanion
-  27.06kB jdk.internal.vm.ci             250.83kB java.util.HashMap$Node
-  23.44kB org.graalvm.sdk                196.52kB java.lang.Object[]
-  11.42kB jdk.proxy2                     182.77kB java.lang.String[]
-   8.07kB jdk.graal.compiler             154.26kB byte[] for embedded resources
-   1.39kB for 2 more packages              1.38MB for 884 more object types
+ 791.32kB java.base/java.util              1.41MB byte[] for code metadata
+ 363.66kB java.base/java.lang              1.21MB byte[] for string data
+ 323.39kB java.base/java.text            838.53kB java.base/java.lang.String
+ 241.87kB java.base/java.util.stream     633.02kB o.g.n.~e/c.o.s.c.h.Dyna~anion
+ 229.23kB java.base/java.util.regex      431.58kB heap alignment
+ 214.23kB java.base/java.util.concurrent 428.26kB java.base/java.lang.Class
+ 166.60kB o.g.n.~e/c.o.svm.core.code     323.23kB java.base/j.util.HashMap$Node
+ 153.78kB java.base/java.time.format     284.47kB byte[] for general heap data
+ 152.90kB java.base/java.math            232.06kB java.base/java.lang.Object[]
+ 142.02kB o.g.n.~e/c.o.s.c.genscavenge   183.10kB java.base/j.u.HashMap$Node[]
+   2.32MB for 146 more packages            1.70MB for 966 more object types
 --------------------------------------------------------------------------------
 Recommendations:
+ FUTR: Use '--future-defaults=all' to prepare for future releases.
  HEAP: Set max heap for improved and more predictable memory usage.
  CPU:  Enable more CPU features with '-march=native' for improved performance.
 --------------------------------------------------------------------------------
-    0.8s (4.6% of total time) in 35 GCs | Peak RSS: 1.93GB | CPU load: 9.61
+    0.9s (6.1% of total time) in 54 GCs | Peak RSS: 1.82GB | CPU load: 13.25
 --------------------------------------------------------------------------------
 Build artifacts:
+ /home/janedoe/helloworld/gdb-debughelpers.py (debug_info)
  /home/janedoe/helloworld/helloworld (executable)
  /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
 ================================================================================
-Finished generating 'helloworld' in 17.0s.
+Finished generating 'helloworld' in 14.2s.
 ```
 
 ## Build Stages
