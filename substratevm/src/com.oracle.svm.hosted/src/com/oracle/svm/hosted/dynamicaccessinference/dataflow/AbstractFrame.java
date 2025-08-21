@@ -45,11 +45,11 @@ public final class AbstractFrame<T> {
      * Second slot marker for values requiring two slots on the operand stack and in the local
      * variable table (i.e., values of type long and double).
      */
-    private static final ValueFrame<Object> TWO_SLOT_MARKER = new ValueFrame<>(null);
+    private static final Object TWO_SLOT_MARKER = new Object();
 
     @SuppressWarnings("unchecked")
-    private static <T> ValueFrame<T> twoSlotMarker() {
-        return (ValueFrame<T>) TWO_SLOT_MARKER;
+    private static <T> T twoSlotMarker() {
+        return (T) TWO_SLOT_MARKER;
     }
 
     final OperandStack<T> operandStack;
@@ -79,13 +79,13 @@ public final class AbstractFrame<T> {
         int currentDepth = 0;
         int frameFromTop = 0;
         while (currentDepth <= depth) {
-            ValueFrame<T> frame = operandStack.peekFrame(frameFromTop);
+            T frame = operandStack.peekFrame(frameFromTop);
             if (frame != TWO_SLOT_MARKER) {
                 currentDepth++;
             }
             frameFromTop++;
         }
-        return operandStack.peekFrame(frameFromTop - 1).value;
+        return operandStack.peekFrame(frameFromTop - 1);
     }
 
     /**
@@ -131,12 +131,12 @@ public final class AbstractFrame<T> {
 
     static final class OperandStack<T> {
 
-        private final ValueFrame<T>[] stack;
+        private final T[] stack;
         private int size;
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        @SuppressWarnings("unchecked")
         OperandStack(int maxStackSize) {
-            this.stack = new ValueFrame[maxStackSize];
+            this.stack = (T[]) new Object[maxStackSize];
             this.size = 0;
         }
 
@@ -146,18 +146,19 @@ public final class AbstractFrame<T> {
         }
 
         void push(T value, boolean needsTwoSlots) {
-            pushFrame(new ValueFrame<>(value));
+            pushFrame(value);
             if (needsTwoSlots) {
                 pushFrame(twoSlotMarker());
             }
         }
 
         T pop() {
-            ValueFrame<T> frame = popFrame();
+            T frame = popFrame();
             if (frame == TWO_SLOT_MARKER) {
                 frame = popFrame();
             }
-            return frame.value;
+            assert frame != TWO_SLOT_MARKER : "A value cannot be partially popped from the stack";
+            return frame;
         }
 
         void clear() {
@@ -166,25 +167,25 @@ public final class AbstractFrame<T> {
         }
 
         void applyPop() {
-            ValueFrame<T> f1 = popFrame();
+            T f1 = popFrame();
             assert f1 != TWO_SLOT_MARKER : "POP expects a single-slot value";
         }
 
         void applyPop2() {
             popFrame();
-            ValueFrame<T> f2 = popFrame();
+            T f2 = popFrame();
             assert f2 != TWO_SLOT_MARKER : "POP2 expects either a single two-slot value, or two single-slot values";
         }
 
         void applyDup() {
-            ValueFrame<T> f1 = peekFrame(0);
+            T f1 = peekFrame(0);
             assert f1 != TWO_SLOT_MARKER : "DUP expects a single-slot value";
             pushFrame(f1);
         }
 
         void applyDupX1() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
             assert f1 != TWO_SLOT_MARKER && f2 != TWO_SLOT_MARKER : "DUP_X1 expects two single-slot values";
             pushFrame(f1);
             pushFrame(f2);
@@ -192,9 +193,9 @@ public final class AbstractFrame<T> {
         }
 
         void applyDupX2() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
-            ValueFrame<T> f3 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
+            T f3 = popFrame();
             assert f1 != TWO_SLOT_MARKER && f3 != TWO_SLOT_MARKER : "Unexpected value sizes for DUP_X2";
             pushFrame(f1);
             pushFrame(f3);
@@ -203,8 +204,8 @@ public final class AbstractFrame<T> {
         }
 
         void applyDup2() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
             assert f2 != TWO_SLOT_MARKER : "DUP2 expects either a single two-slot value, or two single-slot values";
             pushFrame(f2);
             pushFrame(f1);
@@ -213,9 +214,9 @@ public final class AbstractFrame<T> {
         }
 
         void applyDup2X1() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
-            ValueFrame<T> f3 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
+            T f3 = popFrame();
             assert f2 != TWO_SLOT_MARKER && f3 != TWO_SLOT_MARKER : "Unexpected value sizes for DUP2_X1";
             pushFrame(f2);
             pushFrame(f1);
@@ -225,10 +226,10 @@ public final class AbstractFrame<T> {
         }
 
         void applyDup2X2() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
-            ValueFrame<T> f3 = popFrame();
-            ValueFrame<T> f4 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
+            T f3 = popFrame();
+            T f4 = popFrame();
             pushFrame(f2);
             pushFrame(f1);
             pushFrame(f4);
@@ -238,8 +239,8 @@ public final class AbstractFrame<T> {
         }
 
         void applySwap() {
-            ValueFrame<T> f1 = popFrame();
-            ValueFrame<T> f2 = popFrame();
+            T f1 = popFrame();
+            T f2 = popFrame();
             assert f1 != TWO_SLOT_MARKER && f2 != TWO_SLOT_MARKER : "SWAP expects two single-slot values";
             pushFrame(f1);
             pushFrame(f2);
@@ -247,9 +248,9 @@ public final class AbstractFrame<T> {
 
         private void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
             for (int i = 0; i < size; i++) {
-                ValueFrame<T> frame = stack[i];
-                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame.value)) {
-                    stack[i] = new ValueFrame<>(transformFunction.apply(frame.value));
+                T frame = stack[i];
+                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame)) {
+                    stack[i] = transformFunction.apply(frame);
                 }
             }
         }
@@ -258,33 +259,32 @@ public final class AbstractFrame<T> {
             assert size == other.size : "Operand stacks must be of the same size when merging";
             OperandStack<T> merged = new OperandStack<>(this);
             for (int i = 0; i < size; i++) {
-                ValueFrame<T> thisFrame = stack[i];
-                ValueFrame<T> otherFrame = other.stack[i];
+                T thisFrame = stack[i];
+                T otherFrame = other.stack[i];
                 if (thisFrame == TWO_SLOT_MARKER) {
                     assert otherFrame == TWO_SLOT_MARKER : "Positions of two-slot markers must match in merged operand stacks";
                     merged.stack[i] = twoSlotMarker();
                 } else {
                     assert otherFrame != TWO_SLOT_MARKER : "Positions of two-slot markers must match in merged operand stacks";
-                    T mergedValue = mergeFunction.apply(thisFrame.value, otherFrame.value);
-                    merged.stack[i] = new ValueFrame<>(mergedValue);
+                    merged.stack[i] = mergeFunction.apply(thisFrame, otherFrame);
                 }
             }
             return merged;
         }
 
-        private void pushFrame(ValueFrame<T> frame) {
+        private void pushFrame(T frame) {
             assert size < stack.length : "Cannot push frames over the maximum stack size";
             stack[size++] = frame;
         }
 
-        private ValueFrame<T> popFrame() {
+        private T popFrame() {
             assert size > 0 : "Cannot pop frames from empty stack";
-            ValueFrame<T> popped = stack[--size];
+            T popped = stack[--size];
             stack[size] = null;
             return popped;
         }
 
-        private ValueFrame<T> peekFrame(int depth) {
+        private T peekFrame(int depth) {
             assert 0 <= depth && depth < size : "Depth out of range";
             return stack[size - depth - 1];
         }
@@ -311,9 +311,9 @@ public final class AbstractFrame<T> {
             StringBuilder sb = new StringBuilder();
             sb.append("Operand stack:").append(System.lineSeparator());
             for (int i = size - 1; i >= 0; i--) {
-                ValueFrame<T> frame = stack[i];
+                T frame = stack[i];
                 if (frame != TWO_SLOT_MARKER) {
-                    sb.append("[").append(frame.value).append("]").append(System.lineSeparator());
+                    sb.append("[").append(frame).append("]").append(System.lineSeparator());
                 }
             }
             return sb.toString();
@@ -322,11 +322,11 @@ public final class AbstractFrame<T> {
 
     static final class LocalVariableTable<T> {
 
-        private final ValueFrame<T>[] variables;
+        private final T[] variables;
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        @SuppressWarnings("unchecked")
         LocalVariableTable(int maxLocals) {
-            this.variables = new ValueFrame[maxLocals];
+            this.variables = (T[]) new Object[maxLocals];
         }
 
         LocalVariableTable(LocalVariableTable<T> other) {
@@ -346,7 +346,7 @@ public final class AbstractFrame<T> {
             if (nextIndex < variables.length && variables[nextIndex] == TWO_SLOT_MARKER) {
                 putFrame(null, nextIndex);
             }
-            putFrame(new ValueFrame<>(value), index);
+            putFrame(value, index);
             if (needsTwoSlots) {
                 putFrame(twoSlotMarker(), nextIndex);
             }
@@ -354,16 +354,16 @@ public final class AbstractFrame<T> {
 
         T get(int index) {
             assert 0 <= index && index < variables.length : "Index out of range";
-            ValueFrame<T> frame = variables[index];
+            T frame = variables[index];
             assert frame != null && frame != TWO_SLOT_MARKER : "Cannot access non-value frame";
-            return frame.value;
+            return frame;
         }
 
         private void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
             for (int i = 0; i < variables.length; i++) {
-                ValueFrame<T> frame = variables[i];
-                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame.value)) {
-                    variables[i] = new ValueFrame<>(transformFunction.apply(frame.value));
+                T frame = variables[i];
+                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame)) {
+                    variables[i] = transformFunction.apply(frame);
                 }
             }
         }
@@ -371,8 +371,8 @@ public final class AbstractFrame<T> {
         private LocalVariableTable<T> merge(LocalVariableTable<T> other, BiFunction<T, T, T> mergeFunction) {
             LocalVariableTable<T> merged = new LocalVariableTable<>(this);
             for (int i = 0; i < variables.length; i++) {
-                ValueFrame<T> thisFrame = variables[i];
-                ValueFrame<T> otherFrame = other.variables[i];
+                T thisFrame = variables[i];
+                T otherFrame = other.variables[i];
                 if (thisFrame != null && otherFrame != null) {
                     /*
                      * We can always merge matching values from the local variable table. If the
@@ -383,15 +383,14 @@ public final class AbstractFrame<T> {
                     if (thisFrame == TWO_SLOT_MARKER && otherFrame == TWO_SLOT_MARKER) {
                         merged.variables[i] = twoSlotMarker();
                     } else if (thisFrame != TWO_SLOT_MARKER && otherFrame != TWO_SLOT_MARKER) {
-                        T mergedValue = mergeFunction.apply(thisFrame.value, otherFrame.value);
-                        merged.variables[i] = new ValueFrame<>(mergedValue);
+                        merged.variables[i] = mergeFunction.apply(thisFrame, otherFrame);
                     }
                 }
             }
             return merged;
         }
 
-        private void putFrame(ValueFrame<T> frame, int index) {
+        private void putFrame(T frame, int index) {
             assert 0 <= index && index < variables.length : "Index out of range";
             variables[index] = frame;
         }
@@ -418,21 +417,12 @@ public final class AbstractFrame<T> {
             StringBuilder sb = new StringBuilder();
             sb.append("Local variable table:").append(System.lineSeparator());
             for (int i = 0; i < variables.length; i++) {
-                ValueFrame<T> frame = variables[i];
+                T frame = variables[i];
                 if (frame != TWO_SLOT_MARKER && frame != null) {
-                    sb.append(i).append(": ").append(frame.value).append(System.lineSeparator());
+                    sb.append(i).append(": ").append(frame).append(System.lineSeparator());
                 }
             }
             return sb.toString();
         }
-    }
-
-    /**
-     * A single frame/slot wrapper over a {@code value}. In case of values requiring two slots
-     * (i.e., values of type long and double), a {@link AbstractFrame#TWO_SLOT_MARKER} is used to
-     * represent the second slot.
-     */
-    private record ValueFrame<T>(T value) {
-
     }
 }

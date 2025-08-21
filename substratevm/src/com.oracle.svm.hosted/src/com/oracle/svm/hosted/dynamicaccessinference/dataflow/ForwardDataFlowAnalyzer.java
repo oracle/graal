@@ -146,10 +146,14 @@ public abstract class ForwardDataFlowAnalyzer<S> {
         S outState = processInstruction(states.get(stream.currentBCI()), stream, code);
         while (stream.nextBCI() <= block.getEndBci()) {
             S successorState = states.get(stream.nextBCI());
-            if (!outState.equals(successorState)) {
-                states.put(stream.nextBCI(), outState);
-            } else {
+            if (outState.equals(successorState)) {
+                /*
+                 * If a fixed point is reached within a basic block, further instructions of that
+                 * block do not have to be processed. This early exit is signaled by returning null.
+                 */
                 return null;
+            } else {
+                states.put(stream.nextBCI(), outState);
             }
             stream.next();
             outState = processInstruction(states.get(stream.currentBCI()), stream, code);

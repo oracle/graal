@@ -69,7 +69,7 @@ public final class ConstantExpressionRegistry {
      * Analyze the provided {@code bytecode} for constant expressions and store the results in the
      * registry.
      */
-    public void store(Bytecode bytecode) {
+    public void inferConstantExpressions(Bytecode bytecode) {
         assert !sealed : "Cannot store in registry when it is already sealed";
         try {
             Map<Integer, AbstractFrame<ConstantExpressionAnalyzer.Value>> abstractFrames = analyzer.analyze(bytecode);

@@ -40,9 +40,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
@@ -152,14 +155,22 @@ public final class ReflectionPlugins {
     }
 
     /**
-     * Used to check if invocation inference should not be handled by
-     * {@link StrictDynamicAccessInferenceFeature}.
+     * Guards plugin registrations that should be active *only* when the inference strategy for
+     * dynamic access invocations is non-strict, i.e., the success of plugin applications may depend
+     * on graph optimizations that can uncover more optimization potential. Since the non-strict
+     * inference can lead to unstable results, i.e., a change in optimization level may lead to less
+     * statically folded dynamic access invocations and subsequently to missing registration errors,
+     * the intention is to transition all the reflection plugins to a strict invocation inference.
+     * In the meantime, we only enforce the strict inference for the subset of the plugins that can
+     * be handled by {@link StrictDynamicAccessInferenceFeature}.
      *
      * @return {@code true} if the inference should be unrestricted.
      */
     private boolean nonStrictDynamicAccessInference() {
         return !(StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis);
     }
+
+    private static final Object[] EMPTY_ARGUMENTS = {};
 
     private static final Class<?> VAR_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
     private static final Class<?> MEMBER_NAME_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
@@ -415,9 +426,9 @@ public final class ReflectionPlugins {
             /* The constructor of Lookup is not public, so we need to invoke it via reflection. */
             lookup = LOOKUP_CONSTRUCTOR.newInstance(callerClass);
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, null, new Object[]{}, ex.getClass(), ex.getMessage(), false);
+            return throwException(b, targetMethod, null, EMPTY_ARGUMENTS, ex.getClass(), ex.getMessage(), false);
         }
-        return pushConstant(b, targetMethod, null, new Object[]{}, JavaKind.Object, lookup, false, false) != null;
+        return pushConstant(b, targetMethod, null, EMPTY_ARGUMENTS, JavaKind.Object, lookup, false, false) != null;
     }
 
     /**
@@ -490,7 +501,7 @@ public final class ReflectionPlugins {
 
         if (result != null) {
             b.addPush(JavaKind.Object, ConstantNode.forConstant(result, b.getMetaAccess()));
-            traceConstant(b, targetMethod, clazz, new Object[]{}, result, false);
+            traceConstant(b, targetMethod, clazz, EMPTY_ARGUMENTS, result, false);
             return true;
         }
 
@@ -831,21 +842,24 @@ public final class ReflectionPlugins {
     /**
      * Log successful constant folding of an invocation.
      *
-     * @param subjectToStrictDynamicAccessInference The value is {@code true} if inference for
-     *            {@code targetMethod} invocations is also executed by
-     *            {@link StrictDynamicAccessInferenceFeature}. This is used to avoid logging and
-     *            warning for non-strict folding of invocations which are not reflective, such as
-     *            {@link Integer#toString()}.
+     * @param subjectToStrictDynamicAccessInference if {@code true} log successful folding
+     *            information via {@link DynamicAccessInferenceLog} for {@code targetMethod}
+     *            invocations that are also handled by {@link StrictDynamicAccessInferenceFeature}.
+     *            In that case the reflection plugin registration is also guarded by
+     *            {@link ReflectionPlugins#nonStrictDynamicAccessInference()}. In other words: this
+     *            produces a report with all dynamic invocations that would be handled by
+     *            {@link StrictDynamicAccessInferenceFeature} if it was enabled. Additionally, it
+     *            avoids logging and warning for non-strict folding of invocations which are not
+     *            reflective, such as {@link Integer#toString()}.
      */
     private void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object value, boolean subjectToStrictDynamicAccessInference) {
         if (subjectToStrictDynamicAccessInference && inferenceLog != null) {
             inferenceLog.logFolding(b, reason, targetMethod, receiver, arguments, value);
         }
         if (Options.ReflectionPluginTracing.getValue()) {
-            System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
-                            " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + Arrays.toString(arguments) + ")" +
-                            " was reduced to the constant " + value);
+            String receiverAndArguments = buildReceiverAndArgumentsString(receiver, arguments);
+            System.out.printf("Call to %s reached in %s with %s was reduced to the constant %s%n",
+                            targetMethod.format("%H.%n(%p)"), b.getMethod().format("%H.%n(%p)"), receiverAndArguments, value);
         }
     }
 
@@ -858,10 +872,18 @@ public final class ReflectionPlugins {
             inferenceLog.logException(b, reason, targetMethod, receiver, arguments, exceptionClass);
         }
         if (Options.ReflectionPluginTracing.getValue()) {
-            System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
-                            " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + Arrays.toString(arguments) + ")" +
-                            " was reduced to a \"throw new " + exceptionClass.getName() + "(...)\"");
+            String receiverAndArguments = buildReceiverAndArgumentsString(receiver, arguments);
+            System.out.printf("Call to %s reached in %s with %s was reduced to a \"throw new %s(...)\"%n",
+                            targetMethod.format("%H.%n(%p)"), b.getMethod().format("%H.%n(%p)"), receiverAndArguments, exceptionClass.getName());
         }
+    }
+
+    private static String buildReceiverAndArgumentsString(Object receiver, Object[] arguments) {
+        String argumentListString = Stream.of(arguments)
+                        .map(arg -> arg instanceof Object[] array ? Arrays.toString(array) : Objects.toString(arg))
+                        .collect(Collectors.joining(", "));
+        return receiver != null
+                        ? String.format("receiver \"%s\" and arguments (%s)", receiver, argumentListString)
+                        : String.format("arguments (%s)", argumentListString);
     }
 }

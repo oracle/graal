@@ -111,7 +111,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
             ConstantExpressionRegistry constantExpressionRegistry = hostVM.getConstantExpressionRegistry();
             if (strictDynamicAccessInferenceIsApplicable() && constantExpressionRegistry != null) {
-                constantExpressionRegistry.store(getCode());
+                constantExpressionRegistry.inferConstantExpressions(getCode());
             }
             super.build(startInstruction, startFrameState);
         }

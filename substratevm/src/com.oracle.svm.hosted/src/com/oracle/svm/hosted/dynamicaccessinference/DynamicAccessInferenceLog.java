@@ -47,7 +47,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Log holding information on build-time inferred dynamic access invocations.
+ * Log folding information on build-time inferred dynamic access invocations.
  */
 public final class DynamicAccessInferenceLog {
 
