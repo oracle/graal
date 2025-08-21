@@ -106,7 +106,11 @@ public abstract class LIRPhase<C> {
         memUseTracker = statistics.memUseTracker;
     }
 
-    static final boolean LIR_PHASE_GC_STATISTICS = true;
+    /**
+     * This can provide more detail about where GC time is spent but isn't necessary most of the
+     * time.
+     */
+    static final boolean LIR_PHASE_GC_STATISTICS = false;
 
     private DebugCloseable gcStatistics(DebugContext debug) {
         if (LIR_PHASE_GC_STATISTICS) {
