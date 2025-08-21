@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
@@ -83,6 +84,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
+import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SharedConstants;
@@ -111,7 +113,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.OptionKey;
-import com.oracle.svm.core.JavaVersionUtil;
 import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
@@ -1865,7 +1866,17 @@ public class NativeImage {
 
         Process p = null;
         try {
-            p = pb.inheritIO().start();
+            if (!useBundle()) {
+                pb.inheritIO();
+            }
+            p = pb.start();
+            if (useBundle()) {
+                var internalOutputDir = bundleSupport.outputDir.toString();
+                var externalOutputDir = bundleSupport.getExternalOutputDir().toString();
+                Function<String, String> filter = line -> line.replace(internalOutputDir, externalOutputDir);
+                ProcessOutputTransformer.attach(p.getInputStream(), filter, System.out);
+                ProcessOutputTransformer.attach(p.getErrorStream(), filter, System.err);
+            }
             imageBuilderPid = p.pid();
             return p.waitFor();
         } catch (IOException | InterruptedException e) {
@@ -1873,6 +1884,22 @@ public class NativeImage {
         } finally {
             if (p != null) {
                 p.destroy();
+            }
+        }
+    }
+
+    private record ProcessOutputTransformer(InputStream in, Function<String, String> filter, PrintStream out) implements Runnable {
+
+        static void attach(InputStream in, Function<String, String> filter, PrintStream out) {
+            Thread.ofVirtual().start(new ProcessOutputTransformer(in, filter, out));
+        }
+
+        @Override
+        public void run() {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+                reader.lines().map(filter).forEach(out::println);
+            } catch (IOException e) {
+                throw showError("Unable to process stdout/stderr of image builder process", e);
             }
         }
     }
