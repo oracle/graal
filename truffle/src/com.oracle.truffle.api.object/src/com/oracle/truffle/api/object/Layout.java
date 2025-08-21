@@ -49,7 +49,7 @@ abstract class Layout {
 
     public static final String OPTION_PREFIX = "truffle.object.";
 
-    private static final LayoutFactory LAYOUT_FACTORY = new ExtLayoutFactory();
+    private static final LayoutFactory LAYOUT_FACTORY = new LayoutFactory();
 
     static final int INT_TO_DOUBLE_FLAG = 1;
     static final int INT_TO_LONG_FLAG = 2;

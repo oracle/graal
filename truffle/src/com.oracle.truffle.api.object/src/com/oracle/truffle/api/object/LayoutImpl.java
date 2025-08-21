@@ -89,8 +89,6 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     protected abstract int getPrimitiveFieldCount();
 
-    public abstract ShapeImpl.BaseAllocator createAllocator();
-
     public LayoutStrategy getStrategy() {
         return strategy;
     }

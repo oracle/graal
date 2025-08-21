@@ -60,14 +60,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 
 final class ExtLayout extends LayoutImpl {
 
-    private final ExtLayoutStrategy strategy;
     private final List<FieldInfo> objectFields;
     private final List<FieldInfo> primitiveFields;
     private final int primitiveFieldMaxSize;
 
-    ExtLayout(Class<? extends DynamicObject> dynamicObjectClass, ExtLayoutStrategy strategy, LayoutInfo layoutInfo, int allowedImplicitCasts) {
+    ExtLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, LayoutInfo layoutInfo, int allowedImplicitCasts) {
         super(dynamicObjectClass, strategy, allowedImplicitCasts);
-        this.strategy = strategy;
 
         this.objectFields = layoutInfo.objectFields;
         this.primitiveFields = layoutInfo.primitiveFields;
@@ -79,7 +77,7 @@ final class ExtLayout extends LayoutImpl {
         return LayoutInfo.getOrCreateNewLayoutInfo(dynamicObjectClass, layoutLookup);
     }
 
-    private static ExtLayout getOrCreateLayout(Class<? extends DynamicObject> clazz, Lookup layoutLookup, int implicitCastFlags, ExtLayoutStrategy strategy) {
+    private static ExtLayout getOrCreateLayout(Class<? extends DynamicObject> clazz, Lookup layoutLookup, int implicitCastFlags, LayoutStrategy strategy) {
         Objects.requireNonNull(clazz, "DynamicObject layout class");
         Key key = new Key(clazz, implicitCastFlags, strategy);
         ExtLayout layout = (ExtLayout) LAYOUT_MAP.get(key);
@@ -91,7 +89,7 @@ final class ExtLayout extends LayoutImpl {
         return layout == null ? newLayout : layout;
     }
 
-    static ExtLayout createLayoutImpl(Class<? extends DynamicObject> clazz, Lookup layoutLookup, int implicitCastFlags, ExtLayoutStrategy strategy) {
+    static ExtLayout createLayoutImpl(Class<? extends DynamicObject> clazz, Lookup layoutLookup, int implicitCastFlags, LayoutStrategy strategy) {
         return getOrCreateLayout(clazz, layoutLookup, implicitCastFlags, strategy);
     }
 
@@ -157,17 +155,6 @@ final class ExtLayout extends LayoutImpl {
     @Override
     protected boolean hasPrimitiveExtensionArray() {
         return true;
-    }
-
-    @Override
-    public ShapeImpl.BaseAllocator createAllocator() {
-        ExtLayout layout = this;
-        return getStrategy().createAllocator(layout);
-    }
-
-    @Override
-    public ExtLayoutStrategy getStrategy() {
-        return strategy;
     }
 
     private static final class LayoutInfo {

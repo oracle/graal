@@ -48,13 +48,18 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 
-abstract sealed class LayoutFactory permits ExtLayoutFactory {
+@SuppressWarnings("static-method")
+final class LayoutFactory {
 
-    protected abstract void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup);
+    void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
+        ExtLayout.registerLayoutClass(subclass, layoutLookup);
+    }
 
-    public abstract LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags);
+    LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
+        return ExtLayout.createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
+    }
 
-    public final Shape createShape(Class<? extends DynamicObject> layoutClass,
+    Shape createShape(Class<? extends DynamicObject> layoutClass,
                     int implicitCastFlags,
                     Object dynamicType,
                     Object sharedData,

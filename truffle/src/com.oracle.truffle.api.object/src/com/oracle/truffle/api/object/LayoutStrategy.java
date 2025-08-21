@@ -43,6 +43,7 @@ package com.oracle.truffle.api.object;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 
 import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
@@ -52,20 +53,24 @@ import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 
 @SuppressWarnings("deprecation")
-abstract class LayoutStrategy {
+abstract sealed class LayoutStrategy permits ObsolescenceStrategy {
 
     protected LayoutStrategy() {
     }
 
-    protected abstract int getLocationOrdinal(Location location);
+    protected int getLocationOrdinal(Location location) {
+        return ((LocationImpl) location).getOrdinal();
+    }
 
     protected abstract boolean updateShape(DynamicObject object);
 
     protected abstract ShapeImpl ensureValid(ShapeImpl newShape);
 
-    protected abstract ShapeImpl ensureSpace(ShapeImpl shape, Location location);
-
-    protected abstract BaseAllocator createAllocator(LayoutImpl shape);
+    protected ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
+        Objects.requireNonNull(location);
+        assert assertLocationInRange(shape, location);
+        return shape;
+    }
 
     protected abstract BaseAllocator createAllocator(ShapeImpl shape);
 
@@ -129,7 +134,9 @@ abstract class LayoutStrategy {
         }
     }
 
-    protected abstract Location createLocationForValue(ShapeImpl shape, Object value, int putFlags);
+    protected Location createLocationForValue(ShapeImpl shape, Object value, int putFlags) {
+        return ((ExtAllocator) shape.allocator()).locationForValue(value, putFlags);
+    }
 
     protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
         assert existing.getFlags() != propertyFlags;
@@ -171,6 +178,10 @@ abstract class LayoutStrategy {
     }
 
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
+        if (property.getLocation() instanceof ExtLocations.InstanceLocation instanceLocation) {
+            instanceLocation.maybeInvalidateFinalAssumption();
+        }
+
         boolean direct = shape.isShared();
         RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
         shape.onPropertyTransition(transition);
@@ -372,5 +383,49 @@ abstract class LayoutStrategy {
         assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
         assert generalProperty.getLocation() == specificProperty.getLocation() ||
                         ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
+        ensureSameTypeOrMoreGeneral(generalProperty.getLocation(), specificProperty.getLocation());
+    }
+
+    private static void ensureSameTypeOrMoreGeneral(Location generalLocation, Location specificLocation) {
+        if (generalLocation == specificLocation) {
+            return;
+        }
+        if (generalLocation instanceof ExtLocations.AbstractObjectLocation objLocGeneral && specificLocation instanceof ExtLocations.AbstractObjectLocation objLocSpecific) {
+            ExtLocations.TypeAssumption assGeneral = objLocGeneral.getTypeAssumption();
+            ExtLocations.TypeAssumption assSpecific = objLocSpecific.getTypeAssumption();
+            if (assGeneral != assSpecific) {
+                if (!assGeneral.type.isAssignableFrom(assSpecific.type) || assGeneral.nonNull && !assSpecific.nonNull) {
+                    // If assignable check failed, merge type assumptions to ensure safety.
+                    // Otherwise, we might unsafe cast based on a wrong type assumption.
+                    objLocGeneral.mergeTypeAssumption(assSpecific);
+                }
+            }
+        }
+    }
+
+    protected static boolean assertLocationInRange(final ShapeImpl shape, final Location location) {
+        final ExtLayout layout = (ExtLayout) shape.getLayout();
+        if (location instanceof LocationImpl) {
+            ((LocationImpl) location).accept(new LocationImpl.LocationVisitor() {
+                @Override
+                public void visitPrimitiveField(int index, int count) {
+                    assert index + count <= layout.getPrimitiveFieldCount();
+                }
+
+                @Override
+                public void visitObjectField(int index, int count) {
+                    assert index + count <= layout.getObjectFieldCount();
+                }
+
+                @Override
+                public void visitPrimitiveArray(int index, int count) {
+                }
+
+                @Override
+                public void visitObjectArray(int index, int count) {
+                }
+            });
+        }
+        return true;
     }
 }

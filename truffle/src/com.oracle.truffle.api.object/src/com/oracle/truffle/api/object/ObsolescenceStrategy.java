@@ -64,7 +64,7 @@ import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
 
 @SuppressWarnings("deprecation")
-final class ObsolescenceStrategy extends ExtLayoutStrategy {
+final class ObsolescenceStrategy extends LayoutStrategy {
     private static final DebugCounter makeSuccessorShapeCount = DebugCounter.create("Rebuild shape count");
     private static final DebugCounter reshapeCount = DebugCounter.create("Reshape count");
     private static final int TRACE_RESHAPE_LIMIT = 500;
@@ -111,13 +111,6 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
         }
         // shape should be valid now, but we cannot assert this due to a possible race
         return nextShape;
-    }
-
-    @Override
-    protected ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
-        Objects.requireNonNull(location);
-        assert assertLocationInRange(shape, location);
-        return shape;
     }
 
     @Override
@@ -222,22 +215,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
 
     @Override
     protected BaseAllocator createAllocator(ShapeImpl shape) {
-        return new AllocatorImpl(shape);
-    }
-
-    @Override
-    protected BaseAllocator createAllocator(LayoutImpl layout) {
-        return new AllocatorImpl(layout);
-    }
-
-    private static class AllocatorImpl extends ExtAllocator {
-        protected AllocatorImpl(LayoutImpl layout) {
-            super(layout);
-        }
-
-        protected AllocatorImpl(ShapeImpl shape) {
-            super(shape);
-        }
+        return new ExtAllocator(shape);
     }
 
     private ShapeImpl getObsoletedBy(ShapeImpl shape) {

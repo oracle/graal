@@ -74,14 +74,10 @@ import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 
 import sun.misc.Unsafe;
 
-abstract class ExtAllocator extends BaseAllocator {
+final class ExtAllocator extends BaseAllocator {
 
     /** Placeholder for when no value is available or no type speculation should be performed. */
     private static final Object NO_VALUE = new Object();
-
-    ExtAllocator(LayoutImpl layout) {
-        super(layout);
-    }
 
     ExtAllocator(ShapeImpl shape) {
         super(shape);
@@ -405,7 +401,7 @@ abstract class ExtAllocator extends BaseAllocator {
         return locationForValue(value, 0);
     }
 
-    protected Location locationForValue(Object value, int putFlags) {
+    Location locationForValue(Object value, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (Flags.isDeclaration(putFlags)) {
