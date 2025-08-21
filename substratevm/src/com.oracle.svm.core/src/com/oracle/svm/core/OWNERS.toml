@@ -6,3 +6,12 @@ all = [
 ]
 any = [
 ]
+[[rule]]
+files = "ClassLoaderSupport.java"
+all = [
+    "david.nestorovic@oracle.com",
+    "ivan.ristovic@oracle.com",
+    "paul.woegerer@oracle.com"
+]
+any = [
+]
