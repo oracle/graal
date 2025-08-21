@@ -267,7 +267,8 @@ public class CVRegisterUtil {
                 case 8 -> cvReg.cv8;
                 default -> -1;
             };
-        } else {/* Objects are represented by 8 byte pointers. */
+        } else {
+            /* Objects are represented by 8 byte pointers. */
             cvCode = cvReg.cv8;
         }
         assert cvCode != -1;
