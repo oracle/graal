@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
@@ -107,7 +108,10 @@ public final class ParserConstantPool extends ConstantPool {
     }
 
     @FunctionalInterface
-    public interface Symbolify<T extends ModifiedUTF8> extends Function<byte[], Symbol<T>> {
+    public interface Symbolify<T extends ModifiedUTF8> extends Function<ByteSequence, Symbol<T>> {
+        default Symbol<T> apply(String string) {
+            return apply(ByteSequence.create(string));
+        }
     }
 
     /**
@@ -130,7 +134,7 @@ public final class ParserConstantPool extends ConstantPool {
             int symbolLength = bb.getInt();
             byte[] symbolBytes = new byte[symbolLength];
             bb.get(symbolBytes);
-            symbols[i] = symbolify.apply(symbolBytes);
+            symbols[i] = symbolify.apply(ByteSequence.wrap(symbolBytes));
         }
         assert !bb.hasRemaining();
         return new ParserConstantPool(tags, entries, symbols, majorVersion, minorVersion);

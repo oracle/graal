@@ -28,6 +28,8 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -229,12 +231,6 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             }
         }
 
-        assert !isUnresolved(entry);
-        if (entry instanceof Throwable throwable) {
-            // Cached exception.
-            throw uncheckedThrow(throwable);
-        }
-
         return entry;
     }
 
@@ -243,7 +239,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
+    protected static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
         throw (T) t;
     }
 
@@ -267,7 +263,58 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     public String resolveStringAt(int cpi) {
         Object resolvedEntry = resolvedAt(cpi, null);
+        if (resolvedEntry instanceof ReferenceConstant<?> referenceConstant) {
+            resolvedEntry = referenceConstant.getReferent();
+        }
         assert resolvedEntry != null;
         return (String) resolvedEntry;
+    }
+
+    @Override
+    public int intAt(int index) {
+        checkTag(index, CONSTANT_Integer);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Int;
+            return primitiveConstant.asInt();
+        }
+        return super.intAt(index);
+    }
+
+    @Override
+    public float floatAt(int index) {
+        checkTag(index, CONSTANT_Float);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Float;
+            return primitiveConstant.asFloat();
+        }
+        return super.floatAt(index);
+    }
+
+    @Override
+    public double doubleAt(int index) {
+        checkTag(index, CONSTANT_Double);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Double;
+            return primitiveConstant.asDouble();
+        }
+        return super.doubleAt(index);
+    }
+
+    @Override
+    public long longAt(int index) {
+        checkTag(index, CONSTANT_Long);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Long;
+            return primitiveConstant.asLong();
+        }
+        return super.longAt(index);
     }
 }

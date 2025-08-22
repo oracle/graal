@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.interpreter.classfile.ClassFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -121,7 +122,7 @@ public final class BuildTimeInterpreterUniverse {
     private final Map<ResolvedJavaMethod, InterpreterResolvedJavaMethod> methods;
     private final Map<String, InterpreterUnresolvedSignature> signatures;
     private final Map<Number, PrimitiveConstant> primitiveConstants;
-    private final Map<String, ReferenceConstant<String>> strings;
+    private final Map<String, String> strings;
     private final Map<ImageHeapConstant, ReferenceConstant<?>> objectConstants;
 
     private final Map<ExceptionHandler, ExceptionHandler> exceptionHandlers;
@@ -567,24 +568,24 @@ public final class BuildTimeInterpreterUniverse {
         return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
     }
 
-    public JavaConstant primitiveConstant(int value) {
+    public PrimitiveConstant primitiveConstant(int value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forInt(value));
     }
 
-    public JavaConstant primitiveConstant(long value) {
+    public PrimitiveConstant primitiveConstant(long value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forLong(value));
     }
 
-    public JavaConstant primitiveConstant(float value) {
+    public PrimitiveConstant primitiveConstant(float value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forFloat(value));
     }
 
-    public JavaConstant primitiveConstant(double value) {
+    public PrimitiveConstant primitiveConstant(double value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forDouble(value));
     }
 
-    public JavaConstant stringConstant(String value) {
-        return strings.computeIfAbsent(value, (key) -> ReferenceConstant.createFromNonNullReference(Objects.requireNonNull(value)));
+    public String stringConstant(String value) {
+        return strings.computeIfAbsent(value, Function.identity());
     }
 
     public JavaType primitiveOrUnresolvedType(JavaType type) {
@@ -693,7 +694,8 @@ public final class BuildTimeInterpreterUniverse {
 
         for (InterpreterResolvedJavaType type : types.values()) {
             if (type instanceof InterpreterResolvedObjectType referenceType) {
-                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType);
+                // TODO(peterssen): GR-68564 Obtain proper major/minor version for this type.
+                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION);
                 referenceType.setConstantPool(buildTimeConstantPool.snapshot());
             }
         }
