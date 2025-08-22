@@ -69,15 +69,14 @@ class TestJITCompilationInterface(unittest.TestCase):
         # new breakpoint address is always added after
         self.assertEqual(breakpoint_info_after.split(breakpoint_info_before.split('0x')[-1])[-1].count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
 
-        # run until the runtime compilation is invalidated and check if the breakpoint is removed
-        gdb_set_breakpoint('com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl::invalidate')
-        gdb_continue()  # run until invalidation
-        gdb_finish()  # finish invalidation - this should trigger an unregister call to gdb
+        # run until the end and check if breakpoints for the run-time debuginfo are removed
+        gdb_disable_breakpoints()
+        gdb_continue()  # run until the end
         breakpoint_info_after_invalidation = gdb_execute('info breakpoints')
-        # check if additional breakpoint is cleared after invalidate
+        # check if additional breakpoint is removed
         # breakpoint info is still printed as multi-breakpoint, thus we check if exactly one valid breakpoint is remaining
         self.assertEqual(breakpoint_info_after_invalidation.count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
-        # breakpoint info must change after invalidation
+        # breakpoint info must change
         self.assertNotEqual(breakpoint_info_after, breakpoint_info_after_invalidation)
 
     # this test requires gdb to first load a new objfile at runtime and then remove it as the compilation is invalidated
@@ -93,11 +92,10 @@ class TestJITCompilationInterface(unittest.TestCase):
         objfiles = gdb.objfiles()
         self.assertTrue(any([o.filename.startswith('<in-memory@') for o in objfiles]))
 
-        # run until the runtime compilation is invalidated and check if the objfile is removed
-        gdb_set_breakpoint('com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl::invalidate')
-        gdb_continue()  # run until invalidation
-        gdb_finish()  # finish invalidation - this should trigger an unregister call to gdb
-        # compilation is invalidated, check if objfile was removed
+        # run until the end and check if run-time debuginfo object file is removed
+        gdb_disable_breakpoints()
+        gdb_continue()  # run until the end
+        # check if objfiles are removed
         objfiles = gdb.objfiles()
         self.assertFalse(any([o.filename.startswith('<in-memory@') for o in objfiles]))
 
