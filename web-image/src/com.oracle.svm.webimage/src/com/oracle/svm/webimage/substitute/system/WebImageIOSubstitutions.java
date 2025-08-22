@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -42,6 +43,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -295,6 +297,15 @@ final class Target_java_nio_file_FileSystems_DefaultFileSystemHolder_Web {
 
 }
 
+@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider")
+final class Target_sun_nio_fs_DefaultFileSystemProvider {
+    @Substitute
+    public static FileSystem theFileSystem() {
+        return WebImageNIOFileSystemProvider.INSTANCE.getFileSystem(null);
+    }
+}
+
+
 @TargetClass(className = "sun.nio.fs.AbstractFileSystemProvider")
 @SuppressWarnings("all")
 final class Target_sun_nio_fs_AbstractFileSystemProvider_Web {
@@ -364,20 +375,36 @@ final class Target_java_nio_file_Files_Web {
 @TargetClass(java.io.RandomAccessFile.class)
 @SuppressWarnings("all")
 final class Target_java_io_RandomAccessFile_Web {
+    @Alias private String path;
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
+    FileChannel fileChannel;
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
+    ByteBuffer buffer = ByteBuffer.allocate(1);
 
     @Substitute
     private void open0(String name, int mode) throws FileNotFoundException {
-        throw new UnsupportedOperationException("RandomAccessFile.open0");
+        try {
+            Set<StandardOpenOption> options = Set.of(StandardOpenOption.READ, StandardOpenOption.WRITE);
+            fileChannel = FileChannel.open(Path.of(path), options);
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Substitute
     private int read0() throws IOException {
-        throw new UnsupportedOperationException("RandomAccessFile.read0");
+        fileChannel.read(buffer);
+        return buffer.get(0); // TODO? rewind buffer?
     }
 
     @Substitute
     private int readBytes(byte[] b, int off, int len) throws IOException {
-        throw new UnsupportedOperationException("RandomAccessFile.readBytes");
+        // TODO: map exception handling
+        ByteBuffer buf = ByteBuffer.allocate(len);
+        int read = fileChannel.read(buf);
+        buf.rewind();
+        buf.get(b, off, Math.min(read, len));
+        return read;
     }
 
     @Substitute
@@ -397,12 +424,12 @@ final class Target_java_io_RandomAccessFile_Web {
 
     @Substitute
     private void seek0(long pos) throws IOException {
-        throw new UnsupportedOperationException("RandomAccessFile.seek0");
+        fileChannel.position(pos);
     }
 
     @Substitute
     public long length() throws IOException {
-        throw new UnsupportedOperationException("RandomAccessFile.length");
+        return fileChannel.size();
     }
 
     @Substitute
@@ -412,7 +439,6 @@ final class Target_java_io_RandomAccessFile_Web {
 
     @Substitute
     private static void initIDs() {
-        throw new UnsupportedOperationException("RandomAccessFile.initIDs");
     }
 }
 
