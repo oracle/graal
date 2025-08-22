@@ -29,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -73,12 +75,12 @@ public class FutureDefaultsOptions {
      * Macro commands: They enable or disable other defaults, but they are not future defaults
      * themselves.
      */
-    private static final Set<String> ALL_COMMANDS = Set.of(ALL_NAME, RUN_TIME_INITIALIZE_JDK, NONE_NAME);
+    private static final List<String> ALL_COMMANDS = List.of(ALL_NAME, NONE_NAME, RUN_TIME_INITIALIZE_JDK);
 
     private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
-    private static final Set<String> ALL_FUTURE_DEFAULTS = Set.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, COMPLETE_REFLECTION_TYPES);
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, COMPLETE_REFLECTION_TYPES);
 
     public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
     public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS + ")";
@@ -89,15 +91,11 @@ public class FutureDefaultsOptions {
         return StringUtil.joinSingleQuoted(getAllValues());
     }
 
-    private static Set<String> getAllValues() {
-        Set<String> result = new LinkedHashSet<>(ALL_FUTURE_DEFAULTS.size() + ALL_COMMANDS.size());
-        result.addAll(ALL_FUTURE_DEFAULTS);
+    private static LinkedHashSet<String> getAllValues() {
+        LinkedHashSet<String> result = new LinkedHashSet<>(ALL_FUTURE_DEFAULTS.size() + ALL_COMMANDS.size());
         result.addAll(ALL_COMMANDS);
+        result.addAll(ALL_FUTURE_DEFAULTS);
         return result;
-    }
-
-    static {
-        assert getAllValues().stream().allMatch(futureDefaultsAllValues()::contains) : "A value is missing in the user-facing help text";
     }
 
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
@@ -105,27 +103,49 @@ public class FutureDefaultsOptions {
     static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
+    private static String getOptionHelpText() {
+        Objects.requireNonNull(FutureDefaultsOptions.FutureDefaults.getDescriptor(), "This must be called after the options are processed.");
+        return FutureDefaultsOptions.FutureDefaults.getDescriptor().getHelp().stream()
+                        .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private static void verifyOptionDescription() {
+        var optionHelpText = getOptionHelpText();
+        VMError.guarantee(getAllValues().stream().allMatch(futureDefaultsAllValues()::contains), "A value is missing in the user-facing help text");
+        for (String optionValue : getAllValues()) {
+            if (!optionHelpText.contains(optionValue + "' -")) {
+                throw VMError.shouldNotReachHere("Must mention all options in the list of options. Missing option: " + optionValue);
+            }
+        }
+        if (!optionHelpText.contains(futureDefaultsAllValues())) {
+            throw VMError.shouldNotReachHere("Must mention all options in a comma-separated sequence: " + futureDefaultsAllValues());
+        }
+    }
+
     private static Set<String> futureDefaults;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
+        verifyOptionDescription();
         futureDefaults = new LinkedHashSet<>(getAllValues().size());
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
             if (DEFAULT_NAME.equals(value)) {
-                throw UserError.abort("The '%s' from %s is forbidden. It can only contain: %s.",
+                throw UserError.abort("The '%s' from %s is forbidden. It can only contain: %s.%n%nUsage:%n%n%s",
                                 SubstrateOptionsParser.commandArgument(FutureDefaults, DEFAULT_NAME),
                                 valueWithOrigin.origin(),
-                                futureDefaultsAllValues());
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
             if (!getAllValues().contains(value)) {
-                throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.",
+                throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.%n%nUsage:%n%n%s",
                                 SubstrateOptionsParser.commandArgument(FutureDefaults, value),
                                 valueWithOrigin.origin(),
                                 value,
-                                futureDefaultsAllValues());
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
             if (value.equals(NONE_NAME)) {
