@@ -104,7 +104,7 @@ final class Copy extends Object {
     }
 
     private void copyFile(FileObject sourceFile) throws IOException {
-        String targetPath = (transformation != null) ? transformation.transformPath(sourceFile.getPath()) : sourceFile.getPath();
+        String targetPath = transformation != null ? transformation.transformPath(sourceFile.getPath()) : sourceFile.getPath();
         boolean isTransformed = !targetPath.equals(sourceFile.getPath());
         FileObject tg = targetRoot.getFileObject(targetPath);
         try {

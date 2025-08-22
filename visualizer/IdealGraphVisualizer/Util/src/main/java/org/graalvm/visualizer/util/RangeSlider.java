@@ -132,10 +132,12 @@ public class RangeSlider extends JComponent implements ChangedListener<RangeSlid
      * <code>Scrollable</code>
      * @see JViewport#getPreferredSize
      */
+    @Override
     public Dimension getPreferredScrollableViewportSize() {
         return getPreferredSize();
     }
 
+    @Override
     public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
         if (orientation == SwingConstants.VERTICAL) {
             return 1;
@@ -144,14 +146,17 @@ public class RangeSlider extends JComponent implements ChangedListener<RangeSlid
         return (int) (BAR_CIRCLE_SIZE + BAR_CIRCLE_CONNECTOR_SIZE);
     }
 
+    @Override
     public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
         return orientation == SwingConstants.VERTICAL ? visibleRect.height / 2 : visibleRect.width / 2;
     }
 
+    @Override
     public boolean getScrollableTracksViewportWidth() {
         return false;
     }
 
+    @Override
     public boolean getScrollableTracksViewportHeight() {
         return true;
     }
@@ -220,7 +225,7 @@ public class RangeSlider extends JComponent implements ChangedListener<RangeSlid
     private float getXOffset() {
         int size = getSlots();
         float width = (float) getPreferredSize().width;
-        return (width / (size + 1));
+        return width / (size + 1);
     }
 
     private float getEndXPosition(int index) {

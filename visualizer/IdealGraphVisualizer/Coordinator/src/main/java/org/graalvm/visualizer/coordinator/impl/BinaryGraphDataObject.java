@@ -36,7 +36,6 @@ import org.openide.util.NbBundle;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * DataObject that represents a .BGV file. This object is NOT designed for presentation
@@ -66,7 +65,6 @@ import java.util.logging.Logger;
         position = 400
 )
 public class BinaryGraphDataObject extends MultiDataObject {
-    private static final Logger LOG = Logger.getLogger(BinaryGraphDataObject.class.getName());
     /**
      * MIME type for BGV dumps
      */

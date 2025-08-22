@@ -584,7 +584,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
         //--------------- attaches listeners -----------------------------
 
-        updater.addChangeListener((e) -> fogOfWorkWiget.setValidShape(updater.getValidatedShape()));
+        updater.addChangeListener(e -> fogOfWorkWiget.setValidShape(updater.getValidatedShape()));
 
         this.addObjectSceneListener(selectionChangedListener, ObjectSceneEventType.OBJECT_SELECTION_CHANGED, ObjectSceneEventType.OBJECT_HIGHLIGHTING_CHANGED,
                 ObjectSceneEventType.OBJECT_HOVER_CHANGED);
@@ -884,7 +884,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             } else {
                 Figure f;
                 if (o instanceof Figure) {
-                    f = ((Figure) o);
+                    f = (Figure) o;
                 } else if (o instanceof Slot) {
                     f = ((Slot) o).getFigure();
                 } else {
@@ -1281,7 +1281,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             addChild(waitWidget);
             setOpaque(false);
 
-            scene.getScrollPane().getViewport().addChangeListener((e) -> {
+            scene.getScrollPane().getViewport().addChangeListener(e -> {
                 if (blockScene) {
                     Rectangle newViewRect = scene.getScrollPane().getViewport().getViewRect();
                     if (!oldviewRect.equals(newViewRect)) {

@@ -357,7 +357,7 @@ public class SourceRepositoryImpl {
     static synchronized void _testReset() {
         if (INSTANCE != null) {
             INSTANCE.getDefaultGroup().removeRegisteredPath();
-            INSTANCE.getGroups().forEach((g) -> g.removeRegisteredPath());
+            INSTANCE.getGroups().forEach(g -> g.removeRegisteredPath());
         }
         INSTANCE = null;
     }

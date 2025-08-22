@@ -273,7 +273,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
             return;
         }
         super.startGraphContents(g);
-        nodeProperties = lastTypeProperties.computeIfAbsent(g.getGraphType(), (gt) -> new HashMap<>());
+        nodeProperties = lastTypeProperties.computeIfAbsent(g.getGraphType(), gt -> new HashMap<>());
     }
 
     @Override

@@ -102,7 +102,7 @@ public class FileKey {
 
     @Override
     public String toString() {
-        return (resolvedFile != null ? resolvedFile.getPath() : fileSpec);
+        return resolvedFile != null ? resolvedFile.getPath() : fileSpec;
     }
 
     public static FileKey fromFile(FileObject f) {

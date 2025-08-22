@@ -123,14 +123,17 @@ public final class JavaLocationInfo implements JavaLocation {
         this.targetClass = null;
     }
 
+    @Override
     public int getBytecodeIndex() {
         return bytecodeIndex;
     }
 
+    @Override
     public String getMethodName() {
         return methodName;
     }
 
+    @Override
     public String getClassName() {
         return className;
     }
@@ -143,18 +146,22 @@ public final class JavaLocationInfo implements JavaLocation {
         return location;
     }
 
+    @Override
     public String getMethodSignature() {
         return methodSignature;
     }
 
+    @Override
     public String getTargetClass() {
         return targetClass;
     }
 
+    @Override
     public String getInvokedMethod() {
         return invokedMethod;
     }
 
+    @Override
     public String getVariableName() {
         return variableName;
     }
@@ -175,6 +182,7 @@ public final class JavaLocationInfo implements JavaLocation {
     /**
      * Attempts to find a handle for the specific tree. Do not call in EDT.
      */
+    @Override
     public TreePathHandle findTreePath() {
         synchronized (this) {
             if (handleResolved) {
@@ -295,6 +303,7 @@ public final class JavaLocationInfo implements JavaLocation {
         return setResolvedHandle(result[0]);
     }
 
+    @Override
     public String toString() {
         return new StringBuilder("javaloc[class = ").append(className).
                 append(", method = ").append(methodName).

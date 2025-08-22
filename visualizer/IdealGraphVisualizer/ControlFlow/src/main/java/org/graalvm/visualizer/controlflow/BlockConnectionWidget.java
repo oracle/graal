@@ -64,10 +64,12 @@ public class BlockConnectionWidget extends ConnectionWidget implements Link {
         return edge;
     }
 
+    @Override
     public Port getTo() {
         return inputSlot;
     }
 
+    @Override
     public Port getFrom() {
         return outputSlot;
     }
@@ -96,6 +98,7 @@ public class BlockConnectionWidget extends ConnectionWidget implements Link {
         setStroke(stroke);
     }
 
+    @Override
     public void setControlPoints(List<Point> p) {
         this.points = p;
     }

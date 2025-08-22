@@ -38,7 +38,7 @@ public class Timing {
         if (lastValue != 0) {
             // Timer running
             long newValue = System.nanoTime();
-            val += (newValue - lastValue);
+            val += newValue - lastValue;
         }
         return "Timing for " + name + " is: " + val / 1000000 + " ms";
     }

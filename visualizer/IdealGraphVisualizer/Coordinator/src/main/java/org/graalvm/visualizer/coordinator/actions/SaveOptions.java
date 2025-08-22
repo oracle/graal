@@ -119,6 +119,7 @@ public class SaveOptions extends javax.swing.JPanel {
         saveStyle.add(optMultipleFiles);
         org.openide.awt.Mnemonics.setLocalizedText(optMultipleFiles, org.openide.util.NbBundle.getMessage(SaveOptions.class, "SaveOptions.optMultipleFiles.text")); // NOI18N
         optMultipleFiles.addItemListener(new java.awt.event.ItemListener() {
+            @Override
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
                 optMultipleFilesItemStateChanged(evt);
             }
@@ -126,6 +127,7 @@ public class SaveOptions extends javax.swing.JPanel {
 
         org.openide.awt.Mnemonics.setLocalizedText(cbPromptNames, org.openide.util.NbBundle.getMessage(SaveOptions.class, "SaveOptions.cbPromptNames.text")); // NOI18N
         cbPromptNames.addItemListener(new java.awt.event.ItemListener() {
+            @Override
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
                 cbPromptNamesItemStateChanged(evt);
             }

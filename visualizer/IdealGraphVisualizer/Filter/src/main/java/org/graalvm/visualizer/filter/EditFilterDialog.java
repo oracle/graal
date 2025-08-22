@@ -73,6 +73,7 @@ public class EditFilterDialog extends javax.swing.JDialog {
 
         okButton.setText(org.openide.util.NbBundle.getMessage(EditFilterDialog.class, "jButton1.text")); // NOI18N
         okButton.addActionListener(new java.awt.event.ActionListener() {
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelButtonClicked(evt);
                 okButtonClicked(evt);
@@ -81,6 +82,7 @@ public class EditFilterDialog extends javax.swing.JDialog {
 
         cancelButton.setText(org.openide.util.NbBundle.getMessage(EditFilterDialog.class, "jButton2.text")); // NOI18N
         cancelButton.addActionListener(new java.awt.event.ActionListener() {
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelButtonClicked(evt);
             }

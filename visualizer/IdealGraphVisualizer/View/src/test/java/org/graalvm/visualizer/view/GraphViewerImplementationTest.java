@@ -177,6 +177,7 @@ public class GraphViewerImplementationTest {
         public void removeDiagramViewerListener(DiagramViewerListener l) {
         }
 
+        @Override
         public Set<InputNode> nodesForFigure(Figure f) {
             return Collections.emptySet();
         }

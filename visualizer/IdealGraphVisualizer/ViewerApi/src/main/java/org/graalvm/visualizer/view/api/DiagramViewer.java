@@ -56,6 +56,7 @@ public interface DiagramViewer extends InputGraphProvider {
 
     public void paint(Graphics2D svgGenerator);
 
+    @Override
     public Lookup getLookup();
 
     public JComponent createSatelliteView();

@@ -922,7 +922,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         private static Object getLookupKey(Object key) {
             // Collections must be converted to a String early since they can be mutated after
             // being inserted into the map.
-            return (key instanceof Collection) ? key.toString() : key;
+            return key instanceof Collection ? key.toString() : key;
         }
 
         Character get(Object initialKey, int type) {

@@ -133,7 +133,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 
     private final ChangedEvent<DiagramViewModel> changedEvent = new ChangedEvent<>(this);
 
-    private final ChangedListener<Filters> filtersChanged = (s) -> {
+    private final ChangedListener<Filters> filtersChanged = s -> {
         LOG.log(Level.FINE, "Filters changed.");
         propSupport.firePropertyChange(PROP_FILTERS, null, null);
         diagramChanged(true);
@@ -244,7 +244,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
                 newModel, changed, colorChanged, groupChanged, diagramChanged
         });
         boolean[] alreadyFired = new boolean[1];
-        ChangedListener<DiagramViewModel> cl = (e) -> {
+        ChangedListener<DiagramViewModel> cl = e -> {
             alreadyFired[0] = true;
         };
         getChangedEvent().addListener(cl);
@@ -302,7 +302,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
         synchronized (newModel.sync) {
             d2 = newModel.diagram;
         }
-        return (d1 != d2);
+        return d1 != d2;
     }
 
     public boolean getShowBlocks() {
@@ -435,7 +435,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 
         diagramChangedEvent = new ChangedEvent<>(this);
 
-        graphPeerModel.addPropertyChangeListener(PROP_SELECTED_GRAPH, (evt) -> {
+        graphPeerModel.addPropertyChangeListener(PROP_SELECTED_GRAPH, evt -> {
             if (DiagramViewModel.this.hasScriptFilter()) {
                 LOG.log(Level.FINE, "Graph changed, clearing Scripts.");
                 filters.setScriptFilter(null, null, false);
@@ -443,7 +443,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
             }
         });
         // refire certain events from the main model:
-        graphPeerModel.addPropertyChangeListener(RangeSliderModel.PROP_POSITIONS, (evt)
+        graphPeerModel.addPropertyChangeListener(RangeSliderModel.PROP_POSITIONS, evt
                 -> propSupport.firePropertyChange(RangeSliderModel.PROP_POSITIONS, evt.getOldValue(), evt.getNewValue()));
     }
 
@@ -477,7 +477,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
             return Collections.unmodifiableSet(hiddenCurrentGraphNodes);
         }
         final InputGraph currentGraph = getGraphToView();
-        return hiddenCurrentGraphNodes = hiddenNodes.stream().map((id) -> currentGraph.getNode(id)).collect(Collectors.toSet());
+        return hiddenCurrentGraphNodes = hiddenNodes.stream().map(id -> currentGraph.getNode(id)).collect(Collectors.toSet());
     }
 
     @Override
@@ -534,7 +534,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 //        allNodes.removeAll(nodes.stream().map(n -> n.getId()).collect(Collectors.toList()));
         Diagram d = getDiagramToView();
 
-        Collection<Integer> nonRepresentedNodes = nodes.stream().filter((n) -> !d.getFigure(n).isPresent()).collect(Collectors.toList());
+        Collection<Integer> nonRepresentedNodes = nodes.stream().filter(n -> !d.getFigure(n).isPresent()).collect(Collectors.toList());
         InputGraph g = getGraphToView();
         for (Integer id : nonRepresentedNodes) {
             InputNode in = g.getNode(id);
@@ -549,8 +549,8 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
             }
         }
 
-        Set<Integer> aggregatedNodes = nodes.stream().filter((n) -> !d.getFigure(n).isPresent()).flatMap((in) -> {
-            return d.forSource(in).stream().filter((f) -> f instanceof Slot).flatMap((s) -> ((Slot) s).getFigure().getSource().getSourceNodes().stream().map(n -> n.getId()));
+        Set<Integer> aggregatedNodes = nodes.stream().filter(n -> !d.getFigure(n).isPresent()).flatMap(in -> {
+            return d.forSource(in).stream().filter(f -> f instanceof Slot).flatMap(s -> ((Slot) s).getFigure().getSource().getSourceNodes().stream().map(n -> n.getId()));
         }).collect(Collectors.toSet());
         allNodes.removeAll(aggregatedNodes);
         setHiddenNodes(allNodes);
@@ -884,7 +884,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 
     private void finalizeTasks(final List<W> tasks, Diagram finishedDiagram, boolean changed) {
         if (changed) {
-            tasks.add(new W((d) -> fireDiagramChanged(), true));
+            tasks.add(new W(d -> fireDiagramChanged(), true));
         }
         if (tasks.isEmpty()) {
             LOG.log(Level.FINE, "No Diagram tasks.");

@@ -29,8 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.*;
-
 import org.graalvm.visualizer.data.serialization.lazy.NetworkStreamContent;
 import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
 import org.openide.modules.Places;
@@ -56,15 +54,6 @@ public class Client implements Runnable {
         this.rootDocumentFactory = rootDocumentFactory;
         this.loader = loadProcessor;
         this.monitor = monitor;
-    }
-
-    /**
-     * Model operations should happen in a dedicated thread, AWT right now.
-     *
-     * @param r
-     */
-    private void runInAWT(Runnable r) {
-        SwingUtilities.invokeLater(r);
     }
 
     private static final AtomicInteger clientId = new AtomicInteger();

@@ -162,11 +162,6 @@ public class CustomFilter extends AbstractFilter {
         return sb.toString();
     }
 
-    private static final List<String> parameters = Arrays.asList(
-            PARAM_IO, // NOI18N
-            PARAM_GRAPH // NOI18N
-    );
-
     private static class H extends WeakReference<FilterEnvironment> {
         final PreparedScript prep;
 

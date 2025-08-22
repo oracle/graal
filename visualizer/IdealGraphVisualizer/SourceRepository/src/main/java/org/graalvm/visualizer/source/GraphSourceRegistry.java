@@ -92,7 +92,7 @@ class GraphSourceRegistry {
         return lkp;
     }
 
-    synchronized static void _testReset() {
+    static synchronized void _testReset() {
         FileRegistry._testReset();
         INSTANCE = new GraphSourceRegistry(FileRegistry.getInstance());
     }

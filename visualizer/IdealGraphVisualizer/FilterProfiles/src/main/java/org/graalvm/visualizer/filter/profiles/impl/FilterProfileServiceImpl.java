@@ -358,6 +358,7 @@ public class FilterProfileServiceImpl implements ProfileService, ProfileStorage 
         return defaultProfileFolder;
     }
 
+    @Override
     public FileObject getProfilesRoot() {
         return profilesRoot;
     }

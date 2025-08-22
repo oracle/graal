@@ -357,7 +357,7 @@ public class ModelBuilder implements Builder {
     public static String makeGraphName(int dumpId, String format, Object[] args) {
         assert format != null && args != null;
         if (args.length == 0) {
-            return (dumpId < 0) ? format : (dumpId + ": " + format);
+            return dumpId < 0 ? format : (dumpId + ": " + format);
         }
         Object[] tmpArgs = args.clone();
         for (int i = 0; i < args.length; ++i) {
@@ -376,7 +376,7 @@ public class ModelBuilder implements Builder {
                 tmpArgs[i] = s;
             }
         }
-        return (dumpId < 0) ? String.format(format, tmpArgs) : (dumpId + ": " + String.format(format, tmpArgs));
+        return dumpId < 0 ? String.format(format, tmpArgs) : (dumpId + ": " + String.format(format, tmpArgs));
     }
 
     @SuppressWarnings("unused")

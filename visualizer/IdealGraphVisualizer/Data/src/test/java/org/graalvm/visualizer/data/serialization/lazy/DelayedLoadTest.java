@@ -156,6 +156,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
                 this.inc = inc;
             }
 
+            @Override
             public void run() {
                 running.release();
                 List<? extends FolderElement> x = lg.getElements();
@@ -282,7 +283,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
             }
         });
 
-        mb.groupConsumer = (g) -> {
+        mb.groupConsumer = g -> {
             try {
                 // this group SHOULD be already reported AND present, but must wait
                 // until all events arrive
@@ -334,7 +335,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
         };
         AtomicInteger itemCount = new AtomicInteger(0);
         Semaphore sem = new Semaphore(0);
-        parent.getChangedEvent().addListener((g) -> {
+        parent.getChangedEvent().addListener(g -> {
             // should get some change events
             itemCount.set(g.getElements().size());
             sem.release();
@@ -432,7 +433,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
 
         AtomicInteger itemCount = new AtomicInteger(0);
         Semaphore sem = new Semaphore(0);
-        parent.getChangedEvent().addListener((g) -> {
+        parent.getChangedEvent().addListener(g -> {
             // should get some change events
             itemCount.set(g.getElements().size());
             sem.release();
@@ -557,7 +558,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
             return freezeChannel;
         };
         Semaphore start = new Semaphore(0);
-        checkDocument.getChangedEvent().addListener((e) -> start.release());
+        checkDocument.getChangedEvent().addListener(e -> start.release());
 
         SingleGroupBuilder.setLargeEntryThreshold(300);
         Task t = PARALLEL_LOAD.post(() -> {

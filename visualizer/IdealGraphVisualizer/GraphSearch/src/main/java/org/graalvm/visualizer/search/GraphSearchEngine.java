@@ -89,10 +89,12 @@ public class GraphSearchEngine implements SearchController {
         return model;
     }
 
+    @Override
     public GraphContainer getGraphContainer() {
         return graphList;
     }
 
+    @Override
     public Set<InputGraph> getSearchedGraphs() {
         Set<InputGraph> result = new HashSet<>();
         synchronized (this) {
@@ -398,6 +400,7 @@ public class GraphSearchEngine implements SearchController {
         }
     }
 
+    @Override
     public InputGraph getInitialGraph() {
         return initialGraph;
     }

@@ -306,7 +306,7 @@ class SaveOperation {
             } else {
                 nonSessionsSelected = true;
             }
-            sessionData.computeIfAbsent(gd, (d) -> new ArrayList<>()).add(f);
+            sessionData.computeIfAbsent(gd, d -> new ArrayList<>()).add(f);
         }
         for (List<Folder> v : sessionData.values()) {
             retainJustParents(v);
@@ -466,7 +466,6 @@ class SaveOperation {
         for (GraphDocument doc : documentOrder) {
             for (Folder g : sessionData.get(doc)) {
                 if (g instanceof GraphDocument) {
-                    GraphDocument gd = (GraphDocument) g;
                     g.getElements().forEach(item -> {
                         if (item instanceof Folder) {
                             nd.addElement(item);

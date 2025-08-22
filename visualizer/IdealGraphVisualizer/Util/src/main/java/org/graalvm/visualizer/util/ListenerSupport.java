@@ -91,6 +91,7 @@ public class ListenerSupport {
         /**
          * Unregisters listener from the source. Must synchronize into EDT
          */
+        @Override
         public void run() {
             if (SwingUtilities.isEventDispatchThread()) {
                 source.removeListener(this);

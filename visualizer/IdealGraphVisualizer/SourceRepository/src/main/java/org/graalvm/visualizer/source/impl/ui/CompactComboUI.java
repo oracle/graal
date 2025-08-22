@@ -61,7 +61,7 @@ final class CompactComboUI extends MetalComboBoxUI {
             }
 
             if ((px + pw) > (r.width - px)) {
-                px -= (r.width - pw);
+                px -= r.width - pw;
             }
             Rectangle result = new Rectangle(px, py, pw, ph);
             return result;

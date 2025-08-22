@@ -53,7 +53,6 @@ import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntUnaryOperator;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.graalvm.visualizer.settings.layout.LayoutSettings.BOTH_SORT;
@@ -95,8 +94,6 @@ import static org.graalvm.visualizer.settings.layout.LayoutSettings.UNREVERSE_VI
 import static org.graalvm.visualizer.settings.layout.LayoutSettings.X_ASSIGN_SWEEP_COUNT;
 
 public class HierarchicalLayoutManager implements LayoutManager {
-
-    private static final Logger LOG = Logger.getLogger(HierarchicalLayoutManager.class.getName());
 
     public static final boolean TRACE = false;
     public static final boolean CHECK = false;
@@ -179,9 +176,9 @@ public class HierarchicalLayoutManager implements LayoutManager {
         public int loadCrossingNumber(boolean up, LayoutNode source) {
             int count = 0;
             if (up) {
-                count = succs.stream().map((e) -> e.loadCrossingNumber(up, source)).reduce(count, Integer::sum);
+                count = succs.stream().map(e -> e.loadCrossingNumber(up, source)).reduce(count, Integer::sum);
             } else {
-                count = preds.stream().map((e) -> e.loadCrossingNumber(up, source)).reduce(count, Integer::sum);
+                count = preds.stream().map(e -> e.loadCrossingNumber(up, source)).reduce(count, Integer::sum);
             }
             return count;
         }
@@ -738,7 +735,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 int width = n.getWholeWidth();
                 if (curX + width > rightSide) {
                     curX = oldSize.x;
-                    curY -= (maxHeight + layerOffset);
+                    curY -= maxHeight + layerOffset;
                     maxHeight = 0;
                 }
                 Vertex v = n.vertex;
@@ -1322,7 +1319,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         @Override
         public boolean addAll(Collection<? extends LayoutNode> c) {
-            c.forEach((n) -> add0(n));
+            c.forEach(n -> add0(n));
             return super.addAll(c);
         }
 
@@ -1556,7 +1553,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     updateFromLeft(index);
                 }
             } else {
-                int x = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : centerDiffs[index];
+                int x = isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X) ? 0 : centerDiffs[index];
                 for (LayoutNode n : layers[index]) {
                     n.x = x;
                     x += n.getWholeWidth() + offset;
@@ -1568,7 +1565,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             LayoutLayer layer = layers[index];
             int middleIndex = layer.size() / 2;
             LayoutNode n = layer.get(middleIndex);
-            int add = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : (centerDiffs[index] / (layer.size() + 1));
+            int add = isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X) ? 0 : (centerDiffs[index] / (layer.size() + 1));
             int x = n.x;
             for (int i = middleIndex - 1; i >= 0; --i) {
                 n = layer.get(i);
@@ -1586,7 +1583,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private void updateFromLeft(int index) {
             LayoutLayer layer = layers[index];
             LayoutNode n = layer.get(0);
-            int add = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : (centerDiffs[index] / (layer.size() + 1));
+            int add = isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X) ? 0 : (centerDiffs[index] / (layer.size() + 1));
             int x = n.getRightSide() + offset;
             for (int i = 0; i < layer.size(); ++i) {
                 n = layer.get(i);
@@ -1675,7 +1672,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 layer = layers[index];
             }
             boolean properCrossing = !isDefaultLayout && setting.get(Boolean.class, PROPER_CROSSING_CLOSEST_NODE);
-            int diff = (!isDefaultLayout && setting.get(Boolean.class, UNKNOWN_CROSSING_NUMBER)) ? 1 : 0;
+            int diff = !isDefaultLayout && setting.get(Boolean.class, UNKNOWN_CROSSING_NUMBER) ? 1 : 0;
             LayoutNode prev;
             LayoutNode next;
             for (int i = 0; i < layer.size(); i++) {
@@ -1753,10 +1750,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
         protected void run() {
             final IntUnaryOperator layerDiff;
             if (isDefaultLayout || !setting.get(Boolean.class, SPAN_BY_ANGLE)) {
-                layerDiff = (in) -> (int) (Math.sqrt(in) * 2);
+                layerDiff = in -> (int) (Math.sqrt(in) * 2);
             } else {
                 final double coef = Math.tan(Math.toRadians(setting.get(Integer.class, MIN_EDGE_ANGLE)));
-                layerDiff = (in) -> (int) (in * coef);
+                layerDiff = in -> (int) (in * coef);
             }
             int curY = 0;
             for (LayoutLayer layer : layers) {
@@ -2047,7 +2044,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
             layerCount = z - 1;
             for (LayoutNode n : nodes) {
-                n.layer = (layerCount - 1 - n.layer);
+                n.layer = layerCount - 1 - n.layer;
             }
         }
 
@@ -2102,7 +2099,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             layerCount = z - 1;
 
             for (LayoutNode n : nodes) {
-                n.layer = (layerCount - 1 - n.layer);
+                n.layer = layerCount - 1 - n.layer;
             }
         }
 
@@ -2127,7 +2124,6 @@ public class HierarchicalLayoutManager implements LayoutManager {
             lay.addAll(Arrays.asList(HierarchicalLayoutManager.this.layers));
             double avg = lay.stream().mapToInt(l -> l.getMinimalWidth()).sum() / layerCount;
             boolean up, down;
-            LayoutNode node = null;
             final boolean isQuick = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_QUICK);
             while (!lay.isEmpty()) {
                 if (cancelled.get()) {
@@ -2479,11 +2475,11 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 nodes.forEach(n -> DFS(n, false));
             } else {
                 //first search from vip starting nodes
-                nodes.stream().filter((n) -> n.preds.stream().allMatch((e) -> !e.vip) && n.succs.stream().anyMatch((e) -> e.vip))
+                nodes.stream().filter(n -> n.preds.stream().allMatch(e -> !e.vip) && n.succs.stream().anyMatch(e -> e.vip))
                         .forEach(n -> DFS(n, true));
                 if (visited.size() < nodes.size()) {
                     //second look from leftover nodes
-                    nodes.stream().filter((n) -> !visited.contains(n))
+                    nodes.stream().filter(n -> !visited.contains(n))
                             .sorted((n1, n2) -> Integer.compare(n1.preds.size(), n2.preds.size()))
                             .forEach(n -> DFS(n, false));
                 }

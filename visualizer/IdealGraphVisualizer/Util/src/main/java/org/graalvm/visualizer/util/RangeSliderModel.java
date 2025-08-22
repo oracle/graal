@@ -141,7 +141,7 @@ public class RangeSliderModel implements ChangedEventProvider<RangeSliderModel> 
         }
     }
 
-    protected synchronized final boolean getPositionsDiffers(RangeSliderModel model) {
+    protected final synchronized boolean getPositionsDiffers(RangeSliderModel model) {
         return getPositionsDiffers(model.firstPosition, model.secondPosition) || !positions.equals(model.positions);
     }
 
@@ -149,7 +149,7 @@ public class RangeSliderModel implements ChangedEventProvider<RangeSliderModel> 
         return (firstPosition != this.firstPosition) || (secondPosition != this.secondPosition);
     }
 
-    protected synchronized final boolean getColorsDiffers(RangeSliderModel model) {
+    protected final synchronized boolean getColorsDiffers(RangeSliderModel model) {
         return !this.colors.equals(model.colors);
     }
 

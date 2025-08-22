@@ -74,6 +74,7 @@ public class FileContent implements ReadableByteChannel, CachedContent, AutoClos
     /**
      * Does nothing
      */
+    @Override
     public boolean resetCache(long offset) {
         return false;
     }
@@ -176,7 +177,6 @@ public class FileContent implements ReadableByteChannel, CachedContent, AutoClos
 
             @Override
             public void close() throws IOException {
-                boolean c = closed;
                 closed = true;
                 if (!closed) {
                     FileContent.this.subchannelClosed();
@@ -188,7 +188,7 @@ public class FileContent implements ReadableByteChannel, CachedContent, AutoClos
     /**
      * Channel which provides contents from a series of buffers.
      */
-    public final static class BufferListChannel implements ReadableByteChannel {
+    public static final class BufferListChannel implements ReadableByteChannel {
         private final Callable<Void> closeHandler;
         private Iterator<ByteBuffer> buffers;
         private ByteBuffer current;

@@ -77,7 +77,7 @@ public class SliderPanel extends javax.swing.JPanel {
         this.graphTypes = Lookup.getDefault().lookup(GraphTypes.class);
 
         initComponents();
-        timeline.addPropertyChangeListener((pe) -> {
+        timeline.addPropertyChangeListener(pe -> {
             if (TimelineModel.PROP_PARTITIONS.equals(pe.getPropertyName())) {
                 updateSliders();
             }

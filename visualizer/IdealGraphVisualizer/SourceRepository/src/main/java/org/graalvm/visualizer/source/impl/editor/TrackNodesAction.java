@@ -123,11 +123,11 @@ public class TrackNodesAction extends BaseAction implements Presenter.Toolbar, C
     }
 
     JEditorPane getPane() {
-        return (paneRef != null ? paneRef.get() : null);
+        return paneRef != null ? paneRef.get() : null;
     }
 
     JToggleButton getToggleButton() {
-        return (toggleButtonRef != null ? toggleButtonRef.get() : null);
+        return toggleButtonRef != null ? toggleButtonRef.get() : null;
     }
 
     void updateState() {
@@ -235,6 +235,6 @@ public class TrackNodesAction extends BaseAction implements Presenter.Toolbar, C
         GraphSelections sel = active.getSelections();
 
         SelectOrExtractNodesAction.selectFirstOrNext(active.getModel().getDiagramToView(), active, nodes, false, true,
-                (newSel) -> active.getSelections().setSelectedNodes(newSel));
+                newSel -> active.getSelections().setSelectedNodes(newSel));
     }
 }

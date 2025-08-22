@@ -71,5 +71,6 @@ public abstract class FilterEnvironment implements AutoCloseable {
         return globals;
     }
 
+    @Override
     public abstract void close() throws IOException;
 }

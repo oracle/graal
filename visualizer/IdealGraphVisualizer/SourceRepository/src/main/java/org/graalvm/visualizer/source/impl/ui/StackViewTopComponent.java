@@ -186,17 +186,6 @@ public final class StackViewTopComponent extends TopComponent
         }
     }
 
-    private static String getHTMLColorString(Color color) {
-        String red = Integer.toHexString(color.getRed());
-        String green = Integer.toHexString(color.getGreen());
-        String blue = Integer.toHexString(color.getBlue());
-
-        return "#" // NOI18N
-                + (red.length() == 1 ? "0" + red : red) // NOI18N
-                + (green.length() == 1 ? "0" + green : green) // NOI18N
-                + (blue.length() == 1 ? "0" + blue : blue); // NOI18N
-    }
-
     @NbBundle.Messages({
             "# {0} - node ID",
             "# {1} - node name",
@@ -254,7 +243,7 @@ public final class StackViewTopComponent extends TopComponent
                         icon = ImageUtilities.image2Icon(ln.getIcon(BeanInfo.ICON_COLOR_16x16));
                     }
                     JMenuItem mi = new JMenuItem(lng.getDisplayName(), icon);
-                    mi.addActionListener((e) -> {
+                    mi.addActionListener(e -> {
 
                         NodeStack.Frame frame = findCurrentFrame();
                         NodeStack.Frame nframe = frame == null ? null : frame.findPeerFrame(l);
@@ -324,6 +313,7 @@ public final class StackViewTopComponent extends TopComponent
         attach.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         attach.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         attach.addActionListener(new java.awt.event.ActionListener() {
+            @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 attachActionPerformed(evt);
             }

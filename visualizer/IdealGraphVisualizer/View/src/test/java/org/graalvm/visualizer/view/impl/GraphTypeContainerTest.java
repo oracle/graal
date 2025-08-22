@@ -39,9 +39,9 @@ public class GraphTypeContainerTest extends NbTestCase {
     private final Group topGroup;
 
     private static Predicate<InputGraph> matcher
-            = (graph) -> true;
+            = graph -> true;
     private static Predicate<InputGraph> matcher2
-            = (graph) -> graph.getName().contains("init");
+            = graph -> graph.getName().contains("init");
 
     public GraphTypeContainerTest(String name) throws Exception {
         super(name);

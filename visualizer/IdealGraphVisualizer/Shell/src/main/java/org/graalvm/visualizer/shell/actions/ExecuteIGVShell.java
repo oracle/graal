@@ -102,8 +102,8 @@ public final class ExecuteIGVShell implements ActionListener {
 
         // first try to find a suitable script editor active in some Mode
         Optional<TopComponent> existing = WindowManager.getDefault().getModes().stream()
-                .map((m) -> m.getSelectedTopComponent())
-                .filter((tc) -> containsEditor(tc) && getScriptFile(tc) != null).findAny();
+                .map(m -> m.getSelectedTopComponent())
+                .filter(tc -> containsEditor(tc) && getScriptFile(tc) != null).findAny();
         if (existing.isPresent()) {
             TopComponent target = existing.get();
             target.requestActive();
@@ -129,7 +129,7 @@ public final class ExecuteIGVShell implements ActionListener {
             DataObject scrap = ShellUtils.createScrapScript(selected);
             Openable o = scrap.getLookup().lookup(Openable.class);
             if (o != null) {
-                ShellUtils.onScrapMaterialize(scrap.getPrimaryFile(), (f) -> {
+                ShellUtils.onScrapMaterialize(scrap.getPrimaryFile(), f -> {
                     TopComponent tc = WindowManager.getDefault().findTopComponent(ScriptNavigatorTopComponent.ID);
                     if (tc != null) {
                         tc.open();
