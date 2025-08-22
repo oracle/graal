@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter.constantpool;
+package com.oracle.svm.interpreter;
 
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
@@ -32,9 +32,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.svm.interpreter.CremaLinkResolver;
-import com.oracle.svm.interpreter.CremaRuntimeAccess;
-import com.oracle.svm.interpreter.SemanticJavaException;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -87,6 +84,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Name> className = this.className(classIndex);
             type = SymbolsSupport.getTypes().fromClassNameEntry(className);
         } else if (entry instanceof UnresolvedJavaType unresolvedJavaType) {
+            Throwable cause = unresolvedJavaType.getCause();
+            if (cause != null) {
+                throw uncheckedThrow(cause);
+            }
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
         } else {
@@ -103,7 +104,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             // Just throw the exception and don't prevent these classes from being loaded for
             // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
             // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-            this.cachedEntries[classIndex] = e;
+            this.cachedEntries[classIndex] = UnresolvedJavaType.create(type.toString(), e);
             throw e;
         }
     }
@@ -126,6 +127,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             int memberClassIndex = this.memberClassIndex(fieldIndex);
             holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
         } else if (entry instanceof UnresolvedJavaField unresolvedJavaField) {
+            Throwable cause = unresolvedJavaField.getCause();
+            if (cause != null) {
+                throw uncheckedThrow(cause);
+            }
             // CP comes from build-time JVMCI type, derive it from UnresolvedJavaField.
             fieldName = SymbolsSupport.getNames().getOrCreate(unresolvedJavaField.getName());
             fieldType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaField.getType().getName());
@@ -159,6 +164,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             int memberClassIndex = this.memberClassIndex(methodIndex);
             holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
+            Throwable cause = unresolvedJavaMethod.getCause();
+            if (cause != null) {
+                throw uncheckedThrow(cause);
+            }
             // CP comes from build-time JVMCI type, derive it from UnresolvedJavaMethod.
             methodName = SymbolsSupport.getNames().getOrCreate(unresolvedJavaMethod.getName());
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
@@ -193,6 +202,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             int memberClassIndex = this.memberClassIndex(interfaceMethodIndex);
             holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
+            Throwable cause = unresolvedJavaMethod.getCause();
+            if (cause != null) {
+                throw uncheckedThrow(cause);
+            }
             // CP comes from build-time JVMCI type, derive it from UnresolvedJavaMethod.
             methodName = SymbolsSupport.getNames().getOrCreate(unresolvedJavaMethod.getName());
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
