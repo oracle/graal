@@ -302,10 +302,6 @@ public final class NativeImageHeap implements ImageHeap {
         return hUniverse.getSnippetReflection().asObject(Object.class, constant);
     }
 
-    private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
-        return hConstantReflection.readFieldValue(field, receiver, true);
-    }
-
     private void addStaticFields() {
         addObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
         addObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
@@ -318,7 +314,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
-                addConstant(readConstantField(field, null), false, field);
+                addConstant(hConstantReflection.readConstantField(field, null), false, field);
             }
         }
     }
@@ -592,7 +588,7 @@ public final class NativeImageHeap implements ImageHeap {
                     if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
-                            JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant, true);
+                            JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
                                     fieldRelocatable = isRelocatableConstant(fieldValueConstant);

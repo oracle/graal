@@ -178,11 +178,6 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public boolean isValueAvailable() {
-        return true;
-    }
-
-    @Override
     public int getInstalledLayerNum() {
         /*
          * GR-62500: Layered images are not yet supported for runtime compilation.
