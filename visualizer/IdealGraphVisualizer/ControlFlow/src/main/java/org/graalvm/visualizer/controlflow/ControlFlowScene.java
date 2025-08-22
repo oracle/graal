@@ -22,14 +22,16 @@
  */
 package org.graalvm.visualizer.controlflow;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
 
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.netbeans.api.visual.action.*;

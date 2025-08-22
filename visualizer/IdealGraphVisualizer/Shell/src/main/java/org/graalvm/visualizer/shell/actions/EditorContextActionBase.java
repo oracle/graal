@@ -22,11 +22,14 @@
  */
 package org.graalvm.visualizer.shell.actions;
 
-import java.awt.*;
+import java.awt.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.*;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.Icon;
+import javax.swing.JMenuItem;
 
 import org.graalvm.visualizer.data.SuppressFBWarnings;
 import org.netbeans.spi.editor.AbstractEditorAction;

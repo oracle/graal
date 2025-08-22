@@ -22,12 +22,13 @@
  */
 package org.graalvm.visualizer.bytecodes;
 
-import java.awt.*;
+import java.awt.BorderLayout;
 import java.io.Serializable;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
-import javax.swing.*;
+import javax.swing.GroupLayout;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 

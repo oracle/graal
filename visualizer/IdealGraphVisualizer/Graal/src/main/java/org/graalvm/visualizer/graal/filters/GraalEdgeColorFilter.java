@@ -25,7 +25,7 @@ package org.graalvm.visualizer.graal.filters;
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_CLASS;
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.Collection;
 import java.util.HashMap;
 

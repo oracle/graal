@@ -55,7 +55,8 @@ import org.openide.util.lookup.ProxyLookup;
 import org.openide.windows.IOProvider;
 import org.openide.windows.InputOutput;
 
-import javax.swing.*;
+import javax.swing.Action;
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;

@@ -26,7 +26,7 @@ package org.graalvm.visualizer.filter.profiles.impl;
 import java.io.IOException;
 import java.util.Collections;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
