@@ -64,6 +64,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, RequestFilter> monitorContendedEnteredRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorWaitRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorWaitedRequests = new HashMap<>();
+    private final HashMap<Integer, FieldRef> fieldRequests = new HashMap<>();
 
     // The connection field is null only until the connection is established. Thus, we need
     // to guard any attempted usage prior to that, e.g. vm dies event.
@@ -108,6 +109,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         monitorContendedEnteredRequests.clear();
         monitorWaitedRequests.clear();
         monitorWaitRequests.clear();
+        removeFieldRequests();
 
         /*
          * We don't null the connection field here, since there's a race condition between preparing
@@ -158,6 +160,26 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public void clearAllBreakpointRequests() {
         breakpointRequests.clear();
+    }
+
+    @Override
+    public void addFieldRequest(FieldBreakpointInfo info) {
+        FieldRef field = info.getField();
+        field.addFieldBreakpointInfo(info);
+        fieldRequests.put(info.getRequestId(), field);
+    }
+
+    @Override
+    public void removeFieldRequest(int requestId, FieldRef field) {
+        field.removeFieldBreakpointInfo(requestId);
+        fieldRequests.remove(requestId, field);
+    }
+
+    private void removeFieldRequests() {
+        for (Map.Entry<Integer, FieldRef> entry : fieldRequests.entrySet()) {
+            entry.getValue().removeFieldBreakpointInfo(entry.getKey());
+        }
+        fieldRequests.clear();
     }
 
     @Override
