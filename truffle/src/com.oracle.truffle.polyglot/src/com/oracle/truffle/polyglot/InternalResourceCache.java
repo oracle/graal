@@ -154,6 +154,10 @@ final class InternalResourceCache {
         }
     }
 
+    InternalResource getInternalResource() {
+        return resourceFactory.get();
+    }
+
     void initializeOwningRoot(InternalResourceRoots.Root root) {
         assert owningRoot == null;
         assert path == null;

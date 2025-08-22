@@ -86,7 +86,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 @RunWith(Parameterized.class)
 public class SandboxPolicyTest {
 
-    private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library found for language";
+    private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library is available for the requested language(s)";
     private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "but the current Truffle runtime only supports the TRUSTED or CONSTRAINED sandbox policies.";
 
     private final Configuration configuration;
