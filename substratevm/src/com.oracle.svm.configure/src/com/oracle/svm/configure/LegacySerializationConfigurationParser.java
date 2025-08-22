@@ -96,7 +96,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         }
 
         NamedConfigurationTypeDescriptor targetSerializationClass = NamedConfigurationTypeDescriptor.fromJSONName(asString(data.get(NAME_KEY)));
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;

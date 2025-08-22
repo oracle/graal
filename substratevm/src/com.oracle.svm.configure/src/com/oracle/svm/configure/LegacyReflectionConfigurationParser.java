@@ -76,7 +76,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          */
         boolean isType = type.get().definedAsType();
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, false);
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;
