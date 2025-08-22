@@ -65,6 +65,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -1703,52 +1704,61 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
-        addDefaultValue(polyglot, languageInstance, valueCache, false);
-        addDefaultValue(polyglot, languageInstance, valueCache, "");
-        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("",
-                        TruffleString.Encoding.UTF_16));
-        addDefaultValue(polyglot, languageInstance, valueCache, 'a');
-        addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
-        addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);
-        addDefaultValue(polyglot, languageInstance, valueCache, 0);
-        addDefaultValue(polyglot, languageInstance, valueCache, 0L);
-        addDefaultValue(polyglot, languageInstance, valueCache, 0F);
-        addDefaultValue(polyglot, languageInstance, valueCache, 0D);
+        addDefaultValue(polyglot, languageInstance, valueCache, Boolean.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, String.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Character.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Byte.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Short.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Integer.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Long.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Float.class);
+        addDefaultValue(polyglot, languageInstance, valueCache, Double.class);
     }
 
-    static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Object primitive) {
-        valueCache.put(primitive.getClass(), new PrimitiveValue(polyglot, languageInstance, primitive));
+    static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Class<?> type) {
+        valueCache.put(type, new PrimitiveValue(polyglot, languageInstance));
     }
 
     static final class PrimitiveValue extends PolyglotValueDispatch {
 
-        private final InteropLibrary interop;
+        private InteropLibrary interop;
         private final PolyglotLanguage language;
 
-        private PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance, Object primitiveValue) {
+        private PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance) {
             super(impl, instance);
             /*
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
              */
-            this.interop = InteropLibrary.getUncached(primitiveValue);
             this.language = instance != null ? instance.language : null;
+        }
+
+        private InteropLibrary getInterop(Object receiver) {
+            InteropLibrary l = this.interop;
+            if (l == null) {
+                this.interop = l = InteropLibrary.getUncached(receiver);
+            }
+            // this assertion does not work with aux engine caching enabled
+            // the uncached instance might actually be different there
+            assert TruffleOptions.AOT || l == InteropLibrary.getUncached(receiver);
+            return l;
         }
 
         @Override
         public boolean isString(Object languageContext, Object receiver) {
-            return interop.isString(receiver);
+            return getInterop(receiver).isString(receiver);
         }
 
         @Override
         public boolean isBoolean(Object languageContext, Object receiver) {
-            return interop.isBoolean(receiver);
+            return getInterop(receiver).isBoolean(receiver);
         }
 
         @Override
         public boolean asBoolean(Object languageContext, Object receiver) {
             try {
-                return interop.asBoolean(receiver);
+                return getInterop(receiver).asBoolean(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asBoolean(languageContext, receiver);
             }
@@ -1757,7 +1767,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public String asString(Object languageContext, Object receiver) {
             try {
-                return interop.asString(receiver);
+                return getInterop(receiver).asString(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asString(languageContext, receiver);
             }
@@ -1766,7 +1776,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public byte[] asStringBytes(Object languageContext, Object receiver, int encoding) {
             try {
-                TruffleString s = interop.asTruffleString(receiver);
+                TruffleString s = getInterop(receiver).asTruffleString(receiver);
                 TruffleString.Encoding e = PolyglotImpl.mapStringEncoding(encoding);
                 return s.switchEncodingUncached(e).copyToByteArrayUncached(e);
             } catch (UnsupportedMessageException e) {
@@ -1776,48 +1786,48 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         @Override
         public boolean isNumber(Object languageContext, Object receiver) {
-            return interop.isNumber(receiver);
+            return getInterop(receiver).isNumber(receiver);
         }
 
         @Override
         public boolean fitsInByte(Object languageContext, Object receiver) {
-            return interop.fitsInByte(receiver);
+            return getInterop(receiver).fitsInByte(receiver);
         }
 
         @Override
         public boolean fitsInShort(Object languageContext, Object receiver) {
-            return interop.fitsInShort(receiver);
+            return getInterop(receiver).fitsInShort(receiver);
         }
 
         @Override
         public boolean fitsInInt(Object languageContext, Object receiver) {
-            return interop.fitsInInt(receiver);
+            return getInterop(receiver).fitsInInt(receiver);
         }
 
         @Override
         public boolean fitsInLong(Object languageContext, Object receiver) {
-            return interop.fitsInLong(receiver);
+            return getInterop(receiver).fitsInLong(receiver);
         }
 
         @Override
         public boolean fitsInBigInteger(Object languageContext, Object receiver) {
-            return interop.fitsInBigInteger(receiver);
+            return getInterop(receiver).fitsInBigInteger(receiver);
         }
 
         @Override
         public boolean fitsInFloat(Object languageContext, Object receiver) {
-            return interop.fitsInFloat(receiver);
+            return getInterop(receiver).fitsInFloat(receiver);
         }
 
         @Override
         public boolean fitsInDouble(Object languageContext, Object receiver) {
-            return interop.fitsInDouble(receiver);
+            return getInterop(receiver).fitsInDouble(receiver);
         }
 
         @Override
         public byte asByte(Object languageContext, Object receiver) {
             try {
-                return interop.asByte(receiver);
+                return getInterop(receiver).asByte(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asByte(languageContext, receiver);
             }
@@ -1826,7 +1836,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public short asShort(Object languageContext, Object receiver) {
             try {
-                return interop.asShort(receiver);
+                return getInterop(receiver).asShort(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asShort(languageContext, receiver);
             }
@@ -1835,7 +1845,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public int asInt(Object languageContext, Object receiver) {
             try {
-                return interop.asInt(receiver);
+                return getInterop(receiver).asInt(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asInt(languageContext, receiver);
             }
@@ -1844,7 +1854,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public long asLong(Object languageContext, Object receiver) {
             try {
-                return interop.asLong(receiver);
+                return getInterop(receiver).asLong(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asLong(languageContext, receiver);
             }
@@ -1853,7 +1863,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public BigInteger asBigInteger(Object languageContext, Object receiver) {
             try {
-                return interop.asBigInteger(receiver);
+                return getInterop(receiver).asBigInteger(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asBigInteger(languageContext, receiver);
             }
@@ -1862,7 +1872,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public float asFloat(Object languageContext, Object receiver) {
             try {
-                return interop.asFloat(receiver);
+                return getInterop(receiver).asFloat(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asFloat(languageContext, receiver);
             }
@@ -1871,7 +1881,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public double asDouble(Object languageContext, Object receiver) {
             try {
-                return interop.asDouble(receiver);
+                return getInterop(receiver).asDouble(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asDouble(languageContext, receiver);
             }
