@@ -314,7 +314,7 @@ class PolybenchBenchmarkSuite(
         return ["instrument-image", "instrument-run", "image", "run"]
 
     def extra_image_build_argument(self, benchmark_name, args):
-        return [
+        return super().extra_image_build_argument(benchmark_name, args) + [
             "--link-at-build-time",
             "-H:+AssertInitializationSpecifiedForAllClasses",
             "-H:+GuaranteeSubstrateTypesLinked",
