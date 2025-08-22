@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.object.ext.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getTypeAssumption;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getTypeAssumptionRecord;
 import static org.junit.Assert.assertFalse;
@@ -70,7 +69,6 @@ public class GR52036 {
     @SuppressWarnings("try")
     @Test
     public void testGR52036Reproducer() throws Throwable {
-        assumeExtLayout();
 
         class ObjType1 extends DynamicObject {
             protected ObjType1(Shape shape) {

@@ -46,7 +46,6 @@ import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertShapeFiel
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.isCoreLocation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -142,7 +141,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         Location location2 = object.getShape().getProperty("foo").getLocation();
         assertEquals(Object.class, getLocationType(location2));
         assertLocationFields(location2, 0, 1);
-        assertShapeFields(object, isCoreLocation(location2) ? 1 : 0, 1);
+        assertShapeFields(object, 0, 1);
     }
 
     @Test
@@ -161,7 +160,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         Location location2 = object.getShape().getProperty("foo").getLocation();
         assertEquals(Object.class, getLocationType(location2));
         assertLocationFields(location2, 0, 1);
-        assertShapeFields(object, isCoreLocation(location2) ? 1 : 0, 1);
+        assertShapeFields(object, 0, 1);
     }
 
     @Test

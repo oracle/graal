@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.DebugCounters.shapeCacheExpunged;
+import static com.oracle.truffle.api.object.DebugCounters.shapeCacheWeakKeys;
+
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
@@ -105,7 +108,7 @@ abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap, TrieTra
      * Insert with weakly referenced key.
      */
     public final V putWeakKey(K key, V value) {
-        ShapeImpl.shapeCacheWeakKeys.inc();
+        shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKey(weakKey, value);
     }
@@ -114,7 +117,7 @@ abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap, TrieTra
      * Insert with weakly referenced key, if absent.
      */
     public final V putWeakKeyIfAbsent(K key, V value) {
-        ShapeImpl.shapeCacheWeakKeys.inc();
+        shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKeyIfAbsent(weakKey, value);
     }
@@ -126,7 +129,7 @@ abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap, TrieTra
         for (Reference<? extends V> r; (r = queue.poll()) != null;) {
             if (r instanceof StrongKeyWeakValueEntry<?, ?> entry) {
                 expungeStaleEntry((StrongKeyWeakValueEntry<Object, V>) entry);
-                ShapeImpl.shapeCacheExpunged.inc();
+                shapeCacheExpunged.inc();
             }
         }
     }
