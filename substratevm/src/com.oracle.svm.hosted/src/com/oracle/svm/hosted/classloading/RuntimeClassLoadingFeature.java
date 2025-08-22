@@ -22,50 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.classloading;
 
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport;
 
 @AutomaticallyRegisteredFeature
-public class ClassRegistryFeature implements InternalFeature {
+public class RuntimeClassLoadingFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ClassForNameSupport.respectClassLoader();
+        return RuntimeClassLoading.isSupported();
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(SymbolsFeature.class);
+        return List.of(ClassRegistryFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("com.oracle.svm.espresso.classfile",
-                        "Native Image classes needed for runtime class loading initialized at build time");
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerSubtypeReachabilityHandler((unused, cls) -> onTypeReachable(cls), Object.class);
-    }
-
-    private static void onTypeReachable(Class<?> cls) {
-        if (cls.isArray() || cls.isHidden()) {
-            return;
-        }
-        if (RuntimeClassLoading.isSupported() || ClassForNameSupport.isCurrentLayerRegisteredClass(cls.getName())) {
-            ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(cls.getClassLoader()), cls);
-        }
+        ImageSingletons.add(RuntimeInstanceReferenceMapSupport.class, new RuntimeInstanceReferenceMapSupport());
     }
 }

@@ -29,8 +29,6 @@ import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 import java.security.ProtectionDomain;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -113,10 +111,6 @@ public class RuntimeClassLoading {
     @Fold
     public static boolean isSupported() {
         return Options.RuntimeClassLoading.getValue();
-    }
-
-    public static boolean followReflectionConfiguration() {
-        return ImageSingletons.lookup(ClassLoadingSupport.class).followReflectionConfiguration();
     }
 
     public static Class<?> defineClass(ClassLoader loader, String expectedName, byte[] b, int off, int len, ClassDefinitionInfo info) {

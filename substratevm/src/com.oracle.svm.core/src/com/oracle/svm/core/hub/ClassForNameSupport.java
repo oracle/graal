@@ -63,6 +63,7 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredImageSingleton
@@ -169,6 +170,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         this.previousLayerUnsafe = previousLayerUnsafe;
     }
 
+    @Fold
     public static boolean respectClassLoader() {
         return Options.ClassForNameRespectsClassLoader.getValue();
     }
