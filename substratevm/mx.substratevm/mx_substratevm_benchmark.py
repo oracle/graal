@@ -383,6 +383,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
             return []
+        # Disable assertions due to transient AssertionError when building spring-hello-world image (GR-59889)
+        if benchmark == "spring-hello-world":
+            return []
         return super().build_assertions(benchmark, is_gate)
 
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
