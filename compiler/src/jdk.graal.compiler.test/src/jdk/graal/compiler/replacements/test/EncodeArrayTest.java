@@ -67,7 +67,7 @@ public class EncodeArrayTest extends HotSpotGraalCompilerTest {
     @Test
     public void testStringCodingISO() throws ClassNotFoundException {
         Class<?> klass = Class.forName("java.lang.StringCoding");
-        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeISOArray");
+        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "encodeISOArray0");
         StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 
@@ -100,7 +100,7 @@ public class EncodeArrayTest extends HotSpotGraalCompilerTest {
     @Test
     public void testStringCodingAscii() throws ClassNotFoundException {
         Class<?> klass = Class.forName("java.lang.StringCoding");
-        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeAsciiArray");
+        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "encodeAsciiArray0");
         StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 
@@ -133,7 +133,7 @@ public class EncodeArrayTest extends HotSpotGraalCompilerTest {
     @Test
     public void testISOEncoding() throws ClassNotFoundException {
         Class<?> klass = Class.forName("sun.nio.cs.ISO_8859_1$Encoder");
-        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeISOArray");
+        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "encodeISOArray0");
         StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 

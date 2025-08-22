@@ -2658,7 +2658,7 @@ public class StandardGraphBuilderPlugins {
         });
 
         r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder");
-        r.register(new InvocationPlugin("encodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeISOArray0", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
