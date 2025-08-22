@@ -176,7 +176,7 @@ a series of slots stored on the host stack, or when _materialized_, the frame is
 languages these slots are strongly typed and correspond to the base Java type system with ints, booleans, longs and
 object references etc. Espresso however uses Truffle's _static slots_, which are (somewhat confusingly) both typed and
 untyped at the same time. The Truffle `Frame` interface has an API for reading and writing to static slots which
-distinguishes betwen primitive types (`get/setObjectStatic`, `get/setLongStatic` etc), but the actual primitive type of
+distinguishes between primitive types (`get/setObjectStatic`, `get/setLongStatic` etc), but the actual primitive type of
 a static slot is tracked only when assertions are enabled i.e. in debug mode. You can see some of this code in Truffle's
 `FrameWithoutBoxing` class. In normal execution the slot types are marked only as being "static". This is OK because
 Java bytecode implicitly types stack slots. The types aren't recorded in the bytecode itself, but can be recovered using

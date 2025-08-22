@@ -78,7 +78,7 @@ obtained with `-XX:+JVMCIPrintProperties -Djdk.graal.PrintPropertiesAll=true`.
 The compiler supports metrics in the form of counters, timers and memory trackers.
 Each metric has a unique name. Metrics are collected per-compilation.
 At shutdown, they are aggregated across all compilations and reported to the console.
-This ouput can be redirected to a file via the `-Djdk.graal.AggregatedMetricsFile` option.
+This output can be redirected to a file via the `-Djdk.graal.AggregatedMetricsFile` option.
 
 To list the per-compilation metrics, use the `-Djdk.graal.MetricsFile` option. If not specified,
 per-compilation metrics are not reported.
