@@ -65,6 +65,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -80,8 +81,8 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredImageHeapObjectAdder;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -230,8 +231,8 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
-        if (ImageSingletons.contains(LayeredImageHeapObjectAdder.class)) {
-            ImageSingletons.lookup(LayeredImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
+        if (ImageSingletons.contains(ImageHeapObjectAdder.class)) {
+            ImageSingletons.lookup(ImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
         }
 
         addStaticFields();
@@ -427,11 +428,18 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     @Override
-    public int countAndVerifyDynamicHubs() {
+    public int countPatchAndVerifyDynamicHubs() {
+        byte[] refMap = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
+        ObjectInfo refMapInfo = getObjectInfo(refMap);
+        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+
         ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
         for (ObjectInfo o : getObjects()) {
             if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+                DynamicHub hub = (DynamicHub) o.getObject();
+                hub.initializeCompressedReferenceMapOffset(currentLayerRefMapDataStart);
+
                 objHeader.verifyDynamicHubOffset(o.getOffset());
                 count++;
             }

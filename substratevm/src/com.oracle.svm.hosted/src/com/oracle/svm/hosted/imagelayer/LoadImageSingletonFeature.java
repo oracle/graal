@@ -72,6 +72,7 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -172,7 +173,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+        ImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
     }
 
     static void checkAllowNullEntries(Class<?> key) {

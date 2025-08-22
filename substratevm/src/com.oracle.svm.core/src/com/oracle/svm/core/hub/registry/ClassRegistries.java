@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -81,7 +80,6 @@ import jdk.internal.misc.PreviewFeatures;
  * <li>When a class is defined (i.e., by runtime class loading when it's enabled)</li>
  * </ul>
  */
-@AutomaticallyRegisteredImageSingleton
 public final class ClassRegistries implements ParsingContext {
     public final TimerCollection timers = TimerCollection.create(false);
 
@@ -144,7 +142,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     public static Class<?> findLoadedClass(String name, ClassLoader loader) {
-        if (throwMissingRegistrationErrors() && RuntimeClassLoading.followReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
+        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
             MissingReflectionRegistrationUtils.reportClassAccess(name);
             return null;
         }
@@ -183,7 +181,7 @@ public final class ClassRegistries implements ParsingContext {
      * loader delegation.
      */
     private Class<?> resolve(String name, ClassLoader loader) throws ClassNotFoundException {
-        if (RuntimeClassLoading.followReflectionConfiguration()) {
+        if (shouldFollowReflectionConfiguration()) {
             if (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
                 MissingReflectionRegistrationUtils.reportClassAccess(name);
                 if (loader == null) {
@@ -216,7 +214,7 @@ public final class ClassRegistries implements ParsingContext {
              * We know that the array name was registered for reflection. The elemental type might
              * not be, so we have to ignore registration during its lookup.
              */
-            ClassLoadingSupport classLoadingSupport = ImageSingletons.lookup(ClassLoadingSupport.class);
+            ClassLoadingSupport classLoadingSupport = ClassLoadingSupport.singleton();
             classLoadingSupport.startIgnoreReflectionConfigurationScope();
             try {
                 elementalResult = resolveElementalType(name, arrayDimensions, loader);
@@ -297,7 +295,7 @@ public final class ClassRegistries implements ParsingContext {
     public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ClassDefinitionInfo info) {
         // name is a "binary name": `foo.Bar$1`
         assert RuntimeClassLoading.isSupported();
-        if (RuntimeClassLoading.followReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
+        if (shouldFollowReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
             MissingReflectionRegistrationUtils.reportClassAccess(name);
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
@@ -369,8 +367,11 @@ public final class ClassRegistries implements ParsingContext {
     public static class ClassRegistryComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            assert receiver != null;
-            return ClassRegistries.singleton().getBuildTimeRegistry((ClassLoader) receiver);
+            if (ClassForNameSupport.respectClassLoader()) {
+                assert receiver != null;
+                return ClassRegistries.singleton().getBuildTimeRegistry((ClassLoader) receiver);
+            }
+            return originalValue;
         }
     }
 
@@ -433,5 +434,9 @@ public final class ClassRegistries implements ParsingContext {
     public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
         // Note: all symbols are strong for now
         return SymbolsSupport.getUtf8().getOrCreateValidUtf8(byteSequence, true);
+    }
+
+    private static boolean shouldFollowReflectionConfiguration() {
+        return ClassLoadingSupport.singleton().followReflectionConfiguration();
     }
 }
