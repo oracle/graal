@@ -15,6 +15,38 @@
         <pluginManagement>
             <plugins>
                 <plugin>
+                    <groupId>org.openrewrite.maven</groupId>
+                    <artifactId>rewrite-maven-plugin</artifactId>
+                    <version>6.15.0</version>
+                    <configuration>
+                        <activeRecipes>
+                            <recipe>org.openrewrite.staticanalysis.UnnecessaryParentheses</recipe>
+                            <recipe>org.openrewrite.staticanalysis.UnnecessaryReturnAsLastStatement</recipe>
+                            <recipe>org.openrewrite.staticanalysis.UnnecessaryExplicitTypeArguments</recipe>
+                            <recipe>org.openrewrite.staticanalysis.UnnecessaryCloseInTryWithResources</recipe>
+                            <recipe>org.openrewrite.maven.BestPractices</recipe>
+                            <recipe>org.openrewrite.maven.cleanup.PrefixlessExpressions</recipe>
+                        </activeRecipes>
+                        <exclusions>
+                            <exclusion>**src/xdocs-examples**</exclusion>
+                        </exclusions>
+                        <exportDatatables>true</exportDatatables>
+                        <failOnDryRunResults>true</failOnDryRunResults>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe</groupId>
+                            <artifactId>rewrite-third-party</artifactId>
+                            <version>0.24.3</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe</groupId>
+                            <artifactId>rewrite-static-analysis</artifactId>
+                            <version>2.14.0</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.netbeans.utilities</groupId>
                     <artifactId>nbm-maven-plugin</artifactId>
                     <version>${nbmmvnplugin.version}</version>
@@ -86,6 +118,21 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.openrewrite.maven</groupId>
+                <artifactId>rewrite-maven-plugin</artifactId>
+                <!-- move to CI -->
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>dryRun</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
     <modules>
         <module>branding</module>
