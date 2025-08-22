@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.object.ext.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -64,7 +62,6 @@ public class GR42603 {
 
     @Test
     public void testReplacePropertyRace() throws Throwable {
-        assumeExtLayout();
         for (int i = 0; i < 100; i++) {
             testConcurrentReplaceProperty();
         }

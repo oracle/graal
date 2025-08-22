@@ -100,14 +100,9 @@ final class PropertyImpl extends Property {
         if (this == obj) {
             return true;
         }
-        if (obj == null) {
+        if (!(obj instanceof PropertyImpl other)) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-
-        PropertyImpl other = (PropertyImpl) obj;
         return (key == other.key || key.equals(other.key)) && flags == other.flags && (location == other.location || location.equals(other.location));
     }
 
@@ -115,14 +110,9 @@ final class PropertyImpl extends Property {
         if (this == obj) {
             return true;
         }
-        if (obj == null) {
+        if (!(obj instanceof PropertyImpl other)) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-
-        PropertyImpl other = (PropertyImpl) obj;
         return key.equals(other.key) && flags == other.flags;
     }
 

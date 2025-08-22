@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,59 +40,18 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.Objects;
-
-import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
-
-final class DefaultStrategy extends LayoutStrategy {
-    static final LayoutStrategy SINGLETON = new DefaultStrategy();
-
-    private DefaultStrategy() {
+final class DebugCounters {
+    private DebugCounters() {
     }
 
-    @Override
-    public boolean updateShape(DynamicObject object) {
-        assert object.getShape().isValid();
-        return false;
-    }
-
-    @Override
-    public ShapeImpl ensureValid(ShapeImpl newShape) {
-        assert newShape.isValid();
-        return newShape;
-    }
-
-    private static boolean assertLocationInRange(ShapeImpl shape, Location location) {
-        DefaultLayout layout = (DefaultLayout) shape.getLayout();
-        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
-        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
-        return true;
-    }
-
-    @Override
-    public ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
-        Objects.requireNonNull(location);
-        assert assertLocationInRange(shape, location);
-        return shape;
-    }
-
-    @Override
-    public BaseAllocator createAllocator(ShapeImpl shape) {
-        return new CoreAllocator(shape);
-    }
-
-    @Override
-    public BaseAllocator createAllocator(LayoutImpl layout) {
-        return new CoreAllocator(layout);
-    }
-
-    @Override
-    protected Location createLocationForValue(ShapeImpl shape, Object value, int putFlags) {
-        return ((CoreAllocator) shape.allocator()).locationForValue(value, putFlags);
-    }
-
-    @Override
-    protected int getLocationOrdinal(Location location) {
-        return CoreLocations.getLocationOrdinal(((CoreLocation) location));
-    }
+    static final DebugCounter shapeCount = DebugCounter.create("Shapes allocated total");
+    static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
+    static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
+    static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
+    static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
+    static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
+    static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter propertyAssumptionsBlocked = DebugCounter.create("Property assumptions blocked");
+    static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
+    static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 }

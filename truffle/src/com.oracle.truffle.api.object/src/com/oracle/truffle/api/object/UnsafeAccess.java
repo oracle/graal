@@ -51,31 +51,12 @@ final class UnsafeAccess {
 
     private static final Unsafe UNSAFE = getUnsafe();
 
-    static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
-    static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
-
     private UnsafeAccess() {
     }
 
     @SuppressWarnings("deprecation")
     static long objectFieldOffset(Field field) {
         return UNSAFE.objectFieldOffset(field);
-    }
-
-    static Object unsafeGetObject(Object receiver, long offset) {
-        return UNSAFE.getObject(receiver, offset);
-    }
-
-    static void unsafePutObject(Object receiver, long offset, Object value) {
-        UNSAFE.putObject(receiver, offset, value);
-    }
-
-    static long unsafeGetLong(Object receiver, long offset) {
-        return UNSAFE.getLong(receiver, offset);
-    }
-
-    static void unsafePutLong(Object receiver, long offset, long value) {
-        UNSAFE.putLong(receiver, offset, value);
     }
 
     /**

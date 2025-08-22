@@ -42,8 +42,7 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -55,7 +54,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
@@ -221,12 +220,17 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
     }
 
     private static int countTransitions(Shape shape) {
-        Map<?, ? extends Shape> transitionMap = invokeGetter("getTransitionMapForRead", shape);
-        int count = transitionMap.size();
-        for (Shape childShape : transitionMap.values()) {
-            count += countTransitions(childShape);
-        }
-        return count;
+        var consumer = new BiConsumer<Object, Shape>() {
+            int count = 0;
+
+            @Override
+            public void accept(Object t, Shape childShape) {
+                count += 1;
+                count += countTransitions(childShape);
+            }
+        };
+        invokeMethod("forEachTransition", shape, consumer);
+        return consumer.count;
     }
 
     @Test
@@ -388,8 +392,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes() {
-        assumeExtLayout();
-
         // Assume (MaxMergeDepth >= 5)
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
 
@@ -439,8 +441,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes2() {
-        assumeExtLayout();
-
         // Assume (MaxMergeDepth >= 5 && MaxMergeDiff >= 2)
 
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
@@ -477,8 +477,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testBooleanLocationTypeAssumption() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().build();
 
         DynamicObject obj = new TestDynamicObject(emptyShape);
@@ -566,8 +564,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
      */
     @Test
     public void testPropertyAssumptionInvalidAfterReplace1() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         int flag = 2;
@@ -602,8 +598,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
      */
     @Test
     public void testPropertyAssumptionInvalidAfterReplace2() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         int flag = 2;
