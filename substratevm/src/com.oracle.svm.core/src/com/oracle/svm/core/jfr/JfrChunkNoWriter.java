@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 
 /**
  * Dummy implementation of a {@link JfrChunkWriter} that does not perform any file system
@@ -91,6 +92,11 @@ public final class JfrChunkNoWriter implements JfrChunkWriter {
 
     @Override
     public void openFile(String outputFile) {
+        VMError.shouldNotReachHere(ERROR_MESSAGE);
+    }
+
+    @Override
+    public void openFile(RawFileOperationSupport.RawFileDescriptor fd) {
         VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
