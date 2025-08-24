@@ -57,7 +57,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 /*
@@ -147,7 +147,7 @@ public class GR50026Test extends AbstractLibraryTest {
          * version if inlined nodes are used.
          */
         @SuppressWarnings("truffle")
-        String m0(@Cached InlinedBranchProfile node) {
+        String m0(@Cached BranchProfile node) {
             return "m0";
         }
     }

@@ -613,7 +613,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (nodeData == null) {
             return false;
         }
-        if (nodeData.needsState(ProcessorContext.getInstance())) {
+        if (nodeData.needsState()) {
             return false;
         }
         for (SpecializationData specialization : nodeData.getReachableSpecializations()) {

@@ -87,10 +87,6 @@ public interface NodeGeneratorPlugs {
         return currentExecution.getChild().findExecutableType(type) != null;
     }
 
-    default CodeTree createTransferToInterpreterAndInvalidate() {
-        return GeneratorUtils.createTransferToInterpreterAndInvalidate();
-    }
-
     @SuppressWarnings("unused")
     default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
 
