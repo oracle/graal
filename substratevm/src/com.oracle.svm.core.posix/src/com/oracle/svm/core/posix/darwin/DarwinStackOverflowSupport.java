@@ -44,13 +44,13 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 final class DarwinStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override

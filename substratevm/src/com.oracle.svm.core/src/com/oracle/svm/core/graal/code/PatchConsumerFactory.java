@@ -28,17 +28,11 @@ import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-
 import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult;
 
 public abstract class PatchConsumerFactory {
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     public abstract static class HostedPatchConsumerFactory extends PatchConsumerFactory {
         public static HostedPatchConsumerFactory factory() {
             return ImageSingletons.lookup(HostedPatchConsumerFactory.class);

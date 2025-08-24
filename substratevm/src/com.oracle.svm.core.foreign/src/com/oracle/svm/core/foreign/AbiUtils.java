@@ -59,7 +59,6 @@ import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -1054,7 +1053,7 @@ class ABIs {
         @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
             String name = "SystemV (Linux AMD64)";
-            VMError.guarantee(LibC.isSupported() || ImageLayerBuildingSupport.buildingExtensionLayer(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
         }
 
         @Override
