@@ -71,7 +71,7 @@ public final class CompilationAlarm implements AutoCloseable {
     private final CompilationAlarm previous;
 
     @SuppressWarnings("this-escape")
-    private CompilationAlarm(double period) {
+    private CompilationAlarm(double period, boolean skipZeros) {
         this.previous = currentAlarm.get();
         reset(period);
         JMXService.GCTimeStatistics timing = null;
@@ -79,6 +79,7 @@ public final class CompilationAlarm implements AutoCloseable {
             timing = GraalServices.getGCTimeStatistics();
         }
         this.gcTiming = timing;
+        this.skipZeros = skipZeros;
     }
 
     /**
@@ -113,7 +114,7 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     private static final ThreadLocal<CompilationAlarm> currentAlarm = new ThreadLocal<>();
 
-    private static final CompilationAlarm NEVER_EXPIRES = new CompilationAlarm(0);
+    private static final CompilationAlarm NEVER_EXPIRES = new CompilationAlarm(0, false);
 
     /**
      * Gets the current compilation alarm. If there is no current alarm, a non-null value is
@@ -183,7 +184,8 @@ public final class CompilationAlarm implements AutoCloseable {
     public void checkExpiration() {
         if (hasExpired()) {
 
-            setCurrentNodeDuration(currentNode.name);
+            // also set all parent node times
+            setCurrentNodeDuration(currentNode.name, true);
 
             /*
              * We clone the phase tree here for the sake of the error message. We want to fix up the
@@ -194,7 +196,7 @@ public final class CompilationAlarm implements AutoCloseable {
             StringBuilder sb = new StringBuilder();
             // also update the root time to be consistent for the error message
             cloneTree.durationNS = elapsed();
-            printTree("", sb, cloneTree, true);
+            printTree("", sb, cloneTree, true, skipZeros);
 
             // Include information about time spent in the GC if it's available.
             String gcMessage = "";
@@ -226,6 +228,11 @@ public final class CompilationAlarm implements AutoCloseable {
      * Time spent in the garbage collector if it's available.
      */
     private final JMXService.GCTimeStatistics gcTiming;
+
+    /**
+     * On timeout skip zero entries.
+     */
+    private final boolean skipZeros;
 
     /**
      * Signal the execution of the phase identified by {@code name} starts.
@@ -296,7 +303,7 @@ public final class CompilationAlarm implements AutoCloseable {
             currentNode = currentNode.parent;
         }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
-        setCurrentNodeDuration(name);
+        setCurrentNodeDuration(name, false);
         currentNode.closed = true;
         if (graph != null) {
             currentNode.graphSizeAfter = graph.getNodeCount();
@@ -316,9 +323,17 @@ public final class CompilationAlarm implements AutoCloseable {
         return currentNode instanceof PhaseTreeIntermediateRoot && currentNode.graph != null && graph != null && !currentNode.graph.equals(graph);
     }
 
-    private void setCurrentNodeDuration(CharSequence name) {
+    private void setCurrentNodeDuration(CharSequence name, boolean setParentTime) {
         assert currentNode.startTimeNS >= 0 : Assertions.errorMessage("Must have a positive start time", name, elapsedPhaseTreeAsString());
-        currentNode.durationNS = System.nanoTime() - currentNode.startTimeNS;
+        long currentTimeNano = System.nanoTime();
+        currentNode.durationNS = currentTimeNano - currentNode.startTimeNS;
+        if (setParentTime) {
+            PhaseTreeNode node = currentNode.parent;
+            while (node != null) {
+                node.durationNS = currentTimeNano - node.startTimeNS;
+                node = node.parent;
+            }
+        }
     }
 
     /**
@@ -413,6 +428,10 @@ public final class CompilationAlarm implements AutoCloseable {
                             "->" + graphSizeAfter + "]";
         }
 
+        private boolean durationZeroInMS() {
+            return TimeUnit.NANOSECONDS.toMillis(durationNS) == 0;
+        }
+
     }
 
     private static class PhaseTreeIntermediateRoot extends PhaseTreeNode {
@@ -449,27 +468,34 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Recursively print the phase tree represented by {@code node}.
      */
-    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
+    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot, boolean skipPrintingZeroSubTree) {
         if (root == null) {
             return;
         }
-        sb.append(indent);
+        boolean skip = skipPrintingZeroSubTree && node.durationZeroInMS();
+        if (!skip) {
+            sb.append(indent);
+        }
         if (!printRoot && node == root) {
             sb.append(node.name);
         } else {
-            sb.append(node);
+            if (!skip) {
+                sb.append(node);
+            }
         }
-        sb.append(System.lineSeparator());
-        if (node.children != null) {
+        if (!skip) {
+            sb.append(System.lineSeparator());
+        }
+        if (node.children != null && !skip) {
             for (int i = 0; i < node.childIndex; i++) {
-                printTree(indent + "\t", sb, node.children[i], printRoot);
+                printTree(indent + "\t", sb, node.children[i], printRoot, skipPrintingZeroSubTree);
             }
         }
     }
 
     public StringBuilder elapsedPhaseTreeAsString() {
         StringBuilder sb = new StringBuilder();
-        printTree("", sb, root, false);
+        printTree("", sb, root, false, false);
         return sb;
     }
 
@@ -493,7 +519,7 @@ public final class CompilationAlarm implements AutoCloseable {
             }
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
-                current = new CompilationAlarm(period);
+                current = new CompilationAlarm(period, true/* skip 0 entries */);
                 currentAlarm.set(current);
                 return current;
             }
@@ -506,7 +532,7 @@ public final class CompilationAlarm implements AutoCloseable {
      * statement to restore the previous alarm state.
      */
     public static CompilationAlarm disable() {
-        CompilationAlarm current = new CompilationAlarm(0);
+        CompilationAlarm current = new CompilationAlarm(0, false);
         currentAlarm.set(current);
         return current;
     }
