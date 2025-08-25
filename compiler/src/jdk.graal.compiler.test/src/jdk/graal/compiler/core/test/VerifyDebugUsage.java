@@ -29,6 +29,8 @@ import static jdk.graal.compiler.debug.DebugContext.BASIC_LEVEL;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.debug.DebugContext;
@@ -44,6 +46,7 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.VerifyPhase;
+import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.test.GraalTest.MethodSource;
@@ -167,9 +170,11 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
              * The optimization log dumps at a parametrized level, but it must be at least
              * OptimizationLog.MINIMUM_LOG_LEVEL.
              */
-            String optimizationEntryClassName = OptimizationLogImpl.OptimizationEntryImpl.class.getName();
+            EconomicSet<String> allowedClasses = EconomicSet.create();
+            allowedClasses.add(OptimizationLogImpl.OptimizationEntryImpl.class.getName());
+            allowedClasses.add(ReportHotCodePhase.class.getName());
             String callerClassName = debugCallTarget.graph().method().format("%H");
-            if (!optimizationEntryClassName.equals(callerClassName)) {
+            if (!allowedClasses.contains(callerClassName)) {
                 int dumpLevel = verifyDumpLevelParameter(debugCallTarget, verifiedCallee, args.get(1));
                 verifyDumpObjectParameter(debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
             }
