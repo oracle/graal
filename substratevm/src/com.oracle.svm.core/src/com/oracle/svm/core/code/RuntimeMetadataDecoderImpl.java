@@ -49,6 +49,11 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
@@ -60,6 +65,7 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
  * See {@code ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
 @AutomaticallyRegisteredImageSingleton(RuntimeMetadataDecoder.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     /**
      * Error indices are less than {@link #NO_DATA}.
@@ -267,11 +273,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public boolean isNegative(int modifiers) {
         return (modifiers & NEGATIVE_FLAG_MASK) != 0;
-    }
-
-    @Override
-    public int getMetadataByteLength() {
-        return RuntimeMetadataEncoding.currentLayer().getEncoding().length;
     }
 
     public static boolean isErrorIndex(int index) {
@@ -723,6 +724,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      */
     @AutomaticallyRegisteredImageSingleton(value = MetadataAccessor.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class MetadataAccessorImpl implements MetadataAccessor {
 
         @Override

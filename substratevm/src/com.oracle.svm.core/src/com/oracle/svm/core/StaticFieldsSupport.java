@@ -48,6 +48,10 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -334,6 +338,7 @@ class MultiLayeredStaticFieldsBase implements MultiLayeredImageSingleton, Unsave
  * When the base is known, then we create a {@link StaticFieldsSupport.StaticFieldResolvedBaseNode}.
  * See {@link StaticFieldsSupport} for how this prevents aliasing issues.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 final class StaticFieldsFeature implements InternalFeature {
 
