@@ -340,6 +340,10 @@ public class NativeImage {
     BundleSupport bundleSupport;
     private final ArchiveSupport archiveSupport;
 
+    /**
+     * When running the Native Image Driver on Espresso with SVM, the available VM flags differ from
+     * those on HotSpot. This accounts for that.
+     */
     public record HostFlags(
                     boolean useJVMCINativeLibrary,
                     boolean hasUseJVMCICompiler,
@@ -348,6 +352,28 @@ public class NativeImage {
                     boolean hasExitOnOutOfMemoryError,
                     boolean hasMaximumHeapSizePercent,
                     boolean hasUseParallelGC) {
+
+        public List<String> defaultMemoryFlags() {
+            List<String> flags = new ArrayList<>();
+            if (hasUseParallelGC) {
+                // native image generation is a throughput-oriented task
+                flags.add("-XX:+UseParallelGC");
+            }
+            if (hasGCTimeRatio) {
+                /*
+                 * Optimize for throughput by increasing the goal of the total time for garbage
+                 * collection from 1% to 10% (N=9). This also reduces peak RSS.
+                 */
+                flags.add("-XX:GCTimeRatio=9"); // 1/(1+N) time for GC
+            }
+            if (hasExitOnOutOfMemoryError) {
+                /*
+                 * Let the builder exit on first OutOfMemoryError to have shorter feedback loops.
+                 */
+                flags.add("-XX:+ExitOnOutOfMemoryError");
+            }
+            return flags;
+        }
     }
 
     protected static class BuildConfiguration {
@@ -997,7 +1023,7 @@ public class NativeImage {
 
     private void prepareImageBuildArgs() {
         addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(MemoryUtil.determineMemoryFlags(config.getHostFlags()));
+        addImageBuilderJavaArgs(config.getHostFlags().defaultMemoryFlags());
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
@@ -1273,6 +1299,17 @@ public class NativeImage {
         }
 
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
+
+        List<String> userMemoryFlags = new ArrayList<>();
+        for (String arg : imageBuilderJavaArgs) {
+            if (MemoryUtil.isMemoryFlag(arg)) {
+                userMemoryFlags.add(arg);
+            }
+        }
+        List<String> memoryFlagsToAdd = MemoryUtil.heuristicMemoryFlags(config.getHostFlags(), userMemoryFlags);
+        for (String memoryFlag : memoryFlagsToAdd.reversed()) {
+            imageBuilderJavaArgs.addFirst(memoryFlag);
+        }
 
         /* Perform option consolidation of imageBuilderArgs */
 
