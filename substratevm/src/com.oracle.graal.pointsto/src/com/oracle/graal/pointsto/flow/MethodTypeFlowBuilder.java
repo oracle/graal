@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
@@ -298,7 +299,7 @@ public class MethodTypeFlowBuilder {
                 if (!usePredicates) {
                     type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     for (var f : type.getInstanceFields(true)) {
-                        var field = (AnalysisField) f;
+                        var field = (PointsToAnalysisField) f;
                         PointsToAnalysis pta = (PointsToAnalysis) bb;
                         field.getInitialFlow().addState(pta, TypeState.defaultValueForKind(pta, field.getStorageKind()));
                     }
@@ -1592,13 +1593,13 @@ public class MethodTypeFlowBuilder {
                 state.add(node, newArrayBuilder);
 
             } else if (n instanceof LoadFieldNode node) { // value = object.field
-                processLoadField(node, (AnalysisField) node.field(), node.object(), state);
+                processLoadField(node, (PointsToAnalysisField) node.field(), node.object(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
             } else if (n instanceof StoreFieldNode node) { // object.field = value
-                processStoreField(node, (AnalysisField) node.field(), node.object(), node.value(), node.value().getStackKind(), state);
+                processStoreField(node, (PointsToAnalysisField) node.field(), node.object(), node.value(), node.value().getStackKind(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
@@ -1707,7 +1708,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    processLoadField(node, (AnalysisField) fieldOffsetProvider.getField(), object, state);
+                    processLoadField(node, (PointsToAnalysisField) fieldOffsetProvider.getField(), object, state);
                 } else if (StampTool.isAlwaysArray(object)) {
                     processLoadIndexed(node, object, state);
                 } else {
@@ -1720,7 +1721,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    processStoreField(node, (AnalysisField) fieldOffsetProvider.getField(), object, newValue, newValueKind, state);
+                    processStoreField(node, (PointsToAnalysisField) fieldOffsetProvider.getField(), object, newValue, newValueKind, state);
                 } else if (StampTool.isAlwaysArray(object)) {
                     processStoreIndexed(node, object, newValue, newValueKind, state);
                 } else {
@@ -1733,7 +1734,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    var field = (AnalysisField) fieldOffsetProvider.getField();
+                    var field = (PointsToAnalysisField) fieldOffsetProvider.getField();
                     processStoreField(node, field, object, newValue, newValueKind, state);
                     processLoadField(node, field, object, state);
                 } else if (StampTool.isAlwaysArray(object)) {
@@ -1990,12 +1991,12 @@ public class MethodTypeFlowBuilder {
                     if (type.isArray()) {
                         processStoreIndexed(commitAllocationNode, object, value, value.getStackKind(), state);
                     } else {
-                        AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                        var field = (PointsToAnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
                         processStoreField(commitAllocationNode, field, object, value, value.getStackKind(), state);
                     }
                 } else {
                     if (!type.isArray()) {
-                        AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                        var field = (PointsToAnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
                         field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
@@ -2023,7 +2024,7 @@ public class MethodTypeFlowBuilder {
         state.add(node, newInstanceBuilder);
     }
 
-    protected void processLoadField(ValueNode node, AnalysisField field, ValueNode object, TypeFlowsOfNodes state) {
+    protected void processLoadField(ValueNode node, PointsToAnalysisField field, ValueNode object, TypeFlowsOfNodes state) {
         field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
 
         if (bb.isSupportedJavaKind(node.getStackKind())) {
@@ -2049,7 +2050,7 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    protected void processStoreField(ValueNode node, AnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+    protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
         if (bb.isSupportedJavaKind(newValueKind)) {

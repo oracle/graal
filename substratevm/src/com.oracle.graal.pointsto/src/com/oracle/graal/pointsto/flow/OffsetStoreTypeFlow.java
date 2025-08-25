@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -213,7 +214,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
              * can write to any of the static fields marked for unsafe access.
              */
             for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
-                addUse(bb, field.getStaticFieldFlow().filterFlow(bb));
+                addUse(bb, ((PointsToAnalysisField) field).getStaticFieldFlow().filterFlow(bb));
             }
         }
 
@@ -239,7 +240,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
                 } else {
                     for (AnalysisField field : type.unsafeAccessedFields()) {
                         /* Write through the field filter flow. */
-                        this.addUse(bb, object.getInstanceFieldFilterFlow(bb, objectFlow, source, field));
+                        this.addUse(bb, object.getInstanceFieldFilterFlow(bb, objectFlow, source, ((PointsToAnalysisField) field)));
                     }
                 }
             }

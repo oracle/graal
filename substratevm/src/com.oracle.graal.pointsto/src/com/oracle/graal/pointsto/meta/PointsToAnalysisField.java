@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,14 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -36,6 +41,19 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class PointsToAnalysisField extends AnalysisField {
+
+    /**
+     * Initial field type flow, i.e., as specified by the analysis client. It can be used to inject
+     * specific types into a field that the analysis would not see on its own, and to inject the
+     * null value into a field.
+     */
+    protected FieldTypeFlow initialFlow;
+    /**
+     * Field type flow that reflects all the types flowing in this field on its declaring type and
+     * all the sub-types. It does not track any context-sensitive information.
+     */
+    protected FieldTypeFlow sinkFlow;
+
     /**
      * Unique, per field, context insensitive store. The context insensitive store has as a receiver
      * the field declaring class. Therefore, this store will link with all possible field flows, in
@@ -45,6 +63,17 @@ public class PointsToAnalysisField extends AnalysisField {
 
     PointsToAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrapped) {
         super(universe, wrapped);
+        initialFlow = new FieldTypeFlow(this, getType());
+        if (this.isStatic()) {
+            /* There is never any context-sensitivity for static fields. */
+            sinkFlow = initialFlow;
+        } else {
+            /*
+             * Regardless of the context-sensitivity policy, there is always this single type flow
+             * that accumulates all types.
+             */
+            sinkFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
+        }
     }
 
     public StoreFieldTypeFlow initAndGetContextInsensitiveStore(PointsToAnalysis bb, BytecodePosition originalLocation) {
@@ -74,10 +103,35 @@ public class PointsToAnalysisField extends AnalysisField {
         store.receiver().addObserver(bb, store);
     }
 
+    public FieldTypeFlow getInitialFlow() {
+        return initialFlow;
+    }
+
+    public FieldTypeFlow getSinkFlow() {
+        return sinkFlow;
+    }
+
+    public FieldTypeFlow getStaticFieldFlow() {
+        assert Modifier.isStatic(this.getModifiers()) : this;
+        return sinkFlow;
+    }
+
+    @Override
+    public void injectDeclaredType() {
+        BigBang bb = getUniverse().getBigbang();
+        if (getStorageKind().isObject()) {
+            bb.injectFieldTypes(this, List.of(this.getType()), true);
+        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
+            this.saturatePrimitiveField();
+        }
+    }
+
     @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         contextInsensitiveStore.set(null);
+        initialFlow = null;
+        sinkFlow = null;
     }
 
     @Override
