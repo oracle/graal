@@ -435,7 +435,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * These flags may be used to tag objects that possess characteristics that need to be queried
      * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
      *
-     * Only the lowest 8 bits (i.e. values in the range 0 to 255) are allowed, the remaining bits
+     * Only the lowest 16 bits (i.e. values in the range 0 to 65535) are allowed, the remaining bits
      * are currently reserved.
      *
      * <h3>Usage example:</h3>
