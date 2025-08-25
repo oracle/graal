@@ -236,8 +236,11 @@ public final class MetadataTracer {
      * Marks the given proxy type as reachable from reflection.
      */
     public void traceProxyType(Class<?>[] interfaces) {
-        List<String> interfaceNames = Arrays.stream(interfaces).map(Class::getTypeName).toList();
-        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
+        String[] interfaceNames = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceNames[i] = interfaces[i].getTypeName();
+        }
+        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(Arrays.asList(interfaceNames));
         traceReflectionTypeImpl(descriptor);
     }
 
