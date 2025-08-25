@@ -148,28 +148,8 @@ public final class TruffleString extends AbstractTruffleString {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0, codePointLength, codeRange, hashCode);
     }
 
-    private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead, TruffleString cacheEntry) {
-        this(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
-        if (cacheEntry != null) {
-            assert !cacheEntry.isCacheHead();
-            assert isCacheHead();
-            assert next == null;
-            TruffleString cacheHead = this;
-            cacheEntry.next = cacheHead;
-            cacheHead.next = cacheEntry;
-        }
-    }
-
     private static TruffleString create(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
         TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
-        if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
-            string.toJavaStringUncached();
-        }
-        return string;
-    }
-
-    private static TruffleString createWithCacheEntry(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, TruffleString cacheEntry) {
-        TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, true, cacheEntry);
         if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
             string.toJavaStringUncached();
         }
@@ -216,14 +196,6 @@ public final class TruffleString extends AbstractTruffleString {
         return TruffleString.create(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
     }
 
-    static TruffleString createFromByteArrayWithCacheEntry(byte[] bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode,
-                    TruffleString cacheEntry) {
-        assert offset >= 0;
-        assert offset + ((long) length << stride) <= bytes.length;
-        assert attrsAreCorrect(bytes, encoding, offset, length, codePointLength, codeRange, stride);
-        return TruffleString.createWithCacheEntry(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, cacheEntry);
-    }
-
     static TruffleString createConstant(byte[] bytes, int length, int stride, Encoding encoding, int codePointLength, int codeRange) {
         return createConstant(bytes, length, stride, encoding, codePointLength, codeRange, true);
     }
@@ -248,12 +220,6 @@ public final class TruffleString extends AbstractTruffleString {
         assert b.isLooselyCompatibleTo(encoding);
         assert length == a.length() + b.length();
         return TruffleString.create(new LazyConcat(a, b), 0, length, stride, encoding, a.codePointLength() + b.codePointLength(), codeRange, 0, true);
-    }
-
-    static TruffleString createWrapJavaString(String str, int codePointLength, int codeRange) {
-        int stride = TStringUnsafe.getJavaStringStride(str);
-        int hash = TStringUnsafe.getJavaStringHashMasked(str);
-        return TruffleString.create(str, 0, str.length(), stride, Encoding.UTF_16, codePointLength, codeRange, hash, false);
     }
 
     private static boolean attrsAreCorrect(Object dataA, Encoding encoding, int offset, int length, int codePointLength, int codeRange, int stride) {
@@ -341,7 +307,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     private static boolean cacheEntryEquals(TruffleString a, TruffleString b) {
-        return b.encoding() == a.encoding() && a.isNative() == b.isNative() && a.stride() == b.stride() && (!isUTF16(a.encoding()) || b.isJavaString() == a.isJavaString());
+        return b.encoding() == a.encoding() && a.isNative() == b.isNative() && a.stride() == b.stride();
     }
 
     @TruffleBoundary
@@ -353,7 +319,6 @@ public final class TruffleString extends AbstractTruffleString {
         CompilerAsserts.neverPartOfCompilation();
         TruffleString head = null;
         TruffleString cur = this;
-        boolean javaStringVisited = false;
         BitSet visitedManaged = new BitSet(Encoding.values().length);
         BitSet visitedNativeRegular = new BitSet(Encoding.values().length);
         BitSet visitedNativeCompact = new BitSet(Encoding.values().length);
@@ -363,22 +328,17 @@ public final class TruffleString extends AbstractTruffleString {
                 assert head == null : "multiple cache heads";
                 head = cur;
             }
-            if (cur.isJavaString()) {
-                assert !javaStringVisited : "duplicate cached java string";
-                javaStringVisited = true;
+            Encoding encoding = Encoding.get(cur.encoding());
+            if (cur.isManaged()) {
+                assert !visitedManaged.get(cur.encoding()) : "duplicate managed " + encoding;
+                visitedManaged.set(cur.encoding());
             } else {
-                Encoding encoding = Encoding.get(cur.encoding());
-                if (cur.isManaged()) {
-                    assert !visitedManaged.get(cur.encoding()) : "duplicate managed " + encoding;
-                    visitedManaged.set(cur.encoding());
+                if (cur.stride() == encoding.naturalStride) {
+                    assert !visitedNativeRegular.get(cur.encoding()) : "duplicate native " + encoding;
+                    visitedNativeRegular.set(cur.encoding());
                 } else {
-                    if (cur.stride() == encoding.naturalStride) {
-                        assert !visitedNativeRegular.get(cur.encoding()) : "duplicate native " + encoding;
-                        visitedNativeRegular.set(cur.encoding());
-                    } else {
-                        assert !visitedNativeCompact.get(cur.encoding()) : "duplicate compact native " + encoding;
-                        visitedNativeCompact.set(cur.encoding());
-                    }
+                    assert !visitedNativeCompact.get(cur.encoding()) : "duplicate compact native " + encoding;
+                    visitedNativeCompact.set(cur.encoding());
                 }
             }
             assert visited.add(cur) : "not a ring structure";
@@ -2540,13 +2500,12 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(cacheResult);
             a.checkEncoding(encoding);
             TruffleString cur = a.next;
-            assert !a.isJavaString();
             if (cacheResult && cur != null) {
-                while (cur != a && (cur.isNative() || cur.isJavaString() || !cur.isCompatibleToIntl(encoding))) {
+                while (cur != a && (cur.isNative() || !cur.isCompatibleToIntl(encoding))) {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(this, cur != a)) {
-                    assert cur.isCompatibleToIntl(encoding) && cur.isManaged() && !cur.isJavaString();
+                    assert cur.isCompatibleToIntl(encoding) && cur.isManaged();
                     return cur;
                 }
             }
@@ -6940,7 +6899,6 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         static String doUTF16(TruffleString a,
                         @Bind Node node,
-                        @Cached InlinedConditionProfile cacheHit,
                         @Cached @Exclusive InlinedConditionProfile managedProfileA,
                         @Cached @Exclusive InlinedConditionProfile nativeProfileA,
                         @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
@@ -6953,24 +6911,11 @@ public final class TruffleString extends AbstractTruffleString {
             }
             TruffleString cur = a.next;
             if (cur != null) {
-                while (cur != a && !cur.isJavaString()) {
-                    cur = cur.next;
-                }
-                if (cacheHit.profile(node, cur.isJavaString())) {
-                    return (String) cur.data();
-                }
-            }
-            cur = a.next;
-            if (cur != null) {
                 while (cur != a && !cur.isCompatibleToIntl(Encoding.UTF_16)) {
                     cur = cur.next;
                 }
             } else {
                 cur = a;
-            }
-            if (cur.isJavaString()) {
-                // java string was inserted in parallel
-                return (String) cur.data();
             }
             Encoding encodingA = Encoding.get(cur.encoding());
             final AbstractTruffleString utf16String;
@@ -7009,9 +6954,7 @@ public final class TruffleString extends AbstractTruffleString {
                     assert transCoded.isManaged();
                     utf16Offset = byteArrayBaseOffset() + transCoded.offset();
                 }
-                String javaString = createJavaStringNode.execute(node, utf16String, utf16Array, utf16Offset);
-                a.cacheInsert(TruffleString.createWrapJavaString(javaString, utf16String.codePointLength(), utf16String.codeRange()));
-                return javaString;
+                return createJavaStringNode.execute(node, utf16String, utf16Array, utf16Offset);
             } finally {
                 Reference.reachabilityFence(dataCur);
             }
@@ -7173,13 +7116,12 @@ public final class TruffleString extends AbstractTruffleString {
                     return a;
                 }
                 TruffleString cur = a.next;
-                assert !a.isJavaString();
                 if (cacheResult && cur != null) {
                     while (cur != a && (!cur.isNative() || !cur.isCompatibleToIntl(encoding) || cur.stride() != (useCompaction ? strideA : encoding.naturalStride))) {
                         cur = cur.next;
                     }
                     if (cacheHit.profile(node, cur != a)) {
-                        assert cur.isCompatibleToIntl(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? strideA : encoding.naturalStride);
+                        assert cur.isCompatibleToIntl(encoding) && cur.isNative() && cur.stride() == (useCompaction ? strideA : encoding.naturalStride);
                         return cur;
                     }
                 }
@@ -7426,20 +7368,17 @@ public final class TruffleString extends AbstractTruffleString {
             }
             final boolean mustCompact = a.stride() > targetEncoding.naturalStride;
             if (noOpProfile.profile(node, isCompatible && !mustCompact)) {
-                assert !a.isJavaString();
                 return a;
             }
             if (a.isEmpty()) {
                 return targetEncoding.getEmpty();
             }
             TruffleString cur = a.next;
-            assert !a.isJavaString();
             if (cur != null) {
-                while (cur != a && cur.encoding() != targetEncoding.id || (isUTF16(targetEncoding) && cur.isJavaString())) {
+                while (cur != a && cur.encoding() != targetEncoding.id) {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(node, cur.encoding() == targetEncoding.id)) {
-                    assert !cur.isJavaString();
                     return cur;
                 }
             }
@@ -7567,7 +7506,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "isCompatibleAndNotCompacted(a, expectedEncoding, targetEncoding)")
         static TruffleString compatibleImmutable(TruffleString a, @SuppressWarnings("unused") Encoding expectedEncoding, @SuppressWarnings("unused") Encoding targetEncoding) {
-            assert !a.isJavaString();
             return a;
         }
 
