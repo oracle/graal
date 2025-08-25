@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.Uninterruptible;
 
 /**
  * A list that is filled at image build time while the static analysis is running, and then read at
@@ -80,7 +79,7 @@ public final class ImageHeapList {
     public static final class HostedImageHeapList<E> extends AbstractList<E> {
         private final Comparator<E> comparator;
         private final List<E> hostedList;
-        public final RuntimeImageHeapList<E> runtimeList;
+        private final RuntimeImageHeapList<E> runtimeList;
         /**
          * Used to signal if this list has been modified. If true, the change should be propagated
          * from the hosted list to the runtime list by calling {@link #update()}. This variable
@@ -94,6 +93,10 @@ public final class ImageHeapList {
             this.comparator = comparator;
             this.hostedList = new ArrayList<>();
             this.runtimeList = new RuntimeImageHeapList<>((E[]) Array.newInstance(elementClass, 0));
+        }
+
+        public RuntimeImageHeapList<E> getRuntimeList() {
+            return runtimeList;
         }
 
         public synchronized boolean needsUpdate() {
@@ -156,27 +159,5 @@ public final class ImageHeapList {
              */
             throw new UnsupportedOperationException("ImageHeapList has append-only semantics. Removing elements is forbidden.");
         }
-    }
-}
-
-final class RuntimeImageHeapList<E> extends AbstractList<E> {
-
-    E[] elementData;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeImageHeapList(E[] elementData) {
-        this.elementData = elementData;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public E get(int index) {
-        return elementData[index];
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public int size() {
-        return elementData.length;
     }
 }
