@@ -207,9 +207,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
         @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);;
+        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);
         @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<String>("HighTierLoweringPhase");
+        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<>("HighTierLoweringPhase");
         @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
         public static final OptionKey<String> ReportHotMetrics = new OptionKey<>(null);
         // @formatter:on

@@ -805,7 +805,7 @@ The most common causes are:
 
 The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
 
-## Debugging Compiler Optimization Potential
+## Uncovering Optimization Barriers: Compiler-Level Insights for Truffle Apps
 
 Once you are comfortable profiling Truffle applications and analyzing results (see [Profiling](Profiling.md)), you may reach a point where you wonder, “Why is this benchmark slower than expected?” 
 After determining that the majority of execution time is spent in compiled code, the next step is a deeper analysis of the generated machine code.
@@ -835,10 +835,7 @@ To improve the quality of the generated data run with node source position track
 ### Example Output
 ```
 Reporting hot metrics before HighTierLoweringPhase during compilation of wasm-function:5311
-[Hot Code Info] Hottest 3 blocks are [B18, B21, B19] BeginNodeIDs=[4951258|LoopBegin, 823|Merge, 707|Begin] GlobalFrequencies=[241.99984874999717, 241.99984874999717, 120.99992437499859]
-[Hot Code Info] Hottest 1 local loops are Blocks=[Loop (depth=1) 4951258|LoopBegin] LocalLoopFrequencies=[241.99999999999716]
-[Hot Code Info] Hottest 1 global loops are Blocks=[Loop (depth=1) 4951258|LoopBegin] BasicBlockFrequencies=[241.99984874999717]
-[Hot Code Warning] Unknown profile for 704|If with f=241.99984874999717 in hot loop Loop (depth=1) 4951258|LoopBegin, nsp is 
+[Hot Code Warning] Unknown profile for 704|If with f=241.99984874999717 in hot loop Loop (depth=1) 4951258|LoopBegin, node source position is 
         at org.graalvm.wasm.nodes.WasmFunctionNode.executeBodyFromOffset(WasmFunctionNode.java:363) [bci: 1654]
         at org.graalvm.wasm.nodes.WasmFunctionNode.execute(WasmFunctionNode.java:241) [bci: 15]
         [...cut for brevity...]
