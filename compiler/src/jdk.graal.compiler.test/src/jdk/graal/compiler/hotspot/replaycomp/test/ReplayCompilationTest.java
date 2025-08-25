@@ -38,6 +38,8 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -46,6 +48,7 @@ import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.GraalCompilerOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.LogStream;
@@ -54,9 +57,11 @@ import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompilerFactory;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.replaycomp.CompilerInterfaceDeclarations;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -69,6 +74,25 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * Tests for compilation recording and replay.
  */
 public class ReplayCompilationTest extends GraalCompilerTest {
+    /**
+     * A separate encoded snippet scope is necessary in case the global encoded snippets have cache
+     * replacements.
+     */
+    private static DebugCloseable snippetScope;
+
+    @BeforeClass
+    public static void setup() {
+        Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
+        snippetScope = replacements.suppressEncodedSnippets();
+        replacements.encode(getInitialOptions());
+    }
+
+    @AfterClass
+    public static void teardown() {
+        snippetScope.close();
+    }
+
     private static int[] lengthsSquared(List<String> strings) {
         return strings.stream().mapToInt(String::length).map(i -> i * i).toArray();
     }

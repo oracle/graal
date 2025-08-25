@@ -30,6 +30,7 @@ import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEINTERFACE;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESPECIAL;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESTATIC;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
+import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.java.StableMethodNameFormatter.isMethodHandle;
 
 import java.lang.reflect.Proxy;
@@ -48,6 +49,7 @@ import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.core.common.CompilerProfiler;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilerProfilerProxy;
@@ -66,6 +68,7 @@ import jdk.graal.compiler.hotspot.replaycomp.proxy.ProfilingInfoProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.SignatureProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.SpeculationLogProxy;
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -703,6 +706,7 @@ public final class CompilerInterfaceDeclarations {
                     }
                     return List.of();
                 })
+                .setFallbackInvocationHandler(HotSpotResolvedObjectTypeProxy.isInstanceMethod, CompilerInterfaceDeclarations::objectTypeIsInstanceFallback)
                 .register(declarations);
         // Must come after HotSpotResolvedObjectType. Needed for HotSpotResolvedPrimitiveType.
         new RegistrationBuilder<>(HotSpotResolvedJavaType.class)
@@ -920,5 +924,28 @@ public final class CompilerInterfaceDeclarations {
     private static ResolvedJavaType javaLangObjectSupplier(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects) {
         MetaAccessProvider metaAccess = (MetaAccessProvider) singletonObjects.get(MetaAccessProvider.class);
         return metaAccess.lookupJavaType(Object.class);
+    }
+
+    /**
+     * Implements a fallback for {@link HotSpotResolvedObjectType#isInstance} calls performed by
+     * {@link HotSpotGraalConstantFieldProvider} when replaying a libgraal compilation on jargraal.
+     * <p>
+     * The provider performs checks like {@code getHotSpotVMConfigType().isInstance(receiver)},
+     * which use snippet types on libgraal and HotSpot types on jargraal. Replay on jargraal needs
+     * to answer these queries when the receiver and argument are HotSpot proxies.
+     */
+    @SuppressWarnings("unused")
+    @ExcludeFromJacocoGeneratedReport("related to replay of libgraal compilations on jargraal")
+    private static boolean objectTypeIsInstanceFallback(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects) {
+        HotSpotResolvedObjectType receiverType = (HotSpotResolvedObjectType) proxy;
+        if (!(args[0] instanceof HotSpotObjectConstant objectConstant)) {
+            return false;
+        }
+        HotSpotResolvedObjectType constantType = objectConstant.getType();
+        if (isGraalClass(receiverType) && !isGraalClass(constantType)) {
+            // Assumes that only a Graal class can subtype a Graal class.
+            return false;
+        }
+        return receiverType.isAssignableFrom(constantType);
     }
 }
