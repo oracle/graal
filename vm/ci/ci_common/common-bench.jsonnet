@@ -171,7 +171,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/sulong', 'build', '--dependencies', 'SULONG_POLYBENCH_BENCHMARKS'],
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'sulong:gate']),
+        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'sulong:gate']),
       ],
       notify_groups +: ['sulong'],
     },
@@ -181,7 +181,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/sulong', 'build', '--dependencies', 'SULONG_POLYBENCH_BENCHMARKS'],
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'sulong:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'sulong:benchmark']),
       ],
       notify_groups +: ['sulong'],
     }
@@ -193,7 +193,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/wasm', 'build', '--dependencies', 'WASM_POLYBENCH_BENCHMARKS']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'wasm:gate']),
+        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'wasm:gate']),
       ],
       notify_groups +: ['wasm'],
     },
@@ -203,7 +203,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/wasm', 'build', '--dependencies', 'WASM_POLYBENCH_BENCHMARKS']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'wasm:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'wasm:benchmark']),
       ],
       notify_groups +: ['wasm'],
     }
@@ -214,7 +214,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/espresso', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'espresso:gate']),
+        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'espresso:gate']),
       ],
       notify_groups +: ['espresso'],
     },
@@ -223,7 +223,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/espresso', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'espresso:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'espresso:benchmark']),
       ],
       notify_groups +: ['espresso'],
     }
@@ -237,7 +237,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', 'truffleruby', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:gate']),
+        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'ruby:gate']),
       ],
       notify_groups +: ['ruby'],
     },
@@ -249,7 +249,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', 'truffleruby', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:benchmark']),
+        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'ruby:benchmark']),
       ],
       notify_groups +: ['ruby'],
     }
@@ -260,7 +260,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', 'graalpython', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:gate']),
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'python:gate']),
       ],
       notify_groups +: ['python'],
     },
@@ -269,7 +269,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', 'graalpython', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:benchmark']),
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'python:benchmark']),
       ],
       notify_groups +: ['python'],
     }
@@ -280,7 +280,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'nfi:gate']),
       ],
     },
     self.polybench_vm_daily('linux', 'amd64', 'nfi') + {
@@ -288,7 +288,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'nfi:benchmark']),
       ],
     }
  ] + [
@@ -298,7 +298,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'js:gate']),
       ],
       notify_groups +: ['javascript'],
     },
@@ -307,7 +307,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'js:benchmark']),
       ],
       notify_groups +: ['javascript'],
     }
