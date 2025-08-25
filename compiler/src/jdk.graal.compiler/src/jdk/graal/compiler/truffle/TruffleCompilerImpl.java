@@ -642,7 +642,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             throw debug.handle(e);
         }
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            debug.dump(DebugContext.BASIC_LEVEL, TruffleAST.create(partialEvaluator, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
+            debug.dump(DebugContext.BASIC_LEVEL, TruffleDebugAST.create(partialEvaluator, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
         }
 
         CompilationResult result = null;
