@@ -438,6 +438,10 @@ public abstract class HostVM {
         return false;
     }
 
+    public boolean buildingInitialLayer() {
+        return false;
+    }
+
     public boolean buildingSharedLayer() {
         return false;
     }
