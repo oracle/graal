@@ -288,7 +288,7 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall"],
                         "multitarget": {
                             "libc": ["default"],
                         },
@@ -395,7 +395,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall", "-std:c11"],
                         "multitarget": {
                             "libc": ["default"],
                         },

@@ -56,8 +56,7 @@ char * os_native_path(char *path) {
   /* Assumption: '/', '\\', ':', and drive letters are never lead bytes */
   assert(((!IsDBCSLeadByte('/'))
     && (!IsDBCSLeadByte('\\'))
-    && (!IsDBCSLeadByte(':'))),
-    "Illegal lead byte");
+    && (!IsDBCSLeadByte(':'))));
 
   /* Check for leading separators */
 #define isfilesep(c) ((c) == '/' || (c) == '\\')
@@ -316,7 +315,7 @@ int os_set_sock_opt(int fd, int level, int optname,
   return setsockopt(fd, level, optname, optval, optlen);
 }
 
-const char *os_current_library_path() {
+const char *os_current_library_path(void) {
     HMODULE info;
     if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, os_current_library_path, &info)) {
         return NULL;
@@ -332,7 +331,7 @@ OS_DL_HANDLE os_dl_open(const char * path) {
     return LoadLibraryA(path);
 }
 
-const char *os_dl_error() {
+const char *os_dl_error(void) {
     DWORD dw = GetLastError();
     char* message;
     size_t n = (size_t) FormatMessage(
@@ -358,11 +357,11 @@ void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
     return GetProcAddress(handle, sym);
 }
 
-OS_DL_HANDLE os_get_RTLD_DEFAULT() {
+OS_DL_HANDLE os_get_RTLD_DEFAULT(void) {
     return GetModuleHandle(NULL);
 }
 
-OS_DL_HANDLE os_get_ProcessHandle() {
+OS_DL_HANDLE os_get_ProcessHandle(void) {
     return GetModuleHandle(NULL);
 }
 
