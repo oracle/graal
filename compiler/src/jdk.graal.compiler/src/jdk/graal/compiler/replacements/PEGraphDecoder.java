@@ -878,7 +878,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.forceLink = forceLink;
     }
 
-    protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
+    private static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
         if (loopExplosionPlugin == null) {
             return LoopExplosionKind.NONE;
         } else {

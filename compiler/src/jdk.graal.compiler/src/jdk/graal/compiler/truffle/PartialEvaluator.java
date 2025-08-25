@@ -367,22 +367,14 @@ public abstract class PartialEvaluator {
         @Override
         public LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method) {
             TruffleCompilerRuntime.LoopExplosionKind explosionKind = getMethodInfo(method).loopExplosion();
-            switch (explosionKind) {
-                case NONE:
-                    return LoopExplosionKind.NONE;
-                case FULL_EXPLODE:
-                    return LoopExplosionKind.FULL_EXPLODE;
-                case FULL_EXPLODE_UNTIL_RETURN:
-                    return LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
-                case FULL_UNROLL:
-                    return LoopExplosionKind.FULL_UNROLL;
-                case MERGE_EXPLODE:
-                    return LoopExplosionKind.MERGE_EXPLODE;
-                case FULL_UNROLL_UNTIL_RETURN:
-                    return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
-                default:
-                    throw new IllegalStateException("Unsupported TruffleCompilerRuntime.LoopExplosionKind: " + String.valueOf(explosionKind));
-            }
+            return switch (explosionKind) {
+                case NONE -> LoopExplosionKind.NONE;
+                case FULL_EXPLODE -> LoopExplosionKind.FULL_EXPLODE;
+                case FULL_EXPLODE_UNTIL_RETURN -> LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+                case FULL_UNROLL -> LoopExplosionKind.FULL_UNROLL;
+                case MERGE_EXPLODE -> LoopExplosionKind.MERGE_EXPLODE;
+                case FULL_UNROLL_UNTIL_RETURN -> LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
+            };
         }
     }
 
@@ -422,13 +414,12 @@ public abstract class PartialEvaluator {
     protected abstract GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts);
 
     @SuppressWarnings("try")
-    public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
-        InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
-                        inlineInvokePlugin
-        };
+    public final void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         PEGraphDecoder decoder = createGraphDecoder(context,
                         context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
-                        inlineInvokePlugins,
+                        new InlineInvokePlugin[]{
+                                        inlineInvokePlugin
+                        },
                         new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task),

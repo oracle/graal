@@ -60,22 +60,18 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
     }
 
-    private static InliningPolicyProvider chosenProvider(String name) {
-        for (InliningPolicyProvider provider : AgnosticInliningPhase.POLICY_PROVIDERS) {
-            if (provider.getName().equals(name)) {
-                return provider;
-            }
-        }
-        throw new IllegalStateException("No inlining policy provider with provided name: " + name);
-    }
-
     private static InliningPolicyProvider getInliningPolicyProvider(TruffleTierContext context) {
         boolean firstTier = context.isFirstTier();
         final String policy = (firstTier ? TruffleCompilerOptions.FirstTierInliningPolicy : TruffleCompilerOptions.InliningPolicy).getValue(context.compilerOptions);
         if (Objects.equals(policy, "")) {
             return POLICY_PROVIDERS.get(firstTier ? POLICY_PROVIDERS.size() - 1 : 0);
         } else {
-            return chosenProvider(policy);
+            for (InliningPolicyProvider provider : POLICY_PROVIDERS) {
+                if (provider.getName().equals(policy)) {
+                    return provider;
+                }
+            }
+            throw new IllegalStateException("No inlining policy provider with provided name: " + policy);
         }
     }
 

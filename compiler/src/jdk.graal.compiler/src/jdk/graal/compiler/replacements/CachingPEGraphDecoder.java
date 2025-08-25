@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
  * encoding the graphs).
  */
-public class CachingPEGraphDecoder extends PEGraphDecoder {
+public final class CachingPEGraphDecoder extends PEGraphDecoder {
 
     private static final TimerKey BuildGraphTimer = DebugContext.timer("PartialEvaluation-GraphBuilding");
 
