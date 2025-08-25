@@ -47,6 +47,7 @@ import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Graph;
@@ -207,9 +208,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
         @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);;
+        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);
         @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
-        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<String>("HighTierLoweringPhase");
+        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<>("HighTierLoweringPhase");
         @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
         public static final OptionKey<String> ReportHotMetrics = new OptionKey<>(null);
         // @formatter:on
@@ -461,8 +462,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             String reportHotMetricsMethodFilter = PhaseOptions.ReportHotMetrics.getValue(options);
             boolean logHotMetricsForGraph = false;
             if (reportHotMetricsMethodFilter != null) {
-                jdk.graal.compiler.debug.MethodFilter hotMetricsMethodFilter = null;
-                hotMetricsMethodFilter = jdk.graal.compiler.debug.MethodFilter.parse(reportHotMetricsMethodFilter);
+                MethodFilter hotMetricsMethodFilter = null;
+                hotMetricsMethodFilter = MethodFilter.parse(reportHotMetricsMethodFilter);
                 logHotMetricsForGraph = graph.method() != null && hotMetricsMethodFilter.matches(graph.method());
                 if (!logHotMetricsForGraph) {
                     CompilationIdentifier id = graph.compilationId();

@@ -79,6 +79,9 @@ public interface CompilationIdentifier {
      */
     String toString(Verbosity verbosity);
 
+    /**
+     * Get a JavaMethod representation of the current compilation.
+     */
     default JavaMethod asJavaMethod() {
         return null;
     }

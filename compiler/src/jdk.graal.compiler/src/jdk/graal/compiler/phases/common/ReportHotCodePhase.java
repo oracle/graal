@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -52,6 +54,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 
@@ -77,9 +80,13 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         @Option(help = "Dumps the hottest code parts to the Ideal Graph Visualizer (IGV) for further analysis and visualization.", type = OptionType.Debug)
         public static final OptionKey<Boolean> ReportHotCodePartsToIGV = new OptionKey<>(false);
         @Option(help = "Specifies the debug level for dumping hottest code parts to the Ideal Graph Visualizer (IGV).", type = OptionType.Debug)
-        public static final OptionKey<Integer> ReportHotCodIGVLevel = new OptionKey<>(1);
+        public static final OptionKey<Integer> ReportHotCodeIGVLevel = new OptionKey<>(1);
         @Option(help = "Specifies the minimum relative frequency for reporting hot code regions.", type = OptionType.Debug)
-        public static final OptionKey<Double> MinimalFrequencyToReport = new OptionKey<>(1D);
+        public static final OptionKey<Double> ReportHotCodeMinimalFrequencyToReport = new OptionKey<>(1D);
+        @Option(help = "Enables printing of informational messages in hot code regions.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> ReportHotCodeInfos = new OptionKey<>(false);
+        @Option(help = "Enables printing of warning messages about potential performance issues in hot code regions.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> ReportHotCodeWarnings = new OptionKey<>(true);
         //@formatter:on
     }
 
@@ -178,11 +185,17 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         return Math.min(len, cap);
     }
 
-    private static void info(String format, Object... args) {
+    private static void info(OptionValues opt, String format, Object... args) {
+        if (!Options.ReportHotCodeInfos.getValue(opt)) {
+            return;
+        }
         TTY.printf(INFO_KEY + format, args);
     }
 
-    private static void warn(String format, Object... args) {
+    private static void warn(OptionValues opt, String format, Object... args) {
+        if (!Options.ReportHotCodeWarnings.getValue(opt)) {
+            return;
+        }
         TTY.printf(WARNING_KEY + format, args);
     }
 
@@ -196,16 +209,15 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         }
 
         CoreProviders context = (CoreProviders) c;
+        final OptionValues options = graph.getOptions();
 
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         final StructuredGraph.ScheduleResult scheduleResult = graph.getLastSchedule();
 
-        final double minimalReportFrequency = Options.MinimalFrequencyToReport.getValue(graph.getOptions());
+        final double minimalReportFrequency = Options.ReportHotCodeMinimalFrequencyToReport.getValue(graph.getOptions());
 
         final LoopsData ld = context.getLoopsDataProvider().getLoopsData(scheduleResult.getCFG());
         final ControlFlowGraph cfg = ld.getCFG();
-        // report the 3 hottest blocks and the 3 hottest loops and 3 hottest loops by local loop
-        // frequency
         final List<HIRBlock> hottestBlocks = new ArrayList<>();
 
         Collections.addAll(hottestBlocks, cfg.reversePostOrder());
@@ -223,9 +235,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestGlobalBlocksString = String.format("Hottest %s blocks are %s %s %s", getLengthCap(hottestFirstBlocks.size(), REPORT_HOT_FIRST_N), hottestFirstBlocks,
                             blocksToString(hottestFirstBlocks, BlockToStringMode.BEGIN_NODE),
                             blocksToString(hottestFirstBlocks, BlockToStringMode.GLOBAL_FREQUENCY));
-            info("%s\n", hottestGlobalBlocksString);
+            info(options, "%s%n", hottestGlobalBlocksString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
             }
         }
 
@@ -234,9 +246,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestLocalLoopString = String.format("Hottest %s local loops are %s %s", getLengthCap(hottestFirstLocalLoops.size(), REPORT_HOT_FIRST_N),
                             loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.BLOCK),
                             loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.LOCAL_FREQUENCY));
-            info("%s\n", hottestLocalLoopString);
+            info(options, "%s%n", hottestLocalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
             }
         }
 
@@ -245,9 +257,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestGlobalLoopString = String.format("Hottest %s global loops are %s %s", getLengthCap(hottestGlobalLoops.size(), REPORT_HOT_FIRST_N),
                             loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.BLOCK),
                             loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.GLOBAL_FREQUENCY));
-            info("%s\n", hottestGlobalLoopString);
+            info(options, "%s%n", hottestGlobalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
             }
         }
 
@@ -281,12 +293,17 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
     private static void reportUnknownProfile(Loop l, Node inside, ControlFlowGraph cfg) {
         if (inside instanceof IfNode ifNode) {
             if (ifNode.profileSource().isUnknown()) {
+                final OptionValues optionValues = inside.getOptions();
                 NodeSourcePosition nsp = ifNode.getNodeSourcePosition();
                 if (nsp == null) {
-                    warn("Unknown profile for %s with f=%s in hot loop %s, NO NODE SOURCE POSITION%n\tPotential Action Item: Determine lack of node source position and profile.%n", ifNode,
+                    warn(optionValues,
+                                    "Unknown profile for %s with relativeFrequency=%s in hot loop %s, NO NODE SOURCE POSITION%n\tPotential Action Item: Determine lack of node source position and profile.%n",
+                                    ifNode,
                                     cfg.blockFor(inside).getRelativeFrequency(), l);
                 } else {
-                    warn("Unknown profile for %s with f=%s in hot loop %s, nsp is %n%s%n\tPotential Action Item: Add profile to the top-of-stack source location.%n", ifNode,
+                    warn(optionValues,
+                                    "Unknown profile for %s with relativeFrequency=%s in hot loop %s, node source position is %n%s%n\tPotential Action Item: Add profile to the top-of-stack source location.%n",
+                                    ifNode,
                                     cfg.blockFor(inside).getRelativeFrequency(), l,
                                     ifNode.getNodeSourcePosition().toString("\t"));
                 }
@@ -306,14 +323,15 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         if (inside instanceof IfNode ifNode) {
             LogicNode logicNode = ifNode.condition();
             if (!l.whole().contains(logicNode)) {
-                warn("If %s with condition %s is inside loop %s while condition is not%n\tPotential Action Item: Determine why compiler does not unswitch the loop.%n", ifNode, logicNode, l);
+                warn(logicNode.getOptions(), "If %s with condition %s is inside loop %s while condition is not%n\tPotential Action Item: Determine why compiler does not unswitch the loop.%n", ifNode,
+                                logicNode, l);
             }
         }
     }
 
     /**
      * Reports memory kill operations within a specified hot loop that target
-     * {@link org.graalvm.word.LocationIdentity.AnyLocationIdentity}.
+     * {@link LocationIdentity#any()}.
      * <p>
      * A memory kill to {@code AnyLocationIdentity} signifies a write or invalidation that is
      * treated as affecting any possible memory location. Such "any" kills prevent the compiler from
@@ -332,10 +350,11 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                 if (sk.getKilledLocationIdentity().isAny()) {
                     if (inside instanceof FixedNode) {
                         // else we don't have a cfg position
-                        warn("Node %s kills any and has relative f=%s  in loop %s %n\tPotential Action Item: Determine if operation is required and replace with less intrusive memory effect if possible.%n",
+                        warn(inside.getOptions(),
+                                        "Node %s kills any and has relative relativeFrequency=%s  in loop %s %n\tPotential Action Item: Determine if operation is required and replace with less intrusive memory effect if possible.%n",
                                         inside, cfg.blockFor(inside).getRelativeFrequency(), l);
                     } else {
-                        warn("Node %s kills any in loop %s %n", inside, l);
+                        warn(inside.getOptions(), "Node %s kills any in loop %s %n", inside, l);
                     }
                 }
             }
@@ -347,10 +366,10 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
      * {@code y} argument is eligible for speculative guard movement.
      * <p>
      * Speculative guard movement, as described in
-     * {@link jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase.SpeculativeGuardMovement},
-     * attempts to optimize execution by moving eligible guards outside the loop when safe.
-     * Typically, such guards should be speculatively optimized and floated before the loop to
-     * reduce overhead inside hot code regions.
+     * {@link jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase}, attempts to optimize
+     * execution by moving eligible guards outside the loop when safe. Typically, such guards should
+     * be speculatively optimized and floated before the loop to reduce overhead inside hot code
+     * regions.
      * </p>
      * <p>
      * This report helps identify guards that remain inside loops and may represent missed
@@ -379,8 +398,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             }
 
             if (iv != null && limit != null) {
-                warn("Guard %s condition %s inside loop with iv %s and limit %s%n\tPotential Action Item: Determine why speculative guard movement does not consider them for optimization.%n", inside,
-                                compare, iv, limit);
+                warn(inside.getOptions(),
+                                "Guard %s condition %s inside loop with iv %s and limit %s%n\tPotential Action Item: Determine why speculative guard movement does not consider them for optimization.%n",
+                                inside, compare, iv, limit);
             }
         }
     }
