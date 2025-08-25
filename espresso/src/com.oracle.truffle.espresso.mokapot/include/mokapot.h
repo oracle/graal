@@ -392,9 +392,9 @@ JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
 
 JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
-JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT();
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT(void);
 
-JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle();
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle(void);
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
@@ -866,7 +866,7 @@ void (*JVM_AddReadsModule)(JNIEnv *env, jobject from_module, jobject source_modu
 
 jboolean (*JVM_AreNestMates)(JNIEnv *env, jclass current, jclass member);
 
-void (*JVM_BeforeHalt)();
+void (*JVM_BeforeHalt)(void);
 
 jobject (*JVM_CallStackWalk)(JNIEnv *env, jobject stackStream, jlong mode,
                       jint skip_frames, jint frame_count, jint start_index,
@@ -950,7 +950,7 @@ jboolean (*JVM_IsSharingEnabled)(JNIEnv* env);
 
 jboolean (*JVM_IsDumpingClassList)(JNIEnv* env);
 
-jlong (*JVM_GetRandomSeedForDumping)();
+jlong (*JVM_GetRandomSeedForDumping)(void);
 
 void (*JVM_LogLambdaFormInvoker)(JNIEnv* env, jstring line);
 
@@ -987,9 +987,9 @@ jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
 
 void (*JVM_RegisterContinuationMethods)(JNIEnv *env, jclass cls);
 
-jboolean (*JVM_IsPreviewEnabled)();
+jboolean (*JVM_IsPreviewEnabled)(void);
 
-jboolean (*JVM_IsContinuationsSupported)();
+jboolean (*JVM_IsContinuationsSupported)(void);
 
 void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
 
@@ -1007,7 +1007,7 @@ void (*JVM_ExpandStackFrameInfo)(JNIEnv *env, jobject obj);
 
 jboolean (*JVM_IsContainerized)(void);
 
-jint (*JVM_GetCDSConfigStatus)();
+jint (*JVM_GetCDSConfigStatus)(void);
 
 void (*JVM_VirtualThreadDisableSuspend)(JNIEnv* env, jclass clazz, jboolean enter);
 

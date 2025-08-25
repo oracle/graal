@@ -25,7 +25,7 @@
 #include "jvm_windows.h"
 #include "mokapot.h"
 
-JNIEXPORT void * JNICALL JVM_GetThreadInterruptEvent() {
+JNIEXPORT void * JNICALL JVM_GetThreadInterruptEvent(void) {
     UNIMPLEMENTED(JVM_GetThreadInterruptEvent);
     return NULL;
 }
