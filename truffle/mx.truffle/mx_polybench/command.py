@@ -69,9 +69,9 @@ class PolybenchArgumentsSpecification(NamedTuple):
         return (
             "additional benchmark arguments. By default, arguments are passed to the Polybench launcher, "
             f"but you may use flags to forward arguments to specific components: "
-            f"{cls.MX_BENCHMARK_FLAG} for mx benchmark, "
-            f"{cls.VM_FLAG} for the host VM or native-image, or "
-            f"{cls.POLYBENCH_FLAG} for the Polybench launcher. "
+            f'"{cls.MX_BENCHMARK_FLAG}" for mx benchmark, '
+            f'"{cls.VM_FLAG}" for the host VM or native-image, or '
+            f'"{cls.POLYBENCH_FLAG}" for the Polybench launcher (pass "--help" to see launcher help). '
             f'For example: "-i 2 {cls.MX_BENCHMARK_FLAG} --fail-fast {cls.VM_FLAG} -ea '
             f'{cls.POLYBENCH_FLAG} --engine.TraceCompilation=true".'
         )
@@ -410,6 +410,7 @@ def _create_parser() -> ArgumentParser:
             "It is a thin wrapper around Polybench's mx benchmark integration that makes it easy to discover and run benchmarks. "
             "It also supports batch execution of the benchmarks in a suite, which is convenient for defining CI jobs."
         ),
+        usage="%(prog)s [options*] benchmarks [benchmark_arguments*]",
     )
 
     parser.add_argument(
