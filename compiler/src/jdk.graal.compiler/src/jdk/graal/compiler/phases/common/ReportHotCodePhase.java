@@ -237,7 +237,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestGlobalBlocksString = String.format("Hottest %s blocks are %s %s %s", getLengthCap(hottestFirstBlocks.size(), REPORT_HOT_FIRST_N), hottestFirstBlocks,
                             blocksToString(hottestFirstBlocks, BlockToStringMode.BEGIN_NODE),
                             blocksToString(hottestFirstBlocks, BlockToStringMode.GLOBAL_FREQUENCY));
-            info(options, "%s\n", hottestGlobalBlocksString);
+            info(options, "%s%n", hottestGlobalBlocksString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
                 graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
             }
@@ -248,7 +248,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestLocalLoopString = String.format("Hottest %s local loops are %s %s", getLengthCap(hottestFirstLocalLoops.size(), REPORT_HOT_FIRST_N),
                             loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.BLOCK),
                             loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.LOCAL_FREQUENCY));
-            info(options, "%s\n", hottestLocalLoopString);
+            info(options, "%s%n", hottestLocalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
                 graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
             }
@@ -259,7 +259,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
             String hottestGlobalLoopString = String.format("Hottest %s global loops are %s %s", getLengthCap(hottestGlobalLoops.size(), REPORT_HOT_FIRST_N),
                             loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.BLOCK),
                             loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.GLOBAL_FREQUENCY));
-            info(options, "%s\n", hottestGlobalLoopString);
+            info(options, "%s%n", hottestGlobalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
                 graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
             }
