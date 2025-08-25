@@ -826,11 +826,11 @@ To enable reporting of these metrics, launch your application with:
 ```
 This prints warnings and hot spots to `stdout` for all compilation units.
 
-To narrow output to specific methods or functions use known method names like:
+To narrow output to specific methods or functions, use known method names like:
 ```
 --vm.Djdk.graal.ReportHotMetrics='*wasm-function:5311*'
 ```
-To improve the quality of the generated data run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
+To improve the quality of the generated data, run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
 
 ### Example Output
 ```
