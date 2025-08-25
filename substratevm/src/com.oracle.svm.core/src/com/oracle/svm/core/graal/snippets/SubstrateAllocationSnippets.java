@@ -36,6 +36,7 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.svm.core.metadata.MetadataTracer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
@@ -122,10 +123,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor TRACE_UNSAFE_ALLOCATION = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "traceUnsafeAllocation", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class,
                     "slowPathHubOrUnsafeInstantiationError", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, TRACE_UNSAFE_ALLOCATION, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR,
+                    ARRAY_HUB_ERROR};
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);
@@ -309,6 +312,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, MetadataTracer.enabled())) {
+                traceUnsafeAllocationStub(TRACE_UNSAFE_ALLOCATION, DynamicHub.toClass(nonNullHub));
+            }
             if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstanceFastPath())) {
                 return nonNullHub;
             }
@@ -342,6 +348,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
         return result;
+    }
+
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
+    private static native DynamicHub traceUnsafeAllocationStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
+
+    /** Foreign call: {@link #TRACE_UNSAFE_ALLOCATION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void traceUnsafeAllocation(DynamicHub hub) {
+        MetadataTracer.singleton().traceUnsafeAllocatedType(DynamicHub.toClass(hub));
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)

@@ -633,7 +633,7 @@ class MetadataTracerFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (MetadataTracer.Options.MetadataTracingSupport.getValue()) {
             ImageSingletons.add(MetadataTracer.class, new MetadataTracer());
             RuntimeSupport.getRuntimeSupport().addInitializationHook(MetadataTracer.initializeMetadataTracingHook());
