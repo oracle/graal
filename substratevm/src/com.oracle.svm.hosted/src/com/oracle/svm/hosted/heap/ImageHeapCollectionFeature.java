@@ -68,7 +68,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
             } else {
                 allLists.add(hostedImageHeapList);
             }
-            return hostedImageHeapList.runtimeList;
+            return hostedImageHeapList.getRuntimeList();
         }
         return obj;
     }
@@ -101,7 +101,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
         allLists.parallelStream().forEach(hostedImageHeapList -> {
             if (hostedImageHeapList.needsUpdate()) {
                 hostedImageHeapList.update();
-                objectsToRescan.add(hostedImageHeapList.runtimeList);
+                objectsToRescan.add(hostedImageHeapList.getRuntimeList());
             }
         });
         if (!objectsToRescan.isEmpty()) {
@@ -135,7 +135,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
         for (var hostedImageHeapList : allLists) {
             if (hostedImageHeapList.needsUpdate()) {
                 throw VMError.shouldNotReachHere("ImageHeapList modified after static analysis:%n%s%n%s",
-                                hostedImageHeapList, hostedImageHeapList.runtimeList);
+                                hostedImageHeapList, hostedImageHeapList.getRuntimeList());
 
             }
         }

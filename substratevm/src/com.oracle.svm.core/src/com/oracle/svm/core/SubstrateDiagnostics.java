@@ -96,6 +96,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.core.util.RuntimeImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -1352,7 +1353,12 @@ public class SubstrateDiagnostics {
         }
 
         DiagnosticThunk getThunk(int index) {
-            return thunks.get(index);
+            /*
+             * Use an explicit cast to aid open-world analysis. Otherwise, this may trigger false
+             * positive violations of @RestrictHeapAccess since some implementations of List.get()
+             * can allocate.
+             */
+            return ((RuntimeImageHeapList<DiagnosticThunk>) thunks).get(index);
         }
 
         int getInitialInvocationCount(int index) {
