@@ -36,15 +36,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
@@ -155,7 +149,6 @@ public interface RuntimeMetadataDecoder {
         }
     }
 
-    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     interface MetadataAccessor {
         @Fold
         static MetadataAccessor singleton() {

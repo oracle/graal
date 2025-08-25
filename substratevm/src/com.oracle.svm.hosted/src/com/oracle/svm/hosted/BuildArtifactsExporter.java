@@ -40,6 +40,10 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
@@ -105,6 +109,7 @@ public class BuildArtifactsExporter {
         buildArtifacts.add(ArtifactType.BUILD_INFO, ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, false));
     }
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     static class BuildArtifactsImpl implements BuildArtifacts {
         private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 

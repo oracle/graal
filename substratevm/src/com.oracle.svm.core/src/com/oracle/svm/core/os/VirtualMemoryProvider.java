@@ -24,24 +24,17 @@
  */
 package com.oracle.svm.core.os;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
-
 /**
  * Primitive operations for low-level virtual memory management.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public interface VirtualMemoryProvider {
     /**
      * Bitmask with the modes of protection for {@linkplain #commit committed} or

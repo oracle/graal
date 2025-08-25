@@ -36,10 +36,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -75,7 +71,6 @@ import jdk.graal.compiler.api.replacements.Fold;
  * For more information on the structure of the image heap, see the classes that implement
  * {@link ImageHeapLayouter}.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public interface ImageHeapProvider {
     @Fold
     static ImageHeapProvider get() {

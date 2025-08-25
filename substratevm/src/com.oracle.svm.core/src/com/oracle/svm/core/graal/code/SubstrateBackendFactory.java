@@ -24,16 +24,9 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-
-import jdk.graal.compiler.phases.util.Providers;
-
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public abstract class SubstrateBackendFactory {
     public abstract SubstrateBackend newBackend(Providers newProviders);
 

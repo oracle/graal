@@ -33,11 +33,16 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.word.Word;
 
 /** Platform independent image heap provider that deep-copies the image heap memory. */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")

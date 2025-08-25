@@ -97,7 +97,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class StaticFieldsSupport {
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     @Platforms(Platform.HOSTED_ONLY.class)
     public interface HostedStaticFieldSupport {
 
@@ -278,7 +277,6 @@ public final class StaticFieldsSupport {
      * We must ensure we are not querying the offset of a static field of a type assignable from
      * {@link org.graalvm.word.WordBase}.
      */
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     public interface StaticFieldValidator {
         static void checkFieldOffsetAllowed(ResolvedJavaField field) {
             if (field.isStatic()) {

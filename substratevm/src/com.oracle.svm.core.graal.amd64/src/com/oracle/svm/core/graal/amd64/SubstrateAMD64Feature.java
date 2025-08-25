@@ -101,6 +101,7 @@ class SubstrateAMD64Feature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class SubstrateAMD64LoweringProviderFactory extends SubstrateVectorArchitectureFactory implements SubstrateLoweringProviderFactory {
 
     @Override
