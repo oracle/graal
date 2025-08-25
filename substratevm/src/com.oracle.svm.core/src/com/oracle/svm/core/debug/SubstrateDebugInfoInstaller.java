@@ -41,6 +41,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.objectfile.BasicNobitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
@@ -87,7 +88,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
 
         // Produce a full debug info object file.
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoObjectFileSupport()) {
-            debugInfoData = getDebugInfoData(debugContext, method, compilation, runtimeConfig, codeSize, codeAddress);
+            debugInfoData = getDebugInfoData(method, compilation, runtimeConfig, codeSize, codeAddress);
         } else {
             debugInfoData = null;
         }
@@ -99,13 +100,13 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
 
         // Create a jitdump file for the native image if it does not exist and append new records.
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoJitdumpSupport()) {
-            writeJitdump();
+            writeJitdump(method, compilation, runtimeConfig, codeSize, codeAddress);
         }
     }
 
-    private NonmovableArray<Byte> getDebugInfoData(DebugContext debugContext, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, int codeSize, long codeAddress) {
+    private NonmovableArray<Byte> getDebugInfoData(SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, int codeSize, long codeAddress) {
         // Initialize the debug info generator.
-        SubstrateDebugInfoProvider substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(),
+        SubstrateDebugInfoProvider substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(),
                         codeAddress);
 
         // Set up the debug info object file.
@@ -122,7 +123,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         NonmovableArray<Byte> debugInfoData = NonmovableArrays.createByteArray(debugInfoSize, NmtCategory.Code);
         objectFile.writeBuffer(sortedObjectFileElements, NonmovableArrays.asByteBuffer(debugInfoData));
 
-        if (debugContext.isLogEnabled()) {
+        if (debug.isLogEnabled()) {
             // Dump the object file to the file system.
             StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
             try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
@@ -150,17 +151,23 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         }
     }
 
-    private void writeJitdump() {
+    private void writeJitdump(SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, int codeSize, long codeAddress) {
         Path jitdumpPath = Paths.get("jit-" + Paths.get(ProcessProperties.getExecutableName()).getFileName() + ".dump");
+
+        // Initialize the debug info generator and fetch the compiled method entry for the run-time
+        // compiled method.
+        SubstrateDebugInfoProvider substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(),
+                        codeAddress);
+        CompiledMethodEntry compiledMethodEntry = substrateDebugInfoProvider.lookupCompiledMethodEntry(method, compilation);
 
         try {
             // Check if file already exists.
             if (!Files.exists(jitdumpPath)) {
                 // Create file and write header.
-                Files.write(jitdumpPath, JitdumpProvider.createHeader(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                Files.write(jitdumpPath, JitdumpProvider.writeHeader(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
             }
             // Write records for run-time compilation.
-            Files.write(jitdumpPath, JitdumpProvider.createRecords(), StandardOpenOption.APPEND);
+            Files.write(jitdumpPath, JitdumpProvider.writeRecords(compiledMethodEntry, compilation, codeSize, codeAddress), StandardOpenOption.APPEND);
         } catch (IOException e) {
             debug.log("Failed to write jitdump.");
         }

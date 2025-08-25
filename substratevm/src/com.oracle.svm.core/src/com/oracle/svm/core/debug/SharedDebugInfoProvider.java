@@ -528,10 +528,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param compilation The {@code CompilationResult} to process
      */
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
-        // First make sure the underlying MethodEntry exists.
-        MethodEntry methodEntry = lookupMethodEntry(method);
-        // Then process the compilation.
-        lookupCompiledMethodEntry(methodEntry, method, compilation);
+        // Process the compilation.
+        lookupCompiledMethodEntry(method, compilation);
     }
 
     @Fold
@@ -1055,15 +1053,17 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * Lookup a {@code CompiledMethodEntry} for a {@code CompilationResult}. If the
      * {@code CompiledMethodEntry} does not exist yet, it is installed.
      *
-     * @param methodEntry the {@code MethodEntry} of the method param
      * @param method the {@code SharedMethod} of this compilation
      * @param compilation the given {@code CompilationResult}
      * @return the corresponding {@code CompiledMethodEntry}
      */
-    protected CompiledMethodEntry lookupCompiledMethodEntry(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
+    protected CompiledMethodEntry lookupCompiledMethodEntry(SharedMethod method, CompilationResult compilation) {
         if (method == null) {
             return null;
         }
+        // First make sure the underlying MethodEntry exists.
+        MethodEntry methodEntry = lookupMethodEntry(method);
+
         CompiledMethodEntry compiledMethodEntry = synchronizedGet(compiledMethodIndex, compilation.getCompilationId());
         if (compiledMethodEntry == null) {
             compiledMethodEntry = installCompilationInfo(methodEntry, method, compilation);

@@ -401,10 +401,7 @@ public class RuntimeCompileDebugInfoTest {
         RuntimeCompilations x = new RuntimeCompilations(11);
         String param1 = "test";
 
-        float result = 0;
-        for (int i = 0; i < 10_000_000; i++) {
-            result += invoke(getFunctionPointer(installedCode), x, param1);
-        }
+        float result = invoke(getFunctionPointer(installedCode), x, param1);
 
         installedCode.invalidate();
     }
