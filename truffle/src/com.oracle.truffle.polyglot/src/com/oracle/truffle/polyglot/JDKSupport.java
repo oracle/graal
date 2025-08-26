@@ -119,7 +119,7 @@ final class JDKSupport {
                 return null;
             }
             try {
-                Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource());
+                Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource(), LibTruffleAttachResource.ID);
                 Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
                 attachLibPath = libAttach.toString();
             } catch (IOException ioe) {

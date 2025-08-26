@@ -90,7 +90,6 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
-        extraVmArgs.extend(_open_module_exports_args())
         # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         return extraVmArgs
@@ -179,26 +178,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def _open_module_exports_args():
-    """
-    Gets the VM args for exporting all Truffle API packages on JDK9 or later.
-    The default Truffle moduleInfo is opened but closed version is deployed into graalvm.
-    To run benchmarks on the graalvm we need to open the closed Truffle packages.
-    """
-    assert mx.get_jdk().javaCompliance >= '1.9'
-    truffle_api_dist = mx.distribution('TRUFFLE_API')
-    truffle_api_module_name = truffle_api_dist.moduleInfo['name']
-    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo')['exports']
-    args = []
-    for export in module_info_open_exports:
-        if ' to ' in export: # Qualified exports
-            package, targets = export.split(' to ')
-            targets = targets.replace(' ', '')
-        else: # Unqualified exports
-            package = export
-            targets = 'ALL-UNNAMED'
-        args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
-    return args
 
 def enable_truffle_native_access(vmArgs):
     """
@@ -876,6 +855,7 @@ def truffle_native_context_preinitialization_tests(build_args=None):
 
 
 def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
+    jdk = mx.get_jdk(tag='graalvm')
     build_args = build_args if build_args else []
     is_libc_musl = '--libc=musl' in build_args
     is_static = '--static' in build_args
@@ -912,11 +892,13 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
         '-R:MaxHeapSize=2g',
         '-H:MaxRuntimeCompileMethods=5000',
         '--enable-url-protocols=http,jar',
+        '--enable-monitoring=jvmstat',
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
         '--enable-native-access=org.graalvm.truffle',
-    ]
+    ] + (mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal']) if jdk.version < mx.VersionSpec("24") else
+         ['--enable-monitoring=threaddump'])
     run_args = run_truffle_runtime_args + (['-Xss1m'] if is_libc_musl else []) + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
     ]
@@ -1988,7 +1970,6 @@ class LibffiBuildTask(mx_native.TargetArchBuildTask):
 
     def clean(self, forBuild=False):
         mx.rmtree(self.out_dir, ignore_errors=True)
-
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
