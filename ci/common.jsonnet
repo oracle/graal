@@ -323,6 +323,24 @@ local common_json = import "../common.json";
       },
     },
 
+    wasm_ol8:: {
+      downloads+: {
+        WABT_DIR: {name: 'wabt', version: '1.0.36-ol8', platformspecific: true},
+      },
+      environment+: {
+        WABT_DIR: '$WABT_DIR/bin',
+      },
+    },
+
+    emsdk_ol8:: {
+      downloads+: {
+        EMSDK_DIR: {name: 'emsdk', version: '4.0.10', platformspecific: true},
+      },
+      environment+: {
+        EMCC_DIR: '$EMSDK_DIR/upstream/emscripten/'
+      }
+    },
+
     fastr:: {
       # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
       # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)
