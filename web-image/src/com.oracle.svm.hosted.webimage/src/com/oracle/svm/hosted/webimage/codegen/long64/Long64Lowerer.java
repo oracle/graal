@@ -149,6 +149,14 @@ public class Long64Lowerer {
                 method = long64Class.getMethod("or", Long64.class, Long64.class);
             } else if (op.equals(arithmeticOpTable.getXor())) {
                 method = long64Class.getMethod("xor", Long64.class, Long64.class);
+            } else if (op.equals(arithmeticOpTable.getMin())) {
+                method = long64Class.getMethod("min", Long64.class, Long64.class);
+            } else if (op.equals(arithmeticOpTable.getMax())) {
+                method = long64Class.getMethod("max", Long64.class, Long64.class);
+            } else if (op.equals(arithmeticOpTable.getUMin())) {
+                method = long64Class.getMethod("umin", Long64.class, Long64.class);
+            } else if (op.equals(arithmeticOpTable.getUMax())) {
+                method = long64Class.getMethod("umax", Long64.class, Long64.class);
             } else if (op.equals(arithmeticOpTable.getShl())) {
                 if (fromNum) {
                     method = long64Class.getMethod("slFromNum", Long64.class, int.class);

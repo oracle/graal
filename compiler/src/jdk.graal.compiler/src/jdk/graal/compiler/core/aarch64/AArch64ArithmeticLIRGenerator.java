@@ -35,6 +35,7 @@ import static jdk.graal.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipul
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -469,7 +470,10 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitMathMax(Value a, Value b) {
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
+        if (((AArch64Kind) cmpKind.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AArch64ArithmeticOp.SMAX);
+        }
         assert a.getPlatformKind() == b.getPlatformKind() : "Kind must match a=" + a + " b=" + b;
         assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
                         a.getPlatformKind() == AArch64Kind.SINGLE : a;
@@ -477,11 +481,35 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
+        if (((AArch64Kind) cmpKind.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AArch64ArithmeticOp.SMIN);
+        }
         assert a.getPlatformKind() == b.getPlatformKind() : "Kind must match a=" + a + " b=" + b;
         assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
                         a.getPlatformKind() == AArch64Kind.SINGLE : a;
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMIN, true, a, b);
+    }
+
+    @Override
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AArch64ArithmeticOp.UMAX);
+    }
+
+    @Override
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AArch64ArithmeticOp.UMIN);
+    }
+
+    private Value emitIntegerMinMax(LIRKind cmpKind, Value a, Value b, AArch64ArithmeticOp minMaxOp) {
+        Condition condition = switch (minMaxOp) {
+            case SMAX -> Condition.GE;
+            case SMIN -> Condition.LE;
+            case UMAX -> Condition.AE;
+            case UMIN -> Condition.BE;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(minMaxOp);
+        };
+        return getLIRGen().emitConditionalMove(cmpKind.getPlatformKind(), a, b, condition, false, a, b);
     }
 
     @Override

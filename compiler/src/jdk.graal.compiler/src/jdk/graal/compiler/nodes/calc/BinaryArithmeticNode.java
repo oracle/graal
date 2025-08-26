@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -603,11 +603,17 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             // Re-association from "x ^ (y ^ C)" to "(x ^ y) ^ C"
             return XorNode.create(matchValue, XorNode.create(otherValue1, otherValue2, view), view);
         } else if (node instanceof MinNode) {
-            // Re-association from "Math.min(x, Math.min(y, C))" to "Math.min(Math.min(x, y), C)"
+            // Re-association from "min(x, min(y, C))" to "min(min(x, y), C)"
             return MinNode.create(matchValue, MinNode.create(otherValue1, otherValue2, view), view);
         } else if (node instanceof MaxNode) {
-            // Re-association from "Math.max(x, Math.max(y, C))" to "Math.max(Math.max(x, y), C)"
+            // Re-association from "max(x, max(y, C))" to "max(max(x, y), C)"
             return MaxNode.create(matchValue, MaxNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof UnsignedMinNode) {
+            // Re-association from "umin(x, umin(y, C))" to "umin(umin(x, y), C)"
+            return UnsignedMinNode.create(matchValue, UnsignedMinNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof UnsignedMaxNode) {
+            // Re-association from "umax(x, umax(y, C))" to "umax(umax(x, y), C)"
+            return UnsignedMaxNode.create(matchValue, UnsignedMaxNode.create(otherValue1, otherValue2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node); // ExcludeFromJacocoGeneratedReport
         }
@@ -721,6 +727,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return MaxNode.create(a, MaxNode.create(m1, m2, view), view);
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
+        } else if (node instanceof UnsignedMaxNode) {
+            return UnsignedMaxNode.create(a, UnsignedMaxNode.create(m1, m2, view), view);
+        } else if (node instanceof UnsignedMinNode) {
+            return UnsignedMinNode.create(a, UnsignedMinNode.create(m1, m2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node); // ExcludeFromJacocoGeneratedReport
         }

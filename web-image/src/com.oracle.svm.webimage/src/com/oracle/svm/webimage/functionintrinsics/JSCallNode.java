@@ -111,6 +111,8 @@ public class JSCallNode extends FixedWithNextNode {
     public static final JSSystemFunction STRICT_MATH_LOG1P = new JSSystemFunction("Math.log1p", DOUBLE_STAMP, JavaKind.Double);
     public static final JSSystemFunction STRICT_MATH_POW = new JSSystemFunction("Math.pow", DOUBLE_STAMP, JavaKind.Double, JavaKind.Double);
     public static final JSSystemFunction STRICT_MATH_CBRT = new JSSystemFunction("Math.cbrt", DOUBLE_STAMP, JavaKind.Double);
+    public static final JSSystemFunction MATH_MIN = new JSSystemFunction("Math.min", DOUBLE_STAMP, JavaKind.Double);
+    public static final JSSystemFunction MATH_MAX = new JSSystemFunction("Math.max", DOUBLE_STAMP, JavaKind.Double);
     public static final JSSystemFunction MATH_IMUL = new JSSystemFunction("Math.imul", INTEGER_STAMP, Int, Int);
 
     public static final JSSystemFunction MEM_MALLOC = new JSSystemFunction("heap.malloc", LONG_STAMP, JavaKind.Long);
