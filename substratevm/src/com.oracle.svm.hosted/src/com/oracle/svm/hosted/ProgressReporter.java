@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -795,6 +796,7 @@ public class ProgressReporter {
         l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
+        printWarningMessages();
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
     }
 
@@ -804,6 +806,17 @@ public class ProgressReporter {
             case FAILED -> "Failed";
             case STOPPED -> "Stopped";
         };
+    }
+
+    private void printWarningMessages() {
+        int warningsCount = LogUtils.getWarningsCount() + SubstrateOptions.DriverWarningsCount.getValue();
+        if (warningsCount == 0) {
+            return;
+        }
+
+        l().println();
+        l().yellowBold().a("The build process encountered ").a(warningsCount).a(warningsCount == 1 ? " warning." : " warnings.").reset().println();
+        l().println();
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {

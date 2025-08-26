@@ -1711,4 +1711,8 @@ public class SubstrateOptions {
     public static boolean canEnableFallbackCompilation() {
         return !EnableFallbackCompilation.getValue() && !useEconomyCompilerConfig();
     }
+
+    @Option(help = "Passes the numbers of warnings that occurred in the driver phase to the builder.", type = OptionType.Debug, stability = OptionStability.STABLE) //
+    public static final HostedOptionKey<Integer> DriverWarningsCount = new HostedOptionKey<>(0);
+
 }
