@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,13 +37,15 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 /** Keeps track of type ID information at run-time (see {@link DynamicHub#getTypeID()}). */
-public class TypeIDs implements ApplicationLayerOnlyImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
+public class TypeIDs {
     private final AtomicInteger nextTypeId = new AtomicInteger();
     @UnknownPrimitiveField(availability = AfterCompilation.class) //
     private int firstRuntimeTypeId;
@@ -78,11 +79,6 @@ public class TypeIDs implements ApplicationLayerOnlyImageSingleton, UnsavedSingl
 
     public int getNumTypeIds() {
         return nextTypeId.get();
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }
 

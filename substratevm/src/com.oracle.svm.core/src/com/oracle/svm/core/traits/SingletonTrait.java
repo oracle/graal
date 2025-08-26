@@ -31,6 +31,9 @@ import com.oracle.svm.core.util.VMError;
  * {@link SingletonTraitKind} for more details.
  */
 public record SingletonTrait(SingletonTraitKind kind, Object metadata) {
+
+    public static final SingletonTrait[] EMPTY_ARRAY = new SingletonTrait[0];
+
     public SingletonTrait {
         /*
          * Guarantee the metadata for this trait is of the expected kind.
