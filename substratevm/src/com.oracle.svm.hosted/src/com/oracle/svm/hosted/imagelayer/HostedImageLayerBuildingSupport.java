@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -49,6 +50,8 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -84,17 +87,24 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private final List<FileChannel> graphsChannels;
     private final WriteLayerArchiveSupport writeLayerArchiveSupport;
     private final LoadLayerArchiveSupport loadLayerArchiveSupport;
+    /**
+     * This hook is called while adding image singletons (e.g. {@link ImageSingletons#add}) to
+     * associate additional traits with a singleton. Currently this is exclusively set in
+     * {@link #initialize}.
+     */
+    private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
 
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
                     Reader snapshot, List<FileChannel> graphsChannels,
                     boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
-                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport) {
+                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait[]> singletonTraitInjector) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
         this.imageClassLoader = imageClassLoader;
         this.snapshot = snapshot;
         this.graphsChannels = graphsChannels;
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
+        this.singletonTraitInjector = singletonTraitInjector;
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
@@ -156,6 +166,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
         return typeResult.get();
+    }
+
+    public Function<Class<?>, SingletonTrait[]> getSingletonTraitInjector() {
+        return singletonTraitInjector;
     }
 
     /**
@@ -330,8 +344,20 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
 
+        Function<Class<?>, SingletonTrait[]> singletonTraitInjector = null;
+        if (buildingImageLayer) {
+            var applicationLayerOnlySingletons = SubstrateOptions.ApplicationLayerOnlySingletons.getValue(values);
+            SingletonTrait[] appLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.APP_LAYER_ONLY};
+            singletonTraitInjector = (key) -> {
+                if (applicationLayerOnlySingletons.contains(key.getName())) {
+                    return appLayerOnly;
+                }
+                return SingletonTrait.EMPTY_ARRAY;
+            };
+        }
+
         HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, graphs, buildingImageLayer,
-                        buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport);
+                        buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport, singletonTraitInjector);
 
         if (buildingExtensionLayer) {
             imageLayerBuildingSupport.setSingletonLoader(new SVMImageLayerSingletonLoader(imageLayerBuildingSupport, snapshot));
