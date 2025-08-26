@@ -26,9 +26,11 @@
 package jdk.graal.compiler.nodes.calc;
 
 import jdk.graal.compiler.core.common.NumUtil.Signedness;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -36,6 +38,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -75,15 +78,45 @@ public class MaxNode extends MinMaxNode<Max> {
     }
 
     @Override
-    public boolean isNarrowable(int resultBits) {
-        if (!super.isNarrowable(resultBits)) {
-            return false;
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
         }
-        return super.isNarrowable(resultBits, Signedness.SIGNED);
+        if (stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+            IntegerStamp stampX = (IntegerStamp) forX.stamp(NodeView.from(tool));
+            IntegerStamp stampY = (IntegerStamp) forY.stamp(NodeView.from(tool));
+            if (IntegerStamp.sameSign(stampX, stampY)) {
+                return UnsignedMaxNode.create(forX, forY, NodeView.from(tool));
+            }
+        }
+        return this;
     }
 
+    @Override
+    public Signedness signedness() {
+        return Signedness.SIGNED;
+    }
+
+    @Override
+    protected Condition conditionCodeForEqualsUsage(ValueNode other) {
+        if (other == getX()) {
+            // max(x, y) == x --> x >= y
+            return Condition.GE;
+        } else if (other == getY()) {
+            // max(x, y) == y --> x <= y
+            return Condition.LE;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns {@code true} if the given architecture has support for emitting a simple branchless
+     * instruction sequence implementing a max operation on floating-point values.
+     */
     @SuppressWarnings("unlikely-arg-type")
-    public static boolean isSupported(Architecture arch) {
+    public static boolean floatingPointSupportAvailable(Architecture arch) {
         return switch (arch) {
             case AMD64 amd64 -> amd64.getFeatures().contains(AMD64.CPUFeature.AVX);
             case AArch64 aarch64 -> true;

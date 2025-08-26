@@ -33,12 +33,16 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmAddressNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmIsNonZeroNode;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.iterators.FilteredNodeIterable;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -60,7 +64,7 @@ public class WebImageWasmVariableAllocation extends WebImageVariableAllocation {
 
         /*
          * Invokes and foreign calls generate call instructions that require some setup and thus can
-         * neve be inlined
+         * never be inlined
          */
         if (node instanceof Invoke || node instanceof ForeignCall) {
             policies.add(SafetyPolicy.Never);
@@ -70,6 +74,16 @@ public class WebImageWasmVariableAllocation extends WebImageVariableAllocation {
         if (switchUsage != null && !WasmSwitchPhase.isSimplified(switchUsage)) {
             // The input to a degenerate switch may never be inlined, because it may be duplicated
             // during lowering.
+            policies.add(SafetyPolicy.Never);
+        }
+
+        FilteredNodeIterable<Node> intMinMaxUsages = node.usages().filter(n -> n instanceof MinMaxNode<?> minMaxNode && WasmUtil.mapPrimitiveType(minMaxNode.getStackKind()).isInt());
+
+        if (intMinMaxUsages.isNotEmpty()) {
+            /*
+             * Code generation for integer min/max nodes duplicates its inputs and thus they must
+             * never be inlined and always reside in a variable.
+             */
             policies.add(SafetyPolicy.Never);
         }
 

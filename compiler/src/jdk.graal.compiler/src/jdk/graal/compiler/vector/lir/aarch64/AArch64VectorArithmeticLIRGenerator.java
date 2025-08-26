@@ -344,33 +344,41 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     }
 
     @Override
-    public Value emitMathMax(Value a, Value b) {
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
         if (isVectorKind(a)) {
             return emitVectorBinary(isVectorNumericInteger(a) ? SMAX : FMAX, a, b);
         } else {
-            return super.emitMathMax(a, b);
+            return super.emitMathMax(cmpKind, a, b);
         }
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
         if (isVectorKind(a)) {
             return emitVectorBinary(isVectorNumericInteger(a) ? SMIN : FMIN, a, b);
         } else {
-            return super.emitMathMin(a, b);
+            return super.emitMathMin(cmpKind, a, b);
         }
     }
 
     @Override
-    public Value emitMathUnsignedMax(Value a, Value b) {
-        GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned max only supported on integer vectors");
-        return emitVectorBinary(UMAX, a, b);
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        if (isVectorKind(a)) {
+            GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned max only supported on integer vectors");
+            return emitVectorBinary(UMAX, a, b);
+        } else {
+            return super.emitMathUnsignedMax(cmpKind, a, b);
+        }
     }
 
     @Override
-    public Value emitMathUnsignedMin(Value a, Value b) {
-        GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned min only supported on integer vectors");
-        return emitVectorBinary(UMIN, a, b);
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        if (isVectorKind(a)) {
+            GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned min only supported on integer vectors");
+            return emitVectorBinary(UMIN, a, b);
+        } else {
+            return super.emitMathUnsignedMin(cmpKind, a, b);
+        }
     }
 
     @Override
