@@ -181,6 +181,7 @@ public class ReplayCompilationRunner {
                         codeHash = codeHash * 31 + Arrays.hashCode(replayResult.replayedArtifacts().result().getTargetCode());
                     } catch (Exception e) {
                         out.println("Replay failed: " + e);
+                        e.printStackTrace(out);
                         return ExitStatus.Failure;
                     }
                 }
@@ -206,6 +207,7 @@ public class ReplayCompilationRunner {
                     task.setFailureReason(failure.getMessage());
                 } catch (Exception e) {
                     out.println("Replay failed: " + e);
+                    e.printStackTrace(out);
                     return ExitStatus.Failure;
                 }
             }
