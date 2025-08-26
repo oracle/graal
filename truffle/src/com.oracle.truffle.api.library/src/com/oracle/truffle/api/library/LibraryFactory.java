@@ -171,7 +171,7 @@ public abstract class LibraryFactory<T extends Library> {
     final Map<String, Message> nameToMessages;
     @CompilationFinal private volatile T uncachedDispatch;
 
-    final DynamicDispatchLibrary dispatchLibrary;
+    private final DynamicDispatchLibrary dispatchLibrary;
 
     DefaultExportProvider[] beforeBuiltinDefaultExports;
     DefaultExportProvider[] afterBuiltinDefaultExports;
@@ -180,9 +180,35 @@ public abstract class LibraryFactory<T extends Library> {
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
      *
      * @since 19.0
+     * @deprecated new versions of the library generator won't use this constructor anymore
      */
     @SuppressWarnings("unchecked")
+    @Deprecated
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
+        this(libraryClass, messages, isDynamicDispatchEnabled(libraryClass));
+    }
+
+    private static boolean isDynamicDispatchEnabled(Class<?> libraryClass) {
+        if (libraryClass == DynamicDispatchLibrary.class) {
+            return false;
+        } else {
+            GenerateLibrary annotation = libraryClass.getAnnotation(GenerateLibrary.class);
+            boolean dynamicDispatchEnabled = annotation == null || annotation.dynamicDispatchEnabled();
+            if (dynamicDispatchEnabled) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
+     *
+     * @since 26.0
+     */
+    @SuppressWarnings("unchecked")
+    protected LibraryFactory(Class<T> libraryClass, List<Message> messages, boolean dynamicDispatchEnabled) {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
         this.libraryClass = libraryClass;
         this.messages = Collections.unmodifiableList(messages);
@@ -193,18 +219,7 @@ public abstract class LibraryFactory<T extends Library> {
             messagesMap.putIfAbsent(message.getSimpleName(), message);
         }
         this.nameToMessages = messagesMap;
-        if (libraryClass == DynamicDispatchLibrary.class) {
-            this.dispatchLibrary = null;
-        } else {
-            GenerateLibrary annotation = libraryClass.getAnnotation(GenerateLibrary.class);
-            boolean dynamicDispatchEnabled = annotation == null || libraryClass.getAnnotation(GenerateLibrary.class).dynamicDispatchEnabled();
-            if (dynamicDispatchEnabled) {
-                this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
-            } else {
-                this.dispatchLibrary = null;
-            }
-        }
-
+        this.dispatchLibrary = dynamicDispatchEnabled ? LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached() : null;
         initDefaultExports();
     }
 

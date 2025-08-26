@@ -128,8 +128,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
         super(new SubstrateTruffleCompilationSupport(), List.of());
-        /* Ensure the factory class gets initialized. */
-        super.getLoopNodeFactory();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,16 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime;
+package org.graalvm.truffle.benchmark;
 
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.RepeatingNode;
+import java.util.concurrent.TimeUnit;
 
-public class DefaultLoopNodeFactory implements LoopNodeFactory {
+import org.graalvm.polyglot.Context;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Warmup;
 
-    @Override
-    public LoopNode create(RepeatingNode repeatingNode) {
-        return OptimizedOSRLoopNode.create(repeatingNode);
+@BenchmarkMode(Mode.SingleShotTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Warmup(iterations = 0)
+@Measurement(iterations = 1)
+@Fork(value = 10, warmups = 1, jvmArgsAppend = {"-Xms512m", "-Xmx512m",
+                // options to improve determinism
+                "-XX:+UseSerialGC", "-XX:+AlwaysPreTouch", "-XX:+UseLargePages", "-XX:TieredStopAtLevel=1",
+                // set to true to test fallback runtime
+                "-Dtruffle.UseFallbackRuntime=false",
+                "-XX:-EagerJVMCI", // temporary workaround for GR-68703
+// uncomment for profiling (and adapt path to profiler)
+// "-agentpath:async-profiler-4.1-macos/lib/libasyncProfiler.dylib=start,event=cpu,interval=1ms,file=ap-%p.collapsed"
+})
+public class ContextClassInitBenchmark extends TruffleBenchmark {
+
+    @Benchmark
+    public Object classInitNoLanguage() {
+        return Context.create();
+    }
+
+    @Benchmark
+    public Object classInitBasicInitialize() {
+        return Context.create().initialize(EngineBenchmark.TEST_LANGUAGE);
+    }
+
+    @Benchmark
+    public Object classInitSLInitialize() {
+        return Context.create().initialize("sl");
     }
 
 }

@@ -48,10 +48,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.Pair;
@@ -60,12 +58,14 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.polyglot.InternalResourceRoots.Root.Kind;
 
 final class InternalResourceRoots {
 
     private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
     private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
     private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
+    private static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
 
     static String overriddenComponentRootProperty(String componentId) {
         StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
@@ -87,7 +87,7 @@ final class InternalResourceRoots {
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
      * native image heap. The value is recomputed when the pre-initialized engine is patched.
      */
-    private volatile Set<Root> roots;
+    private volatile List<Root> roots;
 
     private InternalResourceRoots() {
     }
@@ -142,7 +142,7 @@ final class InternalResourceRoots {
             if (InternalResourceCache.usesInternalResources()) {
                 roots = computeRoots(findDefaultRoot());
             } else {
-                roots = Set.of();
+                roots = List.of();
             }
         }
     }
@@ -219,23 +219,23 @@ final class InternalResourceRoots {
     /**
      * Computes the internal resource roots.
      */
-    private static Set<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
+    private static List<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
         Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector = new HashMap<>();
         InternalResourceCache.walkAllResources((componentId, resources) -> {
             collectRoots(componentId, defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
         });
         // Build a set of immutable Roots.
-        Set<Root> result = new HashSet<>();
+        List<Root> result = new ArrayList<>();
         for (var entry : collector.entrySet()) {
-            var key = entry.getKey();
-            var resources = entry.getValue();
+            Pair<Path, Kind> key = entry.getKey();
+            List<InternalResourceCache> resources = entry.getValue();
             Root internalResourceRoot = new Root(key.getLeft(), key.getRight(), resources);
             for (InternalResourceCache resource : resources) {
                 resource.initializeOwningRoot(internalResourceRoot);
             }
             result.add(internalResourceRoot);
         }
-        return Collections.unmodifiableSet(result);
+        return Collections.unmodifiableList(result);
     }
 
     private static Pair<Path, Root.Kind> findDefaultRoot() {
@@ -253,8 +253,10 @@ final class InternalResourceRoots {
             root = findCacheRootDefault();
             kind = Root.Kind.VERSIONED;
         }
-        logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
-                        root.path(), root.hint(), root.hintValue());
+        if (isTraceInternalResourceEvents()) {
+            logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
+                            root.path(), root.hint(), root.hintValue());
+        }
         return Pair.create(root.path(), kind);
     }
 
@@ -347,16 +349,15 @@ final class InternalResourceRoots {
 
     static boolean isTraceInternalResourceEvents() {
         /*
-         * Internal resources are utilized before the Engine is created; hence, we cannot leverage
-         * engine options and engine logger.
+         * In AOT we want to enable tracing if its enabled in the built image or using the option at
+         * runtime.
          */
-        return Boolean.getBoolean("polyglotimpl.TraceInternalResources");
+        return TRACE_INTERNAL_RESOURCE_EVENTS || (TruffleOptions.AOT && Boolean.getBoolean("polyglotimpl.TraceInternalResources"));
     }
 
     static void logInternalResourceEvent(String message, Object... args) {
-        if (isTraceInternalResourceEvents()) {
-            PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
-        }
+        assert isTraceInternalResourceEvents() : "need to check for TRACE_INTERNAL_RESOURCE_EVENTS before use";
+        PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
     }
 
     private static void emitWarning(String message, Object... args) {
@@ -371,6 +372,7 @@ final class InternalResourceRoots {
             UNVERSIONED,
             VERSIONED,
         }
+
     }
 
     private record ResolvedCacheFolder(Path path, String hint, Path hintValue) {

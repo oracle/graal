@@ -193,11 +193,11 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private final LoopNodeFactory loopNodeFactory;
     private EngineCacheSupport engineCacheSupport;
-    private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
+    private final Iterable<Class<?>> extraLookupTypes;
+    private UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final FloodControlHandler floodControlHandler;
-    private final List<OptionDescriptors> runtimeOptionDescriptors;
+    private final List<OptionDescriptors> extensionOptionDescriptors;
     protected volatile OptionDescriptors engineOptions;
 
     protected final TruffleCompilationSupport compilationSupport;
@@ -206,24 +206,21 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
-        this.lookupTypes = initLookupTypes(extraLookupTypes);
+        this.extraLookupTypes = extraLookupTypes;
         List<OptionDescriptors> options = new ArrayList<>();
-        this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         this.previousEngineCacheSupportOptions = engineCacheSupport.getEngineOptions();
-        options.add(OptimizedRuntimeOptions.getDescriptors());
-        options.add(new CompilerOptionsDescriptors());
-        this.runtimeOptionDescriptors = options;
+        this.extensionOptionDescriptors = options;
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
     public final void initializeEngineCacheSupport(EngineCacheSupport support) {
-        this.runtimeOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
+        this.extensionOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
         this.engineCacheSupport = support;
         OptionDescriptors engineCacheOptions = support.getEngineOptions();
         this.previousEngineCacheSupportOptions = engineCacheOptions;
-        this.runtimeOptionDescriptors.add(engineCacheOptions);
+        this.extensionOptionDescriptors.add(engineCacheOptions);
     }
 
     protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
@@ -249,7 +246,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      * Returns a set of classes that need to be initialized before compilations can be performed.
      */
     public final Iterable<Class<?>> getLookupTypes() {
-        return lookupTypes.getValues();
+        return getLookupTypesMap().getValues();
+    }
+
+    private UnmodifiableEconomicMap<String, Class<?>> getLookupTypesMap() {
+        UnmodifiableEconomicMap<String, Class<?>> map = this.lookupTypes;
+        if (map == null) {
+            this.lookupTypes = map = initLookupTypes(extraLookupTypes);
+        }
+        return map;
     }
 
     /**
@@ -500,7 +505,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
-        Class<?> c = lookupTypes.get(className);
+        Class<?> c = getLookupTypesMap().get(className);
         if (c == null) {
             if (!required) {
                 return null;
@@ -633,11 +638,16 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
-        return getLoopNodeFactory().create(repeatingNode);
+        return OptimizedOSRLoopNode.create(repeatingNode);
     }
 
+    /**
+     * @deprecated do not use just here for compatibility with older SubstrateTruffleRuntime.
+     */
+    @SuppressWarnings("static-method")
+    @Deprecated
     protected final LoopNodeFactory getLoopNodeFactory() {
-        return loopNodeFactory;
+        return null;
     }
 
     public final EngineCacheSupport getEngineCacheSupport() {
@@ -1121,16 +1131,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     final OptionDescriptors getOptionDescriptors() {
-        // The engineOptions field needs to be initialized lazily because the
-        // OptimizedRuntimeAccessor
-        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime
-        // must be
-        // fully initialized before using the accessor otherwise a NullPointerException will be
-        // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
-        // still returns null.
+        /*
+         * The engineOptions field needs to be initialized lazily because the
+         * OptimizedRuntimeAccessor cannot be used in the OptimizedTruffleRuntime constructor. The
+         * OptimizedTruffleRuntime must be fully initialized before using the accessor otherwise a
+         * NullPointerException will be thrown from the Accessor.Constants static initializer
+         * because the Truffle#getRuntime still returns null.
+         */
         OptionDescriptors res = engineOptions;
         if (res == null) {
-            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors.toArray(new OptionDescriptors[runtimeOptionDescriptors.size()]));
+            List<OptionDescriptors> options = new ArrayList<>(extensionOptionDescriptors.size() + 2);
+            /*
+             * We initialize these options lazily so in case no engine options are used we don't
+             * need to load them.
+             */
+            options.addAll(extensionOptionDescriptors);
+            options.add(OptimizedRuntimeOptions.getDescriptors());
+            options.add(new CompilerOptionsDescriptors());
+            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(options.toArray(OptionDescriptors[]::new));
             engineOptions = res;
         }
         return res;

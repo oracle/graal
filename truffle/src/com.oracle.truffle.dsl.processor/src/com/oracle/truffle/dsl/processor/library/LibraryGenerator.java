@@ -757,6 +757,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             }
         }
         builder.end(); // of
+
+        builder.string(String.valueOf(!model.isDynamicDispatch() && model.isDynamicDispatchEnabled()));
+
         builder.end(); // superCall
         builder.end(); // statement
 
