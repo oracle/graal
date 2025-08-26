@@ -215,6 +215,7 @@ public class SVMHost extends HostVM {
 
     private final int layerId;
     private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+    private final boolean buildingInitialLayer = ImageLayerBuildingSupport.buildingInitialLayer();
     private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
@@ -282,6 +283,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean buildingImageLayer() {
         return buildingImageLayer;
+    }
+
+    @Override
+    public boolean buildingInitialLayer() {
+        return buildingInitialLayer;
     }
 
     @Override

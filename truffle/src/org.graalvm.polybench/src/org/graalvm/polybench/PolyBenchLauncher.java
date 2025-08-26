@@ -314,6 +314,16 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    /**
+     * Suppress the runtime options printed by the parent implementation. Some of these options
+     * (like --jvm, --native) are handled by mx polybench, so using them in the launcher is
+     * discouraged (and confusing).
+     */
+    @Override
+    protected void printDefaultHelp(OptionCategory helpCategory) {
+        printHelp(helpCategory);
+    }
+
     static String getExtension(String path) {
         int lastDot = path.lastIndexOf('.');
         if (lastDot < 0) {

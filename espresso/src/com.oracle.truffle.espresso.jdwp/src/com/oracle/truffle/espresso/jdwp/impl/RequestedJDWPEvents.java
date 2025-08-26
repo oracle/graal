@@ -144,7 +144,7 @@ public final class RequestedJDWPEvents {
                 FieldBreakpointInfo fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setAccessBreakpoint();
-                fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                eventListener.addFieldRequest(fieldBreakpointInfo);
                 String location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 controller.fine(() -> "Submitting field access breakpoint: " + location);
                 break;
@@ -152,7 +152,7 @@ public final class RequestedJDWPEvents {
                 fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setModificationBreakpoint();
-                fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                eventListener.addFieldRequest(fieldBreakpointInfo);
                 location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 controller.fine(() -> "Submitting field modification breakpoint: " + location);
                 break;
@@ -338,7 +338,7 @@ public final class RequestedJDWPEvents {
                     case FIELD_ACCESS:
                     case FIELD_MODIFICATION:
                         FieldBreakpointInfo info = (FieldBreakpointInfo) requestFilter.getBreakpointInfo();
-                        info.getField().removeFieldBreakpointInfo(requestFilter.getRequestId());
+                        eventListener.removeFieldRequest(info.getRequestId(), info.getField());
                         break;
                     case CLASS_PREPARE:
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
@@ -378,7 +378,7 @@ public final class RequestedJDWPEvents {
         return new CommandResult(reply);
     }
 
-    public CommandResult clearAllRequests(Packet packet) {
+    public CommandResult clearAllBreakpointRequests(Packet packet) {
         PacketStream reply = new PacketStream().id(packet.id).replyPacket();
 
         eventListener.clearAllBreakpointRequests();

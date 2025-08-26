@@ -22,30 +22,53 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.imagelayer;
+package com.oracle.svm.hosted.classloading;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import java.util.List;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 @AutomaticallyRegisteredFeature
-public class LayerDelayedMethodFeature implements InternalFeature {
+public class ClassRegistryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.buildingApplicationLayer();
+        return ClassForNameSupport.respectClassLoader();
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(SymbolsFeature.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ClassInitializationSupport.singleton().initializeAtBuildTime("com.oracle.svm.espresso.classfile", "Native Image classes needed for runtime class loading initialized at build time");
+
+        ImageSingletons.add(ClassRegistries.class, new ClassRegistries());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        BigBang bigbang = access.getUniverse().getBigbang();
-        for (int methodId : HostedDynamicLayerInfo.singleton().getPreviousLayerDelayedMethodIds()) {
-            AnalysisMethod method = loader.getAnalysisMethodForBaseLayerId(methodId);
-            bigbang.forcedAddRootMethod(method, method.isConstructor(), "Fully delayed to application layer");
+        access.registerSubtypeReachabilityHandler((unused, cls) -> onTypeReachable(cls), Object.class);
+    }
+
+    private static void onTypeReachable(Class<?> cls) {
+        if (cls.isArray() || cls.isHidden()) {
+            return;
+        }
+        if (RuntimeClassLoading.isSupported() || ClassForNameSupport.isCurrentLayerRegisteredClass(cls.getName())) {
+            ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(cls.getClassLoader()), cls);
         }
     }
 }

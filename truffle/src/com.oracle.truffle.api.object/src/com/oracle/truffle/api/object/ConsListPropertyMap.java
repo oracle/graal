@@ -111,33 +111,16 @@ final class ConsListPropertyMap extends PropertyMap {
     public Property get(Object key) {
         if (key == null || isEmpty()) {
             return null;
-        } else if (key instanceof String) {
-            return getStringKey((String) key);
         } else {
-            return getEquals(key);
-        }
-    }
-
-    private Property getEquals(Object key) {
-        for (ConsListPropertyMap current = this; !current.isEmpty(); current = current.getParentMap()) {
-            Property p = current.getLastProperty();
-            Object pKey = p.getKey();
-            if (pKey == key || pKey.equals(key)) {
-                return p;
+            for (ConsListPropertyMap current = this; !current.isEmpty(); current = current.getParentMap()) {
+                Property p = current.getLastProperty();
+                Object pKey = p.getKey();
+                if (pKey == key || pKey.equals(key)) {
+                    return p;
+                }
             }
+            return null;
         }
-        return null;
-    }
-
-    private Property getStringKey(String key) {
-        for (ConsListPropertyMap current = this; !current.isEmpty(); current = current.getParentMap()) {
-            Property p = current.getLastProperty();
-            Object pKey = p.getKey();
-            if (pKey == key || (pKey instanceof String && ((String) pKey).equals(key))) {
-                return p;
-            }
-        }
-        return null;
     }
 
     @Override

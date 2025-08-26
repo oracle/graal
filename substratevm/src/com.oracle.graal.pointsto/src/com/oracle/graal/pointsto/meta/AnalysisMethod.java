@@ -313,8 +313,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.enableReachableInCurrentLayer = original.enableReachableInCurrentLayer;
     }
 
+    /**
+     * This method should not be used directly, except to set the {@link CompilationBehavior} from a
+     * previous layer. To set a new {@link CompilationBehavior}, please use the associated setter.
+     */
     public void setCompilationBehavior(CompilationBehavior compilationBehavior) {
+        assert getUniverse().getBigbang().getHostVM().buildingImageLayer() : "The method compilation behavior can only be set in layered images";
         this.compilationBehavior = compilationBehavior;
+    }
+
+    private void setNewCompilationBehavior(CompilationBehavior compilationBehavior) {
+        assert (!isInBaseLayer && this.compilationBehavior == CompilationBehavior.DEFAULT) || this.compilationBehavior == compilationBehavior : "The method was already assigned " +
+                        this.compilationBehavior + ", but trying to assign " + compilationBehavior;
+        setCompilationBehavior(compilationBehavior);
     }
 
     public CompilationBehavior getCompilationBehavior() {
@@ -327,11 +338,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void setFullyDelayedToApplicationLayer() {
         HostVM hostVM = getUniverse().getBigbang().getHostVM();
-        AnalysisError.guarantee(hostVM.buildingImageLayer(), "Methods can only be delayed in layered images");
+        AnalysisError.guarantee(hostVM.buildingImageLayer(), "Methods can only be delayed in layered images: %s", this);
         AnalysisError.guarantee(parsedGraphCacheState.get() == GraphCacheEntry.UNPARSED, "The method %s was marked as delayed to the application layer but was already parsed", this);
         AnalysisError.guarantee(!hostVM.hasAlwaysInlineDirective(this), "Method %s with an always inline directive cannot be delayed to the application layer as such methods cannot be inlined", this);
         AnalysisError.guarantee(isConcrete(), "Method %s is not concrete and cannot be delayed to the application layer", this);
-        this.compilationBehavior = CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER;
+        setNewCompilationBehavior(CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER);
     }
 
     /**
@@ -340,6 +351,22 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public boolean isDelayed() {
         return compilationBehavior == CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
+    }
+
+    public void setPinnedToInitialLayer() {
+        BigBang bigbang = getUniverse().getBigbang();
+        AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);
+        boolean nonAbstractInstanceClass = !declaringClass.isArray() && declaringClass.isInstanceClass() && !declaringClass.isAbstract();
+        AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be delayed: %s", this);
+        bigbang.forcedAddRootMethod(this, true, "Method is pinned to the initial layer");
+        if (!isStatic()) {
+            declaringClass.registerAsInstantiated(this + " is pinned to the initial layer");
+        }
+        setNewCompilationBehavior(CompilationBehavior.PINNED_TO_INITIAL_LAYER);
+    }
+
+    public boolean isPinnedToInitialLayer() {
+        return compilationBehavior == CompilationBehavior.PINNED_TO_INITIAL_LAYER;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -1429,9 +1456,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         DEFAULT,
 
         /**
-         * Method is pinned to a specific shared layer, meaning it has to be analyzed and compiled
-         * in this specific layer. A method can only be pinned to a shared layer.
+         * Method is pinned to the initial layer, meaning it has to be analyzed and compiled in this
+         * specific layer.
          */
-        PINNED_TO_SHARED_LAYER,
+        PINNED_TO_INITIAL_LAYER,
     }
 }

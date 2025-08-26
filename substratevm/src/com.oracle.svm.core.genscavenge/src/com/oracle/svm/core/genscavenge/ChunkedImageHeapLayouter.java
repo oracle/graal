@@ -185,7 +185,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
             control.poll();
             partition.layout(allocator, control);
         }
-        return populateInfoObjects(imageHeap.countAndVerifyDynamicHubs(), pageSize, control);
+        return populateInfoObjects(imageHeap.countPatchAndVerifyDynamicHubs(), pageSize, control);
     }
 
     private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize, ImageHeapLayouterControl control) {

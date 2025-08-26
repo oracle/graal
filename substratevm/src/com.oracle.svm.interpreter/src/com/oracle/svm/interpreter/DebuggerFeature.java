@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEINTERFACE;
@@ -64,6 +63,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -83,7 +83,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
-import com.oracle.svm.hosted.SymbolsFeature;
+import com.oracle.svm.hosted.classloading.SymbolsFeature;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.image.NativeImageHeap;

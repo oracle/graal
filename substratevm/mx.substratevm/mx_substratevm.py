@@ -1705,7 +1705,7 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     use_modules='image',
     jar_distributions=['substratevm:SVM_JDWP_SERVER'],
     build_args=libsvmjdwp_build_args + [
-        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature,com.oracle.svm.hosted.SymbolsFeature',
+        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature,com.oracle.svm.hosted.classloading.SymbolsFeature',
     ],
     headers=False,
 )

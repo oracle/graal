@@ -299,7 +299,13 @@ public class SVMImageLayerSnapshotUtil {
         if (originalMethod != null) {
             return addModuleName(originalMethod.toString(), moduleName);
         }
-        return addModuleName(getQualifiedName(method), moduleName);
+        /*
+         * The wrapped qualified method is needed here as the AnalysisMethod replaces unresolved
+         * parameter or return types with java.lang.Object, potentially causing method descriptor
+         * duplication. The wrapped method signature preserves the original type information,
+         * preventing this issue.
+         */
+        return addModuleName(getWrappedQualifiedName(method), moduleName);
     }
 
     /*
@@ -324,6 +330,10 @@ public class SVMImageLayerSnapshotUtil {
 
     private static String getQualifiedName(AnalysisMethod method) {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
+    }
+
+    private static String getWrappedQualifiedName(AnalysisMethod method) {
+        return method.wrapped.format("%R %H.%n(%P)");
     }
 
     public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {

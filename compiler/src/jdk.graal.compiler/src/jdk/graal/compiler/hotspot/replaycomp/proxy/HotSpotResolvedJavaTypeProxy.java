@@ -241,7 +241,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isAssignableFromMethod, isAssignableFromInvokable, other);
     }
 
-    private static final SymbolicMethod isInstanceMethod = method("isInstance", JavaConstant.class);
+    public static final SymbolicMethod isInstanceMethod = method("isInstance", JavaConstant.class);
     private static final InvokableMethod isInstanceInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isInstance((JavaConstant) args[0]);
 
     @Override

@@ -51,6 +51,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -454,15 +455,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
+     * The {@link SubstitutionMethod} contains less information than the original
+     * {@link ResolvedJavaMethod} and trying to access it can result in an exception.
+     */
+    private static ResolvedJavaMethod getOriginalWrapped(AnalysisMethod method) {
+        ResolvedJavaMethod wrapped = method.getWrapped();
+        if (wrapped instanceof SubstitutionMethod subst) {
+            return subst.getAnnotated();
+        }
+        return wrapped;
+    }
+
+    /**
      * Load all lambda types of the given capturing class. Each method of the capturing class is
      * parsed (see {@link LambdaParser#createMethodGraph(ResolvedJavaMethod, OptionValues)}). The
      * lambda types can then be found in the constant nodes of the graphs.
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
         capturingClasses.computeIfAbsent(capturingClass, key -> {
+            /*
+             * Getting the original wrapped method is important to avoid getting exceptions that
+             * would be ignored otherwise.
+             */
             LambdaParser.allExecutablesDeclaredInClass(universe.getBigbang().getMetaAccess().lookupJavaType(capturingClass))
                             .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(((AnalysisMethod) m).getWrapped(), universe.getBigbang()));
+                            .forEach(m -> loadLambdaTypes(getOriginalWrapped((AnalysisMethod) m), universe.getBigbang()));
             return true;
         });
     }
