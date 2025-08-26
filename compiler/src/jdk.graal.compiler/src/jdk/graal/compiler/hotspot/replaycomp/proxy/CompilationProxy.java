@@ -229,18 +229,29 @@ public interface CompilationProxy {
      */
     static Object handle(InvocationHandler handler, Object proxy, SymbolicMethod method, InvokableMethod invokable, Object... args) {
         try {
-            return handler.handle(proxy, method, (Object receiver, Object[] actualArgs) -> {
-                try {
-                    return invokable.invoke(receiver, actualArgs);
-                } catch (Throwable e) {
-                    throw new InvocationTargetException(e);
-                }
-            }, (args.length == 0) ? null : args);
+            return handler.handle(proxy, method, wrapInvocationExceptions(invokable), (args.length == 0) ? null : args);
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
             throw new UndeclaredThrowableException(e);
         }
+    }
+
+    /**
+     * Returns a new invokable method that wraps the exceptions thrown by the provided invokable
+     * method.
+     *
+     * @param invokable an invokable method that can throw an unwrapped exception
+     * @return an invokable method that can throw an {@link InvocationTargetException}
+     */
+    static InvokableMethod wrapInvocationExceptions(InvokableMethod invokable) {
+        return (Object receiver, Object[] actualArgs) -> {
+            try {
+                return invokable.invoke(receiver, actualArgs);
+            } catch (Throwable e) {
+                throw new InvocationTargetException(e);
+            }
+        };
     }
 
     /**
