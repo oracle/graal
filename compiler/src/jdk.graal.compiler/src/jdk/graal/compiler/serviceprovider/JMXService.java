@@ -64,7 +64,7 @@ public abstract class JMXService {
         /**
          * The amount of time spent in the garbage collector since the creation of this object.
          */
-        long getGCTimeMills();
+        long getGCTimeMillis();
 
         /**
          * The time since the creation of this object.
