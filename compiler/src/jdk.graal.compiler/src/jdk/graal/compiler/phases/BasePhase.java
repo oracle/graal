@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,6 +245,13 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          * Records memory usage within {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
          */
         private final MemUseTrackerKey memUseTracker;
+
+        /**
+         * Cached phase name.
+         *
+         * @see BasePhase#getName()
+         */
+        CharSequence phaseName;
 
         public BasePhaseStatistics(Class<?> clazz) {
             timer = DebugContext.timer("PhaseTime_%s", clazz).doc("Time spent in phase.");
@@ -604,8 +611,18 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    public CharSequence getName() {
+    private CharSequence createName() {
         return new ClassTypeSequence(this.getClass());
+    }
+
+    public CharSequence getName() {
+        CharSequence name = statistics.phaseName;
+        if (name != null) {
+            return name;
+        }
+        name = createName();
+        statistics.phaseName = name;
+        return name;
     }
 
     protected abstract void run(StructuredGraph graph, C context);
