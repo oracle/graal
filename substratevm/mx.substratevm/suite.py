@@ -1765,6 +1765,7 @@ suite = {
                             org.graalvm.nativeimage.agent.jvmtibase,
                             org.graalvm.nativeimage.agent.tracing,
                             org.graalvm.nativeimage.agent.diagnostics,
+                            org.graalvm.nativeimage.enterprise.testrunner,
                             com.oracle.svm.svm_enterprise,
                             com.oracle.svm.svm_enterprise.llvm,
                             com.oracle.svm_enterprise.ml_dataset,
@@ -1926,7 +1927,7 @@ suite = {
 
         "JUNIT_SUPPORT": {
             "subDir": "src",
-            "description" : "SubstrateVM suppoprt for building JUnit test into image",
+            "description" : "SubstrateVM support for building JUnit test into image",
             "dependencies": [
                 "com.oracle.svm.junit",
             ],

@@ -563,6 +563,7 @@ suite = {
                   org.graalvm.nativeimage.base,
                   org.graalvm.extraimage.builder,
                   org.graalvm.extraimage.librarysupport,
+                  org.graalvm.nativeimage.enterprise.testrunner,
                   com.oracle.svm.extraimage_enterprise,
                   org.graalvm.truffle.runtime.svm,
                   com.oracle.truffle.enterprise.svm""",
