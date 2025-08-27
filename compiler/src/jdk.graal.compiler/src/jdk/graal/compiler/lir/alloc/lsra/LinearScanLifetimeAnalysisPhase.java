@@ -827,10 +827,12 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 // temporarily unset the base pointers to that the procedure will not visit them
                 state.setLiveBasePointers(null);
                 state.visitEachState(op, nonBasePointersStateProc);
-                // visit the base pointers explicitly
-                liveBasePointers.visitEach(op, LIRInstruction.OperandMode.ALIVE, null, basePointerStateProc);
-                // reset the base pointers
-                state.setLiveBasePointers(liveBasePointers);
+                if (liveBasePointers != null) {
+                    // visit the base pointers explicitly
+                    liveBasePointers.visitEach(op, LIRInstruction.OperandMode.ALIVE, null, basePointerStateProc);
+                    // reset the base pointers
+                    state.setLiveBasePointers(liveBasePointers);
+                }
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
