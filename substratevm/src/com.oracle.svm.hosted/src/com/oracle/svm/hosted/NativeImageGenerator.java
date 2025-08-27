@@ -1265,17 +1265,19 @@ public class NativeImageGenerator {
      * example.
      */
     private static void registerRootElements(Inflation bb) {
-        bb.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
+        String rootClassReason = "system class included unconditionally";
+        String rootMethodReason = "system method included unconditionally";
+        bb.addRootClass(Object.class, false, false).registerAsInstantiated(rootClassReason);
         bb.addRootField(DynamicHub.class, "vtable");
-        bb.addRootClass(String.class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
-        bb.addRootField(String.class, "value").registerAsInstantiated("root class");
-        bb.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated("root class");
-        bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated("root class");
+        bb.addRootClass(String.class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(String[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootField(String.class, "value").registerAsInstantiated(rootClassReason);
+        bb.addRootClass(long[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(byte[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(byte[][].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(Object[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated(rootClassReason);
 
         /* MethodRef can conceal use of MethodPointer and MethodOffset until after analysis. */
         bb.addRootClass(MethodPointer.class, false, true);
@@ -1283,31 +1285,31 @@ public class NativeImageGenerator {
             bb.addRootClass(MethodOffset.class, false, true);
         }
 
-        bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
-                        "Runtime support, registered in " + NativeImageGenerator.class);
-        bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
+        bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy",
+                        Object.class, int.class, Object.class, int.class, int.class), true, rootMethodReason);
+        bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootMethodReason);
 
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void) {
                 bb.addRootClass(kind.toJavaClass(), false, true);
-                bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInstantiated("root class");
+                bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInstantiated(rootClassReason);
                 bb.addRootField(kind.toBoxedJavaClass(), "value");
-                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
-                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
+                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, rootMethodReason);
+                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, rootMethodReason);
                 /*
                  * Register the cache location as reachable.
                  * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
                  */
                 Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
                 if (innerClasses != null && innerClasses.length > 0) {
-                    bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
+                    bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of " + rootClassReason);
                 }
             }
         }
         /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
-        bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
-        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
-        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
+        bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable(rootClassReason);
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable(rootClassReason);
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable(rootClassReason);
         /*
          * SubstrateAllocationProfilingData is not actually present in the image since it is only
          * allocated at build time, is passed to snippets as a @ConstantParameter, and it only
@@ -1315,14 +1317,14 @@ public class NativeImageGenerator {
          * only allocated during lowering it is processed by the shadow heap after analysis, so its
          * type needs to be already marked reachable at this point.
          */
-        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable("root class");
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable(rootClassReason);
         /*
          * Similarly to above, StackSlotIdentity only gets reachable during lowering, through build
          * time allocated constants. It doesn't actually end up in the image heap since all its
          * fields are final and are constant-folded, but the type becomes reachable, through the
          * shadow heap processing, after analysis.
          */
-        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable("root class");
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable(rootClassReason);
     }
 
     public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options, Function<Object, Object> objectTransformer) {
