@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -190,7 +190,7 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitArrayFill(elementKind, getRuntimeCheckedCPUFeatures(), gen.operand(arrayBase), gen.operand(offsetToFirstElement), gen.operand(arrayLength),
+        gen.getLIRGeneratorTool().emitArrayFill(elementKind, gen.operand(arrayBase), gen.operand(offsetToFirstElement), gen.operand(arrayLength),
                         gen.operand(valueToFillWith));
     }
 
@@ -201,11 +201,6 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
 
     public static boolean isSupported(Architecture arch) {
         return (arch instanceof AArch64);
-    }
-
-    @Override
-    public boolean canBeEmitted(Architecture arch) {
-        return isSupported(arch);
     }
 
     private static ForeignCallDescriptor createForeignCallDescriptor(JavaKind kind, Class<?> cls) {

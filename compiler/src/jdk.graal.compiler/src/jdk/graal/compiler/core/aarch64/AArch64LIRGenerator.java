@@ -633,7 +633,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+    public void emitArrayFill(JavaKind kind, Value array, Value arrayBaseOffset, Value length, Value value) {
         append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 

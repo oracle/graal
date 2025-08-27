@@ -46,7 +46,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -111,10 +110,4 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         }
         lowerUnaryMathToForeignCall(math, tool);
     }
-
-    @Override
-    public boolean supportsRounding() {
-        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
-    }
-
 }
