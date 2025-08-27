@@ -140,13 +140,6 @@ public abstract class Heap {
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
 
-    /* Only used by legacy code, see GR-68813. */
-    @Fold
-    @Deprecated
-    public int getPreferredAddressSpaceAlignment() {
-        return getHeapBaseAlignment();
-    }
-
     /**
      * Returns the alignment in bytes that the heap base must adhere to at runtime. Note that this
      * alignment is not enforced if {@link SubstrateOptions#SpawnIsolates} is disabled.

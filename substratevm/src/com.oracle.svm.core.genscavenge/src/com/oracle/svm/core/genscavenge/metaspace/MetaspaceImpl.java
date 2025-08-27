@@ -44,7 +44,6 @@ import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -98,13 +97,8 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAddressSpace(Pointer ptr) {
-        CommittedMemoryProvider memoryProvider = ImageSingletons.lookup(CommittedMemoryProvider.class);
-        if (memoryProvider instanceof AddressRangeCommittedMemoryProvider p) {
-            return p.isInMetaspace(ptr);
-        }
-
-        /* Metaspace does not have a contiguous address space. */
-        return isInAllocatedMemory(ptr);
+        AddressRangeCommittedMemoryProvider m = AddressRangeCommittedMemoryProvider.singleton();
+        return m.isInMetaspace(ptr);
     }
 
     @Override
