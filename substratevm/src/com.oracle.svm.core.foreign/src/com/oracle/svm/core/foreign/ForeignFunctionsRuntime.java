@@ -58,7 +58,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.foreign.AbiUtils.TrampolineTemplate;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
@@ -99,7 +101,12 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime(AbiUtils abiUtils) {
-        this.trampolineTemplate = abiUtils.generateTrampolineTemplate();
+        this.trampolineTemplate = new TrampolineTemplate(new byte[abiUtils.trampolineSize()]);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend) {
+        AbiUtils.singleton().generateTrampolineTemplate(backend, this.trampolineTemplate);
     }
 
     public static boolean areFunctionCallsSupported() {
