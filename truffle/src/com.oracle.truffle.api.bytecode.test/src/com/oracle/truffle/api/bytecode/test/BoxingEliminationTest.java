@@ -67,6 +67,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -2489,6 +2490,12 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                     return -v;
                 }
                 return v;
+            }
+
+            // dummy specialization so we can track quickening
+            @Fallback
+            static long doFallback(Object v) {
+                return (long) v;
             }
 
         }
