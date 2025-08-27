@@ -158,13 +158,17 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    void setUsePos(Interval interval, int usePos, boolean onlyProcessUsePos) {
-        if (usePos != -1) {
-            assert usePos != 0 : "must use excludeFromUse to set usePos to 0";
+    boolean isRegisterInterval(Interval interval) {
+        return isRegisterInRange(asRegister(interval.location()).number);
+    }
+
+    void setUsePos(Interval interval, int intersects, boolean onlyProcessUsePos) {
+        if (intersects != -1) {
+            assert intersects != 0 : "must use excludeFromUse to set usePos to 0";
             int i = asRegister(interval.location()).number;
             if (isRegisterInRange(i)) {
-                if (this.usePos[i] > usePos) {
-                    this.usePos[i] = usePos;
+                if (usePos[i] > intersects) {
+                    usePos[i] = intersects;
                 }
                 if (!onlyProcessUsePos) {
                     List<Interval> list = spillIntervals[i];
@@ -178,15 +182,30 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    void setBlockPos(Interval i, int blockPos) {
-        if (blockPos != -1) {
-            int reg = asRegister(i.location()).number;
-            if (isRegisterInRange(reg)) {
-                if (this.blockPos[reg] > blockPos) {
-                    this.blockPos[reg] = blockPos;
+    private void setUsePosAtIntersection(Interval interval, Interval current) {
+        if (isRegisterInterval(interval)) {
+            int i = asRegister(interval.location()).number;
+            int savedUsePos = usePos[i];
+            int intersects = interval.currentIntersectsAt(current, savedUsePos);
+            if (intersects != -1) {
+                assert intersects != 0 : "must use excludeFromUse to set usePos to 0";
+                if (usePos[i] > intersects) {
+                    usePos[i] = intersects;
                 }
-                if (usePos[reg] > blockPos) {
-                    usePos[reg] = blockPos;
+            }
+        }
+    }
+
+    private void setBlockPos(Interval interval, Interval current) {
+        int reg = asRegister(interval.location()).number;
+        if (isRegisterInRange(reg)) {
+            int intersects = interval.currentIntersectsAt(current, Math.max(usePos[reg], blockPos[reg]));
+            if (intersects != -1) {
+                if (blockPos[reg] > intersects) {
+                    blockPos[reg] = intersects;
+                }
+                if (usePos[reg] > intersects) {
+                    usePos[reg] = intersects;
                 }
             }
         }
@@ -222,10 +241,10 @@ class LinearScanWalker extends IntervalWalker {
             Interval interval = inactiveLists.get(RegisterBinding.Fixed);
             while (!interval.isEndMarker()) {
                 if (current.to() <= interval.currentFrom()) {
-                    assert interval.currentIntersectsAt(current) == -1 : "must not intersect";
+                    assert !interval.currentIntersects(current) : "must not intersect";
                     setUsePos(interval, interval.currentFrom(), true);
                 } else {
-                    setUsePos(interval, interval.currentIntersectsAt(current), true);
+                    setUsePosAtIntersection(interval, current);
                 }
                 interval = interval.next;
             }
@@ -237,11 +256,9 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(freeCollectInactiveAny)) {
             Interval interval = inactiveLists.get(RegisterBinding.Any);
             while (!interval.isEndMarker()) {
-                if (interval.currentFrom() > current.to()) {
-                    // these two can never intersect
-                    return;
+                if (isRegisterInterval(interval)) {
+                    setUsePosAtIntersection(interval, current);
                 }
-                setUsePos(interval, interval.currentIntersectsAt(current), true);
                 interval = interval.next;
             }
         }
@@ -264,9 +281,9 @@ class LinearScanWalker extends IntervalWalker {
             Interval interval = inactiveLists.get(RegisterBinding.Fixed);
             while (!interval.isEndMarker()) {
                 if (current.to() > interval.currentFrom()) {
-                    setBlockPos(interval, interval.currentIntersectsAt(current));
+                    setBlockPos(interval, current);
                 } else {
-                    assert interval.currentIntersectsAt(current) == -1 : "invalid optimization: intervals intersect";
+                    assert !interval.currentIntersects(current) : "invalid optimization: intervals intersect";
                 }
 
                 interval = interval.next;
@@ -279,7 +296,9 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(spillCollectActiveAny)) {
             Interval interval = activeLists.get(RegisterBinding.Any);
             while (!interval.isEndMarker()) {
-                setUsePos(interval, Math.min(interval.nextUsage(registerPriority, currentPosition), interval.to()), false);
+                if (isRegisterInterval(interval)) {
+                    setUsePos(interval, Math.min(interval.nextUsage(registerPriority, currentPosition), interval.to()), false);
+                }
                 interval = interval.next;
             }
         }
@@ -290,8 +309,10 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(spillCollectInactiveAny)) {
             Interval interval = inactiveLists.get(RegisterBinding.Any);
             while (!interval.isEndMarker()) {
-                if (interval.currentIntersects(current)) {
-                    setUsePos(interval, Math.min(interval.nextUsage(RegisterPriority.LiveAtLoopEnd, currentPosition), interval.to()), false);
+                if (isRegisterInterval(interval)) {
+                    if (interval.currentIntersects(current)) {
+                        setUsePos(interval, Math.min(interval.nextUsage(RegisterPriority.LiveAtLoopEnd, currentPosition), interval.to()), false);
+                    }
                 }
                 interval = interval.next;
             }
@@ -312,7 +333,7 @@ class LinearScanWalker extends IntervalWalker {
         // When the block already contains spill moves, the index must be increased until the
         // correct index is reached.
         ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(opBlock);
-        int index = (opId - instructions.get(0).id()) >> 1;
+        int index = (opId - instructions.getFirst().id()) >> 1;
         assert instructions.get(index).id() <= opId : "error in calculation";
 
         while (instructions.get(index).id() != opId) {
@@ -810,7 +831,7 @@ class LinearScanWalker extends IntervalWalker {
 
             Register hint = null;
             Interval locationHint = interval.locationHint(true);
-            if (locationHint != null && locationHint.location() != null && isRegister(locationHint.location())) {
+            if (locationHint != null && locationHint.location() != null && isRegisterInterval(locationHint)) {
                 hint = asRegister(locationHint.location());
                 if (debug.isLogEnabled()) {
                     debug.log("hint register %d from interval %s", hint.number, locationHint);

@@ -107,6 +107,12 @@ public class LinearScan {
         return null;
     }
 
+    void increment(CounterKey key) {
+        if (key != null) {
+            key.increment(debug);
+        }
+    }
+
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
@@ -281,14 +287,14 @@ public class LinearScan {
     }
 
     public int getFirstLirInstructionId(BasicBlock<?> block) {
-        int result = ir.getLIRforBlock(block).get(0).id();
+        int result = ir.getLIRforBlock(block).getFirst().id();
         assert NumUtil.assertNonNegativeInt(result);
         return result;
     }
 
     public int getLastLirInstructionId(BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
-        int result = instructions.get(instructions.size() - 1).id();
+        int result = instructions.getLast().id();
         assert NumUtil.assertNonNegativeInt(result);
         return result;
     }
@@ -873,7 +879,7 @@ public class LinearScan {
                     continue;
                 }
 
-                i1.checkSplitChildren();
+                assert i1.checkSplitChildren();
 
                 if (i1.operandNumber != i) {
                     debug.log("Interval %d is on position %d in list", i1.operandNumber, i);

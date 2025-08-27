@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra;
 
+import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.debug.Assertions;
 
 /**
@@ -46,10 +48,6 @@ public final class Range {
      */
     public Range next;
 
-    boolean intersects(Range r) {
-        return intersectsAt(r) != -1;
-    }
-
     /**
      * Creates a new range.
      *
@@ -66,6 +64,61 @@ public final class Range {
     public boolean isEndMarker() {
         assert from != Integer.MAX_VALUE || (to == Integer.MAX_VALUE && next == null) : Assertions.errorMessage(from, to, next);
         return from == Integer.MAX_VALUE;
+    }
+
+    int intersectsAt(Range other, int limit) {
+        Range r1 = this;
+        Range r2 = other;
+        assert limit != -1;
+
+        assert r2 != null : "null ranges not allowed";
+        assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
+
+        do {
+            if (r1.from > limit && r2.from > limit) {
+                return -1;
+            }
+            if (r1.from < r2.from) {
+                if (r1.to <= r2.from) {
+                    r1 = r1.next;
+                    if (r1.isEndMarker()) {
+                        return -1;
+                    }
+                } else {
+                    return r2.from;
+                }
+            } else {
+                if (r2.from < r1.from) {
+                    do {
+                        if (r2.to <= r1.from) {
+                            r2 = r2.next;
+                            if (r2.isEndMarker()) {
+                                return -1;
+                            }
+                        } else {
+                            return r1.from;
+                        }
+                    } while (r2.from < r1.from);
+                } else { // r1.from() == r2.from()
+                    if (r1.from == r1.to) {
+                        r1 = r1.next;
+                        if (r1.isEndMarker()) {
+                            return -1;
+                        }
+                    } else {
+                        if (r2.from == r2.to) {
+                            r2 = r2.next;
+                            if (r2.isEndMarker()) {
+                                return -1;
+                            }
+                        } else {
+                            return r1.from;
+                        }
+                    }
+                }
+            }
+        } while (true);  // TERMINATION ARGUMENT: guarded by the number of ranges reachable from
+                         // this and other
     }
 
     int intersectsAt(Range other) {
@@ -115,6 +168,55 @@ public final class Range {
             }
         } while (true);  // TERMINATION ARGUMENT: guarded by the number of ranges reachable from
                          // this and other
+    }
+
+    Pair<Range, Range> intersectsAtRangePair(Range other) {
+        Range r1 = this;
+        Range r2 = other;
+
+        assert r2 != null : "null ranges not allowed";
+        assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
+
+        do {
+            if (r1.from < r2.from) {
+                if (r1.to <= r2.from) {
+                    r1 = r1.next;
+                    if (r1.isEndMarker()) {
+                        return null;
+                    }
+                } else {
+                    return Pair.create(r1, r2);
+                }
+            } else {
+                if (r2.from < r1.from) {
+                    if (r2.to <= r1.from) {
+                        r2 = r2.next;
+                        if (r2.isEndMarker()) {
+                            return null;
+                        }
+                    } else {
+                        return Pair.create(r1, r2);
+                    }
+                } else { // r1.from() == r2.from()
+                    if (r1.from == r1.to) {
+                        r1 = r1.next;
+                        if (r1.isEndMarker()) {
+                            return null;
+                        }
+                    } else {
+                        if (r2.from == r2.to) {
+                            r2 = r2.next;
+                            if (r2.isEndMarker()) {
+                                return null;
+                            }
+                        } else {
+                            return Pair.create(r1, r2);
+                        }
+                    }
+                }
+            }
+        } while (true);  // TERMINATION ARGUMENT: guarded by the number of ranges reachable from
+        // this and other
     }
 
     @Override
