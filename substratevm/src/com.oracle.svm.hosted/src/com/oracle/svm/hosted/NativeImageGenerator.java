@@ -1124,7 +1124,10 @@ public class NativeImageGenerator {
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                         new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
 
-                loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().registerBaseLayerTypes(bb, originalMetaAccess, loader.classLoaderSupport);
+                }
+
                 if (loader.classLoaderSupport.isPreserveMode()) {
                     PreserveOptionsSupport.registerPreservedClasses(bb, originalMetaAccess, loader.classLoaderSupport);
                 }
