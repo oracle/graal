@@ -24,6 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -37,11 +42,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
  * AArch64 backend for the Shenandoah card barrier.
@@ -73,11 +73,11 @@ public class AArch64HotSpotShenandoahCardBarrierOp extends AArch64LIRInstruction
               sha1 = "1c3e544b6fdec2f4ca0f07b2a1d5261d55754cb9")
     // @formatter:on
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        try (AArch64MacroAssembler.ScratchRegister tmp2 = masm.getScratchRegister();
-                        AArch64MacroAssembler.ScratchRegister tmp3 = masm.getScratchRegister()) {
+        try (AArch64MacroAssembler.ScratchRegister scratch1 = masm.getScratchRegister();
+                        AArch64MacroAssembler.ScratchRegister scratch2 = masm.getScratchRegister()) {
             Register rtmp1 = asRegister(tmp);
-            Register rtmp2 = tmp2.getRegister();
-            Register rtmp3 = tmp3.getRegister();
+            Register rscratch1 = scratch1.getRegister();
+            Register rscratch2 = scratch2.getRegister();
             AArch64Address storeAddr = address.toAddress();
             Register rthread = providers.getRegisters().getThreadRegister();
 
@@ -94,13 +94,13 @@ public class AArch64HotSpotShenandoahCardBarrierOp extends AArch64LIRInstruction
 
             AArch64Address currCTHolderAddr = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, rthread,
                             HotSpotReplacementsUtil.shenandoahCardTableOffset(config));
-            masm.ldr(64, rtmp2, currCTHolderAddr);
+            masm.ldr(64, rscratch1, currCTHolderAddr);
 
-            AArch64Address cardAddr = AArch64Address.createRegisterOffsetAddress(8, rAddr, rtmp2, false);
+            AArch64Address cardAddr = AArch64Address.createRegisterOffsetAddress(8, rAddr, rscratch1, false);
             if (HotSpotReplacementsUtil.useCondCardMark(config)) {
                 Label alreadyDirty = new Label();
-                masm.ldr(8, rtmp3, cardAddr);
-                masm.cbz(8, rtmp3, alreadyDirty);
+                masm.ldr(8, rscratch2, cardAddr);
+                masm.cbz(8, rscratch2, alreadyDirty);
                 masm.str(8, zr, cardAddr);
                 masm.bind(alreadyDirty);
             } else {

@@ -25,11 +25,11 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import jdk.graal.compiler.nodes.GraphState;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
@@ -93,6 +93,6 @@ public interface BarrierSet {
     default boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
         // Most barrier sets should be added in mid-tier, some might also
         // wish to add in low-tier (e.g. Shenandoah GC).
-        return stage == GraphState.StageFlag.BARRIER_ADDITION;
+        return stage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
     }
 }

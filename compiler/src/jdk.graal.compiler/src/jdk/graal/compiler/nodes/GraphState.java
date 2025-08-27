@@ -62,7 +62,7 @@ public final class GraphState {
                     StageFlag.GUARD_LOWERING,
                     StageFlag.MID_TIER_LOWERING,
                     StageFlag.FSA,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.MID_TIER_BARRIER_ADDITION);
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
@@ -78,7 +78,7 @@ public final class GraphState {
                     StageFlag.MID_TIER_LOWERING,
                     StageFlag.FSA,
                     StageFlag.NODE_VECTORIZATION,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.MID_TIER_BARRIER_ADDITION);
 
     /**
      * This set of {@link StageFlag}s represents the stages a {@link StructuredGraph} initially
@@ -638,7 +638,7 @@ public final class GraphState {
         NODE_VECTORIZATION,
         VECTOR_MATERIALIZATION,
         OPTIMISTIC_GUARDS,
-        BARRIER_ADDITION,
+        MID_TIER_BARRIER_ADDITION,
         BARRIER_ELIMINATION,
         /* Stages applied by low tier. */
         LOW_TIER_LOWERING,

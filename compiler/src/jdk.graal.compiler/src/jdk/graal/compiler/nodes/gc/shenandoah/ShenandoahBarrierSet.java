@@ -26,33 +26,34 @@ package jdk.graal.compiler.nodes.gc.shenandoah;
 
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
-import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
-import jdk.graal.compiler.nodes.gc.BarrierSet;
-import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
+import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -242,7 +243,11 @@ public class ShenandoahBarrierSet implements BarrierSet {
         GraalError.guarantee(node != null, "input value must not be null");
         StructuredGraph graph = node.graph();
         boolean narrow = node.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp;
+        Graph.Mark beforeUncompression = graph.getMark();
         ValueNode uncompressed = maybeUncompressReference(node, narrow);
+        if (uncompressed != node) {
+            GraalError.guarantee(graph.isNew(beforeUncompression, uncompressed), "we must not reuse an existing uncompress node");
+        }
         ShenandoahLoadRefBarrierNode lrb = graph.add(new ShenandoahLoadRefBarrierNode(uncompressed, address, barrierType, narrow));
         ValueNode compValue = maybeCompressReference(lrb, narrow);
         ValueNode newUsage = uncompressed != node ? uncompressed : lrb;

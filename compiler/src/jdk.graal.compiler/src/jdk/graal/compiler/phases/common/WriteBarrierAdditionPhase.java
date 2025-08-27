@@ -40,10 +40,11 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     private final StageFlag stage;
 
     public WriteBarrierAdditionPhase() {
-        this(StageFlag.BARRIER_ADDITION);
+        this(StageFlag.MID_TIER_BARRIER_ADDITION);
     }
 
     public WriteBarrierAdditionPhase(StageFlag stage) {
+        assert stage == StageFlag.LOW_TIER_BARRIER_ADDITION || stage == StageFlag.MID_TIER_BARRIER_ADDITION : stage;
         this.stage = stage;
     }
 
@@ -51,7 +52,7 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, stage, graphState),
-                        NotApplicable.unlessRunAfter(this, stage == StageFlag.BARRIER_ADDITION ? StageFlag.MID_TIER_LOWERING : StageFlag.LOW_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunAfter(this, stage == StageFlag.MID_TIER_BARRIER_ADDITION ? StageFlag.MID_TIER_LOWERING : StageFlag.LOW_TIER_LOWERING, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState));
     }
 
