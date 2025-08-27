@@ -384,7 +384,10 @@ public final class DebuggerController {
     }
 
     public void clearStepCommand(StepInfo stepInfo) {
-        commandRequestIds.remove(stepInfo.getGuestThread());
+        Object guestThread = stepInfo.getGuestThread();
+        Thread hostThread = getContext().asHostThread(guestThread);
+        debuggerSession.disposeStepping(hostThread);
+        commandRequestIds.remove(guestThread);
     }
 
     public boolean popFrames(Object guestThread, CallFrame frameToPop, int packetId) {
@@ -960,9 +963,8 @@ public final class DebuggerController {
 
                     result = checkForBreakpoints(event, jobs, suspendedInfo, currentThread, callFrames);
                     if (!result.breakpointHit) {
-                        // no breakpoint
+                        // no breakpoint, still have a pending step
                         commandRequestIds.put(currentThread, steppingInfo);
-                        continueStepping(event, steppingInfo);
                     }
                 }
             } else {

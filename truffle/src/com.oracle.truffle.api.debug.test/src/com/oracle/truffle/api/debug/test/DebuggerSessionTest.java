@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -449,8 +449,11 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                 expectSuspended((SuspendedEvent event) -> {
                     checkState(event, 2, true, "STATEMENT").prepareStepOver(1);
                 });
-                // resume events are ignored by stepping
                 session.resume(getEvalThread());
+                // Step was prepared, resume has no effect on stepping
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 3, true, "STATEMENT").prepareContinue();
+                });
                 expectDone();
             }
         }
@@ -473,6 +476,10 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                     checkState(event, 2, true, "STATEMENT").prepareStepOver(1);
                 });
                 session.resume(getEvalThread());
+                // Step was prepared, resume has no effect on stepping
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 3, true, "STATEMENT").prepareContinue();
+                });
                 expectDone();
             }
         }

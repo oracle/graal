@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -204,6 +206,7 @@ public final class DebuggerSession implements Closeable {
 
     private final ConcurrentHashMap<Thread, SuspendedEvent> currentSuspendedEventMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Thread, SteppingStrategy> strategyMap = new ConcurrentHashMap<>();
+    private final NewThreadStrategyProvider newThreadStrategy = new NewThreadStrategyProvider();
     private volatile boolean suspendNext;
     private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
@@ -470,7 +473,7 @@ public final class DebuggerSession implements Closeable {
         if (result == null) {
             return false;
         }
-        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null, false, false);
+        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null, false);
         return true;
     }
 
@@ -544,33 +547,22 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalStateException("session closed");
         }
         // If there's an ongoing step request, we want to preserve that, so we use the preserve
-        // after halt strategy for suspend requests. In case the current strategy is a preserve halt
-        // strategy, we re-establish the halt next execution within the strategy. This is to
-        // avoid multiple nested levels of dual concurrent strategies.
-        SteppingStrategy currentStrategy = this.strategyMap.get(t);
-        SteppingStrategy newStrategy;
-        SuspendedEvent suspendedEvent = currentSuspendedEventMap.get(t);
-        if (suspendedEvent != null) {
-            // we're currently suspended and the old single step
-            // will be consumed if completed, hence we pick the next strategy
-            if (suspendedEvent.isStep()) {
-                currentStrategy = suspendedEvent.getNextStrategy();
-            }
-        }
-        if (currentStrategy != null) {
-            if (currentStrategy.isSingleStep()) {
-                newStrategy = SteppingStrategy.createPreserveAfterHalt(currentStrategy);
-            } else if (currentStrategy instanceof SteppingStrategy.PreserveAfterHalt preserveAfterHalt) {
-                // re-establish the halt strategy while preserving the current one
-                preserveAfterHalt.haltNextExecution();
-                newStrategy = preserveAfterHalt;
-            } else {
-                newStrategy = SteppingStrategy.createAlwaysHalt();
-            }
+        // and halt strategy for suspend requests.
+        this.strategyMap.compute(t, DebuggerSession::addSuspendThreadStrategy);
+        updateStepping();
+    }
+
+    private static SteppingStrategy addSuspendThreadStrategy(@SuppressWarnings("unused") Thread t, SteppingStrategy s) {
+        if (s == null || s.isContinue() || s.isConsumed()) {
+            return SteppingStrategy.createAlwaysHalt();
         } else {
-            newStrategy = SteppingStrategy.createAlwaysHalt();
+            if (s.isAlwaysHalt()) {
+                // The current strategy suspends already
+                return s;
+            } else {
+                return SteppingStrategy.createPreserveAndHalt(s);
+            }
         }
-        setSteppingStrategy(t, newStrategy, true);
     }
 
     /**
@@ -589,7 +581,7 @@ public final class DebuggerSession implements Closeable {
         }
 
         suspendAll = true;
-        // iterating concurrent hashmap should be save
+        // iterating concurrent hashmap should be safe
         for (Thread t : strategyMap.keySet()) {
             suspend(t);
         }
@@ -609,7 +601,12 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalStateException("session closed");
         }
 
-        clearStrategies();
+        suspendAll = false;
+        suspendNext = false;
+        for (Thread t : strategyMap.keySet()) {
+            resume(t);
+        }
+        updateStepping();
     }
 
     /**
@@ -627,23 +624,78 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalStateException("session closed");
         }
 
-        setSteppingStrategy(t, SteppingStrategy.createContinue(), true);
+        this.strategyMap.computeIfPresent(t, DebuggerSession::removeSuspendThreadStrategy);
+        updateStepping();
     }
 
-    private synchronized void setSteppingStrategy(Thread thread, SteppingStrategy strategy, boolean updateStepping) {
-        if (closed) {
-            return;
-        }
-        assert strategy != null;
-        SteppingStrategy oldStrategy = this.strategyMap.put(thread, strategy);
-        if (oldStrategy != strategy) {
-            if (Debugger.TRACE) {
-                trace("set stepping for thread: %s with strategy: %s", thread, strategy);
+    /**
+     * Remove strategy that {@link SteppingStrategy#isAlwaysHalt() suspends a thread} from the
+     * provided {@code strategy}.
+     */
+    private static SteppingStrategy removeSuspendThreadStrategy(@SuppressWarnings("unused") Thread t, SteppingStrategy strategy) {
+        return removeSteppingStrategy(strategy, SteppingStrategy::isAlwaysHalt);
+    }
+
+    /**
+     * Remove strategy that {@link SteppingStrategy#isSingleStep() is a single step} from the
+     * provided {@code strategy}.
+     */
+    private static SteppingStrategy removeSingleSteppingStrategy(@SuppressWarnings("unused") Thread t, SteppingStrategy strategy) {
+        return removeSteppingStrategy(strategy, SteppingStrategy::isSingleStep);
+    }
+
+    /**
+     * Remove a strategy that passes the {@code strategyTest} from the provided {@code strategy}.
+     * The implementation checks the nested strategies and removes those stepping strategies that
+     * passes the {@code strategyTest}.
+     */
+    private static SteppingStrategy removeSteppingStrategy(SteppingStrategy strategy, Predicate<SteppingStrategy> strategyTest) {
+        if (strategy.isComposable()) {
+            List<SteppingStrategy> nestedStrategies = strategy.getNestedStrategies();
+            int i = 0;
+            while (i < nestedStrategies.size()) {
+                SteppingStrategy s = nestedStrategies.get(i);
+                if (s.isComposable()) {
+                    s = removeSteppingStrategy(s, strategyTest);
+                    nestedStrategies.set(i, s);
+                }
+                if (!s.isComposable() && strategyTest.test(s) || s.isContinue()) {
+                    nestedStrategies.remove(i--);
+                }
+                i++;
             }
-            if (updateStepping) {
-                updateStepping();
+            if (nestedStrategies.isEmpty()) {
+                return SteppingStrategy.createContinue();
+            } else if (nestedStrategies.size() == 1) {
+                return nestedStrategies.get(0);
+            } else {
+                SteppingStrategy newStrategy = SteppingStrategy.createComposed(nestedStrategies.get(0), nestedStrategies.get(1));
+                for (i = 2; i < nestedStrategies.size(); i++) {
+                    newStrategy.add(nestedStrategies.get(i));
+                }
+                return newStrategy;
             }
+        } else if (strategyTest.test(strategy)) {
+            return SteppingStrategy.createContinue();
+        } else {
+            return strategy;
         }
+    }
+
+    /**
+     * Dispose stepping on the given thread. All pending steps prepared on a {@link SuspendedEvent}
+     * on the provided thread are disposed. If no stepping were prepared, this method has no effect.
+     * If this is called in combination with {@link #resume(Thread)} or {@link #resumeAll()}, be
+     * sure to {@link #disposeStepping(Thread) dispose stepping} first and then resume.
+     *
+     * @since 26.0
+     */
+    public void disposeStepping(Thread t) {
+        if (Debugger.TRACE) {
+            trace("dispose stepping on %s", t);
+        }
+        this.strategyMap.computeIfPresent(t, DebuggerSession::removeSingleSteppingStrategy);
+        updateStepping();
     }
 
     private synchronized void clearStrategies() {
@@ -657,12 +709,10 @@ public final class DebuggerSession implements Closeable {
         return strategyMap.get(value);
     }
 
-    private void updateStepping() {
-        assert Thread.holdsLock(this);
-
+    private synchronized void updateStepping() {
+        // synchronized not to race with clearStrategies()
         boolean needsStepping = suspendNext || suspendAll;
         if (!needsStepping) {
-            // iterating concurrent hashmap should be save
             for (Thread t : strategyMap.keySet()) {
                 SteppingStrategy s = strategyMap.get(t);
                 assert s != null;
@@ -1083,20 +1133,19 @@ public final class DebuggerSession implements Closeable {
         }
 
         SteppingStrategy s = getSteppingStrategy(currentThread);
+        if (s == null) {
+            // a new Thread just appeared
+            s = notifyNewThread(currentThread);
+        }
+
         if (suspendNext) {
             synchronized (this) {
                 // double checked locking to avoid more than one suspension
                 if (suspendNext) {
-                    s = SteppingStrategy.createAlwaysHalt();
-                    setSteppingStrategy(currentThread, s, true);
+                    s = this.strategyMap.compute(currentThread, DebuggerSession::addSuspendThreadStrategy);
                     suspendNext = false;
                 }
             }
-        }
-
-        if (s == null) {
-            // a new Thread just appeared
-            s = notifyNewThread(currentThread);
         }
 
         Map<Breakpoint, Throwable> breakpointFailures = null;
@@ -1109,7 +1158,7 @@ public final class DebuggerSession implements Closeable {
             breakpointFailures.put(fb, conditionFailure.getConditionFailure());
         }
 
-        Object newReturnValue = processBreakpointsAndStep(context, nodes, s, source, frame, suspendAnchor,
+        Object newReturnValue = processBreakpointsAndStep(context, nodes, s, source, frame, suspendAnchor, false,
                         inputValuesProvider, returnValue, exception, breakpointFailures,
                         new Supplier<SuspendedContext>() {
                             @Override
@@ -1140,7 +1189,7 @@ public final class DebuggerSession implements Closeable {
         // Fake the caller context
         Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.BEFORE, caller.frame, insertableNode, false, true);
+        doSuspend(context, SuspendAnchor.BEFORE, caller.frame, insertableNode, true);
     }
 
     static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {
@@ -1246,7 +1295,7 @@ public final class DebuggerSession implements Closeable {
             breakpointFailures.put(fb, conditionFailure.getConditionFailure());
         }
 
-        Object newReturnValue = processBreakpointsAndStep(context, nodes, strategy, source, caller.frame, suspendAnchor, null, returnValue, exception, breakpointFailures,
+        Object newReturnValue = processBreakpointsAndStep(context, nodes, strategy, source, caller.frame, suspendAnchor, true, null, returnValue, exception, breakpointFailures,
                         new Supplier<SuspendedContext>() {
                             @Override
                             public SuspendedContext get() {
@@ -1258,7 +1307,7 @@ public final class DebuggerSession implements Closeable {
 
     @SuppressWarnings("all") // The parameter breakpointFailures should not be assigned
     private Object processBreakpointsAndStep(EventContext context, List<DebuggerNode> nodes, SteppingStrategy s, DebuggerNode source, MaterializedFrame frame,
-                    SuspendAnchor suspendAnchor, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
+                    SuspendAnchor suspendAnchor, boolean atCaller, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     Map<Breakpoint, Throwable> breakpointFailures, Supplier<SuspendedContext> contextSupplier) {
         List<Breakpoint> breaks = null;
         for (DebuggerNode node : nodes) {
@@ -1297,15 +1346,22 @@ public final class DebuggerSession implements Closeable {
             breakpointFailures = Collections.emptyMap();
         }
 
-        boolean hitStepping = s.step(this, source.getContext(), suspendAnchor);
+        SuspendedContext suspendedContext = contextSupplier.get();
+        // When we're at a caller, we use a special check SteppingStrategy.isStopAfterCall()
+        // instead of SteppingStrategy.isActive(). The step is in a special state when it stepped
+        // out of a function call and StepConfig.match() is not applied when the step got out of
+        // its range.
+        boolean hitStepping = (atCaller ? s.isStopAfterCall() : s.isActive(context, suspendAnchor)) && s.step(this, source.getContext(), suspendAnchor);
         boolean hitBreakpoint = !breaks.isEmpty();
         boolean singleStepCompleted = hitStepping ? s.isSingleStepCompleted() : false;
 
         Object newReturnValue = returnValue;
-        if (hitStepping || hitBreakpoint) {
+        if (hitStepping) {
             s.consume();
-            newReturnValue = doSuspend(contextSupplier.get(), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks,
-                            breakpointFailures, singleStepCompleted, s.isUnwind());
+        }
+        if (hitStepping || hitBreakpoint) {
+            newReturnValue = doSuspend(suspendedContext, suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks,
+                            breakpointFailures, s, singleStepCompleted, s.isUnwind());
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -1317,13 +1373,14 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode, boolean singleStepCompleted, boolean isUnwind) {
-        doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap(), singleStepCompleted, isUnwind);
+    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode, boolean isUnwind) {
+        SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
+        doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap(), steppingStrategy, false, isUnwind);
     }
 
     private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
-                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures, boolean singleStepCompleted, boolean isUnwind) {
+                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures, SteppingStrategy currentStrategy, boolean singleStepCompleted, boolean isUnwind) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
@@ -1356,22 +1413,15 @@ public final class DebuggerSession implements Closeable {
             return newReturnValue;
         }
 
-        SteppingStrategy strategy = suspendedEvent.getNextStrategy();
-        if (!strategy.isKill()) {
-            // suspend(...) has been called during SuspendedEvent notification. this is only
-            // possible in non-legacy mode.
-            SteppingStrategy currentStrategy = getSteppingStrategy(currentThread);
-            if (currentStrategy != null && !currentStrategy.isConsumed()) {
-                strategy = currentStrategy;
-            }
-        }
-        strategy.initialize(context, suspendAnchor);
-
+        AddStrategyUpdater addStrategy = new AddStrategyUpdater(suspendedEvent.getNextStrategy());
+        SteppingStrategy strategy = strategyMap.compute(currentThread, addStrategy);
         if (Debugger.TRACE) {
-            trace("end suspend with strategy %s at %s location %s", strategy, context, suspendAnchor);
+            trace("end suspend with strategy %s -> %s at %s location %s", currentStrategy, strategy, context, suspendAnchor);
         }
-
-        setSteppingStrategy(currentThread, strategy, true);
+        if (addStrategy.initializeNewStrategy) {
+            strategy.initialize(context, suspendAnchor);
+        }
+        updateStepping();
         if (strategy.isKill()) {
             performKill(context.getInstrumentedNode());
         } else if (strategy.isUnwind()) {
@@ -1380,6 +1430,53 @@ public final class DebuggerSession implements Closeable {
             throw unwind;
         }
         return newReturnValue;
+    }
+
+    /**
+     * This is used to update the {@link strategyMap} with a new {@link SteppingStrategy}. Depending
+     * on the existing strategy, we need to either replace, or merge the new strategy in.
+     */
+    private static class AddStrategyUpdater implements BiFunction<Thread, SteppingStrategy, SteppingStrategy> {
+
+        private final SteppingStrategy newStrategy;
+        private boolean initializeNewStrategy;
+
+        AddStrategyUpdater(SteppingStrategy newStrategy) {
+            this.newStrategy = newStrategy;
+        }
+
+        @Override
+        public SteppingStrategy apply(Thread t, SteppingStrategy existingStrategy) {
+            SteppingStrategy result;
+            if (existingStrategy == null || existingStrategy.isContinue() || existingStrategy.isConsumed()) {
+                result = newStrategy;
+                initializeNewStrategy = true;
+            } else if (newStrategy == null) {
+                result = existingStrategy;
+            } else {
+                result = mergeStrategies(existingStrategy);
+                initializeNewStrategy = true;
+            }
+            if (result == null) {
+                result = SteppingStrategy.createContinue();
+            }
+            return result;
+        }
+
+        private SteppingStrategy mergeStrategies(SteppingStrategy existingStrategy) {
+            assert existingStrategy != null;
+            assert newStrategy != null;
+            if (existingStrategy.isAlwaysHalt()) {
+                // AlwaysHalt, but not consumed yet. Bind the new strategy with a halt:
+                if (newStrategy.isContinue()) {
+                    return SteppingStrategy.createAlwaysHalt();
+                } else {
+                    return SteppingStrategy.createPreserveAndHalt(newStrategy);
+                }
+            } else {
+                return newStrategy;
+            }
+        }
     }
 
     private void performKill(Node location) {
@@ -1440,21 +1537,28 @@ public final class DebuggerSession implements Closeable {
     }
 
     private synchronized SteppingStrategy notifyNewThread(Thread currentThread) {
-        SteppingStrategy s = getSteppingStrategy(currentThread);
-        // double checked locking
-        if (s == null) {
-            if (suspendAll) {
-                // all suspended
-                s = SteppingStrategy.createAlwaysHalt();
-            } else {
-                // not suspended continue execution for this thread
-                s = SteppingStrategy.createContinue();
-            }
-            setSteppingStrategy(currentThread, s, true);
-        }
+        SteppingStrategy s = strategyMap.computeIfAbsent(currentThread, newThreadStrategy);
         assert s != null;
         return s;
 
+    }
+
+    /**
+     * When a new thread is detected, this stepping strategy is applied. When {@code suspendAll} is
+     * set, it assures that the thread is suspended.
+     */
+    private final class NewThreadStrategyProvider implements Function<Thread, SteppingStrategy> {
+
+        @Override
+        public SteppingStrategy apply(Thread t) {
+            if (suspendAll) {
+                // all suspended
+                return SteppingStrategy.createAlwaysHalt();
+            } else {
+                // not suspended continue execution for this thread
+                return SteppingStrategy.createContinue();
+            }
+        }
     }
 
     /**

@@ -275,6 +275,7 @@ meth public java.lang.String toString()
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.debug.DebugValue> getExportedSymbols()
 meth public void close()
+meth public void disposeStepping(java.lang.Thread)
 meth public void resume(java.lang.Thread)
 meth public void resumeAll()
 meth public void setAsynchronousStackDepth(int)
@@ -290,8 +291,8 @@ meth public void suspend(java.lang.Thread)
 meth public void suspendAll()
 meth public void suspendNextExecution()
 supr java.lang.Object
-hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,inEvalInContext,includeAvailableSourceSectionsOnly,includeInternal,locationBreakpointsActive,sessionId,showHostStackFrames,sourceElements,sourceFilter,sources,stepping,steppingEnabledSlots,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
-hcls Caller,RootSteppingDepthNode,StableBoolean,SteppingNode,SuspendContextAndFrame,ThreadSuspension
+hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,inEvalInContext,includeAvailableSourceSectionsOnly,includeInternal,locationBreakpointsActive,newThreadStrategy,sessionId,showHostStackFrames,sourceElements,sourceFilter,sources,stepping,steppingEnabledSlots,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
+hcls AddStrategy,Caller,NewThreadStrategy,RootSteppingDepthNode,StableBoolean,SteppingNode,SuspendContextAndFrame,ThreadSuspension
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerTags
 innr public final AlwaysHalt
@@ -365,7 +366,7 @@ meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame,com.oracle.truffle.api.debug.DebugValue)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
-hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,isUnwind,materializedFrame,nextStrategy,returnValue,session,singleStepCompleted,sourceSection,suspendAnchor,thread
+hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,isUnwind,materializedFrame,nextStrategy,returnValue,session,singleStepCompleted,sourceSection,steppingStrategy,suspendAnchor,thread
 hcls DebugAsyncStackFrameLists,DebugStackFrameIterable
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter
@@ -479,9 +480,40 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 

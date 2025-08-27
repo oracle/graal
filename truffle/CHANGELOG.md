@@ -10,6 +10,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
 * GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached` expressions are now suppressed if the inlined node is explicitly annotated with `@GenerateInline(false)`. This avoids unnecessary warnings if inlining for a node was explicitly disabled.
 * GR-66310: Added support for passing arrays of primitive types to native code through the Truffle NFI Panama backend.
+* GR-8251: Added `DebuggerSession.disposeStepping(Thread)` to the debugger API to allow disposal of any pending step on a thread.
+* GR-8251: Pending steps are no longer removed when no debugging action is prepared on a `SuspendedEvent`. In practice, this means that the lifecycle of steps is now independent of breakpoint hits.
+* GR-8251: `DebuggerSession.resumeThread(Thread)` no longer cancels ongoing step operations. Stepping is now independent of other debugger actions to enhance flexibility.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
