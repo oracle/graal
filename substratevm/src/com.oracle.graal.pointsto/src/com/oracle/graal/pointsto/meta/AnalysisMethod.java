@@ -353,14 +353,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return compilationBehavior == CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
     }
 
-    public void setPinnedToInitialLayer() {
+    public void setPinnedToInitialLayer(Object reason) {
         BigBang bigbang = getUniverse().getBigbang();
         AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);
         boolean nonAbstractInstanceClass = !declaringClass.isArray() && declaringClass.isInstanceClass() && !declaringClass.isAbstract();
-        AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be delayed: %s", this);
-        bigbang.forcedAddRootMethod(this, true, "Method is pinned to the initial layer");
+        AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be pinned: %s", this);
+        bigbang.forcedAddRootMethod(this, true, "pinned to initial layer: " + reason);
         if (!isStatic()) {
-            declaringClass.registerAsInstantiated(this + " is pinned to the initial layer");
+            declaringClass.registerAsInstantiated("declared method " + this.format("%H.%n(%p)") + " is pinned to initial layer: " + reason);
         }
         setNewCompilationBehavior(CompilationBehavior.PINNED_TO_INITIAL_LAYER);
     }
