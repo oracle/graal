@@ -42,7 +42,6 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
@@ -230,10 +229,16 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         }
 
         if (field.preventConstantFolding()) {
+            /* Reading this value is prohibited. */
             return null;
         }
 
         if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
+            return null;
+        }
+
+        if (!fieldValueInterceptionSupport.isValueAvailable(field)) {
+            /* Value is not yet available. */
             return null;
         }
 
@@ -260,7 +265,6 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         }
         if (value == null && receiver instanceof ImageHeapConstant heapConstant) {
             heapConstant.ensureReaderInstalled();
-            AnalysisError.guarantee(fieldValueInterceptionSupport.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
