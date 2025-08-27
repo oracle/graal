@@ -1,5 +1,5 @@
 ---
-layout: ni-docs-landing
+layout: docs
 toc_group: how-to-guides
 link_title: Guides
 permalink: /guides/
