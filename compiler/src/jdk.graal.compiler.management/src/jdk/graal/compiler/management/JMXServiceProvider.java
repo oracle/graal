@@ -122,7 +122,7 @@ public class JMXServiceProvider extends JMXService {
         }
 
         @Override
-        public long getGCTimeMills() {
+        public long getGCTimeMillis() {
             long afterMillis = 0;
             for (GarbageCollectorMXBean gc : gcs) {
                 afterMillis += gc.getCollectionTime();
