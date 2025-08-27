@@ -27,7 +27,7 @@ package jdk.graal.compiler.lir.alloc.lsra;
 import jdk.graal.compiler.debug.Assertions;
 
 /**
- * Represents a range of integers from a start (inclusive) to an end (exclusive.
+ * Represents a range of integers from a start (inclusive) to an end (exclusive).
  */
 public final class Range {
 
