@@ -101,7 +101,7 @@ In this example, you would add the following options to your command line:
 
 These options are described in more detail in the [compiler debugging documentation](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md){:target="_blank"}.
 In brief, these options tell the Graal JIT compiler to capture snapshots of its state at verbosity level 2 while compiling any method named `matchComplexExpressions` in a class with a simple name of `NodeLIRBuilder`.
-The complete format of the `MethodFilter` option is described in [MethodFilterHelp.txt](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/MethodFilterHelp.txt){:target="_blank"}.
+The complete format of the `MethodFilter` option is described in [MethodFilterHelp.txt](https://github.com/oracle/graal/blob/vm-24.2.2/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/MethodFilterHelp.txt){:target="_blank"}.
 
 Quite often, the crash location does not exist directly in the problematic method mentioned in the crash log but comes from an inlined method.
 
