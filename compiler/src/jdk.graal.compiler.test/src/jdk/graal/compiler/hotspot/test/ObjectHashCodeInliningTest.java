@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -72,7 +72,7 @@ public class ObjectHashCodeInliningTest extends GraalCompilerTest {
 
     private static boolean containsReadStringHash(StructuredGraph graph) {
         for (ReadNode readNode : graph.getNodes().filter(ReadNode.class)) {
-            if ("String.hash".equals(readNode.getLocationIdentity().toString())) {
+            if ("java.lang.String.hash".equals(readNode.getLocationIdentity().toString())) {
                 return true;
             }
         }
