@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -78,6 +80,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                 checkState(event, 2, true, "STATEMENT");
                 assertEquals(1, event.getBreakpoints().size());
                 assertSame(breakpoint2, event.getBreakpoints().iterator().next());
+                assertFalse(event.isStep());
                 event.prepareStepInto(1);
             });
 
@@ -85,6 +88,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                 checkState(event, 3, true, "STATEMENT");
                 assertEquals(1, event.getBreakpoints().size());
                 assertSame(breakpoint3, event.getBreakpoints().iterator().next());
+                assertTrue(event.isStep());
                 event.prepareStepOver(2);
             });
 
@@ -92,6 +96,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                 checkState(event, 5, true, "STATEMENT");
                 assertEquals(1, event.getBreakpoints().size());
                 assertSame(breakpoint5, event.getBreakpoints().iterator().next());
+                assertTrue(event.isStep());
                 event.prepareStepInto(2);
             });
 
@@ -99,6 +104,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                 checkState(event, 6, true, "STATEMENT");
                 assertEquals(1, event.getBreakpoints().size());
                 assertSame(breakpoint6, event.getBreakpoints().iterator().next());
+                assertFalse(event.isStep());
                 event.prepareContinue();
             });
 
@@ -108,6 +114,137 @@ public class DoubleHaltTest extends AbstractDebugTest {
             assertEquals(1, breakpoint3.getHitCount());
             assertEquals(1, breakpoint5.getHitCount());
             assertEquals(1, breakpoint6.getHitCount());
+        }
+    }
+
+    @Test
+    public void testBreakpointAndStep() throws Throwable {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      STATEMENT)\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo),\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        // Breakpoint inside `foo` breaks a step over `CALL(foo)`.
+        // Test that the step is finished after we leave the breakpoint
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(4).build());
+
+            session.suspendNextExecution();
+            startEval(testSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                assertFalse(event.isStep());
+                event.prepareStepOver(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                assertFalse(event.isStep());
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 9, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                assertTrue(event.isStep());
+                event.prepareContinue();
+            });
+        }
+    }
+
+    @Test
+    public void testBreakpointAndStep2() throws Throwable {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      STATEMENT)\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo),\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        // Breakpoint inside `foo` breaks a step over `CALL(foo)`.
+        // We explicitly prepare continue and that cancels the step
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(4).build());
+
+            session.suspendNextExecution();
+            startEval(testSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                assertFalse(event.isStep());
+                event.prepareStepOver(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                assertFalse(event.isStep());
+                event.prepareContinue();
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testBreakpointAndStep3() throws Throwable {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      STATEMENT)\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo),\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        // Breakpoint inside `foo` breaks a step over `CALL(foo)`.
+        // We explicitly prepare a new step and that cancels the original one
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(4).build());
+
+            session.suspendNextExecution();
+            startEval(testSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                assertFalse(event.isStep());
+                event.prepareStepOver(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                assertFalse(event.isStep());
+                event.prepareStepOver(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                assertTrue(event.isStep());
+                event.prepareContinue();
+            });
+
+            expectDone();
         }
     }
 
