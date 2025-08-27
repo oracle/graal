@@ -618,6 +618,7 @@ public final class GraphState {
      * order used to defined theses stages corresponds to their order in a standard compilation.
      */
     public enum StageFlag {
+        PARTIAL_EVALUATION,
         CANONICALIZATION,
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,

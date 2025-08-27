@@ -24,12 +24,11 @@
  */
 package jdk.graal.compiler.nodes;
 
-import jdk.vm.ci.meta.JavaKind.FormatWithToString;
-
 import java.util.Objects;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.JavaKind.FormatWithToString;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class FieldLocationIdentity extends LocationIdentity implements FormatWithToString {
@@ -74,6 +73,6 @@ public class FieldLocationIdentity extends LocationIdentity implements FormatWit
 
     @Override
     public String toString() {
-        return inner.format("%h.%n") + (isImmutable() ? ":immutable" : "");
+        return inner.format("%H.%n") + (isImmutable() ? ":immutable" : "");
     }
 }
