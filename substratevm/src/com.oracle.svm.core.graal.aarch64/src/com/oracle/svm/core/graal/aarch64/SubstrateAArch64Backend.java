@@ -55,7 +55,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -194,7 +194,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
-public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGenerationProvider {
+public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<SubstrateAArch64MacroAssembler> implements LIRGenerationProvider {
 
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
@@ -1563,5 +1563,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     @Override
     public BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache) {
         return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool(), false));
+    }
+
+    @Override
+    public SubstrateAArch64MacroAssembler createAssembler(OptionValues options) {
+        return new SubstrateAArch64MacroAssembler(getTarget());
     }
 }
