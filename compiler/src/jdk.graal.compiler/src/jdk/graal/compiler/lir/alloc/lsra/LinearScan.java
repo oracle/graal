@@ -42,6 +42,8 @@ import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.CounterKey;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -76,6 +78,33 @@ public class LinearScan {
 
     protected boolean isDetailedAsserts() {
         return Assertions.assertionsEnabled() && detailedAsserts;
+    }
+
+    /**
+     * These timers can significantly affect the speed of linear scan so they are disabled by
+     * default.
+     */
+    static final boolean DETAILED_TIMERS = false;
+
+    static CounterKey counter(String name) {
+        if (DETAILED_TIMERS) {
+            return DebugContext.counter(name);
+        }
+        return null;
+    }
+
+    static DebugContext.CountingTimerKey countingTimer(String name) {
+        if (DETAILED_TIMERS) {
+            return DebugContext.countingTimer(name);
+        }
+        return null;
+    }
+
+    DebugCloseable start(DebugContext.CountingTimerKey key) {
+        if (key != null) {
+            return key.start(debug);
+        }
+        return null;
     }
 
     public static class Options {
@@ -231,7 +260,7 @@ public class LinearScan {
      *         describes a register
      */
     public int getVariableNumber(int operand) {
-        // check if its a variable
+        // check if it's a variable
         if (operand >= firstVariableNumber) {
             return operand - firstVariableNumber;
         }

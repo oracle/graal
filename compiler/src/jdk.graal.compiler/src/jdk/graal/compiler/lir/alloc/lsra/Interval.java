@@ -284,7 +284,7 @@ public final class Interval {
         /**
          * An interval that ends before {@code position} or is spilled to memory.
          */
-        Handled;
+        Handled
     }
 
     /**
@@ -338,7 +338,6 @@ public final class Interval {
      * List of use positions. Each entry in the list records the use position and register priority
      * associated with the use position. The entries in the list are in descending order of use
      * position.
-     *
      */
     public static final class UsePosList {
 
@@ -465,7 +464,7 @@ public final class Interval {
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by
-     * {@linkplain LIRInstruction#id instruction ids}.
+     * {@linkplain LIRInstruction#id() instruction ids}.
      */
     private Range first;
 
@@ -767,7 +766,7 @@ public final class Interval {
         return splitParent().materializedValue;
     }
 
-    int calcTo() {
+    private int calcTo() {
         assert !first.isEndMarker() : "interval has no range";
 
         Range r = first;
