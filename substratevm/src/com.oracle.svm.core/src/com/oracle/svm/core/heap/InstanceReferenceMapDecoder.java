@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.core.heap.InstanceReferenceMapEncoder.COMPRESSED_REFERENCE_MAP_OFFSET_SHIFT;
+import static com.oracle.svm.core.heap.InstanceReferenceMapEncoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -87,8 +87,8 @@ public class InstanceReferenceMapDecoder {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static InstanceReferenceMap getReferenceMap(long compressedReferenceMapOffset) {
-        long uncompressedOffset = (compressedReferenceMapOffset << COMPRESSED_REFERENCE_MAP_OFFSET_SHIFT);
+    public static InstanceReferenceMap getReferenceMap(long referenceMapCompressedOffset) {
+        long uncompressedOffset = (referenceMapCompressedOffset << REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT);
         return (InstanceReferenceMap) KnownIntrinsics.heapBase().add(Word.unsigned(uncompressedOffset));
     }
 

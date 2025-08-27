@@ -372,7 +372,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * {@link DynamicHubSupport#getInstanceReferenceMap}).
      */
     @UnknownPrimitiveField(availability = AfterHeapLayout.class)//
-    private int compressedReferenceMapOffset = -1;
+    private int referenceMapCompressedOffset = -1;
 
     private final byte layerId;
 
@@ -552,7 +552,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-61330: only write if the field exists according to analysis
         // companion.metaType = null;
 
-        int compressedReferenceMapOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
+        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
 
         // GR-57813
         companion.hubMetadata = null;
@@ -585,7 +585,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
 
-        writeInt(hub, dynamicHubOffsets.getCompressedReferenceMapOffsetOffset(), compressedReferenceMapOffset);
+        writeInt(hub, dynamicHubOffsets.getReferenceMapCompressedOffsetOffset(), referenceMapCompressedOffset);
         writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
         // skip vtable (special treatment)
@@ -943,25 +943,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getCompressedReferenceMapOffset() {
-        assert compressedReferenceMapOffset >= 0;
-        return compressedReferenceMapOffset;
+    public int getReferenceMapCompressedOffset() {
+        assert referenceMapCompressedOffset >= 0;
+        return referenceMapCompressedOffset;
     }
 
     /**
-     * Initializes the {@link #compressedReferenceMapOffset} based on the
+     * Initializes the {@link #referenceMapCompressedOffset} based on the
      * {@link #referenceMapIndex}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeCompressedReferenceMapOffset(long currentLayerRefMapDataStart) {
-        assert compressedReferenceMapOffset == -1;
+    public void initializeReferenceMapCompressedOffset(long currentLayerRefMapDataStart) {
+        assert referenceMapCompressedOffset == -1;
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
 
         if (Platform.includedIn(NATIVE_ONLY.class)) {
-            this.compressedReferenceMapOffset = InstanceReferenceMapEncoder.computeCompressedReferenceMapOffset(currentLayerRefMapDataStart, referenceMapIndex);
+            this.referenceMapCompressedOffset = InstanceReferenceMapEncoder.computeReferenceMapCompressedOffset(currentLayerRefMapDataStart, referenceMapIndex);
         } else {
             /* Remove once a heap base is supported, see GR-68847. */
-            this.compressedReferenceMapOffset = referenceMapIndex;
+            this.referenceMapCompressedOffset = referenceMapIndex;
         }
     }
 

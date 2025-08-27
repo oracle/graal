@@ -438,7 +438,7 @@ public final class NativeImageHeap implements ImageHeap {
         for (ObjectInfo o : getObjects()) {
             if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
                 DynamicHub hub = (DynamicHub) o.getObject();
-                hub.initializeCompressedReferenceMapOffset(currentLayerRefMapDataStart);
+                hub.initializeReferenceMapCompressedOffset(currentLayerRefMapDataStart);
 
                 objHeader.verifyDynamicHubOffset(o.getOffset());
                 count++;

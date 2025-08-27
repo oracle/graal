@@ -82,7 +82,7 @@ public class RuntimeInstanceReferenceMapSupport {
 
         /* If there are no declared object fields, reuse the reference map from the super class. */
         if (map.isEmpty()) {
-            return superHub.getCompressedReferenceMapOffset();
+            return superHub.getReferenceMapCompressedOffset();
         }
 
         /* Add the object fields from all super classes to the bitmap. */
@@ -103,7 +103,7 @@ public class RuntimeInstanceReferenceMapSupport {
         ReferenceMapHolder newHeapMapHolder = new ReferenceMapHolder(newHeapMap);
         ReferenceMapHolder existingMetaspaceMapHolder = refMaps.get(newHeapMapHolder);
         if (existingMetaspaceMapHolder != null) {
-            return toCompressedReferenceMapOffset(existingMetaspaceMapHolder.refMap);
+            return toCompressedOffset(existingMetaspaceMapHolder.refMap);
         }
 
         /* Copy the data to the metaspace. */
@@ -113,16 +113,16 @@ public class RuntimeInstanceReferenceMapSupport {
         /* Store the new reference map in the hash map. */
         ReferenceMapHolder newMetaspaceMapHolder = new ReferenceMapHolder(newMetaspaceMap);
         refMaps.put(newMetaspaceMapHolder, newMetaspaceMapHolder);
-        return toCompressedReferenceMapOffset(newMetaspaceMapHolder.refMap);
+        return toCompressedOffset(newMetaspaceMapHolder.refMap);
     }
 
     @SuppressWarnings("unchecked")
-    private static int toCompressedReferenceMapOffset(byte[] metaspaceRefMapArray) {
+    private static int toCompressedOffset(byte[] metaspaceRefMapArray) {
         assert Metaspace.singleton().isInAddressSpace(metaspaceRefMapArray);
 
         NonmovableArray<Byte> array = (NonmovableArray<Byte>) Word.objectToUntrackedPointer(metaspaceRefMapArray);
         InstanceReferenceMap metaspaceMap = NonmovableArrays.getArrayBase(array);
-        return InstanceReferenceMapEncoder.computeCompressedReferenceMapOffset(metaspaceMap);
+        return InstanceReferenceMapEncoder.computeReferenceMapCompressedOffset(metaspaceMap);
     }
 
     /* Remove once GR-60069 is merged. */

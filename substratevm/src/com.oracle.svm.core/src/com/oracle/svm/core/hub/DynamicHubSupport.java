@@ -60,11 +60,11 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
         if (Platform.includedIn(NATIVE_ONLY.class)) {
-            return InstanceReferenceMapDecoder.getReferenceMap(hub.getCompressedReferenceMapOffset());
+            return InstanceReferenceMapDecoder.getReferenceMap(hub.getReferenceMapCompressedOffset());
         } else {
             /* Remove once a heap base is supported, see GR-68847. */
             byte[] referenceMapEncoding = MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, 0).referenceMapEncoding;
-            return InstanceReferenceMapDecoder.getReferenceMap(NonmovableArrays.fromImageHeap(referenceMapEncoding), hub.getCompressedReferenceMapOffset());
+            return InstanceReferenceMapDecoder.getReferenceMap(NonmovableArrays.fromImageHeap(referenceMapEncoding), hub.getReferenceMapCompressedOffset());
         }
     }
 

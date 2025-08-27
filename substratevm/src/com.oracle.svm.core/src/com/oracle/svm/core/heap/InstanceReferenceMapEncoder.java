@@ -56,32 +56,32 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
  * </ul>
  */
 public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
-    public static final int COMPRESSED_REFERENCE_MAP_OFFSET_SHIFT = 2;
+    public static final int REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT = 2;
 
     public static final int MAP_HEADER_SIZE = 4;
     public static final int MAP_ENTRY_SIZE = 8;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static int computeCompressedReferenceMapOffset(long currentLayerRefMapDataStart, int referenceMapIndex) {
+    public static int computeReferenceMapCompressedOffset(long currentLayerRefMapDataStart, int referenceMapIndex) {
         long uncompressedOffset = currentLayerRefMapDataStart + referenceMapIndex;
-        return computeCompressedReferenceMapOffset(uncompressedOffset);
+        return computeReferenceMapCompressedOffset(uncompressedOffset);
     }
 
-    public static int computeCompressedReferenceMapOffset(InstanceReferenceMap refMap) {
+    public static int computeReferenceMapCompressedOffset(InstanceReferenceMap refMap) {
         long uncompressedOffset = ((Pointer) refMap).subtract(KnownIntrinsics.heapBase()).rawValue();
-        return computeCompressedReferenceMapOffset(uncompressedOffset);
+        return computeReferenceMapCompressedOffset(uncompressedOffset);
     }
 
     /**
      * Computes a compressed, heap-base relative offset that points to the start of an
      * {@link InstanceReferenceMap}. Due to the compression, all {@link InstanceReferenceMap}s must
-     * be within the first 16 GB of the address space.
+     * be within the first 16 GB of the heap base.
      *
      * @param uncompressedOffset heap-base relative offset of an {@link InstanceReferenceMap}.
      */
-    private static int computeCompressedReferenceMapOffset(long uncompressedOffset) {
-        long compressedOffset = uncompressedOffset >>> COMPRESSED_REFERENCE_MAP_OFFSET_SHIFT;
-        assert uncompressedOffset == (compressedOffset << COMPRESSED_REFERENCE_MAP_OFFSET_SHIFT) : "wrong alignment";
+    private static int computeReferenceMapCompressedOffset(long uncompressedOffset) {
+        long compressedOffset = uncompressedOffset >>> REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
+        assert uncompressedOffset == (compressedOffset << REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT) : "wrong alignment";
 
         VMError.guarantee(NumUtil.isUInt(compressedOffset), "Compressed reference map offset is not within unsigned integer range");
         return (int) compressedOffset;

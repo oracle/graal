@@ -67,7 +67,7 @@ public class DynamicHubSupportFeature implements InternalFeature {
      * At runtime, no code directly accesses {@code DynamicHubSupport.referenceMapEncoding}.
      * However, the object referenced by this field must still be included in the image heap because
      * each {@link DynamicHub} contains a heap-base relative offset into that object (see
-     * {@link DynamicHub#getCompressedReferenceMapOffset()}). Therefore, we must add this object to
+     * {@link DynamicHub#getReferenceMapCompressedOffset()}). Therefore, we must add this object to
      * the image heap manually.
      */
     private static void addReferenceMapEncodingToImageHeap(NativeImageHeap heap, HostedUniverse hUniverse) {
