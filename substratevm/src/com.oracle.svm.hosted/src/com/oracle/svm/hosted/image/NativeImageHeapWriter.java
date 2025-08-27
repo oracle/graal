@@ -174,7 +174,7 @@ public final class NativeImageHeapWriter {
         int index = getIndexInBuffer(fields, field.getLocation());
         JavaConstant value;
         try {
-            value = heap.hConstantReflection.readFieldValue(field, receiver, true);
+            value = heap.hConstantReflection.readConstantField(field, receiver);
         } catch (AnalysisError.TypeNotFoundError ex) {
             throw NativeImageHeap.reportIllegalType(ex.getType(), info);
         }

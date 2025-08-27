@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -71,10 +73,15 @@ public class HostedConstantReflectionProvider extends AnalysisConstantReflection
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readFieldValue(field, receiver, false);
+        return readFieldValueHelper(field, receiver, false);
     }
 
-    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver, boolean readRelocatableValues) {
+    /** Same as {@link #readFieldValue}, except that the field value must be available. */
+    public JavaConstant readConstantField(ResolvedJavaField field, JavaConstant receiver) {
+        return Objects.requireNonNull(readFieldValueHelper(field, receiver, true));
+    }
+
+    private JavaConstant readFieldValueHelper(ResolvedJavaField field, JavaConstant receiver, boolean readRelocatableValues) {
         var hField = (HostedField) field;
         assert checkHub(receiver) : "Receiver " + receiver + " of field " + hField + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
         return super.readValue(hField.getWrapped(), receiver, true, readRelocatableValues);
