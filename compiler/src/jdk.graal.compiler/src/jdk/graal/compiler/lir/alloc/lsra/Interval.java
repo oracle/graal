@@ -87,15 +87,11 @@ public final class Interval {
          * @return the list of intervals whose binding is {@code binding}
          */
         public Interval get(RegisterBinding binding) {
-            switch (binding) {
-                case Any:
-                    return any;
-                case Fixed:
-                    return fixed;
-                case Stack:
-                    return stack;
-            }
-            throw GraalError.shouldNotReachHereUnexpectedValue(binding); // ExcludeFromJacocoGeneratedReport
+            return switch (binding) {
+                case Any -> any;
+                case Fixed -> fixed;
+                case Stack -> stack;
+            };
         }
 
         /**
@@ -376,8 +372,7 @@ public final class Interval {
             IntList childList = list;
             list = IntList.copy(this.list, listSplitIndex, len);
             childList.setSize(listSplitIndex);
-            UsePosList child = new UsePosList(childList);
-            return child;
+            return new UsePosList(childList);
         }
 
         /**
@@ -592,8 +587,9 @@ public final class Interval {
     int to() {
         if (cachedTo == -1) {
             cachedTo = calcTo();
+        } else {
+            assert cachedTo == calcTo() : "invalid cached value";
         }
-        assert cachedTo == calcTo() : "invalid cached value";
         return cachedTo;
     }
 
@@ -676,7 +672,7 @@ public final class Interval {
 
     // test intersection
     boolean intersects(Interval i) {
-        return first.intersects(i.first);
+        return first.intersectsAt(i.first) != -1;
     }
 
     // range iteration
@@ -706,15 +702,23 @@ public final class Interval {
             // these two can never intersect
             return false;
         }
-        return current.intersects(it.current);
+        return current.intersectsAt(it.current) != -1;
     }
 
-    int currentIntersectsAt(Interval it) {
+    int currentIntersectsAt(Interval it, int limit) {
+        if (currentFrom() > limit) {
+            return -1;
+        }
         if (current.from > it.to()) {
             // these two can never intersect
             return -1;
         }
-        return current.intersectsAt(it.current);
+        int result = current.intersectsAt(it.current, limit);
+        if (Assertions.assertionsEnabled()) {
+            int fullResult = current.intersectsAt(it.current);
+            assert fullResult == result || fullResult > limit : "stopped early: " + fullResult + " " + limit + " " + result;
+        }
+        return result;
     }
 
     Interval(AllocatableValue operand, int operandNumber, Interval intervalEndMarker, Range rangeEndMarker) {
@@ -853,7 +857,7 @@ public final class Interval {
                     if (i > 0) {
                         // exchange current split child to start of list (faster access for next
                         // call)
-                        Util.atPutGrow(splitChildren, i, splitChildren.get(0), null);
+                        Util.atPutGrow(splitChildren, i, splitChildren.getFirst(), null);
                         Util.atPutGrow(splitChildren, 0, cur, null);
                     }
 
@@ -873,8 +877,8 @@ public final class Interval {
             // this is an error
             StringBuilder msg = new StringBuilder(this.toString()).append(" has no child at ").append(opId);
             if (!splitChildren.isEmpty()) {
-                Interval firstChild = splitChildren.get(0);
-                Interval lastChild = splitChildren.get(splitChildren.size() - 1);
+                Interval firstChild = splitChildren.getFirst();
+                Interval lastChild = splitChildren.getLast();
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
             throw new GraalError("Linear Scan Error: %s", msg);
@@ -1013,14 +1017,7 @@ public final class Interval {
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && LIRValueUtil.isVariable(operand)) {
-            if (detailedAsserts) {
-                for (int i = 0; i < usePosList.size(); i++) {
-                    assert pos <= usePosList.usePos(i) : "already added a use-position with lower position";
-                    if (i > 0) {
-                        assert usePosList.usePos(i) < usePosList.usePos(i - 1) : "not sorted descending";
-                    }
-                }
-            }
+            assert checkUsePos(pos, detailedAsserts);
 
             // Note: addUse is called in descending order, so list gets sorted
             // automatically by just appending new use positions
@@ -1032,6 +1029,18 @@ public final class Interval {
                 usePosList.setRegisterPriority(len - 1, registerPriority);
             }
         }
+    }
+
+    private boolean checkUsePos(int pos, boolean detailedAsserts) {
+        if (detailedAsserts) {
+            for (int i = 0; i < usePosList.size(); i++) {
+                assert pos <= usePosList.usePos(i) : "already added a use-position with lower position";
+                if (i > 0) {
+                    assert usePosList.usePos(i) < usePosList.usePos(i - 1) : "not sorted descending";
+                }
+            }
+        }
+        return true;
     }
 
     public void addRange(int from, int to) {
@@ -1101,23 +1110,30 @@ public final class Interval {
         }
         assert !cur.isEndMarker() : "split interval after end of last range";
 
+        result.cachedTo = cachedTo;
         if (cur.from < splitPos) {
             result.first = new Range(splitPos, cur.to, cur.next);
-            cur.to = splitPos;
+            cachedTo = cur.to = splitPos;
             cur.next = allocator.rangeEndMarker;
-
         } else {
             assert prev != null : "split before start of first range";
             result.first = cur;
             prev.next = allocator.rangeEndMarker;
+            cachedTo = prev.to;
         }
         result.current = result.first;
-        cachedTo = -1; // clear cached value
+        assert result.cachedTo == result.calcTo() : result.cachedTo + " != " + result.calcTo();
+        assert cachedTo == calcTo() : cachedTo + " != " + calcTo();
 
         // split list of use positions
         result.usePosList = usePosList.splitAt(splitPos);
 
-        if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
+        assert checkUsePosList(splitPos, allocator, result);
+        return result;
+    }
+
+    private boolean checkUsePosList(int splitPos, LinearScan allocator, Interval result) {
+        if (allocator.isDetailedAsserts()) {
             for (int i = 0; i < usePosList.size(); i++) {
                 assert usePosList.usePos(i) < splitPos : Assertions.errorMessageContext("usPosList", usePosList, "splitPos", splitPos);
             }
@@ -1125,7 +1141,7 @@ public final class Interval {
                 assert result.usePosList.usePos(i) >= splitPos : Assertions.errorMessageContext("usePosList", usePosList, "splitPos", splitPos);
             }
         }
-        return result;
+        return true;
     }
 
     // returns true if the opId is inside the interval
