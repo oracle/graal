@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -41,9 +44,6 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
  * Special Shenandoah CAS implementation that handles false negatives due to concurrent evacuation.
@@ -81,6 +81,7 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
               sha1 = "553a2fb0d37f39016eda85331e8cd2421153cbfe")
     // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        // The original code uses the name tmp2 for the expected value
         Register address = asRegister(addressValue);
         Register result = asRegister(resultValue);
         Register expected = asRegister(expectedValue);
@@ -92,6 +93,9 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
         GraalError.guarantee(accessKind == AArch64Kind.QWORD || accessKind == AArch64Kind.DWORD, "must be 64 or 32 bit access");
         int size = (accessKind == AArch64Kind.QWORD) ? 64 : 32;
 
+        // The control flow below is slightly different than the original HotSpot code with the step
+        // 4 case move into the out of line path.
+
         // Step 1. Fast-path.
         //
         // Try to CAS with given arguments. If successful, then we are done.
@@ -101,7 +105,7 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
 
         // If expected equals null but result does not equal null, the
         // step2 branches to done to report failure of CAS. If both
-        // expected and tmp2 equal null, the following branches to done to
+        // expected and result equal null, the following branches to done to
         // report success of CAS. There's no need for a special test of
         // expected equal to null.
 
