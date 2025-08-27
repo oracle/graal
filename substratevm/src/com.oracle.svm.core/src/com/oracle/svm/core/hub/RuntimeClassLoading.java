@@ -88,18 +88,26 @@ public class RuntimeClassLoading {
             if (!optionKey.getValue()) {
                 return;
             }
+            if (!SubstrateOptions.SpawnIsolates.getValue()) {
+                /*
+                 * A metaspace is only supported if there is a contiguous address space, which is
+                 * only the case with isolate support enabled.
+                 */
+                throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
+                                "Requires isolate support, please use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+"));
+            }
             if (SubstrateOptions.ClosedTypeWorld.getValue()) {
                 throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
-                                "Requires an open type world, Please use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.ClosedTypeWorld, "-"));
+                                "Requires an open type world, please use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.ClosedTypeWorld, "-"));
             }
             if (!ClassForNameSupport.Options.ClassForNameRespectsClassLoader.getValue()) {
                 throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
-                                "Requires Class.forName to respect the classloader argument, Please use " +
+                                "Requires Class.forName to respect the classloader argument, please use " +
                                                 SubstrateOptionsParser.commandArgument(ClassForNameSupport.Options.ClassForNameRespectsClassLoader, "+"));
             }
             if (PredefinedClassesSupport.Options.SupportPredefinedClasses.getValue()) {
                 throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
-                                "Requires predefined class support to be disabled, Please use " +
+                                "Requires predefined class support to be disabled, please use " +
                                                 SubstrateOptionsParser.commandArgument(PredefinedClassesSupport.Options.SupportPredefinedClasses, "-"));
             }
         }

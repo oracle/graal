@@ -31,6 +31,7 @@ import static com.oracle.svm.core.util.VMError.guarantee;
 import static jdk.graal.compiler.word.Word.nullPointer;
 import static jdk.graal.compiler.word.Word.unsigned;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,6 +66,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -147,6 +149,11 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Platforms(Platform.HOSTED_ONLY.class)
     public AddressRangeCommittedMemoryProvider() {
         assert SubstrateOptions.SpawnIsolates.getValue();
+    }
+
+    @Fold
+    public static AddressRangeCommittedMemoryProvider singleton() {
+        return (AddressRangeCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
 
     @Override
