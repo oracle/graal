@@ -1242,7 +1242,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
             svm_experimental_options([
                 '-H:+SourceLevelDebug',
                 '-H:+RuntimeDebugInfo',
-                '-H:+LazyDeoptimization' if eager else '-H:-LazyDeoptimization',
+                '-H:-LazyDeoptimization' if eager else '-H:+LazyDeoptimization',
             ]) +
             ['-g', '-O0', '--macro:jsvm-library']
         ))
