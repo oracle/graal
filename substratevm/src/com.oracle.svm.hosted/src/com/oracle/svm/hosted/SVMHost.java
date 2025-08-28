@@ -1001,15 +1001,6 @@ public class SVMHost extends HostVM {
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
     }
 
-    @Override
-    public boolean sortFields() {
-        /*
-         * If building layered images sort the fields by kind and name to ensure stable order.
-         * Sorting fields in general may lead to some issues. (GR-62599)
-         */
-        return buildingImageLayer;
-    }
-
     /** If it's not one of the known builder types it must be an original VM type. */
     private static boolean isOriginalType(ResolvedJavaType type) {
         return !(type instanceof OriginalClassProvider);

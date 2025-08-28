@@ -51,7 +51,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -121,6 +120,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
@@ -1318,6 +1318,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         });
         registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
         registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+
+        /*
+         * Inject the base layer position. If the position computed for this layer, either before
+         * this step or later, is different this will result in a failed guarantee.
+         */
+        analysisField.setPosition(fieldData.getPosition());
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
