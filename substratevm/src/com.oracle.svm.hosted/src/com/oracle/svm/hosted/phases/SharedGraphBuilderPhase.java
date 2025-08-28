@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
+import java.lang.classfile.Opcode;
 import java.lang.constant.ConstantDescs;
 import java.lang.invoke.LambdaConversionException;
 import java.lang.invoke.MethodHandles;
@@ -79,7 +80,6 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -1548,7 +1548,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     ValueNode currentNode;
                     if (constant instanceof PrimitiveConstant primitiveConstant) {
                         int argCpi = primitiveConstant.asInt();
-                        Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
+                        Object argConstant = loadConstantDynamic(argCpi, opcode == Opcode.INVOKEDYNAMIC.bytecode() ? Opcode.LDC.bytecode() : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
                             ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
                             if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {
