@@ -74,6 +74,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -941,12 +942,18 @@ public class SubstrateDiagnostics {
             }
 
             CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            int layerNumber = 0;
             do {
                 Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
                 UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
                 Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                log.string("AOT compiled code");
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    log.string(" - Layer ").unsigned(layerNumber);
+                }
+                log.string(": ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
                 info = CodeInfoAccess.getNextImageCodeInfo(info);
+                layerNumber++;
             } while (info.isNonNull());
 
             log.indent(false);
