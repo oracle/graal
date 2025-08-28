@@ -64,6 +64,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -120,11 +121,13 @@ public final class HeapImpl extends Heap {
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
                         : new CopyingOldGeneration("OldGeneration");
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
-        DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
-        DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
-        DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
+            DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
+            DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
+            DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        }
     }
 
     @Fold

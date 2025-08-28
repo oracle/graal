@@ -572,13 +572,20 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 if (annotation != null) {
                     if (annotation.layeredInstallationKind() != null) {
                         var installationKindSupplierClass = annotation.layeredInstallationKind();
-                        SingletonLayeredInstallationKindSupplier installationKindSupplier = ReflectionUtil.newInstance(installationKindSupplierClass);
-                        SingletonTrait installationTrait = installationKindSupplier.getLayeredInstallationKindTrait();
-                        assert installationTrait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND : installationTrait;
-                        SingletonTraitMap traitMap = SingletonTraitMap.create();
-                        traitMap.addTrait(installationTrait);
-                        traitMap.seal();
-                        return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+                        /*
+                         * Initial Layer information should never be injected, as this is something
+                         * which occurred in the past and should already be present in configObject
+                         * when it exists.
+                         */
+                        if (installationKindSupplierClass != SingletonLayeredInstallationKind.InitialLayerOnly.class) {
+                            SingletonLayeredInstallationKindSupplier installationKindSupplier = ReflectionUtil.newInstance(installationKindSupplierClass);
+                            SingletonTrait installationTrait = installationKindSupplier.getLayeredInstallationKindTrait();
+                            assert installationTrait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND : installationTrait;
+                            SingletonTraitMap traitMap = SingletonTraitMap.create();
+                            traitMap.addTrait(installationTrait);
+                            traitMap.seal();
+                            return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+                        }
                     }
                 }
 
