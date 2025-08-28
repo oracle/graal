@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,16 @@ package jdk.graal.compiler.replacements.test;
 
 import java.nio.charset.StandardCharsets;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class StringGetBytesTest extends MethodSubstitutionTest {
 
@@ -65,5 +70,14 @@ public class StringGetBytesTest extends MethodSubstitutionTest {
             }
         }
         Assert.fail("intrinsic not found in graph!");
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        String className = method.getDeclaringClass().getUnqualifiedName();
+        if ((className.equals("String") && !method.getName().equals("implEncodeISOArray")) || className.equals("StringCoding")) {
+            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
+        }
+        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 }
