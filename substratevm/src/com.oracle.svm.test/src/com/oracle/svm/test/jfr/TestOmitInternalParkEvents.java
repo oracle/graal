@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,36 +26,37 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
-    private static final int MILLIS = 60;
-
-    private final Helper helper = new Helper();
-    private Thread firstThread;
+public class TestOmitInternalParkEvents extends JfrRecordingTest {
+    private static final int MILLIS = 100;
+    private final MonitorHelper monitorHelper = new MonitorHelper();
     private Thread secondThread;
     private volatile boolean passedCheckpoint;
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.JavaMonitorEnter.getName()};
+        String[] events = new String[]{JfrEvent.JavaMonitorEnter.getName(), JfrEvent.JavaMonitorWait.getName(), JfrEvent.ThreadPark.getName()};
         Recording recording = startRecording(events);
 
-        firstThread = new Thread(() -> {
+        /* Generate monitor enter events. */
+        Thread firstThread = new Thread(() -> {
             try {
-                helper.doWork();
+                monitorHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -64,7 +65,7 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
         secondThread = new Thread(() -> {
             try {
                 passedCheckpoint = true;
-                helper.doWork();
+                monitorHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -76,38 +77,53 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
         firstThread.join();
         secondThread.join();
 
+        /* Generate monitor wait events. */
+        try {
+            monitorHelper.waitUntilTimeout();
+        } catch (InterruptedException e) {
+            fail(e.getMessage());
+        }
+
+        /* Generate thread park events. */
+        LockSupport.parkNanos(this, TimeUtils.millisToNanos(MILLIS));
+
         stopRecording(recording, this::validateEvents);
     }
 
     private void validateEvents(List<RecordedEvent> events) {
         boolean found = false;
         for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
-                // verify previous owner
-                assertEquals("Previous owner is wrong", event.<RecordedThread> getValue("previousOwner").getJavaName(), firstThread.getName());
-                found = true;
-                break;
+            if (event.getEventType().getName().equals(JfrEvent.ThreadPark.getName())) {
+                RecordedClass parkedClass = event.getValue("parkedClass");
+                if (parkedClass != null) {
+                    String parkedClassName = parkedClass.getName();
+                    assertFalse(parkedClassName.contains("JavaMonitor"));
+                    found = true;
+                }
             }
-
-            checkTopStackFrame(event, "monitorEnter");
         }
-        assertTrue("Expected monitor blocked event not found", found);
+        assertTrue("Expected jdk.ThreadPark event not found", found);
     }
 
-    private final class Helper {
+    private final class MonitorHelper {
         private synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {
-                return; // second thread doesn't need to do work.
+                /* The second thread doesn't need to do any work. */
+                return;
             }
-            // ensure ordering of critical section entry
+
+            /* Start the second thread while this thread holds the lock. */
             secondThread.start();
 
-            // spin until second thread blocks
+            /* Spin until the second thread blocks. */
             while (!secondThread.getState().equals(Thread.State.BLOCKED) || !passedCheckpoint) {
-                Thread.sleep(10);
+                Thread.sleep(100);
             }
             Thread.sleep(MILLIS);
+        }
+
+        private synchronized void waitUntilTimeout() throws InterruptedException {
+            wait(MILLIS);
         }
     }
 }
