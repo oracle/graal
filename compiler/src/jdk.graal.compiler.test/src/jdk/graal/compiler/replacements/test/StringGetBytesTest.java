@@ -74,7 +74,8 @@ public class StringGetBytesTest extends MethodSubstitutionTest {
 
     @Override
     protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        if (method.getDeclaringClass().getUnqualifiedName().equals("String") && !method.getName().equals("implEncodeISOArray")) {
+        String className = method.getDeclaringClass().getUnqualifiedName();
+        if ((className.equals("String") && !method.getName().equals("implEncodeISOArray")) || className.equals("StringCoding")) {
             return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
         }
         return super.bytecodeParserShouldInlineInvoke(b, method, args);
