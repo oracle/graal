@@ -117,17 +117,19 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
 
     @Override
     public Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType) {
-        // We insert the necessary barriers in the node graph, at that level it
-        // is easier to handle compressed object references. No need to do anything
-        // special here.
+        /*
+         * We insert the necessary barriers in the node graph, at that level it is easier to handle
+         * compressed object references. No need to do anything special here.
+         */
         return tool.emitAtomicReadAndWrite(readKind, address, newValue, BarrierType.NONE);
     }
 
     @Override
     public Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
-        // We insert the necessary barriers in the node graph, at that level it
-        // is easier to handle compressed object references. No need to do anything
-        // special here.
+        /*
+         * We insert the necessary barriers in the node graph, at that level it is easier to handle
+         * compressed object references. No need to do anything special here.
+         */
         return tool.getArithmetic().emitLoad(kind, address, state, memoryOrder, MemoryExtendKind.DEFAULT);
     }
 }

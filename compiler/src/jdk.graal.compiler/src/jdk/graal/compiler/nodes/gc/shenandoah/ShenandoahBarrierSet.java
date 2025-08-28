@@ -224,9 +224,11 @@ public class ShenandoahBarrierSet implements BarrierSet {
                     StructuredGraph graph = node.graph();
                     boolean init = node.getLocationIdentity().isInit();
                     if (!init && barrierType != BarrierType.AS_NO_KEEPALIVE_WRITE && useSATBBarrier) {
-                        // The pre barrier does nothing if the value being read is null, so it can
-                        // be explicitly skipped when this is an initializing store.
-                        // No keep-alive means no need for the pre-barrier.
+                        /*
+                         * The pre barrier does nothing if the value being read is null, so it can
+                         * be explicitly skipped when this is an initializing store. No keep-alive
+                         * means no need for the pre-barrier.
+                         */
                         addShenandoahSATBBarrier(node, node.getAddress(), expectedValue, graph);
                     }
                     if (!init && useCardBarrier && !StampTool.isPointerAlwaysNull(writtenValue)) {
