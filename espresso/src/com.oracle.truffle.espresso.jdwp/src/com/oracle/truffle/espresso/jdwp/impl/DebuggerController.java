@@ -38,7 +38,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -352,10 +351,6 @@ public final class DebuggerController {
         try {
             Breakpoint bp = Breakpoint.newBuilder(location.getSource()).lineIs(location.getLineNumber()).build();
             bp.setEnabled(true);
-            int ignoreCount = command.getRequestFilter().getIgnoreCount();
-            if (ignoreCount > 0) {
-                bp.setIgnoreCount(ignoreCount);
-            }
             mapBreakpoint(bp, command.getBreakpointInfo());
             fine(() -> "Submitting breakpoint at " + bp.getLocationDescription());
             debuggerSession.install(bp);
@@ -371,10 +366,6 @@ public final class DebuggerController {
     void submitExceptionBreakpoint(DebuggerCommand command) {
         Breakpoint bp = Breakpoint.newExceptionBuilder(command.getBreakpointInfo().isCaught(), command.getBreakpointInfo().isUnCaught()).build();
         bp.setEnabled(true);
-        int ignoreCount = command.getBreakpointInfo().getFilter().getIgnoreCount();
-        if (ignoreCount > 0) {
-            bp.setIgnoreCount(ignoreCount);
-        }
         mapBreakpoint(bp, command.getBreakpointInfo());
         debuggerSession.install(bp);
         fine(() -> "exception breakpoint submitted");
@@ -936,18 +927,21 @@ public final class DebuggerController {
                 if (callFrames.length > 0) {
                     callFrame = callFrames[0];
                 }
-                if (checkExclusionFilters(steppingInfo, event, callFrame)) {
+                EventInfo eventInfo = callFrame != null ? new EventInfo.Frame(context, callFrame, currentThread) : null;
+                if (checkExclusionFilters(steppingInfo, event, eventInfo)) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
-                    commandRequestIds.put(currentThread, steppingInfo);
+                    RequestFilter requestFilter = eventFilters.getRequestFilter(steppingInfo.getRequestId());
+                    if (requestFilter != null && requestFilter.isActive()) {
+                        commandRequestIds.put(currentThread, steppingInfo);
+                    }
                     return;
                 }
             }
             boolean isAfter = event.getSuspendAnchor() == SuspendAnchor.AFTER;
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, isAfter);
-            RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             // collect any events that need to be sent to the debugger once we're done here
@@ -964,7 +958,7 @@ public final class DebuggerController {
                 } else {
                     fine(() -> "step not completed - check for breakpoints");
 
-                    result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                    result = checkForBreakpoints(event, jobs, suspendedInfo, currentThread, callFrames);
                     if (!result.breakpointHit) {
                         // no breakpoint
                         commandRequestIds.put(currentThread, steppingInfo);
@@ -972,7 +966,7 @@ public final class DebuggerController {
                     }
                 }
             } else {
-                result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                result = checkForBreakpoints(event, jobs, suspendedInfo, currentThread, callFrames);
             }
             if (!commandRequestIds.containsKey(currentThread)) {
                 // we're done stepping then
@@ -985,7 +979,7 @@ public final class DebuggerController {
             suspend(currentThread, result.suspendPolicy, jobs, result.breakpointHit || event.isStep() || event.isUnwind());
         }
 
-        private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, Object currentThread, CallFrame[] callFrames) {
+        private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, SuspendedInfo suspendedInfo, Object currentThread, CallFrame[] callFrames) {
             boolean handledLineBreakpoint = false;
             boolean hit = false;
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
@@ -996,6 +990,10 @@ public final class DebuggerController {
                 }
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
+
+                if (!info.getFilter().isHit(suspendedInfo)) {
+                    continue;
+                }
 
                 if (info instanceof LineBreakpointInfo lineBreakpointInfo) {
                     // only allow one line breakpoint to avoid confusing the debugger
@@ -1009,14 +1007,10 @@ public final class DebuggerController {
 
                     handledLineBreakpoint = true;
                     hit = true;
-                    // check if breakpoint request limited to a specific thread
-                    Object thread = info.getThread();
-                    if (thread == null || thread == currentThread) {
-                        jobs.add(() -> {
-                            eventListener.breakpointHit(info, callFrames[0], currentThread);
-                            return null;
-                        });
-                    }
+                    jobs.add(() -> {
+                        eventListener.breakpointHit(info, callFrames[0], currentThread);
+                        return null;
+                    });
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
                     Throwable exception = event.getException().getRawException(context.getLanguageClass());
@@ -1043,15 +1037,7 @@ public final class DebuggerController {
                     } else if (getContext().isInstanceOf(guestException, klass)) {
                         fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
                         // check filters if we should not suspend
-                        Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
-                        // verify include patterns
-                        if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
-                            // verify exclude patterns
-                            Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
-                            if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
-                                hit = true;
-                            }
-                        }
+                        hit = true;
                     }
                     if (hit) {
                         fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
@@ -1100,25 +1086,13 @@ public final class DebuggerController {
             return new BreakpointHitResult(hit, suspendPolicy, false);
         }
 
-        private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {
-            KlassRef klass = (KlassRef) ids.fromId((int) callFrame.getClassId());
-
-            for (Pattern pattern : patterns) {
-                fine(() -> "Matching klass: " + klass.getNameAsString() + " against pattern: " + pattern.pattern());
-                if (pattern.pattern().matches(klass.getNameAsString().replace('/', '.'))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, CallFrame frame) {
+        private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, EventInfo eventInfo) {
             if (info != null) {
                 if (isSingleSteppingSuspended()) {
                     continueStepping(event, info);
                     return true;
                 }
-                if (frame == null) {
+                if (eventInfo == null) {
                     return false;
                 }
                 RequestFilter requestFilter = eventFilters.getRequestFilter(info.getRequestId());
@@ -1126,19 +1100,7 @@ public final class DebuggerController {
                 if (requestFilter != null && requestFilter.getStepInfo() != null) {
                     // we're currently stepping, so check if suspension point
                     // matches any exclusion filters
-                    if (requestFilter.getThisFilterId() != 0) {
-                        Object filterObject = context.getIds().fromId((int) requestFilter.getThisFilterId());
-                        Object thisObject = frame.getThisValue();
-                        if (filterObject != thisObject) {
-                            continueStepping(event, info);
-                            return true;
-                        }
-                    }
-
-                    KlassRef klass = (KlassRef) context.getIds().fromId((int) frame.getClassId());
-
-                    if (klass != null && requestFilter.isKlassExcluded(klass)) {
-                        // should not suspend here then, tell the event to keep going
+                    if (!requestFilter.isHit(eventInfo)) {
                         continueStepping(event, info);
                         return true;
                     }
@@ -1148,6 +1110,8 @@ public final class DebuggerController {
         }
 
         private void continueStepping(SuspendedEvent event, SteppingInfo steppingInfo) {
+            // It is wrong to prepare a new step when we should continue with the original one.
+            // This can be fixed after GR-8251 is resolved.
             switch (steppingInfo.getStepKind()) {
                 case STEP_INTO:
                     // stepping into unwanted code which was filtered
