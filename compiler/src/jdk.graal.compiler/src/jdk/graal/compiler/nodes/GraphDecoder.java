@@ -217,7 +217,7 @@ public class GraphDecoder {
          * Sets the {@link #inliningLog} and {@link #optimizationLog} as the logs of the
          * {@link #graph} if they are non-null.
          */
-        public void replaceLogsForDecodedGraph() {
+        public final void replaceLogsForDecodedGraph() {
             if (inliningLog != null) {
                 graph.setInliningLog(inliningLog);
             }
@@ -267,7 +267,7 @@ public class GraphDecoder {
     }
 
     /** Decoding state maintained for each loop in the encoded graph. */
-    protected static class LoopScope {
+    protected static final class LoopScope {
         public final MethodScope methodScope;
         public final LoopScope outer;
         public final int loopDepth;
@@ -333,18 +333,18 @@ public class GraphDecoder {
         protected LoopScope(MethodScope methodScope) {
             this.methodScope = methodScope;
             this.outer = null;
+            this.loopDepth = 0;
+            this.loopIteration = 0;
+            this.trigger = LoopScopeTrigger.START;
             this.nextIterationFromLoopExitDuplication = methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null;
             this.nextIterationFromLoopEndDuplication = methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null;
             this.nextIterationsFromUnrolling = methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null;
-            this.loopDepth = 0;
-            this.loopIteration = 0;
             this.iterationStates = null;
             this.loopBeginOrderId = -1;
             int nodeCount = methodScope.encodedGraph.nodeStartOffsets.length;
             this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
             this.createdNodes = new Node[nodeCount];
             this.initialCreatedNodes = null;
-            this.trigger = LoopScopeTrigger.START;
             this.writtenNodes = null;
         }
 
@@ -358,7 +358,8 @@ public class GraphDecoder {
         protected LoopScope(MethodScope methodScope, LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, LoopScopeTrigger trigger, Node[] initialCreatedNodes, Node[] createdNodes,
                         Deque<LoopScope> nextIterationFromLoopExitDuplication,
                         Deque<LoopScope> nextIterationFromLoopEndDuplication,
-                        Deque<LoopScope> nextIterationsFromUnrolling, EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates) {
+                        Deque<LoopScope> nextIterationsFromUnrolling,
+                        EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates) {
             this(methodScope, outer, loopDepth, loopIteration, loopBeginOrderId, trigger, initialCreatedNodes, createdNodes, nextIterationFromLoopExitDuplication, nextIterationFromLoopEndDuplication,
                             nextIterationsFromUnrolling, iterationStates, true);
         }
@@ -375,7 +376,8 @@ public class GraphDecoder {
         protected LoopScope(MethodScope methodScope, LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, LoopScopeTrigger trigger, Node[] initialCreatedNodes, Node[] createdNodes,
                         Deque<LoopScope> nextIterationFromLoopExitDuplication,
                         Deque<LoopScope> nextIterationFromLoopEndDuplication,
-                        Deque<LoopScope> nextIterationsFromUnrolling, EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates,
+                        Deque<LoopScope> nextIterationsFromUnrolling,
+                        EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates,
                         boolean reuseInitialNodes) {
             this.methodScope = methodScope;
             this.outer = outer;
@@ -507,8 +509,8 @@ public class GraphDecoder {
          * @param remove determines if the query of the next iteration should remove it from the
          *            list of iterations to be processed
          * @return the next {@link LoopScope} to be processed that has been created in the context
-         *         of decoding this loop scope. Note that the order is not necessarily reflecting
-         *         the number of loop iterations.
+         *         of decoding this loop scope, or null if there is none. Note that the order is not
+         *         necessarily reflecting the number of loop iterations.
          */
         public LoopScope getNextIterationToProcess(boolean remove) {
             if (nextIterationFromLoopEndDuplication != null && !nextIterationFromLoopEndDuplication.isEmpty()) {
@@ -651,6 +653,8 @@ public class GraphDecoder {
         this.debug = graph.getDebug();
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
     }
+
+    // #region Main decoder loop
 
     public final void decode(EncodedGraph encodedGraph) {
         decode(encodedGraph, null);
@@ -797,6 +801,8 @@ public class GraphDecoder {
         }
     }
 
+    // #endregion
+
     public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = false;
 
     protected LoopScope processNextNode(MethodScope methodScope, LoopScope loopScope) {
@@ -907,14 +913,12 @@ public class GraphDecoder {
                 if (methodScope.loopExplosion.useExplosion()) {
                     handleLoopExplosionBegin(methodScope, loopScope, (LoopBeginNode) node);
                 }
-
             } else if (node instanceof LoopExitNode) {
                 if (methodScope.loopExplosion.useExplosion()) {
                     handleLoopExplosionProxyNodes(methodScope, loopScope, successorAddScope, (LoopExitNode) node, nodeOrderId);
                 } else {
                     handleProxyNodes(methodScope, loopScope, (LoopExitNode) node);
                 }
-
             } else if (node instanceof MergeNode) {
                 handleMergeNode(((MergeNode) node));
             } else if (node instanceof AbstractEndNode) {
@@ -1772,6 +1776,8 @@ public class GraphDecoder {
         return node;
     }
 
+    // #region Reading from encoded graph
+
     /**
      * Process successor edges of a node. We create the successor nodes so that we can fill the
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
@@ -1905,6 +1911,10 @@ public class GraphDecoder {
         return methodScope.encodedGraph.getObject(methodScope.reader.getUVInt());
     }
 
+    // #endregion
+
+    // #region Cleanup
+
     /**
      * Removes unnecessary nodes from the graph after decoding.
      *
@@ -1914,7 +1924,7 @@ public class GraphDecoder {
         assert verifyEdges();
     }
 
-    protected boolean verifyEdges() {
+    private boolean verifyEdges() {
         for (Node node : graph.getNodes()) {
             assert node.isAlive();
             for (Node i : node.inputs()) {
@@ -1937,6 +1947,8 @@ public class GraphDecoder {
         }
         return true;
     }
+
+    // #endregion
 }
 
 class LoopDetector implements Runnable {
@@ -2256,7 +2268,7 @@ class LoopDetector implements Runnable {
          *      // outerLoopContinueCode that uses values proxied inside the loop
          * </pre>
          *
-         * We would produce two loop exits that merge booth on the outerLoopContinueCode.
+         * We would produce two loop exits that merge both on the outerLoopContinueCode.
          * This would require the generation of complex phi and proxy constructs, thus we include the merge inside the
          * loop if we find a subsequent loop explosion merge.
          */
@@ -2286,27 +2298,22 @@ class LoopDetector implements Runnable {
         // we found a shared merge as outlined above
         if (mergesToRemove.size() > 0) {
             assert merges.size() < loop.exits.size() : Assertions.errorMessage(merges, loop, loop.exits);
-            outer: for (MergeNode merge : mergesToRemove) {
+            for (MergeNode merge : mergesToRemove) {
                 FixedNode current = merge;
-                while (current != null) {
-                    if (current instanceof FixedWithNextNode) {
-                        current = ((FixedWithNextNode) current).next();
-                        continue;
-                    }
-                    if (current instanceof EndNode && methodScope.loopExplosionMerges.contains(((EndNode) current).merge())) {
-                        // we found the place for the loop exit introduction since the subsequent
-                        // merge has a frame state
-                        loop.exits.removeIf(x -> x.merge() == merge);
-                        loop.exits.add((EndNode) current);
-                        break;
-                    }
-                    /*
-                     * No next merge was found, this can only mean no immediate unroll happend next,
-                     * i.e., there is no subsequent iteration of any loop exploded directly after,
-                     * thus no loop exit possible.
-                     */
-                    continue outer;
+                while (current instanceof FixedWithNextNode c) {
+                    current = c.next();
                 }
+                if (current instanceof EndNode end && methodScope.loopExplosionMerges.contains(end.merge())) {
+                    // we found the place for the loop exit introduction since the subsequent
+                    // merge has a frame state
+                    loop.exits.removeIf(x -> x.merge() == merge);
+                    loop.exits.add(end);
+                }
+                /*
+                 * Else, no next merge was found, this can only mean no immediate unroll happend
+                 * next, i.e., there is no subsequent iteration of any loop exploded directly after,
+                 * thus no loop exit possible.
+                 */
             }
         }
     }
