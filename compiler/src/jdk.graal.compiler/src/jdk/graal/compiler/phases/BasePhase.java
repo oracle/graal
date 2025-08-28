@@ -47,6 +47,7 @@ import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Graph;
@@ -462,7 +463,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             boolean logHotMetricsForGraph = false;
             if (reportHotMetricsMethodFilter != null) {
                 jdk.graal.compiler.debug.MethodFilter hotMetricsMethodFilter = null;
-                hotMetricsMethodFilter = jdk.graal.compiler.debug.MethodFilter.parse(reportHotMetricsMethodFilter);
+                hotMetricsMethodFilter = MethodFilter.parse(reportHotMetricsMethodFilter);
                 logHotMetricsForGraph = graph.method() != null && hotMetricsMethodFilter.matches(graph.method());
                 if (!logHotMetricsForGraph) {
                     CompilationIdentifier id = graph.compilationId();

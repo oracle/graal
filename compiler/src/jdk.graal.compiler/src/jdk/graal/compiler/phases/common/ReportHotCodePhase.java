@@ -80,9 +80,9 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         @Option(help = "Dumps the hottest code parts to the Ideal Graph Visualizer (IGV) for further analysis and visualization.", type = OptionType.Debug)
         public static final OptionKey<Boolean> ReportHotCodePartsToIGV = new OptionKey<>(false);
         @Option(help = "Specifies the debug level for dumping hottest code parts to the Ideal Graph Visualizer (IGV).", type = OptionType.Debug)
-        public static final OptionKey<Integer> ReportHotCodIGVLevel = new OptionKey<>(1);
+        public static final OptionKey<Integer> ReportHotCodeIGVLevel = new OptionKey<>(1);
         @Option(help = "Specifies the minimum relative frequency for reporting hot code regions.", type = OptionType.Debug)
-        public static final OptionKey<Double> MinimalFrequencyToReport = new OptionKey<>(1D);
+        public static final OptionKey<Double> ReportHotCodeMinimalFrequencyToReport = new OptionKey<>(1D);
         @Option(help = "Enables printing of informational messages in hot code regions.", type = OptionType.Debug)
         public static final OptionKey<Boolean> ReportHotCodeInfos = new OptionKey<>(false);
         @Option(help = "Enables printing of warning messages about potential performance issues in hot code regions.", type = OptionType.Debug)
@@ -214,7 +214,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         final StructuredGraph.ScheduleResult scheduleResult = graph.getLastSchedule();
 
-        final double minimalReportFrequency = Options.MinimalFrequencyToReport.getValue(graph.getOptions());
+        final double minimalReportFrequency = Options.ReportHotCodeMinimalFrequencyToReport.getValue(graph.getOptions());
 
         final LoopsData ld = context.getLoopsDataProvider().getLoopsData(scheduleResult.getCFG());
         final ControlFlowGraph cfg = ld.getCFG();
@@ -239,7 +239,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                             blocksToString(hottestFirstBlocks, BlockToStringMode.GLOBAL_FREQUENCY));
             info(options, "%s%n", hottestGlobalBlocksString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalBlocksString);
             }
         }
 
@@ -250,7 +250,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                             loopBlocksToString(hottestFirstLocalLoops, LoopToStringMode.LOCAL_FREQUENCY));
             info(options, "%s%n", hottestLocalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestLocalLoopString);
             }
         }
 
@@ -261,7 +261,7 @@ public class ReportHotCodePhase<C> extends BasePhase<C> {
                             loopBlocksToString(hottestFirstGlobalLoops, LoopToStringMode.GLOBAL_FREQUENCY));
             info(options, "%s%n", hottestGlobalLoopString);
             if (Options.ReportHotCodePartsToIGV.getValue(graph.getOptions())) {
-                graph.getDebug().dump(Options.ReportHotCodIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
+                graph.getDebug().dump(Options.ReportHotCodeIGVLevel.getValue(graph.getOptions()), graph, hottestGlobalLoopString);
             }
         }
 
