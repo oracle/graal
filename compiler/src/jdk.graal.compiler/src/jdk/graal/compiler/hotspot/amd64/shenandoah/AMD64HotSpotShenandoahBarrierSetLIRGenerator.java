@@ -42,9 +42,9 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ShenandoahBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahBarrierSetLIRGeneratorTool, AMD64ReadBarrierSetLIRGenerator {
@@ -117,17 +117,19 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
 
     @Override
     public Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType) {
-        // We insert the necessary barriers in the node graph, at that level it
-        // is easier to handle compressed object references. No need to do anything
-        // special here.
+        /*
+         * We insert the necessary barriers in the node graph, at that level it is easier to handle
+         * compressed object references. No need to do anything special here.
+         */
         return tool.emitAtomicReadAndWrite(readKind, address, newValue, BarrierType.NONE);
     }
 
     @Override
     public Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
-        // We insert the necessary barriers in the node graph, at that level it
-        // is easier to handle compressed object references. No need to do anything
-        // special here.
+        /*
+         * We insert the necessary barriers in the node graph, at that level it is easier to handle
+         * compressed object references. No need to do anything special here.
+         */
         return tool.getArithmetic().emitLoad(kind, address, state, memoryOrder, MemoryExtendKind.DEFAULT);
     }
 

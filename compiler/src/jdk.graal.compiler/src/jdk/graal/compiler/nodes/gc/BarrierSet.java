@@ -91,8 +91,10 @@ public interface BarrierSet {
     }
 
     default boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
-        // Most barrier sets should be added in mid-tier, some might also
-        // wish to add in low-tier (e.g. Shenandoah GC).
+        /*
+         * Most barrier sets should be added in mid-tier, some might also wish to add in low-tier
+         * (e.g. Shenandoah GC).
+         */
         return stage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
     }
 }
