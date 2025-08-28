@@ -542,11 +542,26 @@ public abstract class PartialEvaluator {
         Providers decoderProviders = config.lastTier().providers().copyWith(constantFieldProvider);
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
-        return new CachingPEGraphDecoder(config.architecture(), context.graph, graphCacheProviders, decoderProviders, newConfig,
-                        loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
+        return new CachingPEGraphDecoder(
+                        config.architecture(),
+                        context.graph,
+                        graphCacheProviders,
+                        decoderProviders,
+                        newConfig,
+                        loopExplosionPlugin,
+                        decodingPlugins,
+                        inlineInvokePlugins,
+                        parameterPlugin,
+                        nodePluginList,
+                        types.OptimizedCallTarget_callInlined,
+                        sourceLanguagePositionProvider,
+                        postParsingPhase,
+                        graphCache,
+                        createCachedGraphScope,
                         createGraphBuilderPhaseInstance(graphCacheProviders, newConfig, TruffleCompilerImpl.Optimizations),
-                        allowAssumptionsDuringParsing, false, true);
+                        allowAssumptionsDuringParsing,
+                        false,
+                        true);
     }
 
     private GraphBuilderConfiguration getGraphBuilderConfigurationCopy(boolean forceNodeSourcePositions) {
