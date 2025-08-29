@@ -53,6 +53,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -261,11 +262,18 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.GC, gcName);
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
+
+        l().a(" ").a("Builder assertions: ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", builder system assertions: ").a(getSystemAssertionStatus() ? "enabled" : "disabled").println();
         l().a(" ").doclink("Image Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+        l().a(" ").a("Image assertions: by default ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled").a(", system assertions: by default ").a(RuntimeAssertionsSupport.singleton().getDefaultSystemAssertionStatus() ? "enabled" : "disabled").a(" (class-specific config may apply)").println();
 
         printFeatures(features);
         printExperimentalOptions(classLoader);
         printResourceInfo();
+    }
+
+    private boolean getSystemAssertionStatus() {
+        return java.util.ArrayList.class.desiredAssertionStatus();
     }
 
     private void printFeatures(List<Feature> features) {
