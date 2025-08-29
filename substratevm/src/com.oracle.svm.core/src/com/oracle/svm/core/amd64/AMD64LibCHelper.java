@@ -322,6 +322,10 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fAVX10_2();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fHYBRID();
     }
     // Checkstyle: resume
 }
