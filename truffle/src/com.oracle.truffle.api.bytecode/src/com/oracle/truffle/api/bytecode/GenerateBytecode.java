@@ -219,7 +219,7 @@ public @interface GenerateBytecode {
      * language {@link ProvidedTags provides} it.
      * <p>
      * Root tagging requires the probe to be notified before the {@link Prolog prolog} is executed.
-     * Implementing this behavior manually is not trivial and not recommended. It is recommended to
+     * Implementing this behaviour manually is not trivial and not recommended. It is recommended to
      * use automatic root tagging. For inlining performed by the parser it may be useful to emit
      * custom {@link RootTag root} tag using the builder methods for inlined methods. This ensures
      * that tools can still work correctly for inlined calls.
@@ -248,7 +248,7 @@ public @interface GenerateBytecode {
      * <ul>
      * <li>Allowing instruments to access the current receiver or function object.
      * <li>Implementing custom scopes for local variables instead of the default scope.
-     * <li>Hiding certain local local variables or arguments from instruments.
+     * <li>Hiding certain local variables or arguments from instruments.
      * </ul>
      * <p>
      * Minimal example of a tag node library:
@@ -282,7 +282,7 @@ public @interface GenerateBytecode {
      * <p>
      * Unsafe accesses are faster, but they do not perform array bounds checks. This means it is
      * possible (though unlikely) for unsafe accesses to cause undefined behaviour. Undefined
-     * behavior may only happen due to a bug in the Bytecode DSL implementation and not language
+     * behaviour may only happen due to a bug in the Bytecode DSL implementation and not language
      * implementation code.
      *
      * @since 24.2
