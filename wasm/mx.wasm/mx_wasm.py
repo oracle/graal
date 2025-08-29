@@ -445,6 +445,17 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
     def benchmark_methods(self):
         return benchmark_methods
 
+    def test_methods(self, opts_path):
+        if not os.path.isfile(opts_path):
+            return []
+        with open(opts_path) as opts_file:
+            for line in opts_file:
+                line = line.strip()
+                if line.startswith("entry-point"):
+                    _, value = line.split("=", 1)
+                    return ['_' + value.strip()]
+        return []
+
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
@@ -469,8 +480,6 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
         emcc_flags = ["-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
-        if self.project.isBenchmarkProject():
-            emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
             if filename.startswith("_"):
@@ -502,9 +511,13 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             # Step 1: build the .wasm binary.
             if mustRebuild:
                 if filename.endswith(".c"):
+                    if self.project.isBenchmarkProject():
+                        emcc_export_flags = ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
+                    else:
+                        emcc_export_flags = ["-s", "EXPORTED_FUNCTIONS=" + str(self.test_methods(os.path.join(root, basename + ".opts"))).replace("'", "\"") + ""]
                     # This generates both a js file and a wasm file.
                     # See https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone
-                    build_cmd_line = [emcc_cmd] + emcc_flags + source_cc_flags + [source_path, "-o", output_js_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + emcc_export_flags + source_cc_flags + [source_path, "-o", output_js_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):

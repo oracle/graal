@@ -216,8 +216,20 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
 
             final WasmContext wasmContext = WasmContext.get(null);
-            final Value mainFunction = findMain(moduleInstances);
             final List<WasmInstance> instanceList = moduleInstances.stream().map(i -> toWasmInstance(i)).toList();
+
+            final Value testFunction;
+            final String entryPoint = testCase.options().getProperty("entry-point");
+            if (entryPoint != null) {
+                String testModuleName = testCase.name();
+                Value testModule = context.getBindings(WasmLanguage.ID).getMember(testModuleName).getMember("exports");
+                testFunction = testModule.getMember(entryPoint);
+                if (testFunction == null) {
+                    throw new RuntimeException(String.format("Entry point %s not found in test module %s.", entryPoint, testCase.name()));
+                }
+            } else {
+                testFunction = findMain(moduleInstances);
+            }
 
             resetStatus(System.out, phaseIcon, phaseLabel);
 
@@ -228,7 +240,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             for (int i = 0; i != iterations; ++i) {
                 try {
                     testOut.reset();
-                    final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
+                    final Value result = arg == null ? testFunction.execute() : testFunction.execute(arg);
                     WasmCase.validateResult(testCase.data().resultValidator(), result, testOut);
                 } catch (PolyglotException e) {
                     // If no exception is expected and the program returns with success exit status,
