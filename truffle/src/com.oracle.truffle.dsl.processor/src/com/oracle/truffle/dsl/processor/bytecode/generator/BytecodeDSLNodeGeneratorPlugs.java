@@ -102,7 +102,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     @Override
     public List<? extends VariableElement> additionalArguments() {
         List<CodeVariableElement> result = new ArrayList<>();
-        if (model.enableYield) {
+        if (model.hasYieldOperation()) {
             result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$stackFrame"));
         }
         result.addAll(List.of(
@@ -132,15 +132,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     }
 
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int specializationIndex) {
-        if (specializationIndex < instruction.signature.constantOperandsBeforeCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(specializationIndex).type();
+        int operandIndex = specializationIndex;
+        if (operandIndex < instruction.signature.constantOperandsBeforeCount) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(operandIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(specializationIndex);
-            b.tree(rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
+            InstructionImmediate imm = imms.get(operandIndex);
+            b.tree(readConstFastPath(imm, constantOperandType));
             return false;
         }
-
-        int operandIndex = specializationIndex - instruction.signature.constantOperandsBeforeCount;
+        operandIndex -= instruction.signature.constantOperandsBeforeCount;
         int operandCount = instruction.signature.dynamicOperandCount;
         if (operandIndex < operandCount) {
             TypeMirror specializedType = instruction.signature.getSpecializedType(operandIndex);
@@ -203,18 +203,22 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 return false;
             }
         }
+        operandIndex -= instruction.signature.dynamicOperandCount;
 
-        int constantOperandAfterIndex = specializationIndex - instruction.signature.constantOperandsBeforeCount - instruction.signature.dynamicOperandCount;
         int constantOperandAfterCount = instruction.signature.constantOperandsAfterCount;
-        if (constantOperandAfterIndex < constantOperandAfterCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(constantOperandAfterIndex).type();
+        if (operandIndex < constantOperandAfterCount) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(operandIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + constantOperandAfterIndex);
+            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + operandIndex);
             b.tree(rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 
         throw new AssertionError("index=" + specializationIndex + ", signature=" + instruction.signature);
+    }
+
+    private CodeTree readConstFastPath(InstructionImmediate imm, TypeMirror immediateType) {
+        return rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", immediateType);
     }
 
     public CodeExecutableElement getQuickenMethod() {
@@ -260,8 +264,11 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 return CodeTreeBuilder.singleString("$bytecode.getRoot()");
             case BytecodeDSLParser.SYMBOL_BYTECODE_INDEX:
                 return CodeTreeBuilder.singleString("$bci");
+            case BytecodeDSLParser.SYMBOL_CONTINUATION_ROOT:
+                InstructionImmediate continuationIndex = instruction.getImmediates(ImmediateKind.CONSTANT).getLast();
+                return CodeTreeBuilder.createBuilder().tree(readConstFastPath(continuationIndex, rootNode.getContinuationRootNodeImpl().asType())).build();
             default:
-                return null;
+                return NodeGeneratorPlugs.super.bindExpressionValue(frameState, variable);
 
         }
     }
@@ -463,7 +470,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     }
 
     private String stackFrame() {
-        return model.enableYield ? "$stackFrame" : TemplateMethod.FRAME_NAME;
+        return model.hasYieldOperation() ? "$stackFrame" : TemplateMethod.FRAME_NAME;
     }
 
 }

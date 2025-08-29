@@ -92,6 +92,7 @@ public class SpecializationSignatureParser {
         Queue<? extends VariableElement> params = new ArrayDeque<>(specialization.getParameters());
 
         // First: an optional VirtualFrame parameter.
+        skipDSLParameters(params);
         if (!params.isEmpty() && isAssignable(peekType(params), types.Frame)) {
             if (!isAssignable(params.poll().asType(), types.VirtualFrame)) {
                 errorTarget.addError(specialization, "Frame parameter must have type VirtualFrame.");

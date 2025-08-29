@@ -105,6 +105,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     public static final String SYMBOL_ROOT_NODE = "$rootNode";
     public static final String SYMBOL_BYTECODE_NODE = "$bytecodeNode";
     public static final String SYMBOL_BYTECODE_INDEX = "$bytecodeIndex";
+    public static final String SYMBOL_CONTINUATION_ROOT = "$continuationRootNode";
 
     private static final int MAX_TAGS = 32;
     private static final int MAX_INSTRUMENTATIONS = 31;
@@ -712,7 +713,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         if (model.usesBoxingElimination()) {
 
             for (OperationModel operation : model.getOperations()) {
-                if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {
+                if (!operation.isCustom() || operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     continue;
                 }
 
@@ -900,7 +901,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             }
 
                         }
-                        if (model.isBoxingEliminated(instruction.signature.returnType)) {
+                        if (model.isBoxingEliminated(instruction.signature.returnType) && instruction.operation.kind != OperationKind.CUSTOM_YIELD) {
                             InstructionModel returnTypeQuickening = model.quickenInstruction(instruction,
                                             instruction.signature, "unboxed");
                             returnTypeQuickening.returnTypeQuickening = true;
@@ -984,6 +985,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.specializedType = null;
                         break;
                     case TAG_YIELD:
+                    case TAG_YIELD_NULL:
                         // no boxing elimination needed for yielding
                         // we are always returning and returns do not support boxing elimination.
                         break;
@@ -1221,7 +1223,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     private AnnotationMirror findOperationAnnotation(BytecodeDSLModel model, TypeElement typeElement) {
         AnnotationMirror foundMirror = null;
         TypeMirror foundType = null;
-        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Prolog, types.EpilogReturn, types.EpilogExceptional)) {
+        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Yield, types.Prolog, types.EpilogReturn, types.EpilogExceptional)) {
             AnnotationMirror annotationMirror = ElementUtils.findAnnotationMirror(typeElement, annotationType);
             if (annotationMirror == null) {
                 continue;
