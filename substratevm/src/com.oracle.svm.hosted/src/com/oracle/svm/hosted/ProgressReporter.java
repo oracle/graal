@@ -261,7 +261,7 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.GC, gcName);
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
-        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+        l().a(" ").doclink("Image Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
 
         printFeatures(features);
         printExperimentalOptions(classLoader);
