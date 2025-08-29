@@ -51,7 +51,6 @@ final class ObjectStorageOptions {
     static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
     static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
     static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
 
     /**
      * Allocation of in-object fields.
