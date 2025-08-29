@@ -1896,52 +1896,59 @@ public final class VM extends NativeEnv {
     public @JavaType(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.CLASS, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedKlassAt(null, index).mirror();
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.CLASS, meta, profiler);
+        return constantPool.resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl(isJni = true)
     public double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.DOUBLE, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().doubleAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.DOUBLE, meta, profiler);
+        return constantPool.doubleAt(index);
     }
 
     @VmImpl(isJni = true)
     public float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.FLOAT, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().floatAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.FLOAT, meta, profiler);
+        return constantPool.floatAt(index);
     }
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.STRING, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedStringAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.STRING, meta, profiler);
+        return constantPool.resolvedStringAt(index);
     }
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.UTF8, meta, profiler);
-        return getMeta().toGuestString(jcpool.getMirrorKlass(getMeta()).getConstantPool().utf8At(index).toString());
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.UTF8, meta, profiler);
+        return getMeta().toGuestString(constantPool.utf8At(index).toString());
     }
 
     @VmImpl(isJni = true)
     public int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.INTEGER, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().intAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.INTEGER, meta, profiler);
+        return constantPool.intAt(index);
     }
 
     @VmImpl(isJni = true)
     public long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.LONG, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().longAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.LONG, meta, profiler);
+        return constantPool.longAt(index);
     }
 
     // endregion ConstantPool
