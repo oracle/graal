@@ -1834,15 +1834,6 @@ public class ElementUtils {
         return signatureEquals(e1, e2);
     }
 
-    public static ExecutableElement findOverride(TypeElement subclass, ExecutableElement method) {
-        for (ExecutableElement subclassMethod : ElementFilter.methodsIn(subclass.getEnclosedElements())) {
-            if (ElementUtils.isOverride(subclassMethod, method)) {
-                return subclassMethod;
-            }
-        }
-        return null;
-    }
-
     public static boolean elementEquals(Element element1, Element element2) {
         if (element1 == element2) {
             return true;
