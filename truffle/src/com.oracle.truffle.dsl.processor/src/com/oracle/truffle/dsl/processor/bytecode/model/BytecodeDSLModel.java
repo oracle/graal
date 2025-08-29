@@ -385,15 +385,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             throw new IllegalArgumentException("Method with name " + methodName + " not found.");
         }
 
-        TypeElement type = getTemplateType();
-        while (type != null) {
-            if (ElementUtils.findOverride(type, e) != null) {
-                return true;
-            }
-            type = ElementUtils.castTypeElement(type.getSuperclass());
-        }
-        return false;
-
+        return ElementUtils.findOverride(e, getTemplateType()) != null;
     }
 
     private InstructionModel instruction(InstructionKind kind, String name, Signature signature, String quickeningName) {

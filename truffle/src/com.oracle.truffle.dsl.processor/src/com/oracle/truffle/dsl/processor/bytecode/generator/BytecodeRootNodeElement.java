@@ -1665,9 +1665,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCompilation", new String[]{"rootCompilation", "compilationTier", "lastTier"});
+        ex.getModifiers().add(Modifier.FINAL);
         CodeTreeBuilder b = ex.createBuilder();
+
+        b.startReturn();
         // Disable compilation for the uncached interpreter.
-        b.startReturn().string("bytecode.getTier() != ").staticReference(types.BytecodeTier, "UNCACHED").end();
+        b.string("bytecode.getTier() != ").staticReference(types.BytecodeTier, "UNCACHED");
+
+        ExecutableElement parentImpl = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "prepareForCompilation", 3), model.templateType);
+        if (parentImpl != null) {
+            // Delegate to the parent impl.
+            b.string(" && ").startCall("super.prepareForCompilation").variables(ex.getParameters()).end();
+        }
+        b.end();
         return ex;
     }
 
@@ -17860,8 +17870,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         continue outer;
                     }
                 }
-                // Only proxy methods overridden by the template class.
-                ExecutableElement templateMethod = ElementUtils.findOverride(model.templateType, rootNodeMethod);
+                // Only proxy methods overridden by the template class or its parents.
+                ExecutableElement templateMethod = ElementUtils.findOverride(rootNodeMethod, model.templateType);
                 if (templateMethod == null) {
                     continue outer;
                 }
