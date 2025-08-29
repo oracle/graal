@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.phases.common.InitMemoryVerificationPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
+import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 
@@ -51,6 +53,7 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));
 
+        appendPhase(new WriteBarrierAdditionPhase(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION));
         appendPhase(new EconomyPiRemovalPhase(canonicalizer));
 
         if (Assertions.assertionsEnabled()) {
