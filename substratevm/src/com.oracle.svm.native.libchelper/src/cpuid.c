@@ -577,6 +577,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   {
     if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
       features->fSERIALIZE = 1;
+    if (_cpuid_info->sef_cpuid7_edx.bits.hybrid != 0)
+      features->fHYBRID = 1;
     if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0)
       features->fAVX512_FP16 = 1;
   }
