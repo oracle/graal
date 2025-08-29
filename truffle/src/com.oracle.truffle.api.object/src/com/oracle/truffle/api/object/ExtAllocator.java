@@ -380,7 +380,7 @@ final class ExtAllocator extends BaseAllocator {
         } else if (type == long.class) {
             return newLongLocation();
         } else if (type == boolean.class) {
-            return newObjectLocation();
+            return locationForValue(true);
         } else if (type != null && type != Object.class) {
             assert !type.isPrimitive() : "unsupported primitive type";
             return newTypedObjectLocation(type, false, false, null, NO_VALUE);
