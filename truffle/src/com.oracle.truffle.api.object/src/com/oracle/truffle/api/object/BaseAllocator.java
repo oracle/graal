@@ -96,15 +96,6 @@ abstract sealed class BaseAllocator implements LocationImpl.LocationVisitor perm
 
     protected abstract Location locationForValueUpcast(Object value, Location oldLocation, int putFlags);
 
-    /**
-     * Creates a new location for a fixed type. It can only be assigned to values of this type.
-     * <p>
-     * Used by tests.
-     *
-     * @param type the Java type this location must be compatible with (may be primitive)
-     */
-    public abstract Location locationForType(Class<?> type);
-
     protected <T extends Location> T advance(T location0) {
         if (location0 instanceof LocationImpl location) {
             location.accept(this);

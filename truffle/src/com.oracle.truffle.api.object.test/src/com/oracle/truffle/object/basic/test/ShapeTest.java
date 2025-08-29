@@ -41,7 +41,7 @@
 package com.oracle.truffle.object.basic.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForType;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForValue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -97,11 +97,11 @@ public class ShapeTest {
                         "\"b\":Object@1",
                         "\"a\":Object@0"}, aIntBObj);
 
-        Location boolLocation = locationForType(rootShape, boolean.class);
+        Location boolLocation = locationForValue(rootShape, true);
         Shape bool = invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"bool\":Object@0"}, bool);
 
-        Location strLocation = locationForType(rootShape, String.class);
+        Location strLocation = locationForValue(rootShape, "");
         Shape str = invokeMethod("addProperty", rootShape, Property.create("str", strLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, str);
 
