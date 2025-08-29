@@ -41,6 +41,8 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.Platform;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
@@ -220,6 +222,17 @@ public class ReplayCompilationProxies implements CompilationProxies {
             globalMetrics.add(debug);
             debug = null;
         };
+    }
+
+    @Override
+    public DebugCloseable enterCompilationContext() {
+        // The handles created during replay are cached across compilations.
+        CompilationContext context = HotSpotGraalServices.enterGlobalCompilationContext();
+        if (context == null) {
+            return DebugCloseable.VOID_CLOSEABLE;
+        } else {
+            return context::close;
+        }
     }
 
     /**

@@ -263,18 +263,16 @@ public final class ReplayCompilationSupport {
      * @return a debug closeable that should be closed after the compilation
      */
     public DebugCloseable enterCompilationContext(HotSpotCompilationRequest originalRequest, OptionValues initialOptions) {
-        if (proxies instanceof RecordingCompilationProxies recordingCompilationProxies) {
-            DebugCloseable context = recordingCompilationProxies.enterCompilationContext();
-            return () -> {
-                try {
+        DebugCloseable context = proxies.enterCompilationContext();
+        return () -> {
+            try {
+                if (proxies instanceof RecordingCompilationProxies) {
                     serializeRecordedCompilation(originalRequest, initialOptions);
-                } finally {
-                    context.close();
                 }
-            };
-        } else {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
+            } finally {
+                context.close();
+            }
+        };
     }
 
     private void serializeRecordedCompilation(HotSpotCompilationRequest originalRequest, OptionValues initialOptions) {
