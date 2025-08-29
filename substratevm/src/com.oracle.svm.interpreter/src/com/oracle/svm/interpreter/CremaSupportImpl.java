@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport.FieldInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
@@ -433,6 +435,19 @@ public class CremaSupportImpl implements CremaSupport {
         @Override
         public int afterFieldsOffset(int superAfterFieldsOffset) {
             return Math.toIntExact(layout.afterInstanceFieldOffset());
+        }
+
+        @Override
+        public FieldInfo[] getFieldInfos() {
+            ArrayList<FieldInfo> infos = new ArrayList<>();
+            ParserField[] fields = getParserKlass().getFields();
+            for (int i = 0; i < fields.length; i++) {
+                ParserField f = fields[i];
+                if (!f.isStatic()) {
+                    infos.add(new FieldInfo(Math.toIntExact(layout.getOffset(i)), f.getKind() == JavaKind.Object));
+                }
+            }
+            return infos.toArray(new FieldInfo[0]);
         }
 
         public final ParserKlass getParserKlass() {
