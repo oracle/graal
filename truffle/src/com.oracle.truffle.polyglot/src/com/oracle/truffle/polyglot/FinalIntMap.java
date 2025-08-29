@@ -46,7 +46,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 /*
  * An internal map designed for partial evaluation.
- * Only contains final object to int assocations. get returns a constant when partially evaluated.
+ * Only contains final object to int associations. get returns a constant when partially evaluated.
  */
 final class FinalIntMap {
 

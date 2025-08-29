@@ -1164,7 +1164,7 @@ public final class JNIUtil {
      *
      * @param vm the {@link JavaVM} pointer.
      * @param daemon if true attaches the thread as a daemon thread.
-     * @param name the name of the Java tread or {@code null}.
+     * @param name the name of the Java thread or {@code null}.
      * @param threadGroup the thread group to add the thread into or C {@code NULL} pointer.
      * @return the current thread {@link JNIEnv} or C {@code NULL} pointer in case of error.
      */

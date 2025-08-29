@@ -234,7 +234,7 @@ public class EnumEncodingTest extends AbstractPolyglotTest {
     }
 
     /*
-     * This class name triggers a naming confict with a class in the parent node. No need to execute
+     * This class name triggers a naming conflict with a class in the parent node. No need to execute
      * this node. The test is that the generate code compiles correctly.
      */
     @SuppressWarnings("unused")

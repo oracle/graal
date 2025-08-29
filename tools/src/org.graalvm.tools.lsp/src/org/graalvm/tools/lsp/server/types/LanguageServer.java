@@ -474,7 +474,7 @@ public class LanguageServer {
                     } else {
                         // Two consecutive newlines start the message content
                         if (contentLength < 0) {
-                            logger.log(Level.SEVERE, "Error while processing an incomming message: Missing header " + CONTENT_LENGTH_HEADER + " in input.");
+                            logger.log(Level.SEVERE, "Error while processing an incoming message: Missing header " + CONTENT_LENGTH_HEADER + " in input.");
                         } else {
                             // Read the message
                             byte[] buffer = new byte[contentLength];
@@ -516,7 +516,7 @@ public class LanguageServer {
                     processNotification(message, messageBytes);
                 }
             } catch (Exception e) {
-                server.getLogger().log(Level.SEVERE, "Error while processing an incomming message: " + e.getMessage());
+                server.getLogger().log(Level.SEVERE, "Error while processing an incoming message: " + e.getMessage());
             }
         }
 
