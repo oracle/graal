@@ -28,22 +28,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.JsonFileWriter;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -56,40 +61,43 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 
 /**
  * Implements reachability metadata tracing during native image execution. Enabling
  * {@link Options#MetadataTracingSupport} at build time will generate code to trace all accesses of
- * reachability metadata, and then the run-time option {@link Options#RecordMetadata} enables
+ * reachability metadata, and then the run-time option {@link Options#TraceMetadata} enables
  * tracing.
  */
 public final class MetadataTracer {
 
     public static class Options {
         @Option(help = "Generate an image that supports reachability metadata access tracing. " +
-                        "When tracing is supported, use the -XX:RecordMetadata option to enable tracing at run time.")//
+                        "When tracing is supported, use the -XX:TraceMetadata option to enable tracing at run time.")//
         public static final HostedOptionKey<Boolean> MetadataTracingSupport = new HostedOptionKey<>(false);
 
-        static final String RECORD_METADATA_HELP = """
+        static final String TRACE_METADATA_HELP = """
                         Enables metadata tracing at run time. This option is only supported if -H:+MetadataTracingSupport is set when building the image.
                         The value of this option is a comma-separated list of arguments specified as key-value pairs. The following arguments are supported:
 
                         - path=<trace-output-directory> (required): Specifies the directory to write traced metadata to.
                         - merge=<boolean> (optional): Specifies whether to merge or overwrite metadata with existing files at the output path (default: true).
+                        - debug-log=<path> (optional): Specifies a path to write debug output to. This option is meant for debugging; the option name and its
+                          output format may change at any time.
 
                         Example usage:
-                            -H:RecordMetadata=path=trace_output_directory
-                            -H:RecordMetadata=path=trace_output_directory,merge=false
+                            -H:TraceMetadata=path=trace_output_directory
+                            -H:TraceMetadata=path=trace_output_directory,merge=false
                         """;
 
-        @Option(help = RECORD_METADATA_HELP, stability = OptionStability.EXPERIMENTAL)//
-        public static final RuntimeOptionKey<String> RecordMetadata = new RuntimeOptionKey<>(null);
+        @Option(help = TRACE_METADATA_HELP, stability = OptionStability.EXPERIMENTAL)//
+        public static final RuntimeOptionKey<String> TraceMetadata = new RuntimeOptionKey<>(null);
     }
 
-    private RecordOptions options;
+    private TraceOptions options;
+    private JsonFileWriter debugWriter;
+    private final ThreadLocal<String> disableTracingReason = new ThreadLocal<>();
 
     /**
      * The configuration set to trace with. Do not read this field directly when tracing; instead
@@ -97,15 +105,58 @@ public final class MetadataTracer {
      */
     private volatile ConfigurationSet config;
 
-    @Fold
+    /**
+     * Returns the singleton object, which is only available if tracing is enabled at build time.
+     * <p>
+     * We use {@code @AlwaysInline} and not {@code @Fold} because the latter eagerly evaluates the
+     * method, which fails when the singleton is unavailable.
+     */
+    @AlwaysInline("avoid null check on singleton")
     public static MetadataTracer singleton() {
         return ImageSingletons.lookup(MetadataTracer.class);
     }
 
+    private void initialize(TraceOptions parsedOptions) {
+        this.options = parsedOptions;
+        this.debugWriter = initializeDebugWriter(parsedOptions);
+        this.config = initializeConfigurationSet(parsedOptions);
+    }
+
+    private void shutdown() {
+        ConfigurationSet finalConfig = this.config;
+        this.config = null; // clear config so that shutdown actions are not traced.
+
+        if (finalConfig != null) {
+            try {
+                finalConfig.writeConfiguration(configFile -> this.options.path().resolve(configFile.getFileName()));
+            } catch (IOException ex) {
+                Log log = Log.log();
+                log.string("Failed to write out reachability metadata to directory ").string(this.options.path().toString());
+                log.string(":").string(ex.getMessage());
+                log.newline();
+            }
+        }
+
+        if (debugWriter != null) {
+            debugWriter.close();
+        }
+    }
+
     /**
-     * Returns whether tracing is enabled at run time (using {@code -XX:RecordMetadata}).
+     * Returns whether tracing is enabled. Tracing code should be guarded by this condition.
+     * <p>
+     * This condition is force-inlined so that when tracing support is not included at build time
+     * the condition folds to false and the tracing code itself will fold away.
      */
-    public boolean enabled() {
+    @AlwaysInline("tracing should fold away when disabled")
+    public static boolean enabled() {
+        return Options.MetadataTracingSupport.getValue() && singleton().enabledAtRunTime();
+    }
+
+    /**
+     * Returns whether tracing is enabled at run time (using {@code -XX:TraceMetadata}).
+     */
+    private boolean enabledAtRunTime() {
         VMError.guarantee(Options.MetadataTracingSupport.getValue());
         return options != null;
     }
@@ -115,61 +166,144 @@ public final class MetadataTracer {
      * performed for some reason.
      */
     private ConfigurationSet getConfigurationSetForTracing() {
-        if (VMOperation.isInProgress()) {
-            // Do not trace during VM operations.
+        if (disableTracingReason.get() != null || VMOperation.isInProgress()) {
+            // Do not trace when tracing is disabled or during VM operations.
             return null;
         }
         return config;
     }
 
     /**
-     * Marks the given type as reachable from reflection.
-     *
-     * @return the corresponding {@link ConfigurationType} or {@code null} if tracing is not active
-     *         (e.g., during shutdown).
+     * Marks the type with the given name as reachable from reflection.
      */
-    public ConfigurationType traceReflectionType(String className) {
-        return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(className));
+    public void traceReflectionType(String typeName) {
+        traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(typeName));
+    }
+
+    /**
+     * Marks the given type as reachable from reflection.
+     */
+    public void traceReflectionType(Class<?> clazz) {
+        traceReflectionTypeImpl(ConfigurationTypeDescriptor.fromClass(clazz));
+    }
+
+    public void traceReflectionArrayType(Class<?> componentClazz) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(componentClazz);
+        if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
+            traceReflectionType(name + "[]");
+        } else {
+            debug("array type not registered for reflection (component type is not a named type)", typeDescriptor);
+        }
+    }
+
+    /**
+     * Marks the given field as accessible from reflection.
+     */
+    public void traceFieldAccess(Class<?> declaringClass, String fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
+        if (type != null) {
+            debugField(typeDescriptor, fieldName);
+            type.addField(fieldName, declaration, false);
+        }
+    }
+
+    /**
+     * Marks the given method as accessible from reflection.
+     */
+    public void traceMethodAccess(Class<?> declaringClass, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
+        if (type != null) {
+            debugMethod(typeDescriptor, methodName, internalSignature);
+            type.addMethod(methodName, internalSignature, declaration, ConfigurationMemberInfo.ConfigurationMemberAccessibility.ACCESSED);
+        }
+    }
+
+    /**
+     * Marks the given type as unsafely allocated.
+     */
+    public void traceUnsafeAllocatedType(Class<?> clazz) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(clazz);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
+        if (type != null) {
+            debug("type marked as unsafely allocated", clazz.getTypeName());
+            type.setUnsafeAllocated();
+        }
     }
 
     /**
      * Marks the given proxy type as reachable from reflection.
      */
-    public void traceProxyType(List<String> interfaceNames) {
-        traceReflectionTypeImpl(new ProxyConfigurationTypeDescriptor(interfaceNames));
+    public void traceProxyType(Class<?>[] interfaces) {
+        List<String> interfaceNames = Arrays.stream(interfaces).map(Class::getTypeName).toList();
+        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
+        traceReflectionTypeImpl(descriptor);
     }
 
     private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
-        assert enabled();
+        assert enabledAtRunTime();
+        if (isInternal(typeDescriptor)) {
+            debug("type not registered for reflection (uses an internal interface)", typeDescriptor);
+            return null;
+        }
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
+            debugReflectionType(typeDescriptor, configurationSet);
             return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
         }
         return null;
     }
 
-    /**
-     * Marks the given type as reachable from JNI.
-     *
-     * @return the corresponding {@link ConfigurationType} or {@code null} if tracing is not active
-     *         (e.g., during shutdown).
-     */
-    public ConfigurationType traceJNIType(String className) {
-        assert enabled();
-        ConfigurationType result = traceReflectionType(className);
-        if (result != null) {
-            result.setJniAccessible();
+    private static boolean isInternal(ConfigurationTypeDescriptor typeDescriptor) {
+        if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
+            return isInternal(name);
+        } else if (typeDescriptor instanceof ProxyConfigurationTypeDescriptor proxyType) {
+            for (String interfaceName : proxyType.interfaceNames()) {
+                if (isInternal(interfaceName)) {
+                    return true;
+                }
+            }
         }
-        return result;
+        return false;
+    }
+
+    private static boolean isInternal(String typeName) {
+        return typeName.startsWith("com.oracle.svm.core");
     }
 
     /**
-     * Marks the given resource within the given (optional) module as reachable.
+     * Marks the type with the given name as reachable from JNI.
+     */
+    public void traceJNIType(String typeName) {
+        traceJNITypeImpl(new NamedConfigurationTypeDescriptor(typeName));
+    }
+
+    /**
+     * Marks the given type as reachable from JNI.
+     */
+    public void traceJNIType(Class<?> clazz) {
+        traceJNITypeImpl(ConfigurationTypeDescriptor.fromClass(clazz));
+    }
+
+    private void traceJNITypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
+        assert enabledAtRunTime();
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
+        if (type != null && !type.isJniAccessible()) {
+            debug("type registered for jni", typeDescriptor);
+            type.setJniAccessible();
+        }
+    }
+
+    /**
+     * Marks the given resource within the given (optional) module as reachable. Use this method to
+     * trace resource lookups covered by image metadata (including negative queries).
      */
     public void traceResource(String resourceName, String moduleName) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
+            debugResourceGlob(resourceName, moduleName);
             configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
         }
     }
@@ -178,9 +312,10 @@ public final class MetadataTracer {
      * Marks the given resource bundle within the given locale as reachable.
      */
     public void traceResourceBundle(String baseName) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
+            debug("resource bundle registered", baseName);
             configurationSet.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
         }
     }
@@ -188,30 +323,161 @@ public final class MetadataTracer {
     /**
      * Marks the given type as serializable.
      */
-    public void traceSerializationType(String className) {
-        assert enabled();
-        ConfigurationType result = traceReflectionType(className);
-        if (result != null) {
+    public void traceSerializationType(Class<?> clazz) {
+        assert enabledAtRunTime();
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(clazz);
+        ConfigurationType result = traceReflectionTypeImpl(typeDescriptor);
+        if (result != null && !result.isSerializable()) {
+            debug("type registered for serialization", typeDescriptor);
             result.setSerializable();
         }
     }
 
-    private static void initialize(String recordMetadataValue) {
-        assert Options.MetadataTracingSupport.getValue();
-
-        RecordOptions parsedOptions = RecordOptions.parse(recordMetadataValue);
-        try {
-            Files.createDirectories(parsedOptions.path());
-        } catch (IOException ex) {
-            throw new IllegalArgumentException("Exception occurred creating the output directory for tracing (" + parsedOptions.path() + ")", ex);
+    /**
+     * Main entrypoint for debug logging. Emits a JSON object to the debug log with the given
+     * message and element.
+     */
+    @SuppressWarnings("try")
+    private void debug(String message, Object element) {
+        if (debugWriter == null) {
+            return;
         }
-
-        MetadataTracer singleton = MetadataTracer.singleton();
-        singleton.options = parsedOptions;
-        singleton.config = initializeConfigurationSet(parsedOptions);
+        assert enabledAtRunTime();
+        try (var ignored = new DisableTracingImpl("debug logging")) {
+            EconomicMap<String, Object> entry = EconomicMap.create();
+            entry.put("message", message);
+            entry.put("element", element);
+            entry.put("stacktrace", debugStackTrace());
+            debugWriter.printObject(entry);
+        }
     }
 
-    private static ConfigurationSet initializeConfigurationSet(RecordOptions options) {
+    private static StackTraceElement[] debugStackTrace() {
+        StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+        // Trim the prefix containing "getStackTrace" and the various "debug" methods.
+        int i = 0;
+        while (i < trace.length && (trace[i].getMethodName().contains("getStackTrace") || trace[i].getMethodName().startsWith("debug"))) {
+            i++;
+        }
+        return Arrays.copyOfRange(trace, i, trace.length);
+    }
+
+    /**
+     * Debug helper for resource globs. Avoids glob name computations if debug logging is disabled.
+     */
+    private void debugResourceGlob(String resourceName, String moduleName) {
+        if (debugWriter == null) {
+            return;
+        }
+        String element = (moduleName == null) ? resourceName : String.format("%s:%s", moduleName, resourceName);
+        debug("resource glob registered", element);
+    }
+
+    /**
+     * Debug helper for reflective type accesses. Avoids "type is already registered" check if debug
+     * logging is disabled.
+     */
+    private void debugReflectionType(ConfigurationTypeDescriptor typeDescriptor, ConfigurationSet configurationSet) {
+        if (debugWriter == null) {
+            return;
+        }
+        if (configurationSet.getReflectionConfiguration().get(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor) == null) {
+            debug("type registered for reflection", typeDescriptor);
+        }
+    }
+
+    /**
+     * Debug helper for fields. Avoids field name computations if debug logging is disabled.
+     */
+    private void debugField(ConfigurationTypeDescriptor typeDescriptor, String fieldName) {
+        if (debugWriter == null) {
+            return;
+        }
+        debug("field registered for reflection", typeDescriptor + "." + fieldName);
+    }
+
+    /**
+     * Debug helper for methods. Avoids method name computations if debug logging is disabled.
+     */
+    private void debugMethod(ConfigurationTypeDescriptor typeDescriptor, String methodName, String internalSignature) {
+        if (debugWriter == null) {
+            return;
+        }
+        debug("method registered for reflection", typeDescriptor + "." + methodName + internalSignature);
+    }
+
+    /**
+     * Disables tracing on the current thread from instantiation until {@link #close}.
+     */
+    public sealed interface DisableTracing extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    private final class DisableTracingImpl implements DisableTracing {
+        final String oldReason;
+
+        private DisableTracingImpl(String reason) {
+            this.oldReason = disableTracingReason.get();
+            disableTracingReason.set(reason);
+        }
+
+        @Override
+        public void close() {
+            disableTracingReason.set(oldReason);
+        }
+    }
+
+    private static final class DisableTracingNoOp implements DisableTracing {
+        private static final DisableTracingNoOp INSTANCE = new DisableTracingNoOp();
+
+        @Override
+        public void close() {
+            // do nothing
+        }
+    }
+
+    /**
+     * Disables tracing on the current thread from instantiation until {@link DisableTracing#close}.
+     * Should be used in a try-with-resources block.
+     */
+    public static DisableTracing disableTracing(String reason) {
+        if (Options.MetadataTracingSupport.getValue() && singleton().enabledAtRunTime()) {
+            return singleton().new DisableTracingImpl(reason);
+        } else {
+            // Fallback implementation when tracing is not enabled at build time.
+            return DisableTracingNoOp.INSTANCE;
+        }
+    }
+
+    private static void initializeSingleton(String recordMetadataValue) {
+        assert Options.MetadataTracingSupport.getValue();
+        MetadataTracer.singleton().initialize(TraceOptions.parse(recordMetadataValue));
+    }
+
+    private static JsonFileWriter initializeDebugWriter(TraceOptions options) {
+        if (options.debugLog() == null) {
+            return null;
+        }
+        try {
+            Path parentDir = options.debugLog().getParent();
+            if (parentDir == null) {
+                throw new IllegalArgumentException("Invalid debug-log path '" + options.debugLog() + "'.");
+            }
+            Files.createDirectories(parentDir);
+            return new JsonFileWriter(options.debugLog());
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Exception occurred preparing the debug log file (" + options.debugLog() + ")", ex);
+        }
+    }
+
+    private static ConfigurationSet initializeConfigurationSet(TraceOptions options) {
+        try {
+            Files.createDirectories(options.path());
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Exception occurred creating the output directory for tracing (" + options.path() + ")", ex);
+        }
+
         if (options.merge() && Files.exists(options.path())) {
             ConfigurationFileCollection mergeConfigs = new ConfigurationFileCollection();
             mergeConfigs.addDirectory(options.path());
@@ -227,21 +493,9 @@ public final class MetadataTracer {
         return new ConfigurationSet();
     }
 
-    private static void shutdown() {
+    private static void shutdownSingleton() {
         assert Options.MetadataTracingSupport.getValue();
-        MetadataTracer singleton = MetadataTracer.singleton();
-        ConfigurationSet config = singleton.config;
-        singleton.config = null; // clear config so that shutdown events are not traced.
-        if (config != null) {
-            try {
-                config.writeConfiguration(configFile -> singleton.options.path().resolve(configFile.getFileName()));
-            } catch (IOException ex) {
-                Log log = Log.log();
-                log.string("Failed to write out reachability metadata to directory ").string(singleton.options.path().toString());
-                log.string(":").string(ex.getMessage());
-                log.newline();
-            }
-        }
+        MetadataTracer.singleton().shutdown();
     }
 
     static RuntimeSupport.Hook initializeMetadataTracingHook() {
@@ -250,8 +504,8 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
-                initialize(Options.RecordMetadata.getValue());
+            if (Options.TraceMetadata.hasBeenSet()) {
+                initializeSingleton(Options.TraceMetadata.getValue());
             }
         };
     }
@@ -262,8 +516,8 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
-                shutdown();
+            if (Options.TraceMetadata.hasBeenSet()) {
+                shutdownSingleton();
             }
         };
     }
@@ -277,29 +531,29 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(!Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
+            if (Options.TraceMetadata.hasBeenSet()) {
                 throw new IllegalArgumentException(
-                                "The option " + Options.RecordMetadata.getName() + " can only be used if metadata tracing is enabled at build time (using " +
+                                "The option " + Options.TraceMetadata.getName() + " can only be used if metadata tracing is enabled at build time (using " +
                                                 hostedOptionCommandArgument + ").");
             }
         };
     }
 }
 
-record RecordOptions(Path path, boolean merge) {
+record TraceOptions(Path path, boolean merge, Path debugLog) {
 
     private static final int ARGUMENT_PARTS = 2;
 
-    static RecordOptions parse(String recordMetadataValue) {
-        if (recordMetadataValue.isEmpty()) {
-            throw printHelp("Option " + MetadataTracer.Options.RecordMetadata.getName() + " cannot be empty.");
-        } else if (recordMetadataValue.equals("help")) {
-            throw printHelp("Option " + MetadataTracer.Options.RecordMetadata.getName() + " value is 'help'. Printing a description and aborting.");
+    static TraceOptions parse(String traceMetadataValue) {
+        if (traceMetadataValue.isEmpty()) {
+            throw printHelp("Option " + MetadataTracer.Options.TraceMetadata.getName() + " cannot be empty.");
+        } else if (traceMetadataValue.equals("help")) {
+            throw printHelp("Option " + MetadataTracer.Options.TraceMetadata.getName() + " value is 'help'. Printing a description and aborting.");
         }
 
         Map<String, String> parsedArguments = new HashMap<>();
-        Set<String> allArguments = new LinkedHashSet<>(List.of("path", "merge"));
-        for (String argument : recordMetadataValue.split(",")) {
+        Set<String> allArguments = new LinkedHashSet<>(List.of("path", "merge", "debug-log"));
+        for (String argument : traceMetadataValue.split(",")) {
             String[] parts = SubstrateUtil.split(argument, "=", ARGUMENT_PARTS);
             if (parts.length != ARGUMENT_PARTS) {
                 throw badArgumentError(argument, "Argument should be a key-value pair separated by '='");
@@ -313,9 +567,10 @@ record RecordOptions(Path path, boolean merge) {
             parsedArguments.put(parts[0], parts[1]);
         }
 
-        String path = requiredArgument(parsedArguments, "path", IDENTITY_PARSER);
+        Path path = requiredArgument(parsedArguments, "path", PATH_PARSER);
         boolean merge = optionalArgument(parsedArguments, "merge", true, BOOLEAN_PARSER);
-        return new RecordOptions(Paths.get(path), merge);
+        Path debugLog = optionalArgument(parsedArguments, "debug-log", null, PATH_PARSER);
+        return new TraceOptions(path, merge, debugLog);
     }
 
     private static IllegalArgumentException printHelp(String errorMessage) {
@@ -325,15 +580,15 @@ record RecordOptions(Path path, boolean merge) {
                         %s description:
 
                         %s
-                        """.formatted(errorMessage, MetadataTracer.Options.RecordMetadata.getName(), MetadataTracer.Options.RECORD_METADATA_HELP));
+                        """.formatted(errorMessage, MetadataTracer.Options.TraceMetadata.getName(), MetadataTracer.Options.TRACE_METADATA_HELP));
     }
 
     private static IllegalArgumentException parseError(String message) {
-        return new IllegalArgumentException(message + ". For more information (including usage examples), pass 'help' as an argument to " + MetadataTracer.Options.RecordMetadata.getName() + ".");
+        return new IllegalArgumentException(message + ". For more information (including usage examples), pass 'help' as an argument to " + MetadataTracer.Options.TraceMetadata.getName() + ".");
     }
 
     private static IllegalArgumentException badArgumentError(String argument, String message) {
-        throw parseError("Bad argument provided for " + MetadataTracer.Options.RecordMetadata.getName() + ": '" + argument + "'. " + message);
+        throw parseError("Bad argument provided for " + MetadataTracer.Options.TraceMetadata.getName() + ": '" + argument + "'. " + message);
     }
 
     private static IllegalArgumentException badArgumentValueError(String argumentKey, String argumentValue, String message) {
@@ -344,7 +599,7 @@ record RecordOptions(Path path, boolean merge) {
         T parse(String argumentKey, String argumentValue);
     }
 
-    private static final ArgumentParser<String> IDENTITY_PARSER = ((argumentKey, argumentValue) -> argumentValue);
+    private static final ArgumentParser<Path> PATH_PARSER = ((argumentKey, argumentValue) -> Paths.get(argumentValue).toAbsolutePath());
     private static final ArgumentParser<Boolean> BOOLEAN_PARSER = ((argumentKey, argumentValue) -> switch (argumentValue) {
         case "true" -> true;
         case "false" -> false;
@@ -355,7 +610,7 @@ record RecordOptions(Path path, boolean merge) {
         if (arguments.containsKey(key)) {
             return parser.parse(key, arguments.get(key));
         }
-        throw parseError(MetadataTracer.Options.RecordMetadata.getName() + " missing required argument '" + key + "'");
+        throw parseError(MetadataTracer.Options.TraceMetadata.getName() + " missing required argument '" + key + "'");
     }
 
     private static <T> T optionalArgument(Map<String, String> options, String key, T defaultValue, ArgumentParser<T> parser) {

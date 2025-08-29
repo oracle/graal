@@ -331,7 +331,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None, extraUnitTestArguments=None):
         for suite in suites:
-            with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
+            newtags = self.tags + ["unittest-" + suite]
+            with Task(self.name + ': hosted-product ' + suite, tasks, tags=newtags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
@@ -584,10 +585,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
     daily_weekly_jobs_ratio = 2
-    scala_daily_scaling_factor = 4
+    dacapo_daily_scaling_factor = 4
     scala_dacapo_daily_scaling_factor = 10
     default_iterations_reduction = 0.5
-    scala_weekly_scaling_factor = scala_daily_scaling_factor * daily_weekly_jobs_ratio
+    dacapo_weekly_scaling_factor = dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
     scala_dacapo_weekly_scaling_factor = scala_dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
 
     bmSuiteArgs = ["--jvm", "server"]
@@ -607,25 +608,25 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * scala_daily_scaling_factor):
+                for _ in range(default_iterations * dacapo_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * scala_weekly_scaling_factor):
+                for _ in range(default_iterations * dacapo_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
-    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t:
             # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
             _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
     # ensure we can run with --enable-preview
-    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t:
             _gate_dacapo('fop', 8, benchVmArgs + ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
 
@@ -693,7 +694,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
     if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
-        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
@@ -714,11 +715,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                     os.remove(logFile)
 
     # ensure -XX:+PreserveFramePointer  still works
-    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False)
 
     # stress entry barrier deopt
-    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False)
 
 graal_unit_test_runs = [
@@ -1570,6 +1571,41 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
+def replaycomp_vm_args():
+    """Returns the VM arguments required to run the replay compilation launcher."""
+    vm_args = [
+        '-XX:-UseJVMCICompiler',
+        '--enable-native-access=org.graalvm.truffle',
+        '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+        '-Djdk.graal.CompilationFailureAction=Print'
+    ]
+    _, dists = mx.defaultDependencies(opt_limit_to_suite=True)
+    dists = [d for d in dists if d.isJARDistribution() and os.path.exists(d.classpath_repr(resolve=False))]
+    return mx.get_runtime_jvm_args(dists) + vm_args
+
+def replaycomp_main_class():
+    """Returns the main class name for the replay compilation launcher."""
+    return 'jdk.graal.compiler.hotspot.replaycomp.test.ReplayCompilationLauncher'
+
+def replaycomp(args):
+    """Runs the replay compilation launcher with the provided launcher and VM arguments."""
+    extra_vm_args = []
+    launcher_args = []
+    for arg in args:
+        vm_arg_prefixes = ['-X', '-D', '-ea', '-enableassertions', '-esa', '-enablesystemassertions']
+        if any(map(arg.startswith, vm_arg_prefixes)):
+            extra_vm_args.append(arg)
+        elif arg == '--libgraal':
+            jvmci_lib_path = os.path.join(mx.suite('sdk').get_output_root(platformDependent=True, jdkDependent=False),
+                                          mx.add_lib_suffix(mx.add_lib_prefix('jvmcicompiler')) + '.image')
+            extra_vm_args.extend([
+                '-XX:+UseJVMCINativeLibrary',
+                f'-XX:JVMCILibPath={jvmci_lib_path}'
+            ])
+        else:
+            launcher_args.append(arg)
+    return run_vm([*replaycomp_vm_args(), *extra_vm_args, replaycomp_main_class(), *launcher_args], nonZeroIsFatal=False)
+
 def igvutil(args):
     """various utilities to inspect and modify IGV graphs"""
     cp = mx.classpath('GRAAL_IGVUTIL', jdk=jdk)
@@ -1588,6 +1624,7 @@ mx.update_commands(_suite, {
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
+    'replaycomp': [replaycomp, ''],
     'igvutil': [igvutil, '[subcommand] [options]'],
 })
 

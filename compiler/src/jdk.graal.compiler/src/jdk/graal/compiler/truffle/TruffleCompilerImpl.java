@@ -257,7 +257,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             OptionValues graalOptions = getGraalOptions();
             Map<String, String> options = compilable.getCompilerOptions();
             EconomicMap<OptionKey<?>, Object> map = parseOptions(options);
-            graalOptions = TruffleCompilerOptions.updateValues(graalOptions);
+            graalOptions = TruffleCompilerOptions.updateValues(graalOptions, map);
             map.putAll(graalOptions.getMap());
             return new OptionValues(map);
         });
@@ -507,6 +507,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(task, compilable), INVOCATION_ENTRY_BCI);
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions());
+                        DebugCloseable b = GraalServices.GCTimerScope.create(debug);
                         TruffleInliningScope inlining = TruffleInliningScope.open(debug)) {
             StructuredGraph graph = truffleTier(wrapper, debug);
 
@@ -678,7 +679,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog() : Assertions.errorMessage(graph, graph.getSpeculationLog(), result, result.getSpeculationLog());
-            tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false, false, null);
             if (outInstalledCode != null) {
                 outInstalledCode[0] = installedCode;
             }

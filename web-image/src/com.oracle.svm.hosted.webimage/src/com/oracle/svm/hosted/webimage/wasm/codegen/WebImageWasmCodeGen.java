@@ -35,23 +35,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.image.AbstractImage;
-import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
@@ -88,11 +83,11 @@ import com.oracle.svm.webimage.NamingConvention;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
 import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
@@ -158,7 +153,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      * {@link AbstractImage#getImageHeapSize()}).
      */
     public long getImageHeapSize() {
-        return getLayout().getImageHeapSize();
+        return getLayout().getSize();
     }
 
     /**
@@ -170,7 +165,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      * This number is mainly used to get the total heap size for image heap breakdown statistics.
      */
     public long getFullImageHeapSize() {
-        return getLayout().getImageHeapSize();
+        return getLayout().getSize();
     }
 
     @Override
@@ -336,19 +331,6 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      */
     protected void validateModule() {
         new WasmValidator().visitModule(module);
-    }
-
-    protected void afterHeapLayout() {
-        // after this point, the layout is final and must not be changed anymore
-        assert !hasDuplicatedObjects(codeCache.nativeImageHeap) : "heap.getObjects() must not contain any duplicates";
-        BuildPhaseProvider.markHeapLayoutFinished();
-        codeCache.nativeImageHeap.getLayouter().afterLayout(codeCache.nativeImageHeap);
-    }
-
-    protected boolean hasDuplicatedObjects(NativeImageHeap heap) {
-        Set<NativeImageHeap.ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
-        deduplicated.addAll(heap.getObjects());
-        return deduplicated.size() != heap.getObjectCount();
     }
 
     @Override

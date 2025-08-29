@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,8 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.ArchitectureSpecific;
@@ -85,6 +84,35 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 
 @LibGraalService
 public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
+    /**
+     * Creates a meta access provider based on a JVMCI backend.
+     *
+     * @param jvmci the JVMCI backend
+     * @return a meta access provider
+     */
+    protected MetaAccessProvider createMetaAccessProvider(JVMCIBackend jvmci) {
+        return new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
+    }
+
+    /**
+     * Creates a constant reflection provider based on a JVMCI backend.
+     *
+     * @param jvmci the JVMCI backend
+     * @return a constant reflection provider
+     */
+    protected HotSpotConstantReflectionProvider createConstantReflectionProvider(JVMCIBackend jvmci) {
+        return (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
+    }
+
+    /**
+     * Creates a code cache provider based on a JVMCI backend.
+     *
+     * @param jvmci the JVMCI backend
+     * @return a code cache provider.
+     */
+    protected HotSpotCodeCacheProvider createCodeCacheProvider(JVMCIBackend jvmci) {
+        return (HotSpotCodeCacheProvider) jvmci.getCodeCache();
+    }
 
     protected HotSpotGraalConstantFieldProvider createConstantFieldProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         return new HotSpotGraalConstantFieldProvider(config, metaAccess);
@@ -129,6 +157,13 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         return new LoopsDataProviderImpl();
     }
 
+    /**
+     * Hook method called after all JVMCI providers have been created (meta access, code cache,
+     * constant reflection).
+     */
+    protected void afterJVMCIProvidersCreated() {
+    }
+
     @SuppressWarnings("try")
     public final HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntime jvmciRuntime, HotSpotBackend host) {
         assert host == null;
@@ -136,14 +171,12 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         OptionValues options = graalRuntime.getOptions();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
-        if (inBuildtimeCode() || inRuntimeCode()) {
-            SnippetSignature.initPrimitiveKindCache(jvmci.getMetaAccess());
-        }
-
-        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
+        MetaAccessProvider metaAccess = createMetaAccessProvider(jvmci);
+        HotSpotCodeCacheProvider codeCache = createCodeCacheProvider(jvmci);
+        HotSpotConstantReflectionProvider constantReflection = createConstantReflectionProvider(jvmci);
+        afterJVMCIProvidersCreated();
         TargetDescription target = codeCache.getTarget();
-        MetaAccessProvider metaAccess = new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
-        HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
+        SnippetSignature.initPrimitiveKindCache(metaAccess);
         ConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
         HotSpotProviders providers;
         HotSpotReplacementsImpl replacements;
@@ -199,7 +232,8 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                 identityHashCodeProvider = createIdentityHashCodeProvider();
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
-                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider);
+                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider,
+                            graalRuntime.getReplayCompilationSupport());
 
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, bytecodeProvider);
@@ -215,7 +249,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
-                HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
+                HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, options);
                 providers.setSuites(suites);
             }
             Replacements replacements2 = replacements.getProviders().getReplacements();
@@ -241,8 +275,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                     HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options, BarrierSet barrierSet);
 
     protected abstract HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration,
-                    GraphBuilderConfiguration.Plugins plugins,
-                    HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options);
+                    Plugins plugins, HotSpotRegistersProvider registers, OptionValues options);
 
     protected abstract HotSpotRegistersProvider createRegisters();
 

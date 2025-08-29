@@ -68,6 +68,9 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -146,6 +149,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
     @CompilationFinal private boolean continuum;
+    @CompilationFinal private String nativeBackendId;
+    @CompilationFinal private boolean useTRegex;
+    @CompilationFinal private int maxStackTraceDepth;
     // endregion Options
 
     // region Allocation
@@ -245,6 +251,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
+        maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
+
+        useTRegex = env.getOptions().get(EspressoOptions.UseTRegex);
+        if (useTRegex && !env.getInternalLanguages().containsKey("regex")) {
+            throw EspressoError.fatal("UseTRegex is set to true but the 'regex' language is not available.");
+        }
 
         EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
         guestFieldOffsetStrategy = switch (strategy) {
@@ -253,6 +265,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
         this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        this.nativeBackendId = setNativeBackendId(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -313,6 +326,26 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         languageCache.importFrom(other.getLanguageCache());
     }
 
+    private static String setNativeBackendId(final TruffleLanguage.Env env) {
+        String nativeBackend;
+        if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
+            nativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
+        } else {
+            // Pick a sane "default" native backend depending on the platform.
+            boolean isInPreInit = (boolean) env.getConfig().getOrDefault("preinit", false);
+            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
+                if (OS.getCurrent() == OS.Linux) {
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else {
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
+                }
+            } else {
+                nativeBackend = NFINativeAccess.Provider.ID;
+            }
+        }
+        return nativeBackend;
+    }
+
     @Override
     protected boolean patchContext(EspressoContext context, Env newEnv) {
         // This check has to be done manually as long as language uses exclusive context sharing
@@ -343,8 +376,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.NativeBackend) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -582,8 +618,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return internalJvmciEnabled;
     }
 
+    public boolean useTRegex() {
+        return useTRegex;
+    }
+
     public boolean useEspressoLibs() {
         return useEspressoLibs;
+    }
+
+    public String nativeBackendId() {
+        return nativeBackendId;
     }
 
     public boolean isContinuumEnabled() {
@@ -618,6 +662,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 if (ref == null) {
                     if (!getGuestFieldOffsetStrategy().isAllowed(version)) {
                         throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
+                    }
+                    if (useTRegex && !version.java21OrLater()) {
+                        throw EspressoError.fatal("UseTRegex is not available for context running Java version < 21.");
                     }
                     this.javaVersion = ref = version;
                 }
@@ -654,7 +701,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         }
     }
 
-    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk25", "openjdk25", "jdk21", "openjdk21", "jdk" + JavaVersion.HOST_VERSION, "openjdk" + JavaVersion.HOST_VERSION};
     private static final Pattern VALID_RESOURCE_ID = Pattern.compile("[0-9a-z\\-]+");
 
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
@@ -732,6 +779,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public DisableSingleStepping disableStepping() {
         return new DisableSingleStepping();
+    }
+
+    public int getMaxStackTraceDepth() {
+        return maxStackTraceDepth;
     }
 
     public final class DisableSingleStepping implements AutoCloseable {

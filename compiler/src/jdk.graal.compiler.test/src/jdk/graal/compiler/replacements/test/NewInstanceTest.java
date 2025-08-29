@@ -138,12 +138,14 @@ public class NewInstanceTest extends GraalCompilerTest {
     }
 
     public static HashMap<?, ?> newHashMap(int initialCapacity) {
+        // STABLE ITERATION ORDER: empty, allowed to test {@code new}
         return new HashMap<>(initialCapacity);
     }
 
     static class SomeObject {
 
         String name = "o1";
+        // STABLE ITERATION ORDER: string key, allowed to test {@code new}
         HashMap<String, Object> map = new HashMap<>();
 
         SomeObject() {

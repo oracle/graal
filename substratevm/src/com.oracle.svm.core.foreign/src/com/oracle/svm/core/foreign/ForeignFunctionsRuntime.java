@@ -31,14 +31,18 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.MissingForeignRegistrationError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -48,17 +52,20 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -67,17 +74,22 @@ import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ForeignFunctionsRuntime implements ForeignSupport {
+public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedArenaConfig {
     @Fold
     public static ForeignFunctionsRuntime singleton() {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
     private final AbiUtils.TrampolineTemplate trampolineTemplate;
-    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
-    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
-    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
+
+    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = ImageHeapMap.create("downcallStubs");
+    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = ImageHeapMap.create("directUpcallStubs");
+    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = ImageHeapMap.create("upcallStubs");
+    private final EconomicSet<ResolvedJavaType> neverAccessesSharedArenaTypes = EconomicSet.create();
+    private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
@@ -104,22 +116,59 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
-        VMError.guarantee(!downcallStubs.containsKey(nep), "Seems like multiple stubs were generated for %s", nep);
-        VMError.guarantee(downcallStubs.put(nep, new FunctionPointerHolder(ptr)) == null);
+    public boolean downcallStubExists(NativeEntryPointInfo nep) {
+        return downcallStubs.containsKey(nep);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
-        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for %s", jep);
-        VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
+    public int getDowncallStubsCount() {
+        return downcallStubs.size();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
+    public boolean upcallStubExists(JavaEntryPointInfo jep) {
+        return upcallStubs.containsKey(jep);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getUpcallStubsCount() {
+        return upcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean directUpcallStubExists(DirectMethodHandleDesc desc, JavaEntryPointInfo jep) {
+        return directUpcallStubs.containsKey(Pair.create(desc, jep));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getDirectUpcallStubsCount() {
+        return directUpcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
+        return downcallStubs.putIfAbsent(nep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
+        return upcallStubs.putIfAbsent(jep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
         var key = Pair.create(desc, jep);
-        VMError.guarantee(!directUpcallStubs.containsKey(key), "Seems like multiple stubs were generated for %s", desc);
-        VMError.guarantee(directUpcallStubs.put(key, new FunctionPointerHolder(ptr)) == null);
+        return directUpcallStubs.putIfAbsent(key, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorClass(ResolvedJavaType type) {
+        neverAccessesSharedArenaTypes.add(type);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorMethod(ResolvedJavaMethod method) {
+        neverAccessesSharedArenaMethods.add(method);
     }
 
     /**
@@ -131,7 +180,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
         FunctionPointerHolder holder = downcallStubs.get(nep);
         if (holder == null) {
-            throw new UnregisteredForeignStubException(nep);
+            throw MissingForeignRegistrationUtils.reportDowncall(nep);
         }
         return holder.functionPointer;
     }
@@ -139,7 +188,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
         FunctionPointerHolder holder = upcallStubs.get(jep);
         if (holder == null) {
-            throw new UnregisteredForeignStubException(jep);
+            throw MissingForeignRegistrationUtils.reportUpcall(jep);
         }
         return holder.functionPointer;
     }
@@ -214,24 +263,32 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
         }
     }
 
-    @SuppressWarnings("serial")
-    public static class UnregisteredForeignStubException extends RuntimeException {
-
-        UnregisteredForeignStubException(NativeEntryPointInfo nep) {
-            super(generateMessage(nep));
+    public static class MissingForeignRegistrationUtils extends MissingRegistrationUtils {
+        public static MissingForeignRegistrationError reportDowncall(NativeEntryPointInfo nep) {
+            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("downcall", nep.methodType()));
+            report(mfre);
+            return mfre;
         }
 
-        UnregisteredForeignStubException(JavaEntryPointInfo jep) {
-            super(generateMessage(jep));
+        public static MissingForeignRegistrationError reportUpcall(JavaEntryPointInfo jep) {
+            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("upcall", jep.cMethodType()));
+            report(mfre);
+            return mfre;
         }
 
-        private static String generateMessage(NativeEntryPointInfo nep) {
-            return "Cannot perform downcall with leaf type " + nep.methodType() + " as it was not registered at compilation time.";
+        private static String foreignRegistrationMessage(String failedAction, MethodType methodType) {
+            return registrationMessage("perform " + failedAction + " with leaf type", methodType.toString(), "", "", "foreign", "foreign");
         }
 
-        private static String generateMessage(JavaEntryPointInfo jep) {
-            return "Cannot perform upcall with leaf type " + jep.cMethodType() + " as it was not registered at compilation time.";
+        private static void report(MissingForeignRegistrationError exception) {
+            StackTraceElement responsibleClass = getResponsibleClass(exception, foreignEntryPoints);
+            MissingRegistrationUtils.report(exception, responsibleClass);
         }
+
+        private static final Map<String, Set<String>> foreignEntryPoints = Map.of(
+                        "jdk.internal.foreign.abi.AbstractLinker", Set.of(
+                                        "downcallHandle",
+                                        "upcallStub"));
     }
 
     /**
@@ -339,6 +396,17 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
                     "captureCallState", HAS_SIDE_EFFECT, LocationIdentity.any());
+
+    @Override
+    public boolean isSafeCallee(ResolvedJavaMethod method) {
+        if (neverAccessesSharedArenaMethods.contains(method)) {
+            return true;
+        }
+        if (neverAccessesSharedArenaTypes.contains(method.getDeclaringClass())) {
+            return true;
+        }
+        return false;
+    }
 }
 
 interface StubPointer extends CFunctionPointer {

@@ -28,7 +28,6 @@ import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
@@ -81,11 +80,6 @@ public interface LoweringProvider {
     boolean supportsOptimizedFilling(OptionValues options);
 
     /**
-     * Indicates whether this target platform supports lowering {@link RoundNode}.
-     */
-    boolean supportsRounding();
-
-    /**
      * Indicates whether this target platform supports the usage of implicit (trapping) null checks.
      */
     boolean supportsImplicitNullChecks();
@@ -123,12 +117,4 @@ public interface LoweringProvider {
      * {@link ExtendableMemoryAccess}.
      */
     boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind);
-
-    /**
-     * Indicates whether this target platform supports lowering floating point conversions to and
-     * from unsigned integer.
-     */
-    default boolean supportsUnsignedFloatConvert() {
-        return false;
-    }
 }

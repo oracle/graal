@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.phases.common;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.ListIterator;
 import java.util.Optional;
 
@@ -36,6 +38,7 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
@@ -51,6 +54,8 @@ import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FloatingGuardedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.IfNode;
@@ -64,6 +69,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.UnaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValueNodeInterface;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
@@ -73,6 +79,8 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.MultiGuardNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -156,8 +164,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 }
                 FixedAccessNode fixedAccess = floatingAccessNode.asFixedNode();
                 replaceCurrent(fixedAccess);
-            } else if (node instanceof PiNode) {
-                PiNode piNode = (PiNode) node;
+            } else if (node instanceof PiNode piNode) {
+                // incompatible stamps can result from unreachable code with empty stamps missed by
+                // control flow optimizations
                 if (piNode.stamp(NodeView.DEFAULT).isCompatible(piNode.getOriginalNode().stamp(NodeView.DEFAULT))) {
                     // Pi nodes are no longer necessary at this point. Make sure to infer stamps
                     // for all usages to clear out the stamp information added by the pi node.
@@ -187,6 +196,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         private final DebugContext debug;
         private final RawCanonicalizerTool rawCanonicalizerTool;
         private final EconomicMap<Node, HIRBlock> nodeToBlockMap;
+        protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
 
         private class RawCanonicalizerTool extends CoreProvidersDelegate implements NodeView, CanonicalizerTool {
 
@@ -212,11 +222,6 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             @Override
             public Integer smallestCompareWidth() {
                 return null;
-            }
-
-            @Override
-            public boolean supportsRounding() {
-                return false;
             }
 
             @Override
@@ -312,6 +317,18 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
             if (node instanceof MergeNode) {
                 registerCombinedStamps((MergeNode) node);
+            }
+
+            if (node instanceof SwitchNode switchNode) {
+                /*
+                 * Since later in this phase we will be visiting all control split successors the
+                 * operation of computing successor stamps for switch nodes can be quite costly.
+                 * Thus, we already compute and cache all eagerly here.
+                 */
+                if (successorStampCache == null) {
+                    successorStampCache = EconomicMap.create();
+                }
+                switchNode.getAllSuccessorValueStamps(successorStampCache);
             }
 
             if (node instanceof AbstractBeginNode) {
@@ -519,7 +536,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
         protected void processIntegerSwitch(IntegerSwitchNode node) {
             Stamp bestStamp = getBestStamp(node.value());
-            if (node.tryRemoveUnreachableKeys(null, bestStamp)) {
+            if (node.tryRemoveUnreachableKeys(null, bestStamp, successorStampCache)) {
                 graph.getOptimizationLog().report(FixReadsPhase.class, "SwitchCanonicalization", node);
             }
         }
@@ -581,7 +598,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
 
         private void registerIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
-            registerNewValueStamp(integerSwitchNode.value(), integerSwitchNode.getValueStampForSuccessor(beginNode));
+            if (successorStampCache == null) {
+                successorStampCache = EconomicMap.create();
+            }
+            registerNewValueStamp(integerSwitchNode.value(), integerSwitchNode.getValueStampForSuccessor(beginNode, successorStampCache));
         }
 
         protected void registerNewCondition(LogicNode condition, boolean negated) {
@@ -679,6 +699,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(StageFlag.FIXED_READS);
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         schedulePhase.apply(graph, context);
@@ -691,12 +716,60 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions()) && GraalOptions.EnableFixReadsConditionalElimination.getValue(graph.getOptions())) {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
         }
+
+        assert verifyPiRemovalInvariants(graph);
+    }
+
+    /**
+     * Run verifications to test invariants that need to hold after removing {@link PiNode} from a
+     * graph.
+     */
+    public static boolean verifyPiRemovalInvariants(StructuredGraph graph) {
+        if (Assertions.assertionsEnabled()) {
+            for (Node n : graph.getNodes()) {
+                final boolean isFloatingGuardedNode = n instanceof FloatingGuardedNode;
+                if (isFloatingGuardedNode) {
+                    // floating guarded nodes without a guard are "universally" true meaning they
+                    // can be executed everywhere
+                    final GuardingNode guard = ((FloatingGuardedNode) n).getGuard();
+                    assert verifyOnlyFixedGuards(guard);
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean verifyOnlyFixedGuards(ValueNodeInterface guardingRoot) {
+        final boolean isUniversallyTrue = guardingRoot == null;
+        if (isUniversallyTrue) {
+            return true;
+        }
+        final StructuredGraph graph = guardingRoot.asNode().graph();
+        NodeBitMap visited = graph.createNodeBitMap();
+        Deque<ValueNodeInterface> toVisit = new ArrayDeque<>();
+        toVisit.add(guardingRoot);
+
+        while (!toVisit.isEmpty()) {
+            ValueNodeInterface currentGuard = toVisit.pop();
+            if (visited.isMarked(currentGuard.asNode())) {
+                continue;
+            }
+            visited.mark(currentGuard.asNode());
+            if (currentGuard instanceof MultiGuardNode mg) {
+                toVisit.addAll(mg.getGuards());
+            } else {
+                assert currentGuard instanceof FixedNode : Assertions.errorMessage(
+                                "Should not have floating guarded nodes without fixed guards left after removing pis, they could float uncontrolled now", currentGuard);
+            }
+        }
+        return true;
     }
 
     @Override
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
         graphState.setAfterStage(StageFlag.FIXED_READS);
+        graphState.removeRequirementToStage(StageFlag.FIXED_READS);
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, ScheduleResult schedule, CoreProviders context) {

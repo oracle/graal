@@ -216,6 +216,10 @@ suite = {
       },
     },
 
+    "WARMUP_BENCHMARKS": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
+      "digest": "sha512:3ccf2fde4765561681ee530ee7ff6af823e89f447261e87e155f47e6ef29820ffd0f9ddaa39333893834df9c15463077cf1995b659644a79ab1595fd14ff2091"
+    },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -234,6 +238,22 @@ suite = {
       ],
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
+      "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    # This uses the lowest Multi-Release version possible,
+    # for checking that Multi-Release classes are used as expected (see CheckMultiReleaseSupport).
+    "com.oracle.truffle.api.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "9",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "9+",
       "workingSets" : "API,Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -724,6 +744,7 @@ suite = {
         "TRUFFLE_API",
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
+        "TRUFFLE_RUNTIME",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1498,6 +1519,75 @@ suite = {
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
     },
+
+    # ------------- Polybench -------------
+
+    "org.graalvm.polybench": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "javaCompliance": "17+",
+      "license": "GPLv2-CPE",
+      "checkstyleVersion": "10.21.0",
+      "dependencies": [
+        "sdk:LAUNCHER_COMMON",
+        "sdk:POLYGLOT",
+        "VISUALVM-LIB-JFLUID-HEAP",
+      ],
+      "requires": [
+        "java.logging",
+        "jdk.management",
+      ],
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.polybench.micro": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "javaCompliance": "17+",
+      "license": "GPLv2-CPE",
+      "checkstyle": "org.graalvm.polybench",
+      "dependencies": [
+        "TRUFFLE_API",
+      ],
+      "annotationProcessors": [
+        "TRUFFLE_DSL_PROCESSOR",
+      ],
+      "spotbugsIgnoresGenerated": True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.polybench.instruments": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "javaCompliance": "17+",
+      "license": "GPLv2-CPE",
+      "checkstyle": "org.graalvm.polybench",
+      "dependencies": [
+        "TRUFFLE_API",
+      ],
+      "requires": [
+        "jdk.management",
+      ],
+      "annotationProcessors": [
+        "TRUFFLE_DSL_PROCESSOR",
+      ],
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "nfi-native": {
+      "subDir": "benchmarks",
+      "native": "shared_lib",
+      "deliverable": "microbench",
+      "buildDependencies": [
+        "TRUFFLE_NFI_GRAALVM_SUPPORT",
+      ],
+      "cflags": [
+        "-g",
+        "-O3",
+        "-I<path:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT>/include",
+      ],
+      "testProject": True,
+      "clangFormat": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
   },
 
   "licenses" : {
@@ -1583,9 +1673,19 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.graal.compiler, org.graalvm.nativeimage.builder, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          """com.oracle.truffle.compiler to
+                 org.graalvm.truffle.runtime,
+                 jdk.graal.compiler,
+                 jdk.graal.compiler.libgraal,
+                 org.graalvm.nativeimage.builder,
+                 com.oracle.graal.graal_enterprise,
+                 org.graalvm.truffle.runtime.svm,
+                 com.oracle.truffle.enterprise.svm""",
           "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.graal.compiler",
-          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.graal.compiler"
+          """com.oracle.truffle.compiler.hotspot.libgraal to
+                 org.graalvm.truffle.runtime,
+                 jdk.graal.compiler,
+                 jdk.graal.compiler.libgraal"""
         ],
         "uses" : [
         ],
@@ -1631,7 +1731,6 @@ suite = {
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.runtime.LoopNodeFactory",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.EngineCacheSupport",
           "com.oracle.truffle.runtime.jfr.EventFactory.Provider",
@@ -1943,18 +2042,8 @@ suite = {
           "windows-amd64",
           "windows-aarch64",
       ],
-      "os": {
-        "linux": {
-          "layout": {
-            # only glibc.
-            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
-          },
-        },
-        "<others>": {
-          "layout": {
-            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
-          },
-        },
+      "layout": {
+        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/<multitarget_libc_selection>/*",
       },
       "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
@@ -2300,18 +2389,8 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
-      "os": {
-        "linux": {
-          "layout": {
-            # only glibc.
-            "./" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
-          },
-        },
-        "<others>": {
-          "layout": {
-            "./" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
-          },
-        },
+      "layout": {
+        "./" : "dependency:com.oracle.truffle.nfi.native/*/<multitarget_libc_selection>/*",
       },
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
@@ -2540,6 +2619,74 @@ suite = {
         "tag": ["default", "public"],
       },
       "compress" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "POLYBENCH": {
+      "subDir": "src",
+      "mainClass": "org.graalvm.polybench.PolyBenchLauncher",
+      "dependencies": [
+        "org.graalvm.polybench",
+      ],
+      "distDependencies": [
+        "sdk:LAUNCHER_COMMON",
+        "sdk:POLYGLOT",
+        "VISUALVM-LIB-JFLUID-HEAP",
+      ],
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "POLYBENCH_INSTRUMENTS": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.polybench.instruments",
+      ],
+      "distDependencies": [
+        "TRUFFLE_API",
+      ],
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "PMH": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.polybench.micro",
+      ],
+      "distDependencies": [
+        "TRUFFLE_API",
+        "TRUFFLE_NFI_LIBFFI",
+        "TRUFFLE_NFI_PANAMA",
+      ],
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "PMH_BENCHMARK_NATIVE": {
+      "native": True,
+      "description": "Distribution for native libraries used by Microbench polybench benchmarks",
+      "layout": {
+        "./nfi-native/": [
+          "dependency:nfi-native",
+        ],
+      },
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "NFI_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for NFI polybench benchmarks",
+      "layout": {
+        "./nfi/": [
+          "file:benchmarks/nfi/*.pmh",
+        ],
+        "./nfi/panama/": [
+          "file:benchmarks/nfi/panama/*.pmh",
+        ]
+      },
+    },
+    "SL_BENCHMARKS": {
+      "description": "Distribution for SL polybench benchmarks",
+      "layout": {
+        "./interpreter/": [
+          "file:benchmarks/interpreter/*.sl",
+        ],
+      },
       "graalCompilerSourceEdition": "ignore",
     },
   },

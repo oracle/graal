@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -52,6 +54,7 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -63,20 +66,52 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     private final Set<String> priorLayerMethodSymbols = new HashSet<>();
     private final List<String> libNames;
     private final Map<AnalysisMethod, Integer> priorInstalledOffsetCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
+    /**
+     * The symbols of methods that are fully delayed to the application layer and are invoked in a
+     * shared layer. All those symbols need to be linked in the application layer to avoid any
+     * undefined reference, so the corresponding methods will be registered as root in the
+     * application layer. A single {@link CGlobalData} has to be created for each symbol, so it is
+     * cached in a map.
+     */
+    private final Map<String, CGlobalData<?>> delayedMethodSymbols = ImageLayerBuildingSupport.buildingSharedLayer() ? new ConcurrentHashMap<>() : null;
+    /**
+     * The id of the methods corresponding to the symbols of
+     * {@link HostedDynamicLayerInfo#delayedMethodSymbols}.
+     */
+    private final Set<Integer> delayedMethodIds = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
+    /**
+     * The symbols of methods delayed to the application layer from previous shared layers.
+     */
+    private final Set<String> previousLayerDelayedMethodSymbols;
+    /**
+     * The ids of methods delayed to the application layer from previous shared layers.
+     */
+    private final Set<Integer> previousLayerDelayedMethodIds;
+    /**
+     * The symbols of delayed methods that are properly compiled in the application layer.
+     */
+    private final Set<String> compiledDelayedMethodSymbols = ImageLayerBuildingSupport.buildingApplicationLayer() ? ConcurrentHashMap.newKeySet() : null;
 
     HostedDynamicLayerInfo() {
-        this(0, null, new ArrayList<>());
+        this(0, null, new ArrayList<>(), Set.of(), Set.of());
     }
 
     public static HostedDynamicLayerInfo singleton() {
         return (HostedDynamicLayerInfo) ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
-    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol,
-                    List<String> libNames) {
+    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, List<String> libNames,
+                    Set<String> previousLayerDelayedMethodSymbols, Set<Integer> previousLayerDelayedMethodIds) {
         super(layerNumber);
         this.libNames = new ArrayList<>(libNames);
         this.cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
+        this.previousLayerDelayedMethodSymbols = previousLayerDelayedMethodSymbols;
+        this.previousLayerDelayedMethodIds = previousLayerDelayedMethodIds;
+    }
+
+    @Override
+    public boolean isMethodCompilationDelayed(SharedMethod sMethod) {
+        return ((HostedMethod) sMethod).wrapped.isDelayed();
     }
 
     @Override
@@ -137,12 +172,39 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
             assert aMethod.isInBaseLayer() : hMethod;
             priorLayerMethodSymbols.add(localSymbolNameForMethod(hMethod));
             hMethod.setCompiledInPriorLayer();
+            hMethod.setCodeAddressOffset(getPriorInstalledOffset(aMethod));
         }
+    }
+
+    @Override
+    public CGlobalDataInfo getSymbolForDelayedMethod(SharedMethod targetMethod) {
+        String symbolName = localSymbolNameForMethod(targetMethod);
+        var symbol = delayedMethodSymbols.computeIfAbsent(symbolName, key -> CGlobalDataFactory.forSymbol(symbolName));
+        delayedMethodIds.add(((HostedMethod) targetMethod).wrapped.getId());
+        return CGlobalDataFeature.singleton().registerAsAccessedOrGet(symbol);
+    }
+
+    public boolean forceGlobalMethodSymbol(String symbol) {
+        boolean isDelayedInPreviousLayer = previousLayerDelayedMethodSymbols.contains(symbol);
+        if (isDelayedInPreviousLayer) {
+            compiledDelayedMethodSymbols.add(symbol);
+        }
+        return isDelayedInPreviousLayer;
+    }
+
+    public void checkMissingDelayedMethods() {
+        VMError.guarantee(compiledDelayedMethodSymbols.equals(previousLayerDelayedMethodSymbols), "All delayed method symbols should be assigned to a compilation unit in the application layer");
     }
 
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
-        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
+        /*
+         * In vtables, we can typically reference methods from the initial layer via their known
+         * offsets from the code base, without using symbols. Only in some cases, such as
+         * CFunctionPointer/MethodPointer, we still use symbols. Therefore, not all these symbol
+         * entries are needed, but the command-line linker should remove any unnecessary ones.
+         */
+        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, true));
     }
 
     public void registerLibName(String lib) {
@@ -151,6 +213,10 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
 
     public boolean isImageLayerLib(String lib) {
         return libNames.contains(lib);
+    }
+
+    public Set<Integer> getPreviousLayerDelayedMethodIds() {
+        return previousLayerDelayedMethodIds;
     }
 
     @Override
@@ -179,6 +245,14 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
 
         writer.writeStringList("libNames", libNames);
 
+        Set<String> nextLayerDelayedMethodSymbols = new HashSet<>(previousLayerDelayedMethodSymbols);
+        nextLayerDelayedMethodSymbols.addAll(delayedMethodSymbols.keySet());
+        writer.writeStringList("delayedMethodSymbols", nextLayerDelayedMethodSymbols.stream().toList());
+
+        Set<Integer> nextLayerDelayedMethodIds = new HashSet<>(previousLayerDelayedMethodIds);
+        nextLayerDelayedMethodIds.addAll(delayedMethodIds);
+        writer.writeIntList("delayedMethodIds", nextLayerDelayedMethodIds.stream().toList());
+
         return PersistFlags.CREATE;
     }
 
@@ -192,6 +266,21 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
 
         var libNames = loader.readStringList("libNames");
 
-        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, libNames);
+        var previousLayerDelayedMethodSymbols = loader.readStringList("delayedMethodSymbols").stream().collect(Collectors.toUnmodifiableSet());
+        var previousLayerDelayedMethodIds = loader.readIntList("delayedMethodIds").stream().collect(Collectors.toUnmodifiableSet());
+
+        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, libNames, previousLayerDelayedMethodSymbols, previousLayerDelayedMethodIds);
+    }
+
+    @Override
+    public int getPreviousMaxTypeId() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getMaxTypeId();
+    }
+
+    @Override
+    public long getPreviousImageHeapEndOffset() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getImageHeapEndOffset();
     }
 }

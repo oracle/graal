@@ -94,4 +94,7 @@ public class WasmJsApiException extends AbstractTruffleException {
         return new WasmJsApiException(kind, String.format(Locale.ROOT, s, args));
     }
 
+    public static ExceptionProvider provider() {
+        return ExceptionProviders.WASM_JS_API_EXCEPTION_PROVIDER;
+    }
 }

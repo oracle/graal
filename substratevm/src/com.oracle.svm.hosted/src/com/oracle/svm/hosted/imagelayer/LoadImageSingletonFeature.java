@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -57,7 +58,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
@@ -67,9 +67,11 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -96,12 +98,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Tracks metdata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
- * singletons so that they can be properly referenced as needed.
+ * Tracks metadata about {@link MultiLayeredImageSingleton} and
+ * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY} singletons so that they can be properly
+ * referenced as needed.
  */
 @AutomaticallyRegisteredFeature
 public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
-    public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__layered_singleton_table_start";
+    public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__svm_layer_singleton_table_start";
 
     static CrossLayerSingletonMappingInfo getCrossLayerSingletonMappingInfo() {
         return (CrossLayerSingletonMappingInfo) ImageSingletons.lookup(LoadImageSingletonFactory.class);
@@ -116,6 +119,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
      * We need to cache this for the invocation plugin.
      */
     private SVMImageLayerLoader loader;
+    private final boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -168,7 +172,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+        ImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
     }
 
     static void checkAllowNullEntries(Class<?> key) {
@@ -191,6 +195,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         loader = (SVMImageLayerLoader) universe.getImageLayerLoader();
 
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
+        layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         layeredImageSingletonSupport.freezeLayeredImageSingletonMetadata();
 
         Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
@@ -214,8 +219,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             /*
              * Make sure all image singletons accessible in future layers are persisted.
              */
-            for (Class<?> key : layeredImageSingletonSupport.getFutureLayerAccessibleImageSingletonKeys()) {
-                var singleton = layeredImageSingletonSupport.lookup(key, true, false);
+            for (var singleton : layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY)) {
                 ImageHeapConstant constant = (ImageHeapConstant) universe.getSnippetReflection().forObject(singleton);
                 SVMImageLayerSnapshotUtil.forcePersistConstant(constant);
             }
@@ -224,7 +228,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             ImageSingletons.add(LoadImageSingletonFactory.class, new CrossLayerSingletonMappingInfo());
 
-        } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+        } else if (buildingApplicationLayer) {
 
             ArrayList<Object> applicationLayerEmbeddedRoots = new ArrayList<>();
             ArrayList<Object> multiLayerEmbeddedRoots = new ArrayList<>();
@@ -237,7 +241,8 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                          */
                         Class<?> key = slotInfo.keyClass();
                         var singleton = layeredImageSingletonSupport.lookup(key, true, false);
-                        assert singleton.getClass().equals(key) : String.format("We currently require %s to match their key. Key %s, Singleton: %s", ApplicationLayerOnlyImageSingleton.class, key,
+                        assert singleton.getClass().equals(key) : String.format("We currently require %s to match their key. Key %s, Singleton: %s",
+                                        SingletonLayeredInstallationKind.InstallationKind.APP_LAYER_ONLY, key,
                                         singleton);
                         applicationLayerEmbeddedRoots.add(singleton);
                     }
@@ -365,17 +370,24 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     /**
      * Ensure all objects needed for {@link MultiLayeredImageSingleton}s and
-     * {@link ApplicationLayerOnlyImageSingleton}s are installed in the heap.
+     * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY}s are installed in the heap.
      */
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
         String addReason = "Read via the layered image singleton support";
 
         /*
-         * We must add to the heap and record the id of all multilayered image singletons so that if
-         * needed a table can be created of all layer references later.
+         * Record the id of all multilayered image singleton entries which may be referenced.
+         * 
+         * In shared layers, we must add and record the id of all multilayered image singletons in
+         * case they are referred to in a later layer.
+         * 
+         * However, in the application layer we only need to add and record all multilayered image
+         * singletons currently referred to.
          */
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
-        for (var keyClass : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys()) {
+        Collection<Class<?>> candidatesClasses = buildingApplicationLayer ? getCrossLayerSingletonMappingInfo().getCurrentKeyToSlotInfoMap().keySet()
+                        : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys();
+        for (var keyClass : candidatesClasses) {
             var singleton = layeredImageSingletonSupport.lookup(keyClass, true, true);
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(singleton);
             heap.addConstant(singletonConstant, false, addReason);
@@ -384,7 +396,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             getCrossLayerSingletonMappingInfo().recordConstantID(keyClass, id);
         }
 
-        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+        if (buildingApplicationLayer) {
             Map<JavaConstant, Integer> mappingInfo = new HashMap<>();
             for (var slotInfo : getCrossLayerSingletonMappingInfo().getCurrentKeyToSlotInfoMap().values()) {
 
@@ -476,6 +488,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
      * Cache for created LoadImageSingletonDataImpl objects within the current layer.
      */
     private final Map<Class<?>, LoadImageSingletonDataImpl> layerKeyToSingletonDataMap = new ConcurrentHashMap<>();
+    private final boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 
     boolean sealedSingletonLookup = false;
     CGlobalData<Pointer> singletonTableStart;
@@ -516,7 +529,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     private LoadImageSingletonData getImageSingletonInfo(Class<?> keyClass, SlotRecordKind kind) {
         assert !sealedSingletonLookup;
-        assert !ImageLayerBuildingSupport.buildingApplicationLayer() : "Singletons can always be directly folded in the application layer";
+        assert !buildingApplicationLayer : "Singletons can always be directly folded in the application layer";
 
         /*
          * First check to see if something is already cached.
@@ -554,7 +567,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     @Override
     protected LoadImageSingletonData getApplicationLayerOnlyImageSingletonInfo(Class<?> keyClass) {
-        assert !ImageLayerBuildingSupport.buildingApplicationLayer() : "In the application layer one can directly load the constant";
+        assert !buildingApplicationLayer : "In the application layer one can directly load the constant";
         return getImageSingletonInfo(keyClass, SlotRecordKind.APPLICATION_LAYER_SINGLETON);
     }
 

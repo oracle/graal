@@ -31,11 +31,11 @@ import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSNodeLowerer;
 import com.oracle.svm.hosted.webimage.codegen.long64.Long64Lowerer;
 import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 import com.oracle.svm.webimage.object.ObjectInspector;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -55,6 +55,7 @@ public class ErrorContext extends AbstractErrorContext {
         case DARWIN -> "__error";
         case LINUX -> "__errno_location";
         case WINDOWS -> "_errno";
+        case UNSUPPORTED -> throw new IllegalStateException("NFI is not supported on unsupported platforms.");
     };
 
     public static final VarHandle INT_VAR_HANDLE = ValueLayout.JAVA_INT.varHandle();

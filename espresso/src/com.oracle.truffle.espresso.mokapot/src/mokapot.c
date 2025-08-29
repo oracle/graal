@@ -1492,7 +1492,7 @@ JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {
-  // TODO: actually support them.
+  // TODO: GR-54288 Currently virtual threads are just platform threads in Espresso
   IMPLEMENTED(JVM_IsContinuationsSupported);
   return JNI_FALSE;
 }
@@ -1663,6 +1663,11 @@ JNIEXPORT jboolean JNICALL JVM_PhantomReferenceRefersTo(JNIEnv *env, jobject ref
   return (*getEnv())->JVM_PhantomReferenceRefersTo(env, ref, o);
 }
 
+JNIEXPORT jobject JNICALL JVM_ReferenceGet(JNIEnv *env, jobject ref) {
+    UNIMPLEMENTED(JVM_ReferenceGet);
+    return NULL;
+}
+
 JNIEXPORT jboolean JNICALL JVM_ReferenceRefersTo(JNIEnv *env, jobject ref, jobject o) {
   IMPLEMENTED(JVM_ReferenceRefersTo);
   return (*getEnv())->JVM_ReferenceRefersTo(env, ref, o);
@@ -1723,7 +1728,7 @@ JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
 
 JNIEXPORT jboolean JNICALL
 JVM_IsStaticallyLinked(void) {
-  UNIMPLEMENTED(JVM_IsStaticallyLinked);
+  IMPLEMENTED(JVM_IsStaticallyLinked);
   return JNI_FALSE;
 }
 
@@ -1746,6 +1751,11 @@ JNIEXPORT void JNICALL JVM_VirtualThreadUnmount(JNIEnv* env, jobject vthread, jb
 JNIEXPORT jboolean JNICALL JVM_PrintWarningAtDynamicAgentLoad(void) {
   UNIMPLEMENTED(JVM_PrintWarningAtDynamicAgentLoad);
   return JNI_FALSE;
+}
+
+JNIEXPORT jobject JNICALL JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread) {
+  IMPLEMENTED(JVM_CreateThreadSnapshot);
+  return (*getEnv())->JVM_CreateThreadSnapshot(env, thread);
 }
 
 

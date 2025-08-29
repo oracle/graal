@@ -28,25 +28,32 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -80,17 +87,24 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private final List<FileChannel> graphsChannels;
     private final WriteLayerArchiveSupport writeLayerArchiveSupport;
     private final LoadLayerArchiveSupport loadLayerArchiveSupport;
+    /**
+     * This hook is called while adding image singletons (e.g. {@link ImageSingletons#add}) to
+     * associate additional traits with a singleton. Currently this is exclusively set in
+     * {@link #initialize}.
+     */
+    private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
 
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
                     Reader snapshot, List<FileChannel> graphsChannels,
                     boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
-                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport) {
+                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait[]> singletonTraitInjector) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
         this.imageClassLoader = imageClassLoader;
         this.snapshot = snapshot;
         this.graphsChannels = graphsChannels;
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
+        this.singletonTraitInjector = singletonTraitInjector;
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
@@ -131,7 +145,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     public void archiveLayer() {
         writer.dumpFiles();
-        writeLayerArchiveSupport.write();
+        writeLayerArchiveSupport.write(imageClassLoader.platform);
     }
 
     public SharedLayerSnapshot.Reader getSnapshot() {
@@ -152,6 +166,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
         return typeResult.get();
+    }
+
+    public Function<Class<?>, SingletonTrait[]> getSingletonTraitInjector() {
+        return singletonTraitInjector;
     }
 
     /**
@@ -184,7 +202,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
             }
 
-            SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
             SubstrateOptions.ClosedTypeWorld.update(values, false);
             if (SubstrateOptions.imageLayerEnabledHandler != null) {
                 SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
@@ -200,6 +217,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
              * run time and build time.
              */
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
         }
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
@@ -210,6 +229,13 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
+        }
+    }
+
+    private static void setOptionIfHasNotBeenSet(EconomicMap<OptionKey<?>, Object> values, HostedOptionKey<Boolean> option, boolean boxedValue) {
+        if (!values.containsKey(option)) {
+            option.update(values, boxedValue);
         }
     }
 
@@ -259,9 +285,25 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
+    private static boolean supportedPlatform(Platform platform) {
+        boolean supported = platform instanceof LINUX_AMD64;
+        return supported;
+    }
+
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
         boolean buildingSharedLayer = isLayerCreateOptionEnabled(values);
         boolean buildingExtensionLayer = isLayerUseOptionEnabled(values);
+
+        if (buildingSharedLayer) {
+            Platform platform = imageClassLoader.platform;
+            if (!supportedPlatform(platform)) {
+                ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(values);
+                String layerCreateValue = getLayerCreateValue(valueWithOrigin);
+                String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
+                throw UserError.abort("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
+                                layerCreateArg, valueWithOrigin.origin(), platform.getOS(), platform.getArchitecture());
+            }
+        }
 
         boolean buildingImageLayer = buildingSharedLayer || buildingExtensionLayer;
         boolean buildingInitialLayer = buildingImageLayer && !buildingExtensionLayer;
@@ -282,7 +324,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         List<FileChannel> graphs = List.of();
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport, imageClassLoader.platform);
             boolean strict = SubstrateOptions.LayerOptionVerification.getValue(values);
             boolean verbose = SubstrateOptions.LayerOptionVerificationVerbose.getValue(values);
             loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict, verbose);
@@ -302,8 +344,20 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
 
+        Function<Class<?>, SingletonTrait[]> singletonTraitInjector = null;
+        if (buildingImageLayer) {
+            var applicationLayerOnlySingletons = SubstrateOptions.ApplicationLayerOnlySingletons.getValue(values);
+            SingletonTrait[] appLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.APP_LAYER_ONLY};
+            singletonTraitInjector = (key) -> {
+                if (applicationLayerOnlySingletons.contains(key.getName())) {
+                    return appLayerOnly;
+                }
+                return SingletonTrait.EMPTY_ARRAY;
+            };
+        }
+
         HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, graphs, buildingImageLayer,
-                        buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport);
+                        buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport, singletonTraitInjector);
 
         if (buildingExtensionLayer) {
             imageLayerBuildingSupport.setSingletonLoader(new SVMImageLayerSingletonLoader(imageLayerBuildingSupport, snapshot));
@@ -312,9 +366,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return imageLayerBuildingSupport;
     }
 
-    record OptionLayerVerificationRequests(OptionDescriptor option, EconomicMap<LayerVerifiedOption.Kind, LayerVerifiedOption> requests) {
+    record OptionLayerVerificationRequests(OptionDescriptor option, List<LayerVerifiedOption> requests) {
         OptionLayerVerificationRequests(OptionDescriptor option) {
-            this(option, EconomicMap.create());
+            this(option, new ArrayList<>());
+            assert !(option.getOptionKey() instanceof RuntimeOptionKey) : "LayerVerifiedOption annotation on NI runtime-option";
         }
     }
 
@@ -326,7 +381,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
         for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
             for (LayerVerifiedOption layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerifiedOption.class)) {
-                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.put(layerVerification.kind(), layerVerification);
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.add(layerVerification);
             }
         }
         return result;
@@ -334,15 +389,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     @SuppressFBWarnings(value = "NP", justification = "FB reports null pointer dereferencing because it doesn't see through UserError.guarantee.")
     public static void setupSharedLayerLibrary(NativeLibraries nativeLibs) {
-        Path sharedLibPath = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport().getSharedLibraryPath();
-        Path parent = sharedLibPath.getParent();
-        VMError.guarantee(parent != null, "Shared layer library path doesn't have a parent.");
-        nativeLibs.getLibraryPaths().add(parent.toString());
-        Path fileName = sharedLibPath.getFileName();
-        VMError.guarantee(fileName != null, "Cannot determine shared layer library file name.");
-        String fullLibName = fileName.toString();
-        VMError.guarantee(fullLibName.startsWith("lib") && fullLibName.endsWith(".so"), "Expecting that shared layer library file starts with lib and ends with .so. Found: %s", fullLibName);
-        String libName = fullLibName.substring("lib".length(), fullLibName.length() - ".so".length());
+        LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
+        nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
+        String libName = archiveSupport.getSharedLibraryBaseName();
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }

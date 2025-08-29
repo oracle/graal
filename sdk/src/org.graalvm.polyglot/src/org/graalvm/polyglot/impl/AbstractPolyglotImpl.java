@@ -668,6 +668,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract URI getURI(Object impl);
 
+        public abstract URI getOriginalURI(Object impl);
+
         public abstract Reader getReader(Object impl);
 
         public abstract InputStream getInputStream(Object impl);
@@ -849,6 +851,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract SandboxPolicy getSandboxPolicy(Object engineReceiver);
 
         public abstract void onEngineCollected(Object engineReceiver);
+
+        public abstract boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord);
 
     }
 

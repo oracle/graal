@@ -40,10 +40,16 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 final class SimulateClassInitializerResult {
 
+    /** We didn't try simulation either because the feature is disabled or type's linking failed. */
     static final SimulateClassInitializerResult NOT_SIMULATED_INITIALIZED = new SimulateClassInitializerResult(false, null);
+    /** We tried simulating the type's initializer but failed. */
+    static final SimulateClassInitializerResult FAILED_SIMULATED_INITIALIZED = new SimulateClassInitializerResult(false, null);
+    /** Type was already initialized in the host VM. We didn't try to simulate it. */
     static final SimulateClassInitializerResult INITIALIZED_HOSTED = SimulateClassInitializerResult.forInitialized(EconomicMap.emptyMap());
 
+    /** True if the class initializer was successfully simulated as initialized. */
     final boolean simulatedInitialized;
+    /** The simulated field values published in case of a successful simulation. */
     final UnmodifiableEconomicMap<AnalysisField, JavaConstant> staticFieldValues;
 
     static SimulateClassInitializerResult forInitialized(EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {

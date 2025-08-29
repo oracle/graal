@@ -2,7 +2,7 @@ local ci_common = import '../../../ci/ci_common/common.jsonnet';
 local r = import '../../../ci/ci_common/run-spec.libsonnet';
 local common = import 'common.jsonnet';
 
-local delete_timelimit = (import '../../../ci/ci_common/run-spec-tools.libsonnet').delete_timelimit;
+local check_no_timelimit = (import '../../../ci/ci_common/run-spec-tools.libsonnet').check_no_timelimit;
 
 // Supported JDKs for jobs
 local jdk_name_to_dict = {
@@ -12,7 +12,7 @@ local jdk_name_to_dict = {
 local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
   // this starts with _ on purpose so that it will be evaluated first
   _os_arch_jdk: function(b)
-    delete_timelimit(jdk_name_to_dict[b.jdk] + mapping(b)[b.os][b.arch]),
+    check_no_timelimit(jdk_name_to_dict[b.jdk] + mapping(b)[b.os][b.arch]),
 }));
 
 {
@@ -20,17 +20,21 @@ local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
   // These should always be used to set/add job targets, otherwise the 'target'
   // key is not set.
   target(t): r.task_spec({ target: t, targets+: [t] }),
-  gate: self.target('gate'),
+  tier1: self.target('tier1'),
+  tier2: self.target('tier2'),
+  tier3: self.target('tier3'),
+  tier4: self.target('tier4'),
   daily: self.target('daily'),
   weekly: self.target('weekly'),
   post_merge: self.target('post-merge'),
   // opt-post-merge jobs should have an associated tag to group the jobs
   opt_post_merge(tag): self.target('opt-post-merge') + r.task_spec({ tags+: { opt_post_merge+: [tag] } }),
 
+  capabilities(capabilities): r.task_spec({ capabilities+: capabilities }),
 
   docker_ol8: {
     docker: {
-      image: 'phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8',
+      image: 'buildslave_ol8',
       mount_modules: true,
     },
   },
@@ -75,6 +79,17 @@ local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
   evaluate_late: r.evaluate_late,
   exclude: r.exclude,
 
+  // Tiered jobs should be treated as gate jobs. Moving a job to the tier system
+  // or moving it between tiers should not affect anything else about the job
+  // definition
+  is_gate_target(target): target == 'gate' || std.startsWith(target, 'tier'),
+
+  target_to_prefix(target):
+    if $.is_gate_target(target) then
+      'gate'
+    else
+      target,
+
   // Base Task specification
   job(suite, suite_short=suite, os_arch_mapping=$.default_os_arch): os_arch_jdk_mixin(os_arch_mapping) + r.task_spec(common.catch_test_failures + common.svm {
     // These 4 are provided by the run-spec library
@@ -94,7 +109,7 @@ local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
     setup+: [
       ['cd', './' + suite],
     ],
-    name: std.join('-', [self.target, self.suite_short, self.task_name] + self.variations + [self.os, self.arch, self.jdk]),
+    name: std.join('-', [$.target_to_prefix(self.target), self.suite_short, self.task_name] + self.variations + [self.os, self.arch, self.jdk]),
   }),
 
   // Get all web image flags in the given job

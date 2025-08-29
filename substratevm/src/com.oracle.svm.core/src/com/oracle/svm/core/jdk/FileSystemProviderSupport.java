@@ -36,7 +36,7 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Legacy delegate for backwards compatibility. It should go away eventually (GR-65809).
- * 
+ *
  * @see com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport
  */
 @SuppressWarnings("unused")
@@ -44,7 +44,7 @@ public final class FileSystemProviderSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void register(FileSystemProvider provider) {
-        VMError.guarantee(!FutureDefaultsOptions.isJDKInitializedAtRunTime(), "No need to register FileSystemProvider if the JDK is initialized at run time.");
+        VMError.guarantee(!FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime(), "No need to register FileSystemProvider if the JDK is initialized at run time.");
         FileSystemProviderBuildTimeInitSupport.register(provider);
     }
 

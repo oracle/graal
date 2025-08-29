@@ -130,6 +130,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.FileSystems.ResetablePath;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.FinalizationResult;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -1323,8 +1324,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public void finalizeStore(Object polyglotEngine) {
-            ((PolyglotEngineImpl) polyglotEngine).finalizeStore();
+        public Object finalizeStore(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).finalizeStore();
+        }
+
+        @Override
+        public void restoreStore(Object polyglotEngine, Object finalizationResult) {
+            ((PolyglotEngineImpl) polyglotEngine).restoreStore((FinalizationResult) finalizationResult);
         }
 
         @Override
@@ -1429,6 +1435,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isKnownLoggerId(String id) {
+            return PolyglotLoggers.getInternalIds().contains(id) || LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+        }
+
+        @Override
+        public Collection<String> getKnownLoggerIds() {
+            List<String> ids = new ArrayList<>();
+            ids.addAll(PolyglotLoggers.getInternalIds());
+            ids.addAll(LanguageCache.languages().keySet());
+            ids.addAll(InstrumentCache.load().keySet());
+            Collections.sort(ids);
+            return ids;
+        }
+
+        @Override
         public boolean isContextBoundLogger(Object loggerCache) {
             return ((PolyglotLoggers.LoggerCache) loggerCache).isContextBoundLogger();
         }
@@ -1456,25 +1477,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getLoggerOwner(Object loggerCache) {
             return ((PolyglotLoggers.LoggerCache) loggerCache).getOwner();
-        }
-
-        @Override
-        public Set<String> getLanguageIds() {
-            return LanguageCache.languages().keySet();
-        }
-
-        @Override
-        public Set<String> getInstrumentIds() {
-            Set<String> ids = new HashSet<>();
-            for (InstrumentCache cache : InstrumentCache.load()) {
-                ids.add(cache.getId());
-            }
-            return ids;
-        }
-
-        @Override
-        public Set<String> getInternalIds() {
-            return PolyglotLoggers.getInternalIds();
         }
 
         @Override
@@ -2113,8 +2115,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
+            if (currentContext == null && Thread.currentThread() instanceof LanguageSystemThread systemThread) {
+                currentContext = systemThread.polyglotContext;
+            }
             // Ensure that thread is entered in correct context
-            if (PolyglotContextImpl.requireContext() != languageContext.context) {
+            if (currentContext != languageContext.context) {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
@@ -2186,6 +2192,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Map<String, InternalResource> getEngineInternalResources() {
+            Map<String, InternalResource> result = new HashMap<>();
+            for (InternalResourceCache cache : InternalResourceCache.getEngineResources()) {
+                result.put(cache.getResourceId(), cache.getInternalResource());
+            }
+            return result;
+        }
+
+        @Override
         public Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException {
             InternalResourceCache resourceCache = InternalResourceCache.getEngineResource(resourceId);
             if (resourceCache != null) {
@@ -2204,9 +2219,9 @@ final class EngineAccessor extends Accessor {
             if (languageCache != null) {
                 return languageCache.getResourceIds();
             }
-            for (InstrumentCache instrumentCache : InstrumentCache.load()) {
-                if (instrumentCache.getId().equals(componentId)) {
-                    return instrumentCache.getResourceIds();
+            for (Map.Entry<String, InstrumentCache> entry : InstrumentCache.load().entrySet()) {
+                if (entry.getKey().equals(componentId)) {
+                    return entry.getValue().getResourceIds();
                 }
             }
             throw new IllegalArgumentException(componentId);

@@ -36,6 +36,7 @@ import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
+import com.oracle.svm.core.metaspace.Metaspace;
 
 import jdk.graal.compiler.word.Word;
 
@@ -60,7 +61,7 @@ public final class ObjectRefFixupVisitor implements UninterruptibleObjectReferen
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        if (p.isNull() || HeapImpl.getHeapImpl().isInImageHeap(p)) {
+        if (p.isNull() || HeapImpl.getHeapImpl().isInImageHeap(p) || Metaspace.singleton().isInAddressSpace(p)) {
             return;
         }
 

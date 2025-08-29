@@ -42,9 +42,9 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -55,8 +55,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,6 +71,8 @@ import static java.lang.System.lineSeparator;
 @AutomaticallyRegisteredFeature
 public final class DynamicAccessDetectionFeature implements InternalFeature {
 
+    // We use a ConcurrentSkipListMap, as opposed to a ConcurrentHashMap, to maintain
+    // order of methods by access kind.
     public record MethodsByAccessKind(Map<DynamicAccessDetectionPhase.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
         MethodsByAccessKind() {
             this(new ConcurrentSkipListMap<>());
@@ -85,7 +87,9 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    public record CallLocationsByMethod(Map<String, ConcurrentLinkedQueue<String>> callLocationsByMethod) {
+    // We use a ConcurrentSkipListSet, as opposed to a wrapped ConcurrentHashMap, to maintain
+    // order of call locations by method.
+    public record CallLocationsByMethod(Map<String, ConcurrentSkipListSet<String>> callLocationsByMethod) {
         CallLocationsByMethod() {
             this(new ConcurrentSkipListMap<>());
         }
@@ -94,20 +98,20 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             return callLocationsByMethod.keySet();
         }
 
-        public ConcurrentLinkedQueue<String> getMethodCallLocations(String methodName) {
-            return callLocationsByMethod.getOrDefault(methodName, new ConcurrentLinkedQueue<>());
+        public ConcurrentSkipListSet<String> getMethodCallLocations(String methodName) {
+            return callLocationsByMethod.getOrDefault(methodName, new ConcurrentSkipListSet<>());
         }
     }
 
-    private static final Set<String> neverInlineMethods = Set.of(
+    private static final Set<String> neverInlineTrivialMethods = Set.of(
                     "java.lang.invoke.MethodHandles$Lookup.unreflectGetter",
                     "java.lang.invoke.MethodHandles$Lookup.unreflectSetter",
                     "java.io.ObjectInputStream.readObject",
                     "java.io.ObjectStreamClass.lookup",
                     "java.lang.reflect.Array.newInstance",
-                    "java.lang.ClassLoader.loadClass");
+                    "java.lang.ClassLoader.loadClass",
+                    "java.lang.foreign.Linker.nativeLinker");
 
-    public static final String GRAAL_SUBPATH = "/graal/";
     public static final String TRACK_ALL = "all";
 
     private static final String OUTPUT_DIR_NAME = "dynamic-access";
@@ -115,7 +119,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private static final String TO_CONSOLE = "to-console";
     private static final String NO_DUMP = "no-dump";
 
-    private UnmodifiableEconomicSet<String> sourceEntries; // Class path entries and module or
+    private EconomicSet<String> sourceEntries; // Class path entries and module or
     // package names
     private final Map<String, MethodsByAccessKind> callsBySourceEntry;
     private final Set<FoldEntry> foldEntries = ConcurrentHashMap.newKeySet();
@@ -136,7 +140,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     public void addCall(String entry, DynamicAccessDetectionPhase.DynamicAccessKind accessKind, String call, String callLocation) {
         MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
         CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, k -> new CallLocationsByMethod());
-        ConcurrentLinkedQueue<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ConcurrentLinkedQueue<>());
+        ConcurrentSkipListSet<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ConcurrentSkipListSet<>());
         callLocations.add(callLocation);
     }
 
@@ -144,12 +148,12 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         return callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
     }
 
-    public UnmodifiableEconomicSet<String> getSourceEntries() {
+    public EconomicSet<String> getSourceEntries() {
         return sourceEntries;
     }
 
     public static String getEntryName(String path) {
-        String fileName = path.substring(path.lastIndexOf("/") + 1);
+        String fileName = path.substring(path.lastIndexOf(File.separator) + 1);
         if (fileName.endsWith(".jar")) {
             fileName = fileName.substring(0, fileName.lastIndexOf('.'));
         }
@@ -321,6 +325,13 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess access) {
         DynamicAccessDetectionFeature.instance().reportDynamicAccess();
         DynamicAccessDetectionPhase.clearMethodSignatures();
+        foldEntries.clear();
+    }
+
+    @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess access) {
+        callsBySourceEntry.clear();
+        sourceEntries.clear();
     }
 
     @Override
@@ -356,8 +367,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             }
         });
         if (!classLoaderSupport.dynamicAccessSelectorsEmpty()) {
-            for (String method : neverInlineMethods) {
-                SubstrateOptions.NeverInline.update(hostedValues, method);
+            for (String method : neverInlineTrivialMethods) {
+                SubstrateOptions.NeverInlineTrivial.update(hostedValues, method);
             }
         }
     }

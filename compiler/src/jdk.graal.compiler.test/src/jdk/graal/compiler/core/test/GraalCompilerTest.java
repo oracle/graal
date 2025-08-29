@@ -81,7 +81,7 @@ import jdk.graal.compiler.core.phases.fuzzing.PhasePlanSerializer;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
@@ -153,6 +153,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -489,7 +490,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     @Override
-    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
+    protected Collection<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         return Collections.singletonList(new GraalDebugHandlersFactory(getSnippetReflection()));
     }
 
@@ -1008,7 +1009,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() != null) {
-            testAgainstExpected(options, method, expect, receiver, args);
+            testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
         }
         return expect;
     }
@@ -1031,15 +1032,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
-    }
-
-    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(getInitialOptions(), method, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(options, method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+        testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
@@ -1047,7 +1044,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         assertEquals(expect, actual);
     }
 
-    protected Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected final Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
         ProfilingInfo profile = method.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
@@ -1186,7 +1184,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-
             if (useCache) {
                 cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
@@ -1368,7 +1365,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
-        return backend.addInstalledCode(debug, method, null, compilationResult);
+        return backend.createInstalledCode(debug, method, null, compilationResult, null, false, true, null);
     }
 
     protected InstalledCode addDefaultMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {

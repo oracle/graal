@@ -40,7 +40,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.MatchStatement;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -60,11 +60,11 @@ public class GraalCompilerSupport {
     protected EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
     protected EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
 
-    protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
+    protected final List<DebugDumpHandlersFactory> debugHandlersFactories = new ArrayList<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public GraalCompilerSupport() {
-        for (DebugHandlersFactory c : DebugHandlersFactory.LOADER) {
+        for (DebugDumpHandlersFactory c : DebugDumpHandlersFactory.LOADER) {
             debugHandlersFactories.add(c);
         }
     }
@@ -118,7 +118,7 @@ public class GraalCompilerSupport {
         return lirPhaseStatistics;
     }
 
-    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+    public List<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         return debugHandlersFactories;
     }
 }

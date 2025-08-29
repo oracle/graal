@@ -40,6 +40,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
@@ -224,6 +225,7 @@ public class ThreadStackPrinter {
         }
 
         private void logFrameRaw(Log log, Pointer sp, CodePointer ip, long frameSize) {
+            logLayer(log, ip);
             logSPAndIP(log, sp, ip);
             log.string(" size=");
             if (frameSize >= 0) {
@@ -235,6 +237,23 @@ public class ThreadStackPrinter {
             }
             log.spaces(2);
             printedFrames++;
+        }
+
+        private static void logLayer(Log log, CodePointer ip) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+                int layerNumber = 0;
+                while (info.isNonNull()) {
+                    if (CodeInfoAccess.contains(info, ip)) {
+                        log.string("L").unsigned(layerNumber).spaces(2);
+                        return;
+                    }
+                    info = CodeInfoAccess.getNextImageCodeInfo(info);
+                    layerNumber++;
+                }
+                // No layer information found, print spaces for alignment.
+                log.spaces(4);
+            }
         }
 
         private static void logSPAndIP(Log log, Pointer sp, CodePointer ip) {

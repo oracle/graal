@@ -40,7 +40,13 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 public interface ClassLoadingSupport {
+    static ClassLoadingSupport singleton() {
+        return ImageSingletons.lookup(ClassLoadingSupport.class);
+    }
+
     boolean isSupported();
 
     boolean followReflectionConfiguration();

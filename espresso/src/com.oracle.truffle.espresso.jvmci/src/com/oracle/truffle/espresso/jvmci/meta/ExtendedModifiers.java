@@ -31,6 +31,7 @@ public final class ExtendedModifiers {
     public static final int HIDDEN = 0x00100000;
     public static final int FINALIZER = 0x00010000;
     static final int STABLE_FIELD = 0x00010000;
+    static final int SCOPED_METHOD = 0x00200000;
 
     private ExtendedModifiers() {
     }

@@ -27,8 +27,13 @@ Developers should run the `native-image` builder in a dedicated environment, suc
 Native Image can embed a Software Bill of Materials (SBOM) which is an inventory of all the components, libraries, and modules that make up an application.
 Read more in [Software Bill of Materials (SBOM) in Native Image](SBOM.md).
 
+## Obfuscation 
 
-## Java serialization in Native Image
+Native Image provides strong obfuscation capabilities by default through native compilation and aggressive optimizations. 
+For an additional layer of protection, use the experimental [Advanced Obfuscation feature](Obfuscation.md) to obfuscate symbol names (module, package, class, method, field, and source file names).
+Obfuscation makes reverse engineering more difficult and helps protect intellectual property. 
+
+## Java serialization
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable.
 Unless picked up by native image analysis automatically, [these classes have to be prespecified](../reference-manual/native-image/ReachabilityMetadata.md#reflection), as classes not contained in a native executable cannot be deserialized.

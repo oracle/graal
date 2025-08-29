@@ -31,9 +31,12 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -48,35 +51,30 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.TestSnippets;
 import jdk.graal.compiler.replacements.TestSnippets.TransplantTestSnippets;
 import jdk.graal.compiler.replacements.nodes.LateLoweredNode;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class TransplantLowLevelGraphTest extends GraalCompilerTest {
+    private static DebugCloseable snippetScope;
+
+    private static TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
 
     @BeforeClass
     public static void setup() {
-        /**
-         * Ensure snippets can be registered in a test setup running jargraal only.
-         */
-        System.setProperty("GraalUnitTest", "true");
+        Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        OptionValues options = getInitialOptions();
+        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
+        snippetScope = replacements.suppressEncodedSnippets();
+        transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(options, providers);
+        replacements.encode(options);
     }
 
     @AfterClass
     public static void teardown() {
-        System.clearProperty("GraalUnitTest");
-    }
-
-    TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
-
-    @SuppressWarnings("this-escape")
-    public TransplantLowLevelGraphTest() {
-        Providers p = getProviders();
-        OptionValues opt = getInitialOptions();
-
-        // ensure that the snippets are registered
-        transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(opt, p);
+        snippetScope.close();
     }
 
     @Override
@@ -95,7 +93,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producer, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producer, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         // no args
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);
                         return template;
@@ -118,7 +116,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producerWithArgs, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producerWithArgs, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         args.add("a", arg0);
                         args.add("b", arg1);
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);
@@ -142,7 +140,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
                 lateMacroInvoke.setTemplateProducer(new Supplier<SnippetTemplate>() {
                     @Override
                     public SnippetTemplate get() {
-                        Arguments args = new Arguments(transplantTestSnippets.producerWithDeopt, GuardsStage.AFTER_FSA, LoweringTool.StandardLoweringStage.LOW_TIER);
+                        Arguments args = new Arguments(transplantTestSnippets.producerWithDeopt, GuardsStage.AFTER_FSA, true, LoweringTool.StandardLoweringStage.LOW_TIER);
                         args.add("a", arg0);
                         args.add("b", arg1);
                         SnippetTemplate template = transplantTestSnippets.template(getProviders(), lateMacroInvoke, args);

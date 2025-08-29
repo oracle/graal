@@ -24,9 +24,13 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
@@ -43,7 +47,8 @@ public final class DebuggerConnection implements Commands {
     }
 
     static void establishDebuggerConnection(DebuggerController controller, DebuggerController.SetupState setupState, boolean isReconnect, CountDownLatch startupLatch) {
-        Thread jdwpReceiver = new Thread(new JDWPReceiver(controller, setupState, isReconnect, startupLatch), "jdwp-receiver");
+        Thread jdwpReceiver = controller.getContext().createSystemThread(new JDWPReceiver(controller, setupState, isReconnect, startupLatch));
+        jdwpReceiver.setName("jdwp-receiver");
         controller.addDebuggerReceiverThread(jdwpReceiver);
         jdwpReceiver.setDaemon(true);
         jdwpReceiver.start();
@@ -104,18 +109,14 @@ public final class DebuggerConnection implements Commands {
 
     private static class JDWPReceiver implements Runnable {
 
-        private static final Object NOT_ENTERED_MARKER = new Object();
         private DebuggerController.SetupState setupState;
         private final DebuggerController controller;
-        private RequestedJDWPEvents requestedJDWPEvents;
-        private DebuggerConnection debuggerConnection;
         private final boolean isReconnect;
         private final CountDownLatch latch;
 
         JDWPReceiver(DebuggerController controller, DebuggerController.SetupState setupState, boolean isReconnect, CountDownLatch latch) {
             this.setupState = setupState;
             this.controller = controller;
-            this.requestedJDWPEvents = new RequestedJDWPEvents(controller);
             this.isReconnect = isReconnect;
             this.latch = latch;
         }
@@ -123,6 +124,7 @@ public final class DebuggerConnection implements Commands {
         @Override
         public void run() {
             // first, complete the connection setup which is potentially blocking
+            DebuggerConnection debuggerConnection;
             try {
                 Socket connectionSocket;
                 if (setupState.socket != null) {
@@ -161,7 +163,8 @@ public final class DebuggerConnection implements Commands {
                     }
 
                     // OK, we're ready to fire up the JDWP transmitter thread too
-                    Thread jdwpSender = new Thread(new JDWPSender(socketConnection), "jdwp-transmitter");
+                    Thread jdwpSender = controller.getContext().createSystemThread(new JDWPSender(socketConnection));
+                    jdwpSender.setName("jdwp-transmitter");
                     controller.addDebuggerSenderThread(jdwpSender);
                     jdwpSender.setDaemon(true);
                     jdwpSender.start();
@@ -190,16 +193,18 @@ public final class DebuggerConnection implements Commands {
                 latch.countDown();
             }
             // Now, begin processing packets when they start to flow from the debugger.
-            // Make sure this thread is entered in the context
+            final BlockingQueue<Packet> packetQueue = new LinkedBlockingQueue<>();
+            final AtomicBoolean processorClose = new AtomicBoolean(false);
+            Thread jdwpProcessor = controller.getContext().createPolyglotThread(new JDWPProcessor(controller, debuggerConnection, packetQueue, processorClose));
+            jdwpProcessor.setName("jdwp-processor");
+            controller.addDebuggerProcessorThread(jdwpProcessor);
+            jdwpProcessor.setDaemon(true);
+            jdwpProcessor.start();
             try {
                 while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
-                    Object previous = NOT_ENTERED_MARKER;
                     try {
-                        // get the packet outside the Truffle context, because it's a blocking IO
-                        // operation
                         Packet packet = Packet.fromByteArray(debuggerConnection.connection.readPacket());
-                        previous = controller.enterTruffleContext();
-                        processPacket(packet);
+                        packetQueue.add(packet);
                     } catch (IOException e) {
                         if (!debuggerConnection.isOpen()) {
                             // when the socket is closed, we're done
@@ -207,17 +212,54 @@ public final class DebuggerConnection implements Commands {
                         }
                         if (!Thread.currentThread().isInterrupted()) {
                             controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                            Thread.currentThread().interrupt(); // And set the interrupt flag again
                         }
                     } catch (ConnectionClosedException e) {
                         break;
-                    } finally {
-                        if (previous != NOT_ENTERED_MARKER) {
-                            controller.leaveTruffleContext(previous);
-                        }
                     }
                 }
             } finally {
+                processorClose.set(true);
+                jdwpProcessor.interrupt();
                 controller.getEventListener().onDetach();
+            }
+        }
+    }
+
+    private static class JDWPProcessor implements Runnable {
+
+        private final DebuggerController controller;
+        private final DebuggerConnection debuggerConnection;
+        private final RequestedJDWPEvents requestedJDWPEvents;
+        private final BlockingQueue<Packet> packetQueue;
+        private final AtomicBoolean close;
+
+        private JDWPProcessor(DebuggerController controller, DebuggerConnection debuggerConnection,
+                        BlockingQueue<Packet> packetQueue, AtomicBoolean close) {
+            this.controller = controller;
+            this.debuggerConnection = debuggerConnection;
+            this.requestedJDWPEvents = new RequestedJDWPEvents(controller);
+            this.packetQueue = packetQueue;
+            this.close = close;
+        }
+
+        @Override
+        public void run() {
+            while (!close.get()) {
+                Packet packet;
+                try {
+                    packet = TruffleSafepoint.getCurrent().setBlockedFunction(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT,
+                                    BlockingQueue::take, packetQueue, () -> breakIfClosed(), null);
+                } catch (ProcessorClosedException ex) {
+                    break;
+                }
+                processPacket(packet);
+            }
+        }
+
+        private void breakIfClosed() {
+            if (close.get()) {
+                throw new ProcessorClosedException();
             }
         }
 
@@ -236,7 +278,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.VirtualMachine.ID: {
                             switch (packet.cmd) {
                                 case JDWP.VirtualMachine.VERSION.ID:
-                                    result = JDWP.VirtualMachine.VERSION.createReply(packet, controller.getVirtualMachine());
+                                    result = JDWP.VirtualMachine.VERSION.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.ID:
                                     result = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, controller, context);
@@ -254,7 +296,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.DISPOSE.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.IDSIZES.ID:
-                                    result = JDWP.VirtualMachine.IDSIZES.createReply(packet, controller.getVirtualMachine());
+                                    result = JDWP.VirtualMachine.IDSIZES.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.SUSPEND.ID:
                                     result = JDWP.VirtualMachine.SUSPEND.createReply(packet, controller);
@@ -588,7 +630,7 @@ public final class DebuggerConnection implements Commands {
                                     result = requestedJDWPEvents.clearRequest(packet);
                                     break;
                                 case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID:
-                                    result = requestedJDWPEvents.clearAllRequests(packet);
+                                    result = requestedJDWPEvents.clearAllBreakpointRequests(packet);
                                     break;
                                 default:
                                     result = unknownCommand(packet, controller);
@@ -664,6 +706,11 @@ public final class DebuggerConnection implements Commands {
                 reply.errorCode(ErrorCodes.INTERNAL);
                 debuggerConnection.handleReply(packet, new CommandResult(reply));
             }
+        }
+
+        private static class ProcessorClosedException extends RuntimeException {
+
+            private static final long serialVersionUID = 8467327507834079474L;
         }
     }
 

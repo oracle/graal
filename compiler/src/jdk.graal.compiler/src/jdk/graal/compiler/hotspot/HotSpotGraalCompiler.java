@@ -44,11 +44,12 @@ import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
+import jdk.graal.compiler.hotspot.phases.VerifyLockDepthPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
@@ -106,7 +107,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
     private final BootstrapWatchDog bootstrapWatchDog;
-    private List<DebugHandlersFactory> factories;
+    private List<DebugDumpHandlersFactory> factories;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
@@ -116,7 +117,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !DebugOptions.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
-    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+    public List<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         if (factories == null) {
             factories = Collections.singletonList(new GraalDebugHandlersFactory(graalRuntime.getHostProviders().getSnippetReflection()));
         }
@@ -380,6 +381,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        if (Assertions.assertionsEnabled()) {
+            newGbs.appendPhase(new VerifyLockDepthPhase());
+        }
         if (isOSR) {
             newGbs.appendPhase(new OnStackReplacementPhase());
         }

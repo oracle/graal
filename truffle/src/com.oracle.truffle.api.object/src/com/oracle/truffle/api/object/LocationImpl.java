@@ -47,7 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 @SuppressWarnings("deprecation")
-abstract non-sealed class LocationImpl extends Location {
+abstract sealed class LocationImpl extends Location permits ExtLocations.InstanceLocation, ExtLocations.ValueLocation {
 
     protected LocationImpl() {
     }
@@ -64,18 +64,18 @@ abstract non-sealed class LocationImpl extends Location {
 
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
-        set(store, value, checkShape(store, shape), false);
+        try {
+            set(store, value, checkShape(store, shape), false);
+        } catch (UncheckedIncompatibleLocationException e) {
+            throw incompatibleLocation();
+        }
     }
 
     @Override
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         if (canStore(value)) {
             DynamicObjectSupport.grow(store, oldShape, newShape);
-            try {
-                setInternal(store, value);
-            } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
-                throw shouldNotHappen(ex);
-            }
+            setSafe(store, value, false, true);
             DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
         } else {
             throw incompatibleLocation();
@@ -128,17 +128,17 @@ abstract non-sealed class LocationImpl extends Location {
      * @param value the value to be stored.
      * @param guard the result of the shape check guarding this property write or {@code false}.
      * @param init if true, this is the initial assignment of a property location; ignore final.
-     * @throws com.oracle.truffle.api.object.IncompatibleLocationException if the value cannot be
-     *             stored in this storage location.
+     * @throws UncheckedIncompatibleLocationException if the value cannot be stored in this storage
+     *             location.
      * @see #setSafe(DynamicObject, Object, boolean, boolean)
      */
-    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException;
+    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init);
 
     /**
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setIntSafe(DynamicObject, int, boolean, boolean)
      */
-    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) {
         set(store, value, guard, init);
     }
 
@@ -146,7 +146,7 @@ abstract non-sealed class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setLongSafe(DynamicObject, long, boolean, boolean)
      */
-    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) {
         set(store, value, guard, init);
     }
 
@@ -154,7 +154,7 @@ abstract non-sealed class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setDoubleSafe(DynamicObject, double, boolean, boolean)
      */
-    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) {
         set(store, value, guard, init);
     }
 
@@ -165,25 +165,6 @@ abstract non-sealed class LocationImpl extends Location {
         return store.getShape() == shape;
     }
 
-    protected final void setInternal(DynamicObject store, Object value) throws com.oracle.truffle.api.object.IncompatibleLocationException {
-        set(store, value, false, true);
-    }
-
-    @Override
-    public boolean canStore(Object value) {
-        return true;
-    }
-
-    @SuppressWarnings("unused")
-    protected boolean canStoreFinal(DynamicObject store, Object value) {
-        return true;
-    }
-
-    @Override
-    public boolean isFinal() {
-        return false;
-    }
-
     @Override
     public boolean isConstant() {
         return false;
@@ -191,10 +172,7 @@ abstract non-sealed class LocationImpl extends Location {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (isFinal() ? 1231 : 1237);
-        return result;
+        return getClass().hashCode();
     }
 
     @Override
@@ -213,9 +191,8 @@ abstract non-sealed class LocationImpl extends Location {
 
     @Override
     public String toString() {
-        String finalString = isFinal() ? "f" : "";
         String typeString = Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
-        return finalString + typeString + getWhereString();
+        return typeString + getWhereString();
     }
 
     protected String getWhereString() {
@@ -269,56 +246,40 @@ abstract non-sealed class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      */
     protected final void setSafe(DynamicObject store, Object value, boolean guard, boolean init) {
-        try {
-            set(store, value, guard, init);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
-            throw shouldNotHappen(e);
-        }
+        set(store, value, guard, init);
     }
 
     /**
      * @see #setInt(DynamicObject, int, boolean, boolean)
      */
     protected final void setIntSafe(DynamicObject store, int value, boolean guard, boolean init) {
-        try {
-            setInt(store, value, guard, init);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
-            throw shouldNotHappen(e);
-        }
+        setInt(store, value, guard, init);
     }
 
     /**
      * @see #setLong(DynamicObject, long, boolean, boolean)
      */
     protected final void setLongSafe(DynamicObject store, long value, boolean guard, boolean init) {
-        try {
-            setLong(store, value, guard, init);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
-            throw shouldNotHappen(e);
-        }
+        setLong(store, value, guard, init);
     }
 
     /**
      * @see #setDouble(DynamicObject, double, boolean, boolean)
      */
     protected final void setDoubleSafe(DynamicObject store, double value, boolean guard, boolean init) {
-        try {
-            setDouble(store, value, guard, init);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
-            throw shouldNotHappen(e);
-        }
+        setDouble(store, value, guard, init);
     }
 
-    protected boolean isIntLocation() {
-        return false;
+    protected final boolean isIntLocation() {
+        return this instanceof ExtLocations.IntLocation;
     }
 
-    protected boolean isLongLocation() {
-        return false;
+    protected final boolean isDoubleLocation() {
+        return this instanceof ExtLocations.DoubleLocation;
     }
 
-    protected boolean isDoubleLocation() {
-        return false;
+    protected final boolean isLongLocation() {
+        return this instanceof ExtLocations.LongLocation;
     }
 
     protected boolean isImplicitCastIntToLong() {
@@ -329,8 +290,8 @@ abstract non-sealed class LocationImpl extends Location {
         return false;
     }
 
-    protected boolean isObjectLocation() {
-        return false;
+    protected final boolean isObjectLocation() {
+        return this instanceof ExtLocations.ObjectLocation;
     }
 
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
@@ -368,13 +329,31 @@ abstract non-sealed class LocationImpl extends Location {
     protected void clear(@SuppressWarnings("unused") DynamicObject store) {
     }
 
+    protected abstract int getOrdinal();
+
     @Override
     public Assumption getFinalAssumption() {
         return Assumption.NEVER_VALID;
     }
 
-    protected static RuntimeException shouldNotHappen(Exception e) {
+    protected static RuntimeException incompatibleLocationException() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IllegalStateException(e);
+        throw UncheckedIncompatibleLocationException.instance();
+    }
+
+    /**
+     * This exception is thrown on an attempt to assign an incompatible value to a location.
+     */
+    @SuppressWarnings("serial")
+    static final class UncheckedIncompatibleLocationException extends RuntimeException {
+        private static final UncheckedIncompatibleLocationException INSTANCE = new UncheckedIncompatibleLocationException();
+
+        private UncheckedIncompatibleLocationException() {
+            super(null, null, false, false);
+        }
+
+        static UncheckedIncompatibleLocationException instance() {
+            return INSTANCE;
+        }
     }
 }

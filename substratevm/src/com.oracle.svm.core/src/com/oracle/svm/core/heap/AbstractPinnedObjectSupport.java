@@ -40,6 +40,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -131,8 +132,13 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean needsPinning(Object object) {
-        return !SubstrateOptions.useEpsilonGC() && object != null && !Heap.getHeap().isInImageHeap(object);
+    public static boolean needsPinning(Object object) {
+        return !isImplicitlyPinned(object);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean isImplicitlyPinned(Object object) {
+        return SubstrateOptions.useEpsilonGC() || object == null || Heap.getHeap().isInImageHeap(object) || Metaspace.singleton().isInAddressSpace(object);
     }
 
     public static class PinnedObjectImpl implements PinnedObject {

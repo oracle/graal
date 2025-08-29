@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(NodeLibrary.class)
@@ -70,6 +71,8 @@ public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNo
         EspressoThreadLocalState tls = getContext().getLanguage().getThreadLocalState();
         tls.blockContinuationSuspension();
         try {
+            // We consider substitutions non-native, as they are in Espresso's control.
+            assert ThreadState.currentThreadInEspresso(getContext());
             return substitution.invoke(frame.getArguments());
         } finally {
             tls.unblockContinuationSuspension();

@@ -152,8 +152,6 @@ jobs:
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               NATIVE_IMAGES: "graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,lib:llvmvm"
-              DISABLE_POLYGLOT: true
-              DISABLE_LIBPOLYGLOT: true
           - env:
               JDK_VERSION: "latest"
               GATE_TAGS: "build"
@@ -202,9 +200,7 @@ jobs:
       run: sudo apt install gdb
     - name: Install style dependencies
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
-      run: |
-        sudo apt install python3-pip python-setuptools
-        sudo pip install $(jq -r '[.pip | to_entries[] | join("")] | join(" ")' common.json)
+      run: ${MX_PYTHON} -m pip install $(jq -r '[.pip | to_entries[] | join("")] | join(" ")' common.json)
     - name: Install additional pip packages
       if: ${{ matrix.env.PIP_PACKAGES != '' }}
       run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}

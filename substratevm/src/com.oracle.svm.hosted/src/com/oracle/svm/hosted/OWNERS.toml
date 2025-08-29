@@ -1,0 +1,17 @@
+[[rule]]
+files = "ResourcesFeature.java ClassLoaderSupportImpl.java"
+all = [
+    "david.nestorovic@oracle.com",
+    "ivan.ristovic@oracle.com"
+]
+any = [
+]
+
+[[rule]]
+files = "ModuleLayerFeature.java"
+all = [
+    "ivan.ristovic@oracle.com",
+    "paul.woegerer@oracle.com"
+]
+any = [
+]

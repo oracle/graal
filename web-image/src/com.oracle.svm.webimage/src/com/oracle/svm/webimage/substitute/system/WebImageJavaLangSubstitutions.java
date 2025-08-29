@@ -59,6 +59,7 @@ import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import org.graalvm.nativeimage.ProcessProperties;
 
 /*
  * Checkstyle: stop method name check
@@ -232,7 +233,11 @@ final class Target_java_lang_Thread_Web {
     }
 
     @Substitute
-    private static void sleep(long millis) throws InterruptedException {
+    private static void sleep(long millis) {
+    }
+
+    @Substitute
+    private static void sleepNanos0(long nanos) {
     }
 
     @Substitute
@@ -254,6 +259,16 @@ final class Target_java_lang_Thread_Web {
     public static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         Thread onlyThread = Thread.currentThread();
         return java.util.Collections.singletonMap(onlyThread, onlyThread.getStackTrace());
+    }
+}
+
+@TargetClass(className = "java.lang.VirtualThread")
+@SuppressWarnings("unused")
+final class Target_java_lang_VirtualThread_Web {
+    @Substitute
+    @SuppressWarnings("static-method")
+    private void runContinuation() {
+        throw new UnsupportedOperationException("VirtualThread.runContinuation");
     }
 }
 
@@ -629,7 +644,7 @@ final class Target_java_lang_Module_Web {
             resName = resName.substring(1);
         }
         ResourceStorageEntryBase res = Resources.getAtRuntime(SubstrateUtil.cast(this, Module.class), resName, true);
-        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+        return res == null ? null : new ByteArrayInputStream(res.getData()[0]);
     }
 }
 
@@ -876,6 +891,29 @@ final class Target_java_util_logging_Logger_Web {
     @Substitute
     public static Logger getLogger(String name) {
         return Logger.getGlobal();
+    }
+}
+
+@TargetClass(className = "java.lang.ProcessHandleImpl")
+@SuppressWarnings("unused")
+final class Target_java_lang_ProcessHandleImpl_Web {
+
+    @Substitute
+    private static void initNative() {
+        // Do nothing. Native code only gathers some information about the underlying system.
+    }
+
+    @Substitute
+    private static long getCurrentPid0() {
+        return ProcessProperties.getProcessID();
+    }
+
+    @Substitute
+    private static long isAlive0(long pid) {
+        if (pid == ProcessProperties.getProcessID()) {
+            return 0L;
+        }
+        return -1L;
     }
 }
 

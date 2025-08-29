@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
 suite = {
   "mxversion": "7.55.2",
   "name" : "wasm",
@@ -93,6 +94,26 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
+    },
+
+    "org.graalvm.wasm.jdk25" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.wasm",
+      ],
+      "requires": [
+        "jdk.incubator.vector", # Vector API
+      ],
+      "overlayTarget" : "org.graalvm.wasm",
+      "multiReleaseJarVersion" : "25",
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "25+",
+      "forceJavac": True,
+      "workingSets" : "WebAssembly",
+      "license" : "UPL",
+      "javac.lint.overrides" : "-incubating",
+      "spotbugs" : "false",
     },
 
     "org.graalvm.wasm.launcher" : {
@@ -204,6 +225,13 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.wasm.polybench": {
+      "subDir": "benchmarks",
+      "class": "GraalVmWatProject",
+      "defaultBuild": False,
+      "testProject": True,
+    },
+
     "org.graalvm.wasm.memory" : {
       "subDir": "src",
       "sourceDirs" : ["src"],
@@ -247,6 +275,7 @@ suite = {
         # Configure launcher
         "-Dorg.graalvm.launcher.class=org.graalvm.wasm.launcher.WasmLauncher",
       ],
+      "dynamicBuildArgs": "libwasmvm_build_args",
     },
   },
 
@@ -273,6 +302,7 @@ suite = {
         "name" : "org.graalvm.wasm",
         "requires": [
           "org.graalvm.collections",
+          "static jdk.incubator.vector", # Vector API
         ],
       },
       "subDir" : "src",
@@ -291,6 +321,7 @@ suite = {
         "tag": ["default", "public"],
       },
       "noMavenJavadoc": True,
+      "useModulePath": True,
     },
 
     "WASM_POM": {
@@ -324,18 +355,34 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
-      "mainClass" : "org.graalvm.wasm.WasmLauncher",
+      "mainClass" : "org.graalvm.wasm.launcher.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
+      "useModulePath": True,
     },
 
     "WASM_TESTS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.test",
+        "exports" : [
+          # Export everything to junit and dependent test distributions.
+          "org.graalvm.wasm.test*",
+          # Export utils to JMH benchmarks
+          "org.graalvm.wasm.utils*",
+        ],
+        "requires" : [
+          "org.graalvm.polyglot",
+          "org.graalvm.collections",
+          "org.graalvm.truffle",
+        ],
+      },
       "dependencies" : [
         "org.graalvm.wasm.test",
         "org.graalvm.wasm.utils",
       ],
       "exclude" : [
         "mx:JUNIT",
+        "mx:HAMCREST",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
@@ -343,10 +390,22 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+      "useModulePath": True,
       "unittestConfig": "wasm",
     },
 
     "WASM_TESTCASES" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.testcases",
+        "exports" : [
+          # Export everything to junit
+          "org.graalvm.wasm.testcases* to junit",
+        ],
+        "opens" : [
+          "test.c",
+          "test.wat",
+        ],
+      },
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "org.graalvm.wasm.testcases",
@@ -360,11 +419,19 @@ suite = {
       ],
       "defaultBuild" : False,
       "maven" : False,
+      "useModulePath" : True,
       "testDistribution" : True,
       "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.benchmark",
+        "requires" : [
+          "java.compiler",
+          "org.graalvm.polyglot",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.benchmark",
@@ -377,6 +444,7 @@ suite = {
         "WASM_TESTS",
       ],
       "maven" : False,
+      "useModulePath": True,
       "testDistribution" : True,
     },
 
@@ -400,6 +468,17 @@ suite = {
       "platformDependent" : True,
       "maven" : False,
       "testDistribution" : True,
+    },
+
+    "WASM_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for Wasm polybench benchmarks",
+      "layout": {
+        "./": [
+          "dependency:org.graalvm.wasm.polybench/*",
+        ],
+      },
+      "defaultBuild": False,
+      "testDistribution": True,
     },
 
     "WASM_GRAALVM_SUPPORT": {

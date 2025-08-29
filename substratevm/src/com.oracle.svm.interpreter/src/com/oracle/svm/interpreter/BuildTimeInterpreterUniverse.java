@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEINTERFACE;
-import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESPECIAL;
-import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEVIRTUAL;
 
 import java.lang.reflect.Modifier;
@@ -45,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.interpreter.classfile.ClassFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -123,7 +122,7 @@ public final class BuildTimeInterpreterUniverse {
     private final Map<ResolvedJavaMethod, InterpreterResolvedJavaMethod> methods;
     private final Map<String, InterpreterUnresolvedSignature> signatures;
     private final Map<Number, PrimitiveConstant> primitiveConstants;
-    private final Map<String, ReferenceConstant<String>> strings;
+    private final Map<String, String> strings;
     private final Map<ImageHeapConstant, ReferenceConstant<?>> objectConstants;
 
     private final Map<ExceptionHandler, ExceptionHandler> exceptionHandlers;
@@ -274,44 +273,38 @@ public final class BuildTimeInterpreterUniverse {
 
     /* Not thread-safe, only call in single thread context */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setNeedMethodBody(InterpreterResolvedJavaMethod thiz, boolean needMethodBody, MetaAccessProvider metaAccessProvider) {
-        if (thiz.needMethodBody) {
+    private static void setNeedMethodBody(InterpreterResolvedJavaMethod thiz, boolean needMethodBody, MetaAccessProvider metaAccessProvider) {
+        if (thiz.needMethodBody && needMethodBody) {
             // skip, already scanned
             return;
         } else if (!needMethodBody) {
             // nothing to do
+            thiz.needMethodBody = needMethodBody;
             return;
         }
 
-        if (thiz.getInterpretedCode() == null) {
+        byte[] code = thiz.getInterpretedCode();
+        if (code == null) {
             // nothing to scan, method is not interpreterExecutable
             return;
         }
 
         thiz.needMethodBody = true;
 
-        for (int bci = 0; bci < BytecodeStream.endBCI(thiz.getInterpretedCode()); bci = BytecodeStream.nextBCI(thiz.getInterpretedCode(), bci)) {
-            int opcode = BytecodeStream.opcode(thiz.getInterpretedCode(), bci);
+        for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
+            int opcode = BytecodeStream.opcode(code, bci);
             switch (opcode) {
                 /* GR-53540: Handle invokedyanmic too */
-                case INVOKESPECIAL, INVOKESTATIC, INVOKEVIRTUAL, INVOKEINTERFACE -> {
-                    int originalCPI = BytecodeStream.readCPI(thiz.getInterpretedCode(), bci);
+                case INVOKEVIRTUAL, INVOKEINTERFACE -> {
+                    int originalCPI = BytecodeStream.readCPI(code, bci);
                     try {
                         JavaMethod method = thiz.getOriginalMethod().getConstantPool().lookupMethod(originalCPI, opcode);
                         if (!(method instanceof ResolvedJavaMethod resolvedJavaMethod)) {
                             continue;
                         }
                         if (!InterpreterFeature.callableByInterpreter(resolvedJavaMethod, metaAccessProvider)) {
-                            InterpreterUtil.log("[process invokes] cannot execute %s due to call-site (%s) @ bci=%s is not callable by interpreter%n", thiz.getName(), bci, method);
-                            thiz.setCode(null);
-                            thiz.needMethodBody = false;
                             return;
                         }
-
-                        if (opcode == INVOKESPECIAL || opcode == INVOKESTATIC) {
-                            continue;
-                        }
-
                         BuildTimeInterpreterUniverse.singleton().getOrCreateMethodWithMethodBody(resolvedJavaMethod, metaAccessProvider);
                     } catch (UnsupportedFeatureException | UserError.UserException e) {
                         InterpreterUtil.log("[process invokes] lookup in method %s failed due to:", thiz.getOriginalMethod());
@@ -575,24 +568,24 @@ public final class BuildTimeInterpreterUniverse {
         return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
     }
 
-    public JavaConstant primitiveConstant(int value) {
+    public PrimitiveConstant primitiveConstant(int value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forInt(value));
     }
 
-    public JavaConstant primitiveConstant(long value) {
+    public PrimitiveConstant primitiveConstant(long value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forLong(value));
     }
 
-    public JavaConstant primitiveConstant(float value) {
+    public PrimitiveConstant primitiveConstant(float value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forFloat(value));
     }
 
-    public JavaConstant primitiveConstant(double value) {
+    public PrimitiveConstant primitiveConstant(double value) {
         return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forDouble(value));
     }
 
-    public JavaConstant stringConstant(String value) {
-        return strings.computeIfAbsent(value, (key) -> ReferenceConstant.createFromNonNullReference(Objects.requireNonNull(value)));
+    public String stringConstant(String value) {
+        return strings.computeIfAbsent(value, Function.identity());
     }
 
     public JavaType primitiveOrUnresolvedType(JavaType type) {
@@ -701,7 +694,8 @@ public final class BuildTimeInterpreterUniverse {
 
         for (InterpreterResolvedJavaType type : types.values()) {
             if (type instanceof InterpreterResolvedObjectType referenceType) {
-                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType);
+                // TODO(peterssen): GR-68564 Obtain proper major/minor version for this type.
+                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION);
                 referenceType.setConstantPool(buildTimeConstantPool.snapshot());
             }
         }
@@ -916,17 +910,19 @@ public final class BuildTimeInterpreterUniverse {
         if (!(iType instanceof InterpreterResolvedObjectType objectType)) {
             return;
         }
+        HostedMethod[] hostedDispatchTable = hostedType.getInterpreterDispatchTable();
+        VMError.guarantee(hostedDispatchTable != null, "Missing dispatch table for %s", hostedType);
 
-        if (hostedType.getVTable().length == 0) {
-            return;
+        InterpreterResolvedJavaMethod[] iVTable;
+        if (hostedDispatchTable.length == 0) {
+            iVTable = InterpreterResolvedJavaType.NO_METHODS;
+        } else {
+            iVTable = new InterpreterResolvedJavaMethod[hostedDispatchTable.length];
+
+            for (int i = 0; i < iVTable.length; i++) {
+                iVTable[i] = getMethod(hostedDispatchTable[i].getWrapped());
+            }
         }
-
-        InterpreterResolvedJavaMethod[] iVTable = new InterpreterResolvedJavaMethod[hostedType.getVTable().length];
-
-        for (int i = 0; i < iVTable.length; i++) {
-            iVTable[i] = getMethod(hostedType.getVTable()[i].getWrapped());
-        }
-
         objectType.setVtable(iVTable);
         rescanFieldInHeap.accept(objectType);
     }

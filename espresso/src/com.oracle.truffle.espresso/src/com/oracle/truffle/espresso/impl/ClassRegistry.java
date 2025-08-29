@@ -629,7 +629,7 @@ public abstract class ClassRegistry {
             }
             if (!Klass.checkAccess(superKlass, klass)) {
                 StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superclass ").append(superKlass.getExternalName());
-                superTypeAccessMessage(env, klass, superKlass, sb, context);
+                appendModuleAndLoadersDetails(env, klass, superKlass, sb, context);
                 throw EspressoClassLoadingException.illegalAccessError(sb.toString());
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
@@ -641,7 +641,7 @@ public abstract class ClassRegistry {
             if (interf != null) {
                 if (!Klass.checkAccess(interf, klass)) {
                     StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superinterface ").append(interf.getExternalName());
-                    superTypeAccessMessage(env, klass, interf, sb, context);
+                    appendModuleAndLoadersDetails(env, klass, interf, sb, context);
                     throw EspressoClassLoadingException.illegalAccessError(sb.toString());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {
@@ -653,24 +653,24 @@ public abstract class ClassRegistry {
         return klass;
     }
 
-    private static void superTypeAccessMessage(ClassLoadingEnv env, ObjectKlass sub, ObjectKlass sup, StringBuilder sb, EspressoContext context) {
+    public static void appendModuleAndLoadersDetails(ClassLoadingEnv env, Klass klass1, Klass klass2, StringBuilder sb, EspressoContext context) {
         if (context.getJavaVersion().modulesEnabled()) {
             sb.append(" (");
             Meta meta = context.getMeta();
-            if (sup.module() == sub.module()) {
-                sb.append(sub.getExternalName());
+            if (klass2.module() == klass1.module()) {
+                sb.append(klass1.getExternalName());
                 sb.append(" and ");
-                classInModuleOfLoader(env, sup, true, sb, meta);
+                classInModuleOfLoader(env, klass2, true, sb, meta);
             } else {
-                classInModuleOfLoader(env, sub, false, sb, meta);
+                classInModuleOfLoader(env, klass1, false, sb, meta);
                 sb.append("; ");
-                classInModuleOfLoader(env, sup, false, sb, meta);
+                classInModuleOfLoader(env, klass2, false, sb, meta);
             }
             sb.append(")");
         }
     }
 
-    public static void classInModuleOfLoader(ClassLoadingEnv env, ObjectKlass klass, boolean plural, StringBuilder sb, Meta meta) {
+    public static void classInModuleOfLoader(ClassLoadingEnv env, Klass klass, boolean plural, StringBuilder sb, Meta meta) {
         assert meta.getJavaVersion().modulesEnabled() && meta.java_lang_ClassLoader_nameAndId != null;
         sb.append(klass.getExternalName());
         if (plural) {

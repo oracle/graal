@@ -28,10 +28,11 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47881) Remove the total number of loaded types, fields, and methods from the build output, deprecated these metrics in the build output schema, and removed already deprecated build output metrics.
 * (GR-64619) Missing registration errors are now subclasses of `LinkageError`.
 * (GR-63591) Resource bundle registration is now included as part of the `"resources"` section of _reachability-metadata.json_. When this is the case, the bundle name is specified using the `"bundle"` field.
-* (GR-57827) Move the initialization of security providers from build time to runtime.
 * (GR-57827) Security providers can now be initialized at run time (instead of build time) when using the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
 Run-time initialization of security providers helps reduce image heap size by avoiding unnecessary objects inclusion.
 * (GR-48191) Enable lambda classes to be registered for reflection and serialization in _reachability-metadata.json_. The format is detailed [here](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ReachabilityMetadata.md).
+* (GR-54697) Parallelize debug info generation and add support for run-time debug info generation. `-H:+RuntimeDebugInfo` adds a run-time debug info generator into a native image for use with GDB.
+* (GR-65773) Integrate Foreign Function and Memory (FFM) API metadata into _reachability-metadata.json_.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.
@@ -67,7 +68,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
 * (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 * (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
 * (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
-* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is diabled by default, but enabled with optimization level 3 and profile guided optimizations.
+* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is disabled by default, but enabled with optimization level 3 and profile guided optimizations.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.

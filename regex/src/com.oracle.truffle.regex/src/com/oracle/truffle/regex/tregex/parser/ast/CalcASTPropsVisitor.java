@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,11 +52,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
  * This visitor computes various properties of {@link RegexAST} and its {@link RegexASTNode}s, in
@@ -186,7 +185,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         backReference.getParent().setHasBackReferences();
 
         int minWidth = 0;
-        if (ast.getFlavor().backreferencesToUnmatchedGroupsFail()) {
+        if (ast.getFlavor().backreferencesToUnmatchedGroupsFail() && !backReference.isNestedBackReference()) {
             /*
              * Calculate the back-reference's min and max path by checking the referenced group's
              * min and max width. This is useful only if
@@ -327,6 +326,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 setZeroWidthQuantifierIndex(group);
             }
             if (!group.isExpandedQuantifier()) {
+                if ((flags & RegexASTNode.FLAG_HAS_QUANTIFIERS) != 0) {
+                    ast.getProperties().setNestedBoundedQuantifier();
+                }
                 flags |= RegexASTNode.FLAG_HAS_QUANTIFIERS;
                 setQuantifierIndex(group);
                 if (group.getQuantifier().getMin() == 0 || group.isOptionalQuantifier()) {
@@ -338,14 +340,14 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                  * summed up with min and max path of the group, so sequence.minPath - group.minPath
                  * is the sequence's "own" minPath
                  */
-                minPath = group.getMinPath() + ((minPath - group.getMinPath()) * (group.isOptionalQuantifier() ? 0 : group.getQuantifier().getMin()));
+                minPath = MathUtil.saturatingAdd(group.getMinPath(), MathUtil.saturatingMul(minPath - group.getMinPath(), group.isOptionalQuantifier() ? 0 : group.getQuantifier().getMin()));
                 if (group.getQuantifier().isInfiniteLoop()) {
                     flags |= RegexASTNode.FLAG_HAS_LOOPS;
                     // Just increase maxPath by one loop iteration; It's enough to determine
                     // whether a given sub-expression is fixed-width.
-                    maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * (group.getQuantifier().getMin() + 1));
+                    maxPath = MathUtil.saturatingAdd(group.getMaxPath(), MathUtil.saturatingMul(maxPath - group.getMaxPath(), MathUtil.saturatingInc(group.getQuantifier().getMin())));
                 } else {
-                    maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
+                    maxPath = MathUtil.saturatingAdd(group.getMaxPath(), MathUtil.saturatingMul(maxPath - group.getMaxPath(), group.getQuantifier().getMax()));
                 }
             }
         }
@@ -473,8 +475,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 if (laParent instanceof LookBehindAssertion) {
                     ast.getProperties().setNestedLookBehindAssertions();
                 }
-                minPath += laParent.getMinPath();
-                maxPath += laParent.getMaxPath();
+                minPath = MathUtil.saturatingAdd(minPath, laParent.getMinPath());
+                maxPath = MathUtil.saturatingAdd(maxPath, laParent.getMaxPath());
                 laParent = laParent.getSubTreeParent();
             }
             if (assertion.isLiteral()) {
@@ -483,8 +485,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
         }
         leaveLookAroundAssertion(assertion);
-        if (isForward() && !assertion.isDead() && ast.getFlavor() == PythonFlavor.INSTANCE && !assertion.isFixedWidth()) {
-            throw RegexSyntaxException.createPattern(ast.getSource(), PyErrorMessages.LOOK_BEHIND_REQUIRES_FIXED_WIDTH_PATTERN, 0, RegexSyntaxException.ErrorCode.InvalidLookbehind);
+        if (isForward() && !assertion.isDead() && ast.getFlavor().lookBehindsRequireFixedWidthPattern() && !assertion.isFixedWidth()) {
+            throw RegexSyntaxException.createPattern(ast.getSource(), "look-behind requires fixed-width pattern", 0, RegexSyntaxException.ErrorCode.InvalidLookbehind);
         }
     }
 

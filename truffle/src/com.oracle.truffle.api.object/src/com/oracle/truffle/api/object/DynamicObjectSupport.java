@@ -64,21 +64,19 @@ final class DynamicObjectSupport {
     }
 
     static void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
-        ShapeImpl thisShapeImpl = (ShapeImpl) thisShape;
-        ShapeImpl otherShapeImpl = (ShapeImpl) otherShape;
-        int sourceObjectCapacity = thisShapeImpl.getObjectArrayCapacity();
-        int targetObjectCapacity = otherShapeImpl.getObjectArrayCapacity();
+        int sourceObjectCapacity = thisShape.getObjectArrayCapacity();
+        int targetObjectCapacity = otherShape.getObjectArrayCapacity();
         if (sourceObjectCapacity < targetObjectCapacity) {
-            growObjectStore(object, thisShapeImpl, sourceObjectCapacity, targetObjectCapacity);
+            growObjectStore(object, thisShape, sourceObjectCapacity, targetObjectCapacity);
         }
-        int sourcePrimitiveCapacity = thisShapeImpl.getPrimitiveArrayCapacity();
-        int targetPrimitiveCapacity = otherShapeImpl.getPrimitiveArrayCapacity();
+        int sourcePrimitiveCapacity = thisShape.getPrimitiveArrayCapacity();
+        int targetPrimitiveCapacity = otherShape.getPrimitiveArrayCapacity();
         if (sourcePrimitiveCapacity < targetPrimitiveCapacity) {
-            growPrimitiveStore(object, thisShapeImpl, sourcePrimitiveCapacity, targetPrimitiveCapacity);
+            growPrimitiveStore(object, thisShape, sourcePrimitiveCapacity, targetPrimitiveCapacity);
         }
     }
 
-    private static void growObjectStore(DynamicObject object, ShapeImpl thisShape, int sourceCapacity, int targetCapacity) {
+    private static void growObjectStore(DynamicObject object, Shape thisShape, int sourceCapacity, int targetCapacity) {
         Object[] newObjectStore = new Object[targetCapacity];
         if (sourceCapacity != 0) {
             int sourceSize = thisShape.getObjectArraySize();
@@ -88,7 +86,7 @@ final class DynamicObjectSupport {
         object.setObjectStore(newObjectStore);
     }
 
-    private static void growPrimitiveStore(DynamicObject object, ShapeImpl thisShape, int sourceCapacity, int targetCapacity) {
+    private static void growPrimitiveStore(DynamicObject object, Shape thisShape, int sourceCapacity, int targetCapacity) {
         int[] newPrimitiveArray = new int[targetCapacity];
         if (sourceCapacity != 0) {
             int sourceSize = thisShape.getPrimitiveArraySize();
@@ -109,19 +107,17 @@ final class DynamicObjectSupport {
     }
 
     private static void resizeObjectStore(DynamicObject object, Shape oldShape, Shape newShape) {
-        ShapeImpl oldShapeImpl = (ShapeImpl) oldShape;
-        ShapeImpl newShapeImpl = (ShapeImpl) newShape;
-        int destinationCapacity = newShapeImpl.getObjectArrayCapacity();
+        int destinationCapacity = newShape.getObjectArrayCapacity();
         if (destinationCapacity == 0) {
             object.setObjectStore(null);
         } else {
-            int sourceCapacity = oldShapeImpl.getObjectArrayCapacity();
+            int sourceCapacity = oldShape.getObjectArrayCapacity();
             if (sourceCapacity != destinationCapacity) {
-                int sourceSize = oldShapeImpl.getObjectArraySize();
+                int sourceSize = oldShape.getObjectArraySize();
                 Object[] newObjectStore = new Object[destinationCapacity];
                 if (sourceSize != 0) {
                     Object[] oldObjectStore = object.getObjectStore();
-                    int destinationSize = newShapeImpl.getObjectArraySize();
+                    int destinationSize = newShape.getObjectArraySize();
                     int length = Math.min(sourceSize, destinationSize);
                     UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, length);
                 }
@@ -131,20 +127,18 @@ final class DynamicObjectSupport {
     }
 
     private static void resizePrimitiveStore(DynamicObject object, Shape oldShape, Shape newShape) {
-        ShapeImpl oldShapeImpl = (ShapeImpl) oldShape;
-        ShapeImpl newShapeImpl = (ShapeImpl) newShape;
-        assert newShapeImpl.hasPrimitiveArray();
-        int destinationCapacity = newShapeImpl.getPrimitiveArrayCapacity();
+        assert newShape.hasPrimitiveArray();
+        int destinationCapacity = newShape.getPrimitiveArrayCapacity();
         if (destinationCapacity == 0) {
             object.setPrimitiveStore(null);
         } else {
-            int sourceCapacity = oldShapeImpl.getPrimitiveArrayCapacity();
+            int sourceCapacity = oldShape.getPrimitiveArrayCapacity();
             if (sourceCapacity != destinationCapacity) {
-                int sourceSize = oldShapeImpl.getPrimitiveArraySize();
+                int sourceSize = oldShape.getPrimitiveArraySize();
                 int[] newPrimitiveArray = new int[destinationCapacity];
                 if (sourceSize != 0) {
                     int[] oldPrimitiveArray = object.getPrimitiveStore();
-                    int destinationSize = newShapeImpl.getPrimitiveArraySize();
+                    int destinationSize = newShape.getPrimitiveArraySize();
                     int length = Math.min(sourceSize, destinationSize);
                     UnsafeAccess.arrayCopy(oldPrimitiveArray, newPrimitiveArray, length);
                 }
@@ -154,20 +148,18 @@ final class DynamicObjectSupport {
     }
 
     private static void trimObjectStore(DynamicObject object, Shape thisShape, Shape newShape) {
-        ShapeImpl thisShapeImpl = (ShapeImpl) thisShape;
-        ShapeImpl newShapeImpl = (ShapeImpl) newShape;
         Object[] oldObjectStore = object.getObjectStore();
-        int destinationCapacity = newShapeImpl.getObjectArrayCapacity();
+        int destinationCapacity = newShape.getObjectArrayCapacity();
         if (destinationCapacity == 0) {
             if (oldObjectStore != null) {
                 object.setObjectStore(null);
             }
             // else nothing to do
         } else {
-            int sourceCapacity = thisShapeImpl.getObjectArrayCapacity();
+            int sourceCapacity = thisShape.getObjectArrayCapacity();
             if (sourceCapacity > destinationCapacity) {
                 Object[] newObjectStore = new Object[destinationCapacity];
-                int destinationSize = newShapeImpl.getObjectArraySize();
+                int destinationSize = newShape.getObjectArraySize();
                 UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, destinationSize);
                 object.setObjectStore(newObjectStore);
             }
@@ -175,20 +167,18 @@ final class DynamicObjectSupport {
     }
 
     private static void trimPrimitiveStore(DynamicObject object, Shape thisShape, Shape newShape) {
-        ShapeImpl thisShapeImpl = (ShapeImpl) thisShape;
-        ShapeImpl newShapeImpl = (ShapeImpl) newShape;
         int[] oldPrimitiveStore = object.getPrimitiveStore();
-        int destinationCapacity = newShapeImpl.getPrimitiveArrayCapacity();
+        int destinationCapacity = newShape.getPrimitiveArrayCapacity();
         if (destinationCapacity == 0) {
             if (oldPrimitiveStore != null) {
                 object.setPrimitiveStore(null);
             }
             // else nothing to do
         } else {
-            int sourceCapacity = thisShapeImpl.getPrimitiveArrayCapacity();
+            int sourceCapacity = thisShape.getPrimitiveArrayCapacity();
             if (sourceCapacity > destinationCapacity) {
                 int[] newPrimitiveStore = new int[destinationCapacity];
-                int destinationSize = newShapeImpl.getPrimitiveArraySize();
+                int destinationSize = newShape.getPrimitiveArraySize();
                 UnsafeAccess.arrayCopy(oldPrimitiveStore, newPrimitiveStore, destinationSize);
                 object.setPrimitiveStore(newPrimitiveStore);
             }
@@ -197,7 +187,7 @@ final class DynamicObjectSupport {
 
     static Map<Object, Object> archive(DynamicObject object) {
         Map<Object, Object> archive = new HashMap<>();
-        Property[] properties = ((ShapeImpl) object.getShape()).getPropertyArray();
+        Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
             archive.put(property.getKey(), DynamicObjectLibrary.getUncached().getOrDefault(object, property.getKey(), null));
         }
@@ -205,7 +195,7 @@ final class DynamicObjectSupport {
     }
 
     static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
-        Property[] properties = ((ShapeImpl) object.getShape()).getPropertyArray();
+        Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
             Object key = property.getKey();
             Object before = archive.get(key);
@@ -217,12 +207,11 @@ final class DynamicObjectSupport {
 
     @TruffleBoundary
     static void invalidateAllPropertyAssumptions(Shape shape) {
-        ShapeImpl shapeImpl = (ShapeImpl) shape;
-        if (shapeImpl.isLeaf()) {
-            shapeImpl.invalidateLeafAssumption();
+        if (shape.isLeaf()) {
+            shape.invalidateLeafAssumption();
         }
-        if (shapeImpl.allowPropertyAssumptions()) {
-            shapeImpl.invalidateAllPropertyAssumptions();
+        if (shape.allowPropertyAssumptions()) {
+            shape.invalidateAllPropertyAssumptions();
         }
     }
 }

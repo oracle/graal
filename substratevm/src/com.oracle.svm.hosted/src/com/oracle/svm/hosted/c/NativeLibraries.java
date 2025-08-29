@@ -297,7 +297,7 @@ public final class NativeLibraries {
     }
 
     private static String getStaticLibraryName(String libraryName) {
-        boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+        boolean targetWindows = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
         String prefix = targetWindows ? "" : "lib";
         String suffix = targetWindows ? ".lib" : ".a";
         return prefix + libraryName + suffix;
@@ -397,7 +397,7 @@ public final class NativeLibraries {
     }
 
     public void reportErrors() {
-        if (errors.size() > 0) {
+        if (!errors.isEmpty()) {
             throw UserError.abort(errors.stream().map(CInterfaceError::getMessage).collect(Collectors.toList()));
         }
     }
@@ -495,7 +495,7 @@ public final class NativeLibraries {
 
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
-        String libSuffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
+        String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
                 paths.filter(Files::isRegularFile)
@@ -576,7 +576,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
@@ -642,9 +642,9 @@ public final class NativeLibraries {
         return constantReflection;
     }
 
-    public boolean processAnnotated() {
+    public void processAnnotated() {
         if (annotated.isEmpty()) {
-            return false;
+            return;
         }
         for (CLibrary lib : annotated) {
             if (lib.requireStatic()) {
@@ -654,7 +654,6 @@ public final class NativeLibraries {
             }
         }
         annotated.clear();
-        return true;
     }
 
     public List<String> getJniStaticLibraries() {

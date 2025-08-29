@@ -45,12 +45,15 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredImageSingleton
@@ -187,23 +190,14 @@ public final class StringInternSupport implements LayeredImageSingleton {
 }
 
 @AutomaticallyRegisteredImageSingleton
-class RuntimeInternedStrings implements InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+class RuntimeInternedStrings {
 
     /** The String intern table at run time. */
     final ConcurrentHashMap<String, String> internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
 
     static ConcurrentHashMap<String, String> getInternedStrings() {
         return ImageSingletons.lookup(RuntimeInternedStrings.class).internedStrings;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
     }
 }
 

@@ -64,6 +64,7 @@ import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapAccounting.HeapSizes;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.heap.AbstractPinnedObjectSupport.PinnedObjectImpl;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -92,6 +92,7 @@ import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -658,20 +659,10 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                /*
-                 * Stack references are grey at the beginning of a collection, so I need to blacken
-                 * them.
-                 */
                 blackenStackRoots();
-
-                /* Custom memory regions which contain object references. */
-                walkThreadLocals();
-
-                /*
-                 * Native image Objects are grey at the beginning of a collection, so I need to
-                 * blacken them.
-                 */
+                blackenThreadLocals();
                 blackenImageHeapRoots();
+                blackenMetaspace();
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
             }
@@ -732,21 +723,10 @@ public final class GCImpl implements GC {
                  * will be visited by the grey object scanner.
                  */
                 blackenDirtyCardRoots();
-
-                /*
-                 * Stack references are grey at the beginning of a collection, so I need to blacken
-                 * them.
-                 */
                 blackenStackRoots();
-
-                /* Custom memory regions which contain object references. */
-                walkThreadLocals();
-
-                /*
-                 * Native image Objects are grey at the beginning of a collection, so I need to
-                 * blacken them.
-                 */
+                blackenThreadLocals();
                 blackenDirtyImageHeapRoots();
+                blackenMetaspace();
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
             }
@@ -884,7 +864,7 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void walkThreadLocals() {
+    private void blackenThreadLocals() {
         Timer walkThreadLocalsTimer = timers.walkThreadLocals.start();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
@@ -987,6 +967,25 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void blackenMetaspace() {
+        if (!Metaspace.isSupported()) {
+            return;
+        }
+
+        if (SerialGCOptions.useRememberedSet()) {
+            /*
+             * If we have a remembered set, only walk the dirty objects. Also, only clean and remark
+             * cards during complete collections (similar to the writable part of the image heap).
+             */
+            boolean clean = completeCollection;
+            MetaspaceImpl.singleton().walkDirtyObjects(greyToBlackObjectVisitor, greyToBlackObjRefVisitor, clean);
+        } else {
+            /* Scan all metaspace objects */
+            MetaspaceImpl.singleton().walkObjects(greyToBlackObjectVisitor);
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void beginPromotion(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -1031,7 +1030,7 @@ public final class GCImpl implements GC {
         Header<?> originalChunk = getChunk(original, isAligned);
         Space originalSpace = HeapChunk.getSpace(originalChunk);
         if (originalSpace.isToSpace()) {
-            assert !SerialGCOptions.useCompactingOldGen() || !completeCollection;
+            assert !SerialGCOptions.useCompactingOldGen() || !completeCollection || originalSpace.isMetaspace();
             return original;
         }
 
@@ -1070,7 +1069,7 @@ public final class GCImpl implements GC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promotePinnedObject(Object pinned) {
         assert pinned != null;
-        assert !Heap.getHeap().isInImageHeap(pinned);
+        assert AbstractPinnedObjectSupport.needsPinning(pinned);
         assert HeapChunk.getEnclosingHeapChunk(pinned).getPinnedObjectCount() > 0;
 
         HeapImpl heap = HeapImpl.getHeapImpl();

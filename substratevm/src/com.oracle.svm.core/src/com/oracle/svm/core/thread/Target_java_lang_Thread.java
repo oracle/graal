@@ -367,6 +367,7 @@ public final class Target_java_lang_Thread {
         PlatformThreads.singleton().yieldCurrent();
     }
 
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @Substitute
     private static void sleepNanos0(long nanos) throws InterruptedException {
         // Virtual threads are handled in sleep()

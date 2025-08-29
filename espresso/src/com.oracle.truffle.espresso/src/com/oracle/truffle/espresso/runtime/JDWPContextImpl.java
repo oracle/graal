@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerInstrumentController;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -76,8 +77,9 @@ import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -97,18 +99,23 @@ public final class JDWPContextImpl implements JDWPContext {
         this.ids = new Ids<>(StaticObject.NULL);
     }
 
+    private static DebuggerInstrumentController getInstrumentController(TruffleLanguage.Env env) {
+        return env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerInstrumentController.class);
+    }
+
     public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl eventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-        this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
+        DebuggerInstrumentController instrumentController = getInstrumentController(env);
+        this.controller = instrumentController.createContextController(debugger, context.getEspressoEnv().JDWPOptions, env.getContext(), this, mainThread, eventListener);
         vmEventListener = eventListener;
         eventListener.activate(mainThread, controller, this);
-        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, eventListener);
     }
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
             if (controller != null) { // in case we exited before initializing the controller field
-                controller.disposeDebugger(false);
+                TruffleLanguage.Env env = context.getEnv();
+                getInstrumentController(env).disposeController(env.getContext());
             }
         }
     }
@@ -117,11 +124,23 @@ public final class JDWPContextImpl implements JDWPContext {
     public void replaceController(DebuggerController newController) {
         this.controller = newController;
         vmEventListener.replaceController(newController);
+        TruffleLanguage.Env env = context.getEnv();
+        getInstrumentController(env).replaceController(env.getContext(), newController);
     }
 
     @Override
     public Ids<Object> getIds() {
         return ids;
+    }
+
+    @Override
+    public Thread createSystemThread(Runnable runnable) {
+        return context.getEnv().createSystemThread(runnable);
+    }
+
+    @Override
+    public Thread createPolyglotThread(Runnable runnable) {
+        return context.getEnv().newTruffleThreadBuilder(runnable).build();
     }
 
     @Override
@@ -135,7 +154,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass())) {
                 if (checkTerminated) {
                     // check if thread has been terminated
-                    return getThreadStatus(thread) != State.TERMINATED.value;
+                    return !ThreadState.isTerminated(getThreadStatus(thread));
                 }
                 return true;
             }
@@ -654,19 +673,21 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public int getNextBCI(RootNode callerRoot, Frame frame) {
-        if (callerRoot instanceof EspressoRootNode espressoRootNode) {
-            int bci = (int) readBCIFromFrame(callerRoot, frame);
-            if (bci >= 0) {
-                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
-                return bs.nextBCI(bci);
+    public int getNextBCI(MethodRef method, Node rawNode, Frame frame) {
+        int bci = getBCI(rawNode, frame);
+        if (bci >= 0) {
+            BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
+            int nextBci = bs.nextBCI(bci);
+            if (nextBci < bs.endBCI()) {
+                // Use the next only if it's in bounds.
+                bci = nextBci;
             }
         }
-        return -1;
+        return bci;
     }
 
     @Override
-    public long readBCIFromFrame(RootNode root, Frame frame) {
+    public int readBCIFromFrame(RootNode root, Frame frame) {
         if (root instanceof EspressoRootNode rootNode && frame != null) {
             return rootNode.readBCI(frame);
         }
@@ -792,7 +813,7 @@ public final class JDWPContextImpl implements JDWPContext {
         return null;
     }
 
-    public long getBCI(Node rawNode, Frame frame) {
+    public int getBCI(Node rawNode, Frame frame) {
         BciProvider bciProvider = getBciProviderNode(rawNode);
         if (bciProvider == null) {
             return -1;
@@ -828,6 +849,23 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
-        return context.getClassRedefinition().redefineClasses(redefineInfos, false, true);
+        try {
+            context.getClassRedefinition().redefineClasses(redefineInfos, true);
+            return 0;
+        } catch (RedefinitionException e) {
+            return e.getJDWPErrorCode();
+        }
+    }
+
+    @Override
+    public int getJavaFeatureVersion() {
+        return context.getJavaVersion().featureVersion();
+    }
+
+    @Override
+    public String getSystemProperty(String name) {
+        Meta meta = context.getMeta();
+        StaticObject guestString = (StaticObject) meta.java_lang_System_getProperty.invokeDirectStatic(meta.toGuestString(name));
+        return meta.toHostString(guestString);
     }
 }

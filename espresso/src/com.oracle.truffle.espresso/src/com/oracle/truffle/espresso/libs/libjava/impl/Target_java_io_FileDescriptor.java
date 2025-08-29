@@ -37,12 +37,6 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 
 @EspressoSubstitutions(value = FileDescriptor.class, group = LibJava.class)
 public final class Target_java_io_FileDescriptor {
-    private static final FDAccess FD = new FDAccess() {
-        @Override
-        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
-            return objectWithFD;
-        }
-    };
 
     @Substitution
     public static void initIDs() {
@@ -65,6 +59,6 @@ public final class Target_java_io_FileDescriptor {
     @Throws(IOException.class)
     public static void close0(@JavaType(FileDescriptor.class) StaticObject self,
                     @Inject TruffleIO io) {
-        io.close(self, FD);
+        io.close(self, FDAccess.forFileDescriptor());
     }
 }

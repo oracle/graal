@@ -157,6 +157,148 @@
         ],
         "additionalProperties": false
       }
+    },
+    "foreign": {
+      "properties": {
+        "downcalls": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "$ref": "config-condition-schema-v1.0.0.json",
+                "title": "Condition under which the downcall stub should be registered"
+              },
+              "returnType": {
+                "type": "string",
+                "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+              },
+              "parameterTypes": {
+                "default": [],
+                "items": {
+                  "type": "string",
+                  "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+                },
+                "type": "array",
+                "title": "List of the function descriptor's parameter types"
+              },
+              "options": {
+                "type": "object",
+                "title": "Linker options (see `java.lang.foreign.Linker.Option`)",
+                "properties": {
+                  "captureCallState": {
+                    "type": "boolean",
+                    "title": "Specifies whether a call state should be captured. The specific states to capture are determined at run time. See also: `java.lang.foreign.Linker.Option.captureCallState`"
+                  },
+                  "critical": {
+                    "type": "object",
+                    "title": "See `java.lang.foreign.Linker.Option.critical`",
+                    "properties": {
+                      "allowHeapAccess": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "firstVariadicArg": {
+                    "type": "integer",
+                    "title": "See `java.lang.foreign.Linker.Option.firstVariadicArg`"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "title": "Function descriptor to be registered for a downcall"
+          },
+          "type": "array",
+          "title": "List of function descriptors that should be registered for downcalls"
+        },
+        "upcalls": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "$ref": "config-condition-schema-v1.0.0.json",
+                "title": "Condition under which the upcall stub should be registered"
+              },
+              "returnType": {
+                "type": "string",
+                "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+              },
+              "parameterTypes": {
+                "default": [],
+                "items": {
+                  "type": "string",
+                  "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+                },
+                "type": "array",
+                "title": "List of the function descriptor's parameter types"
+              },
+              "options": {
+                "type": "object",
+                "title": "Linker options (see `java.lang.foreign.Linker.Option`)",
+                "description": "Currently, no linker options are allowed for upcalls. This may change in the future.",
+                "properties": { },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "title": "Function descriptor to be registered for an upcall"
+          },
+          "type": "array",
+          "title": "List of function descriptors that should be registered for upcalls"
+        },
+        "directUpcalls": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "$ref": "config-condition-schema-v1.0.0.json",
+                "title": "Condition under which the direct upcall stub should be registered"
+              },
+              "class": {
+                "type": "string",
+                "title": "Fully-qualified class name (e.g. `org.package.OuterClass$InnerClass`)"
+              },
+              "method": {
+                "type": "string",
+                "title": "Method name"
+              },
+              "returnType": {
+                "type": "string",
+                "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+              },
+              "parameterTypes": {
+                "default": [],
+                "items": {
+                  "type": "string",
+                  "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
+                },
+                "type": "array",
+                "title": "List of the function descriptor's parameter types "
+              },
+              "options": {
+                "type": "object",
+                "title": "Linker options (see `java.lang.foreign.Linker.Option`)",
+                "description": "Currently, no linker options are allowed for direct upcalls. This may change in the future.",
+                "properties": { },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "title": "Java method and function descriptor to be registered for a direct upcall"
+          },
+          "type": "array",
+          "title": "List of Java methods and function descriptors that should be registered for direct upcalls"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "JSON schema for the FFM API configuration used by GraalVM Native Image",
+      "description": "For a description and examples of writing an FFM API configuration, see: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/FFM-API.md"
     }
   },
   "required": [],
@@ -352,7 +494,7 @@
               "type": "array",
               "default": [],
               "items": {
-                "title": "Fully qualified name of the interface defining the proxy class",
+                "title": "Fully-qualified name of the interface defining the proxy class",
                 "type": "string"
               }
             },
@@ -362,27 +504,27 @@
               "properties": {
                 "declaringClass": {
                   "title": "The class in which the lambda class is defined",
-                  "type": "#/$defs/type"
+                  "$ref": "#/$defs/type"
                 },
                 "declaringMethod": {
                   "title": "The method in which the lambda class is defined",
-                  "type": "#/$defs/method",
+                  "$ref": "#/$defs/method",
                   "default": {}
                 },
                 "interfaces": {
                   "title": "Non-empty list of interfaces implemented by the lambda class",
                   "type": "array",
                   "items": {
-                    "title": "Fully qualified name of the interface implemented by the lambda class",
+                    "title": "Fully-qualified name of the interface implemented by the lambda class",
                     "type": "string"
                   }
-                },
-                "required": [
-                  "declaringClass",
-                  "interfaces"
-                ],
-                "additionalProperties": false
-              }
+                }
+              },
+              "required": [
+                "declaringClass",
+                "interfaces"
+              ],
+              "additionalProperties": false
             }
           },
           "oneOf": [

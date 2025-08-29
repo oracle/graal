@@ -23,36 +23,32 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class SuspendedInfo {
+public class SuspendedInfo extends EventInfo {
 
     protected final JDWPContext context;
     private final SuspendedEvent event;
     private final CallFrame[] stackFrames;
     private final Object thread;
-    private final RootNode callerRootNode;
     private boolean forceEarlyInProgress;
 
-    SuspendedInfo(JDWPContext context, SuspendedEvent event, CallFrame[] stackFrames, Object thread, RootNode callerRootNode) {
+    SuspendedInfo(JDWPContext context, SuspendedEvent event, CallFrame[] stackFrames, Object thread) {
         this.context = context;
         this.event = event;
         this.stackFrames = stackFrames;
         this.thread = thread;
-        this.callerRootNode = callerRootNode;
     }
 
     // used for pre-collected thread suspension data, before the thread
     // disappears to native code
-    SuspendedInfo(JDWPContext context, CallFrame[] stackFrames, Object thread) {
+    protected SuspendedInfo(JDWPContext context, CallFrame[] stackFrames, Object thread) {
         this.context = context;
         this.event = null;
         this.stackFrames = stackFrames;
         this.thread = thread;
-        this.callerRootNode = null;
     }
 
     public SuspendedEvent getEvent() {
@@ -63,19 +59,9 @@ public class SuspendedInfo {
         return stackFrames;
     }
 
+    @Override
     public Object getThread() {
         return thread;
-    }
-
-    public RootNode getCallerRootNode() {
-        return callerRootNode;
-    }
-
-    public Frame getCallerFrame() {
-        // use getStackFrames virtual call since this.stackFrames
-        // field can be null for unknown suspended info
-        CallFrame[] frames = getStackFrames();
-        return frames.length > 1 ? frames[1].getFrame() : null;
     }
 
     public void setForceEarlyReturnInProgress() {
@@ -85,4 +71,19 @@ public class SuspendedInfo {
     public boolean isForceEarlyReturnInProgress() {
         return forceEarlyInProgress;
     }
+
+    @Override
+    public KlassRef getType() {
+        return (KlassRef) context.getIds().fromId((int) stackFrames[0].getClassId());
+    }
+
+    @Override
+    public long getThisId() {
+        Object thisObject = stackFrames[0].getThisValue();
+        if (thisObject == null) {
+            return 0;
+        }
+        return context.getIds().getId(thisObject);
+    }
+
 }

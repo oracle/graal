@@ -30,13 +30,13 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -89,17 +89,19 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     /** @param startOffset Offset relative to the heap base. */
     @SuppressWarnings("this-escape")
     public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset) {
-        int alignment = ConfigurationValues.getObjectLayout().getAlignment();
+        assert startOffset % Heap.getHeap().getImageHeapAlignment() == 0 : "the start of each image heap must be aligned";
+
         this.partitions = new ChunkedImageHeapPartition[PARTITION_COUNT];
-        this.partitions[READ_ONLY_REGULAR] = new ChunkedImageHeapPartition("readOnly", false, false, alignment, alignment);
-        this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false, alignment, alignment);
-        this.partitions[WRITABLE_PATCHED] = new ChunkedImageHeapPartition("writablePatched", true, false, alignment, alignment);
-        this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false, alignment, alignment);
-        this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true, alignment, alignment);
-        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, SubstrateOptions.getPageSize());
+        this.partitions[READ_ONLY_REGULAR] = new ChunkedImageHeapPartition("readOnly", false, false);
+        this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false);
+        this.partitions[WRITABLE_PATCHED] = new ChunkedImageHeapPartition("writablePatched", true, false);
+        this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false);
+        this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true);
+        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true);
 
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
+
         UnsignedWord alignedHeaderSize = RememberedSet.get().getHeaderSizeOfAlignedChunk();
         UnsignedWord hugeThreshold = HeapParameters.getAlignedHeapChunkSize().subtract(alignedHeaderSize);
         this.hugeObjectThreshold = hugeThreshold.rawValue();
@@ -118,6 +120,9 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     private ChunkedImageHeapPartition choosePartition(ImageHeapObject info, boolean immutable, boolean hasRelocatables, boolean patched) {
+        if (patched && hasRelocatables) {
+            throw VMError.shouldNotReachHere("Object cannot contain both relocatables and patched constants: " + info.getObject());
+        }
         if (patched) {
             return getWritablePatched();
         } else if (immutable) {
@@ -156,29 +161,34 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
-    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize) {
+    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback) {
+        ImageHeapLayouterControl control = new ImageHeapLayouterControl(callback);
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, control);
 
+        /*
+         * In case there is a need for more alignment between partitions or between objects in a
+         * chunk, see the version history of this file (and package) for a earlier implementation.
+         */
         for (ChunkedImageHeapPartition partition : getPartitions()) {
-            assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
-            assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0 : partition;
+            assert partition.getStartOffset() % objectAlignment == 0 : partition;
+            assert (partition.getStartOffset() + partition.getSize()) % objectAlignment == 0 : partition;
         }
-        assert layoutInfo.getImageHeapSize() % pageSize == 0 : "Image heap size is not a multiple of page size";
         return layoutInfo;
     }
 
-    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize) {
-        allocator = new ChunkedImageHeapAllocator(imageHeap, startOffset);
+    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterControl control) {
+        allocator = new ChunkedImageHeapAllocator(startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
-            partition.layout(allocator);
+            control.poll();
+            partition.layout(allocator, control);
         }
-        return populateInfoObjects(imageHeap.countAndVerifyDynamicHubs(), pageSize);
+        return populateInfoObjects(imageHeap.countPatchAndVerifyDynamicHubs(), pageSize, control);
     }
 
-    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize) {
+    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize, ImageHeapLayouterControl control) {
         // Determine writable start boundary from chunks: a chunk that contains writable objects
         // must also have a writable card table
         long offsetOfFirstWritableAlignedChunk = -1;
@@ -188,6 +198,8 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                 break; // (chunks are in ascending memory order)
             }
         }
+        control.poll();
+
         VMError.guarantee(offsetOfFirstWritableAlignedChunk >= 0 && offsetOfFirstWritableAlignedChunk % pageSize == 0, "Start of the writable part is assumed to be page-aligned");
         long offsetOfFirstWritableUnalignedChunk = -1;
         long offsetOfLastWritableUnalignedChunk = -1;
@@ -200,6 +212,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
             }
             offsetOfLastWritableUnalignedChunk = chunk.getBegin();
         }
+        control.poll();
 
         heapInfo.initialize(getReadOnlyRegular().firstObject, getReadOnlyRegular().lastObject, getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject,
                         getWritablePatched().firstObject, getWritablePatched().lastObject,
@@ -207,10 +220,13 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, offsetOfFirstWritableAlignedChunk, offsetOfFirstWritableUnalignedChunk, offsetOfLastWritableUnalignedChunk,
                         dynamicHubCount);
 
+        control.poll();
+
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - offsetOfFirstWritableAlignedChunk;
-        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - startOffset;
-        return new ImageHeapLayoutInfo(startOffset, imageHeapSize, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(),
+        /* Aligning the end to the page size can be required for mapping into memory. */
+        long imageHeapEnd = NumUtil.roundUp(getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize(), pageSize);
+        return new ImageHeapLayoutInfo(startOffset, imageHeapEnd, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(),
                         getWritablePatched().getStartOffset(), getWritablePatched().getSize());
     }
 

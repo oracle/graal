@@ -39,9 +39,11 @@ import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
+import jdk.internal.vm.vector.VectorSupport;
 
 /**
  * Support for shared arenas on SVM:
@@ -184,6 +186,53 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         }
     }
 
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>> V loadFromMemorySegmentScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<E> e, int length,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    S s,
+                    VectorSupport.LoadOperation<AbstractMemorySegmentImpl, V, S> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>, M extends VectorSupport.VectorMask<E>> V loadFromMemorySegmentMaskedScopedInternal(
+                    MemorySessionImpl session, Class<? extends V> vmClass,
+                    Class<M> maskClass, Class<E> e, int length,
+                    AbstractMemorySegmentImpl msp, long offset, M m,
+                    S s, int offsetInRange,
+                    VectorSupport.LoadVectorMaskedOperation<AbstractMemorySegmentImpl, V, S, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    public static <V extends VectorSupport.Vector<E>, E> void storeIntoMemorySegment(Class<? extends V> vmClass, Class<E> e, int length,
+                    V v,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    public static <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>> void storeIntoMemorySegmentMasked(Class<? extends V> vmClass, Class<M> maskClass, Class<E> e,
+                    int length, V v, M m,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
     /**
      * This method synchronizes with all other Java threads in order to be able to safely close the
      * session.
@@ -199,7 +248,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * {@link SyncCloseScopeOperation}) is essentially an empty operation but kills the field
      * location of {@link Target_jdk_internal_foreign_MemorySessionImpl#state}.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)

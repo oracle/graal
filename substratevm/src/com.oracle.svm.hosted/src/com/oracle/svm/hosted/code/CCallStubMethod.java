@@ -143,7 +143,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
                         "Enum class %s needs a method that is annotated with @%s because it is used as the return type of a method annotated with @%s: %s.",
                         declaredReturnType, CEnumLookup.class.getSimpleName(), getCorrespondingAnnotationName(), getOriginal());
 
-        return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, declaredReturnType, enumInfo, value);
+        return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, declaredReturnType, enumInfo, value, true);
     }
 
     private EnumInfo getEnumInfo(NativeLibraries nativeLibraries, AnalysisType type, boolean isReturnType) {

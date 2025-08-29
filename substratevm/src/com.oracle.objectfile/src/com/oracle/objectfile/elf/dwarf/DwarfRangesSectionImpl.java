@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,12 +26,8 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.Map;
-
-import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.LayoutDecisionMap;
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfRangeListEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
@@ -56,23 +52,6 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
-        LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
-        if (decisionMap != null) {
-            Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj != null && valueObj instanceof Number) {
-                /*
-                 * This may not be the final vaddr for the text segment but it will be close enough
-                 * to make debug easier i.e. to within a 4k page or two.
-                 */
-                debugTextBase = ((Number) valueObj).longValue();
-            }
-        }
-        return super.getOrDecideContent(alreadyDecided, contentHint);
-    }
-
-    @Override
     public void writeContent(DebugContext context) {
         assert contentByteArrayCreated();
 
@@ -80,7 +59,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
         log(context, "  [0x%08x] DEBUG_RANGES", pos);
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
 
@@ -117,37 +96,34 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeRangeLists(DebugContext context, byte[] buffer, int p) {
-        Cursor entryCursor = new Cursor(p);
+        int pos = p;
 
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
-            int pos = entryCursor.get();
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
             setCodeRangesIndex(classEntry, pos);
             /* Write range list for a class */
-            entryCursor.set(writeRangeList(context, classEntry, buffer, pos));
-        });
-        return entryCursor.get();
+            pos = writeRangeList(context, classEntry, buffer, pos);
+        }
+        return pos;
     }
 
     private int writeRangeList(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] ranges start for class %s", pos, classEntry.getTypeName());
-        int base = classEntry.compiledEntriesBase();
+        long base = classEntry.lowpc();
         log(context, "  [0x%08x] base 0x%x", pos, base);
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_base_address, buffer, pos);
-        pos = writeRelocatableCodeOffset(base, buffer, pos);
+        pos = writeCodeOffset(base, buffer, pos);
 
-        Cursor cursor = new Cursor(pos);
-        classEntry.compiledEntries().forEach(compiledMethodEntry -> {
-            cursor.set(writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, cursor.get()));
+        for (CompiledMethodEntry compiledMethodEntry : classEntry.compiledMethods()) {
+            pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, pos);
 
-            int loOffset = compiledMethodEntry.getPrimary().getLo() - base;
-            int hiOffset = compiledMethodEntry.getPrimary().getHi() - base;
-            log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), loOffset, compiledMethodEntry.getPrimary().getFullMethodNameWithParams());
-            cursor.set(writeULEB(loOffset, buffer, cursor.get()));
-            log(context, "  [0x%08x] hi 0x%x", cursor.get(), hiOffset);
-            cursor.set(writeULEB(hiOffset, buffer, cursor.get()));
-        });
-        pos = cursor.get();
+            long loOffset = compiledMethodEntry.primary().getLo() - base;
+            long hiOffset = compiledMethodEntry.primary().getHi() - base;
+            log(context, "  [0x%08x] lo 0x%x (%s)", pos, loOffset, compiledMethodEntry.primary().getFullMethodNameWithParams());
+            pos = writeULEB(loOffset, buffer, pos);
+            log(context, "  [0x%08x] hi 0x%x", pos, hiOffset);
+            pos = writeULEB(hiOffset, buffer, pos);
+        }
         // write end marker
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_end_of_list, buffer, pos);
         log(context, "  [0x%08x] ranges size 0x%x  for class %s", pos, pos - p, classEntry.getTypeName());

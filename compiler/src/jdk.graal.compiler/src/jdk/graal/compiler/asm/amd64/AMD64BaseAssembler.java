@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,8 +51,6 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
 import java.util.EnumSet;
-
-import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.core.common.Stride;
@@ -306,35 +304,6 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     public final boolean supports(CPUFeature feature) {
         return getFeatures().contains(feature);
-    }
-
-    public final boolean supports(String feature) {
-        try {
-            return getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Mitigates exception throwing by recording unknown CPU feature names.
-     */
-    private final EconomicSet<String> unknownFeatures = EconomicSet.create();
-
-    /**
-     * Determines if the CPU feature denoted by {@code name} is supported. This name based look up
-     * is for features only available in later JVMCI releases.
-     */
-    public final boolean supportsCPUFeature(String name) {
-        if (unknownFeatures.contains(name)) {
-            return false;
-        }
-        try {
-            return supports(CPUFeature.valueOf(name));
-        } catch (IllegalArgumentException e) {
-            unknownFeatures.add(name);
-            return false;
-        }
     }
 
     protected static boolean inRC(RegisterCategory rc, Register r) {

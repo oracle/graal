@@ -114,7 +114,7 @@ public class PECoffObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createUndefinedSymbol(String name, int size, boolean isCode) {
+    public Symbol createUndefinedSymbol(String name, boolean isCode) {
         PECoffSymtab st = createSymbolTable();
         return st.newUndefinedEntry(name, isCode);
     }

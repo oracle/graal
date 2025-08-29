@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,6 +103,18 @@ public final class Constants {
                     0x0060, 0x0060,
                     0x007b, 0x10ffff);
 
+    /**
+     * In ECMAScript flavor, the input string is always UTF-16, so we can avoid matching surrogate
+     * pairs in lookarounds that don't contain capture groups by just matching all surrogate
+     * characters.
+     */
+    public static final CodePointSet NON_WORD_CHARS_FOR_JS_LOOKAROUND = CodePointSet.createNoDedup(
+                    0x0000, 0x002f,
+                    0x003a, 0x0040,
+                    0x005b, 0x005e,
+                    0x0060, 0x0060,
+                    0x007b, 0xffff);
+
     // If we want to store negations of basic character classes, then we also need to store their
     // case-folded variants because one must apply case-folding *before* inverting the character
     // class. The WORD_CHARS (\w) character class is the only one of the basic classes (\w, \d, \s)
@@ -124,6 +136,20 @@ public final class Constants {
                     0x007b, 0x017e,
                     0x0180, 0x2129,
                     0x212b, 0x10ffff);
+
+    /**
+     * In ECMAScript flavor, the input string is always UTF-16, so we can avoid matching surrogate
+     * pairs in lookarounds that don't contain capture groups by just matching all surrogate
+     * characters.
+     */
+    public static final CodePointSet NON_WORD_CHARS_UNICODE_IGNORE_CASE_FOR_JS_LOOKAROUND = CodePointSet.createNoDedup(
+                    0x0000, 0x002f,
+                    0x003a, 0x0040,
+                    0x005b, 0x005e,
+                    0x0060, 0x0060,
+                    0x007b, 0x017e,
+                    0x0180, 0x2129,
+                    0x212b, 0xffff);
 
     // WhiteSpace defined in ECMA-262 2018 11.2
     // 0x0009, CHARACTER TABULATION, <TAB>

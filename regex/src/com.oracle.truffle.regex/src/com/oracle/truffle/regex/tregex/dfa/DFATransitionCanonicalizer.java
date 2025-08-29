@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
@@ -53,7 +55,7 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
     private final DFAGenerator dfaGen;
 
     public DFATransitionCanonicalizer(DFAGenerator dfaGen) {
-        super(dfaGen.getNfa(), dfaGen.isForward(), dfaGen.isForward());
+        super(dfaGen.getNfa(), dfaGen.isForward(), dfaGen.isForward(), dfaGen.getOptions().isBooleanMatch());
         this.dfaGen = dfaGen;
     }
 
@@ -61,6 +63,14 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
     protected boolean canMerge(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
         TransitionSet<NFA, NFAState, NFAStateTransition> tsA = a.getTransitionSet();
         TransitionSet<NFA, NFAState, NFAStateTransition> tsB = b.getTransitionSet();
+
+        long[] constraintsA = a.getConstraints();
+        long[] constraintsB = b.getConstraints();
+        long[] opA = a.getOperations();
+        long[] opB = b.getOperations();
+        if (!Arrays.equals(constraintsA, constraintsB) || !Arrays.equals(opA, opB)) {
+            return false;
+        }
         if (isPrioritySensitive()) {
             if (tsA.size() != tsB.size()) {
                 return false;
@@ -83,9 +93,13 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
     }
 
     @Override
-    protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
-        return dfaGen.isGenericCG() ? new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, dfaGen)
-                        : new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder);
+    protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, long[] constraints,
+                    long[] operations) {
+        if (dfaGen.isGenericCG()) {
+            return new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations, dfaGen);
+        } else {
+            return new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations);
+        }
     }
 
     @Override

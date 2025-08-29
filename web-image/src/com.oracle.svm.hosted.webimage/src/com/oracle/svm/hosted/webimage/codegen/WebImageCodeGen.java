@@ -31,23 +31,29 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.EMITT
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.CodeSizeDiagnostics;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
+import com.oracle.svm.hosted.webimage.Labeler;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.compatibility.JSBenchmarkingCode;
@@ -61,12 +67,11 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions.CommentVerbosity;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.webimage.Labeler;
 import com.oracle.svm.webimage.NamingConvention;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;
-import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.common.JVMCIError;
 
@@ -190,6 +195,19 @@ public abstract class WebImageCodeGen {
         }
 
         postProcess();
+    }
+
+    protected void afterHeapLayout() {
+        // after this point, the layout is final and must not be changed anymore
+        assert !hasDuplicatedObjects(codeCache.nativeImageHeap) : "heap.getObjects() must not contain any duplicates";
+        BuildPhaseProvider.markHeapLayoutFinished();
+        codeCache.nativeImageHeap.getLayouter().afterLayout(codeCache.nativeImageHeap);
+    }
+
+    protected boolean hasDuplicatedObjects(NativeImageHeap heap) {
+        Set<NativeImageHeap.ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
+        deduplicated.addAll(heap.getObjects());
+        return deduplicated.size() != heap.getObjectCount();
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.Compila
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.BitSet;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,7 +57,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Node;
@@ -77,7 +79,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
@@ -110,7 +111,13 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     protected Providers providers;
     public final TargetDescription target;
     protected GraphBuilderConfiguration.Plugins graphBuilderPlugins;
-    private final DebugHandlersFactory debugHandlersFactory;
+    private final DebugDumpHandlersFactory debugHandlersFactory;
+    private final Map<SnippetTemplate.CacheKey, SnippetTemplate> templatesCache;
+
+    @Override
+    public Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache() {
+        return templatesCache;
+    }
 
     /**
      * The preprocessed replacement graphs. This is keyed by a pair of a method and options because
@@ -235,13 +242,14 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
     @SuppressWarnings("this-escape")
-    public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
+    public ReplacementsImpl(DebugDumpHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
         this.providers = providers.copyWith(this);
         this.target = target;
         this.snippetGraphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
         this.defaultBytecodeProvider = bytecodeProvider;
         this.debugHandlersFactory = debugHandlersFactory;
+        this.templatesCache = Collections.synchronizedMap(new SnippetTemplate.LRUCache<>());
     }
 
     private static final TimerKey SnippetPreparationTime = DebugContext.timer("SnippetPreparationTime");
@@ -318,10 +326,6 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         // No initialization needed as snippet graphs are created on demand in getSnippet
-    }
-
-    @Override
-    public void registerConditionalPlugin(InvocationPlugin plugin) {
     }
 
     @Override

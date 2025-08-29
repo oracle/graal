@@ -57,6 +57,10 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -64,6 +68,7 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
@@ -266,7 +271,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             } else {
                 Modules.addOpensToAllUnnamed(module, packageName);
             }
-            resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            try {
+                resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            } catch (InternalError e) {
+                // ignore, nothing we can do
+            }
         }
         return resourceBundles;
     }

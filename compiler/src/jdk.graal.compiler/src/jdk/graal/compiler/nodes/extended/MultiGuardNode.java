@@ -28,25 +28,26 @@ import static jdk.graal.compiler.nodeinfo.InputType.Guard;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.ArrayList;
+
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
-import java.util.ArrayList;
 
 @NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_0, size = SIZE_0)
 public final class MultiGuardNode extends FloatingNode implements GuardingNode, LIRLowerable, Simplifiable, Canonicalizable, Node.ValueNumberable {
@@ -166,5 +167,9 @@ public final class MultiGuardNode extends FloatingNode implements GuardingNode, 
         } else {
             return combine(first, second);
         }
+    }
+
+    public NodeInputList<ValueNode> getGuards() {
+        return guards;
     }
 }

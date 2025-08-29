@@ -34,7 +34,6 @@ import java.util.EnumSet;
 import java.util.Formattable;
 import java.util.FormattableFlags;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -60,6 +59,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -819,13 +819,13 @@ public abstract class Node implements Cloneable, Formattable {
             if (newSuccessor != null) {
                 assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
-                maybeNotifyInputChanged(newSuccessor);
+                maybeNotifyControlFlowChanged(newSuccessor);
             }
-            maybeNotifyInputChanged(this);
+            maybeNotifyControlFlowChanged(this);
         }
     }
 
-    void initialize(Graph newGraph) {
+    final void initialize(Graph newGraph) {
         assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
@@ -1261,9 +1261,17 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    private void maybeNotifyControlFlowChanged(Node node) {
+        if (graph != null) {
+            assert !graph.isFrozen() : "Frozen graph must not change!";
+            graph.fireNodeEvent(Graph.NodeEvent.CONTROL_FLOW_CHANGED, node);
+            graph.edgeModificationCount++;
+        }
+    }
+
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
-            assert !graph.isFrozen();
+            assert !graph.isFrozen() : "Frozen graph must not change!";
             graph.fireNodeEvent(Graph.NodeEvent.INPUT_CHANGED, node);
             graph.edgeModificationCount++;
         }
@@ -1276,7 +1284,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
-            assert !graph.isFrozen();
+            assert !graph.isFrozen() : "Frozen graph must not change!";
             graph.fireNodeEvent(Graph.NodeEvent.ZERO_USAGES, node);
         }
     }
@@ -1689,7 +1697,7 @@ public abstract class Node implements Cloneable, Formattable {
      * the ideal graph visualizer).
      */
     public final Map<Object, Object> getDebugProperties() {
-        return getDebugProperties(new HashMap<>());
+        return getDebugProperties(new EconomicHashMap<>());
     }
 
     /**
@@ -1894,4 +1902,10 @@ public abstract class Node implements Cloneable, Formattable {
         return nodeClass.cycles();
     }
 
+    /**
+     * Special tasks to perform on a node before it is encoded.
+     */
+    public void beforeEncode() {
+        // intentionally left empty
+    }
 }

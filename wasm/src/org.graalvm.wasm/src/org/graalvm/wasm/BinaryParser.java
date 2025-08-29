@@ -231,7 +231,7 @@ public class BinaryParser extends BinaryStreamParser {
             module.checkDataSegmentCount(0);
         }
         module.setBytecode(bytecode.toArray());
-        module.removeFunctionReferences();
+        module.finishSymbolTable();
         module.setCustomData(customData.toArray());
         if (module.hasDebugInfo()) {
             functionDebugData.add(codeSectionLength);
@@ -782,10 +782,15 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(I32_TYPE); // condition
                     final byte t1 = state.pop(); // first operand
                     final byte t2 = state.pop(); // second operand
-                    assertTrue(WasmType.isNumberType(t1) && WasmType.isNumberType(t2), Failure.TYPE_MISMATCH);
+                    assertTrue((WasmType.isNumberType(t1) || WasmType.isVectorType(t1)) && (WasmType.isNumberType(t2) || WasmType.isVectorType(t2)), Failure.TYPE_MISMATCH);
                     assertTrue(t1 == t2 || t1 == WasmType.UNKNOWN_TYPE || t2 == WasmType.UNKNOWN_TYPE, Failure.TYPE_MISMATCH);
-                    state.push(t1 == WasmType.UNKNOWN_TYPE ? t2 : t1);
-                    state.addSelectInstruction(Bytecode.SELECT);
+                    final byte t = t1 == WasmType.UNKNOWN_TYPE ? t2 : t1;
+                    state.push(t);
+                    if (WasmType.isNumberType(t)) {
+                        state.addSelectInstruction(Bytecode.SELECT);
+                    } else {
+                        state.addSelectInstruction(Bytecode.SELECT_OBJ);
+                    }
                     break;
                 }
                 case Instructions.SELECT_T: {
@@ -2828,15 +2833,6 @@ public class BinaryParser extends BinaryStreamParser {
             final boolean isInitialized = initBytecode == null;
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
-            final int currentGlobalIndex = globalIndex;
-            module.addLinkAction((context, store, instance, imports) -> {
-                if (isInitialized) {
-                    store.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
-                    store.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
-                } else {
-                    store.linker().resolveGlobalInitialization(store, instance, currentGlobalIndex, initBytecode);
-                }
-            });
         }
     }
 

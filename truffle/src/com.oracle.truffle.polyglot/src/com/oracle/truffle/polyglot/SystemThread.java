@@ -104,7 +104,7 @@ abstract class SystemThread extends Thread {
     static final class LanguageSystemThread extends SystemThread {
 
         final String languageId;
-        private final PolyglotContextImpl polyglotContext;
+        final PolyglotContextImpl polyglotContext;
 
         LanguageSystemThread(PolyglotLanguageContext polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
             super(runnable, threadGroup, polyglotLanguageContext.context.engine.impl);

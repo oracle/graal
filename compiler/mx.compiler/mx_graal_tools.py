@@ -80,10 +80,11 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
 def igv(args):
     """run the Ideal Graph Visualizer
 
-    The current version is based on NetBeans 22 which officially supports JDK 17 through JDK 22.  A
+    The current version is based on NetBeans 26 which officially supports JDK 17 through JDK 24.  A
     supported JDK will be chosen from the JDKs known to mx but it will fall back to whatever is
     configured as JAVA_HOME if a supported JDK can't be found.  It's not recommended to run igv with
-    pre-release JDKs.
+    pre-release JDKs.  Setting TOOLS_JAVA_HOME to point at a supported JDK is the recommended way to
+    configure the JDK for IGV.
 
     You can directly control which JDK is used to launch IGV using
 
@@ -95,10 +96,12 @@ def igv(args):
     help for the NetBeans launcher.
 
     """
-    v17 = mx.VersionSpec("17")
-    v23 = mx.VersionSpec("23")
+    min_version = 17
+    max_version = 24
+    min_version_spec = mx.VersionSpec(str(min_version))
+    next_version_spec = mx.VersionSpec(str(max_version + 1))
     def _igvJdkVersionCheck(version):
-        return v17 <= version < v23
+        return min_version_spec <= version < next_version_spec
 
     jdkhome = None
     if not '--jdkhome' in args:
@@ -106,7 +109,7 @@ def igv(args):
             pass
 
         # try to find a fully supported version first
-        jdk = mx.get_tools_jdk(versionCheck=_igvJdkVersionCheck, versionDescription='IGV prefers JDK 17 through JDK 22', abortCallback=_do_not_abort)
+        jdk = mx.get_tools_jdk(versionCheck=_igvJdkVersionCheck, versionDescription=f'IGV prefers JDK {min_version} through JDK {max_version}', abortCallback=_do_not_abort)
         if jdk is None:
             # try any JDK
             jdk = mx.get_jdk()
@@ -116,7 +119,7 @@ def igv(args):
             mx.log(f'Launching IGV with {jdkhome}')
             if not _igvJdkVersionCheck(jdk.version):
                 mx.warn(f'{jdk.home} is not an officially supported JDK for IGV.')
-                mx.warn('If you experience any problems try to use a JDK 17 or JDK 21 instead.')
+                mx.warn(f'If you experience any problems try to use an LTS release between JDK {min_version} and JDK {max_version} instead.')
                 mx.warn(f'mx help igv provides more details.')
 
     run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist='IDEALGRAPHVISUALIZER_DIST')

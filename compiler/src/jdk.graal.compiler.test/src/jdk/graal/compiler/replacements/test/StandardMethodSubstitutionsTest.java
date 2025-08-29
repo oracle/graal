@@ -26,8 +26,6 @@ package jdk.graal.compiler.replacements.test;
 
 import static jdk.graal.compiler.nodes.GraphState.StageFlag.SAFEPOINTS_INSERTION;
 
-import java.util.HashMap;
-
 import org.junit.Test;
 
 import jdk.graal.compiler.nodes.IfNode;
@@ -41,6 +39,7 @@ import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -61,6 +60,9 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSqrt");
         testGraph("mathTan");
         testGraph("mathAll");
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "sinh"), getInitialOptions())) {
+            testGraph("mathSinh");
+        }
         if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
             testGraph("mathTanh");
         }
@@ -73,6 +75,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathLog", value);
         test("mathLog10", value);
         test("mathSin", value);
+        test("mathSinh", value);
         test("mathSqrt", value);
         test("mathTan", value);
         test("mathTanh", value);
@@ -132,6 +135,10 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     public static double mathSin(double value) {
         return Math.sin(value);
+    }
+
+    public static double mathSinh(double value) {
+        return Math.sinh(value);
     }
 
     public static double mathCos(double value) {
@@ -339,8 +346,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("isInstance2", false, null);
         test("isInstance2", true, "string");
         test("isInstance2", false, "string");
-        test("isInstance2", true, new HashMap<>());
-        test("isInstance2", false, new HashMap<>());
+        test("isInstance2", true, new EconomicHashSet<>());
+        test("isInstance2", false, new EconomicHashSet<>());
     }
 
     public static boolean constantIsAssignableFromConstantPrimary() {

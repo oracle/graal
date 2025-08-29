@@ -43,9 +43,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -158,12 +160,12 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     /**
      * Map from the name of a resource (without module qualifier) to its path in the image.
      */
-    private final Map<String, Resource> resources = new HashMap<>();
+    private final Map<String, Resource> resources = new LinkedHashMap<>();
 
     /**
      * Map from a service name to a list of providers.
      */
-    private final Map<String, List<String>> services = new HashMap<>();
+    private final Map<String, List<String>> services = new LinkedHashMap<>();
 
     /**
      * Map from the {@linkplain Class#forName(String) name} of a class to the name of its enclosing
@@ -174,13 +176,13 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     /**
      * Modules containing classes that can be annotated by {@code LibGraalService}.
      */
-    private static final Set<String> LIBGRAAL_MODULES = Set.of(
+    private static final Set<String> LIBGRAAL_MODULES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
                     "jdk.internal.vm.ci",
                     "jdk.graal.compiler",
                     "jdk.graal.compiler.management",
                     "jdk.graal.compiler.libgraal",
                     "org.graalvm.truffle.compiler",
-                    "com.oracle.graal.graal_enterprise");
+                    "com.oracle.graal.graal_enterprise")));
 
     static {
         ClassLoader.registerAsParallelCapable();
@@ -219,7 +221,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
             Modules.addExports(javaBaseModule, "jdk.internal.vm", unnamedModuleOfThisLoader);
             Modules.addExports(javaBaseModule, "jdk.internal.misc", unnamedModuleOfThisLoader);
 
-            Map<String, String> modulesMap = new HashMap<>();
+            Map<String, String> modulesMap = new LinkedHashMap<>();
 
             Path imagePath = LIBGRAAL_JAVA_HOME.resolve(Path.of("lib", "modules"));
             this.imageReader = BasicImageReader.open(imagePath);
@@ -269,7 +271,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
                 }
             }
 
-            modules = Map.copyOf(modulesMap);
+            modules = Collections.unmodifiableMap(new LinkedHashMap<>(modulesMap));
 
         } catch (IOException e) {
             throw new RuntimeException(e);

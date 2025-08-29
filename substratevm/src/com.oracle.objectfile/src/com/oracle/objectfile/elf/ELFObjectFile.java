@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -53,6 +52,8 @@ import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLineStrSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfRangesSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
@@ -189,7 +190,7 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createUndefinedSymbol(String name, int size, boolean isCode) {
+    public Symbol createUndefinedSymbol(String name, boolean isCode) {
         ELFSymtab symtab = createSymbolTable();
         return symtab.newUndefinedEntry(name, isCode);
     }
@@ -1174,8 +1175,10 @@ public class ELFObjectFile extends ObjectFile {
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder());
+
         /* We need an implementation for each generated DWARF section. */
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
+        DwarfLineStrSectionImpl elfLineStrSectionImpl = dwarfSections.getLineStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();
         DwarfFrameSectionImpl frameSectionImpl = dwarfSections.getFrameSectionImpl();
         DwarfLocSectionImpl elfLocSectionImpl = dwarfSections.getLocSectionImpl();
@@ -1185,6 +1188,7 @@ public class ELFObjectFile extends ObjectFile {
         DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
         /* Now we can create the section elements with empty content. */
         newDebugSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
+        newDebugSection(elfLineStrSectionImpl.getSectionName(), elfLineStrSectionImpl);
         newDebugSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
         newDebugSection(frameSectionImpl.getSectionName(), frameSectionImpl);
         newDebugSection(elfLocSectionImpl.getSectionName(), elfLocSectionImpl);
@@ -1202,6 +1206,7 @@ public class ELFObjectFile extends ObjectFile {
         createDefinedSymbol(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl.getElement(), 0, 0, false, false);
         createDefinedSymbol(elfLineSectionImpl.getSectionName(), elfLineSectionImpl.getElement(), 0, 0, false, false);
         createDefinedSymbol(elfStrSectionImpl.getSectionName(), elfStrSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfLineStrSectionImpl.getSectionName(), elfLineStrSectionImpl.getElement(), 0, 0, false, false);
         createDefinedSymbol(elfRangesSectionImpl.getSectionName(), elfRangesSectionImpl.getElement(), 0, 0, false, false);
         createDefinedSymbol(elfLocSectionImpl.getSectionName(), elfLocSectionImpl.getElement(), 0, 0, false, false);
         /*
@@ -1214,6 +1219,7 @@ public class ELFObjectFile extends ObjectFile {
          * relevant reloc sections here in advance.
          */
         elfStrSectionImpl.getOrCreateRelocationElement(0);
+        elfLineStrSectionImpl.getOrCreateRelocationElement(0);
         elfAbbrevSectionImpl.getOrCreateRelocationElement(0);
         frameSectionImpl.getOrCreateRelocationElement(0);
         elfInfoSectionImpl.getOrCreateRelocationElement(0);

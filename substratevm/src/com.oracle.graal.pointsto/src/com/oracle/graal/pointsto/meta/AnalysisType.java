@@ -83,10 +83,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, AnalysisObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, AnalysisObject.class, "uniqueConstant");
 
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "interceptors");
-
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
 
@@ -174,8 +170,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
     private Set<AnalysisMethod> dispatchTableMethods;
-
-    private AnalysisType[] allInterfaces;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -293,7 +287,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer()) {
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
@@ -375,36 +369,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public int getArrayDimension() {
         return dimension;
-    }
-
-    /**
-     * @return All interfaces this type inherits (including itself if it is an interface).
-     */
-    public AnalysisType[] getAllInterfaces() {
-        if (allInterfaces != null) {
-            return allInterfaces;
-        }
-
-        Set<AnalysisType> allInterfaceSet = new HashSet<>();
-
-        if (isInterface()) {
-            allInterfaceSet.add(this);
-        }
-
-        if (this.superClass != null) {
-            allInterfaceSet.addAll(Arrays.asList(this.superClass.getAllInterfaces()));
-        }
-
-        for (AnalysisType i : interfaces) {
-            allInterfaceSet.addAll(Arrays.asList(i.getAllInterfaces()));
-        }
-
-        var result = allInterfaceSet.toArray(AnalysisType[]::new);
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        allInterfaces = result;
-        return allInterfaces;
     }
 
     public void cleanupAfterAnalysis() {
@@ -525,7 +489,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public static boolean verifyAssignableTypes(BigBang bb) {
-        List<AnalysisType> allTypes = bb.getUniverse().getTypes();
+        List<AnalysisType> allTypes = bb.getUniverse().getTypes().stream().filter(t -> !(t.getWrapped() instanceof BaseLayerType)).toList();
 
         Set<String> mismatchedAssignableResults = ConcurrentHashMap.newKeySet();
         allTypes.parallelStream().filter(t -> t.instantiatedTypes != null).forEach(t1 -> {
@@ -1200,18 +1164,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *
      * Although all elements are of type AnalysisField, we set this array to be of type
      * ResolvedJavaField so that runtime compilation does not need to convert the array type.
+     * Resolving GR-66575 will allow these arrays to be of type {@code AnalysisField[]}.
      */
     private volatile ResolvedJavaField[] instanceFieldsWithSuper;
     private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
 
-    public void clearInstanceFieldsCache() {
-        instanceFieldsWithSuper = null;
-        instanceFieldsWithoutSuper = null;
-    }
-
     /**
      * Note that although this returns a ResolvedJavaField[], all instance fields are of type
-     * AnalysisField and can be casted to AnalysisField without problem.
+     * AnalysisField and can be cast to AnalysisField without problem.
      */
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
@@ -1228,7 +1188,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (includeSuperclasses && getSuperclass() != null) {
             list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
         }
-        ResolvedJavaField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
+        ResolvedJavaField[] result = convertFields(wrapped.getInstanceFields(false), list, includeSuperclasses);
         if (includeSuperclasses) {
             instanceFieldsWithSuper = result;
         } else {
@@ -1320,13 +1280,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public AnalysisMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
     public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
-        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        GraalError.guarantee(!forceLink, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         AnalysisMethod[] result = declaredMethods;
         if (result == null) {
             result = universe.lookup(wrapped.getDeclaredMethods(forceLink));
@@ -1346,7 +1306,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public AnalysisMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
@@ -1354,18 +1314,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public AnalysisMethod findConstructor(Signature signature) {
-        if (wrapped instanceof BaseLayerType) {
-            return null;
-        }
-        for (AnalysisMethod ctor : getDeclaredConstructors(false)) {
-            if (ctor.getSignature().equals(signature)) {
-                return ctor;
-            }
-        }
-        return null;
     }
 
     public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
@@ -1486,37 +1434,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         assert id != 0 || isJavaLangObject() : "Type id not set yet";
         return id;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         return this == obj;
-    }
-
-    /* Value copied from java.lang.Class. */
-    private static final int ANNOTATION = 0x00002000;
-
-    /* Method copied from java.lang.Class. */
-    public boolean isAnnotation() {
-        return (getModifiers() & ANNOTATION) != 0;
-    }
-
-    public void addInstanceFieldsInterceptor(InstanceFieldsInterceptor interceptor) {
-        ConcurrentLightHashSet.addElement(this, INTERCEPTORS_UPDATER, interceptor);
-    }
-
-    private ResolvedJavaField[] interceptInstanceFields(ResolvedJavaField[] fields) {
-        ResolvedJavaField[] result = fields;
-        for (Object interceptor : ConcurrentLightHashSet.getElements(this, INTERCEPTORS_UPDATER)) {
-            result = ((InstanceFieldsInterceptor) interceptor).interceptInstanceFields(universe, result, this);
-        }
-        return result;
-    }
-
-    public interface InstanceFieldsInterceptor {
-        ResolvedJavaField[] interceptInstanceFields(AnalysisUniverse universe, ResolvedJavaField[] fields, AnalysisType type);
     }
 }

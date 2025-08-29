@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -165,9 +165,9 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
             if (injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
                 findNextStates(locals, codeRange);
                 // If locals.successorsEmpty() is true, then all of our paths have either been
-                // finished, discarded due to priority or failed to match. If we managed to finish
-                // any path to a final state (i.e. locals.hasResult() is true), we can terminate
-                // the search now.
+                // finished, discarded due to priority or failed to match. If we managed to
+                // finish any path to a final state (i.e. locals.hasResult() is true), we can
+                // terminate the search now.
                 // We can also terminate the search now if we were interested only in matches at
                 // the very start of the string (i.e. searching is false). Such a search would
                 // only have walked through the rest of the string without considering any other
@@ -220,15 +220,19 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 locals.getMarks()[markIndex] |= markBit;
                 if (t.getTarget().isUnAnchoredFinalState(true)) {
                     locals.pushResult(t, !isLoopBack);
+                    return;
                 } else if (t.getCodePointSet().contains(c)) {
                     locals.pushSuccessor(t, !isLoopBack);
+                    if (t.getTarget().hasUnGuardedTransitionToUnAnchoredFinalState(true)) {
+                        return;
+                    }
                 }
             }
         }
     }
 
     private static int maxTransitionIndex(NFAState state) {
-        return state.hasTransitionToUnAnchoredFinalState(true) ? state.getTransitionToUnAnchoredFinalStateId(true) + 1 : state.getSuccessors().length;
+        return state.hasUnGuardedTransitionToUnAnchoredFinalState(true) ? state.getTransitionToUnAnchoredFinalStateId(true) + 1 : state.getSuccessors().length;
     }
 
     private void findNextStatesAtEnd(TRegexNFAExecutorLocals locals) {
@@ -247,7 +251,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private static void expandStateAtEnd(TRegexNFAExecutorLocals locals, NFAState state, boolean isLoopBack) {
-        if (state.hasTransitionToFinalState(true)) {
+        if (state.hasUnGuardedTransitionToFinalState(true)) {
             locals.pushResult(state.getFirstTransitionToFinalState(true), !isLoopBack);
         }
     }

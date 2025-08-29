@@ -49,6 +49,7 @@ import org.graalvm.nativebridge.ProcessIsolateThreadSupport.ThreadChannel;
 
 import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 
+import static org.graalvm.nativebridge.ForeignException.GUEST_TO_HOST;
 import static org.graalvm.nativebridge.ForeignException.HOST_TO_GUEST;
 
 /**
@@ -94,7 +95,8 @@ public final class ProcessIsolateThread extends AbstractIsolateThread {
             return BinaryInput.create(result.payload().array());
         } else {
             byte[] data = result.payload().array();
-            throw ForeignException.create(data, HOST_TO_GUEST);
+            byte kind = getIsolate().isHost() ? HOST_TO_GUEST : GUEST_TO_HOST;
+            throw ForeignException.create(data, kind);
         }
     }
 }

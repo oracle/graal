@@ -26,9 +26,6 @@ package com.oracle.svm.core.layeredimagesingleton;
 
 import java.util.EnumSet;
 
-import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.util.VMError;
-
 /**
  * Flags used during build time to determine how the native image generator handles the layered
  * image singleton.
@@ -41,11 +38,7 @@ public enum LayeredImageSingletonBuilderFlags {
     /**
      * This singleton can be accessed from the buildtime.
      */
-    BUILDTIME_ACCESS,
-    /**
-     * This singleton should not have been created. Throw error if it is created.
-     */
-    UNSUPPORTED;
+    BUILDTIME_ACCESS;
 
     /*
      * Below are some common flag patterns.
@@ -56,45 +49,4 @@ public enum LayeredImageSingletonBuilderFlags {
     public static final EnumSet<LayeredImageSingletonBuilderFlags> RUNTIME_ACCESS_ONLY = EnumSet.of(RUNTIME_ACCESS);
 
     public static final EnumSet<LayeredImageSingletonBuilderFlags> ALL_ACCESS = EnumSet.of(RUNTIME_ACCESS, BUILDTIME_ACCESS);
-
-    public static boolean verifyImageBuilderFlags(LayeredImageSingleton singleton) {
-        EnumSet<LayeredImageSingletonBuilderFlags> flags = singleton.getImageBuilderFlags();
-
-        if (!(flags.contains(UNSUPPORTED) || flags.contains(BUILDTIME_ACCESS) || flags.contains(RUNTIME_ACCESS))) {
-            assert false : String.format("At least one of the following flags must be set: %s, %s, %s", UNSUPPORTED, BUILDTIME_ACCESS, RUNTIME_ACCESS);
-        }
-
-        if (flags.contains(UNSUPPORTED)) {
-            assert flags.equals(EnumSet.of(UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
-        }
-
-        if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
-            assert flags.contains(RUNTIME_ACCESS) : String.format("%s must be set when implementing either %s or %s: %s", RUNTIME_ACCESS, MultiLayeredImageSingleton.class,
-                            ApplicationLayerOnlyImageSingleton.class, singleton);
-        }
-
-        assert !(singleton instanceof MultiLayeredImageSingleton && ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) : String.format("%s can only implement one of %s or %s",
-                        singleton,
-                        MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class);
-
-        return true;
-    }
-
-    public static void validateRuntimeLookup(Object singleton) {
-        if (singleton instanceof LayeredImageSingleton layeredSingleton) {
-            if (!layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
-                /*
-                 * Runtime compilation installs many singletons into the image which are otherwise
-                 * hosted only. Note the platform checks still apply and can be used to ensure
-                 * certain singleton are not installed into the image.
-                 */
-                if (!RuntimeCompilation.isEnabled()) {
-                    throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + layeredSingleton);
-                }
-            }
-            if (layeredSingleton instanceof MultiLayeredImageSingleton) {
-                throw VMError.shouldNotReachHere("Forbidden lookup of MultiLayeredImageSingleton in runtime graph: " + layeredSingleton);
-            }
-        }
-    }
 }

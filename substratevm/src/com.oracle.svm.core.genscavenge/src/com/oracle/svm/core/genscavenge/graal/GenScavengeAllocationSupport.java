@@ -37,7 +37,6 @@ import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -58,7 +57,6 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "slowNewArray", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_STORED_CONTINUATION = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "slowNewStoredContinuation", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_POD_INSTANCE = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "slowNewPodInstance", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor NEW_DYNAMICHUB = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "newDynamicHub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor[] UNCONDITIONAL_FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
@@ -68,9 +66,6 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
         }
         if (Pod.RuntimeSupport.isPresent()) {
             foreignCalls.register(SLOW_NEW_POD_INSTANCE);
-        }
-        if (RuntimeClassLoading.isSupported()) {
-            foreignCalls.register(NEW_DYNAMICHUB);
         }
     }
 
@@ -92,11 +87,6 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     @Override
     public ForeignCallDescriptor getNewPodInstanceStub() {
         return SLOW_NEW_POD_INSTANCE;
-    }
-
-    @Override
-    public SubstrateForeignCallDescriptor getNewDynamicHub() {
-        return NEW_DYNAMICHUB;
     }
 
     @Override
@@ -178,11 +168,6 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
-    }
-
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object newDynamicHub(int vTableSlots) {
-        return HeapImpl.allocateDynamicHub(vTableSlots);
     }
 
     @Uninterruptible(reason = "Switch from uninterruptible to interruptible code.", calleeMustBe = false)

@@ -128,7 +128,7 @@ public abstract class ConfigurationParser {
 
     public Object getFromGlobalFile(Object json, String key) {
         EconomicMap<String, Object> map = asMap(json, "top level of reachability metadata file must be an object");
-        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, "reason", "comment"));
+        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, FOREIGN_KEY, "reason", "comment"));
         return map.get(key);
     }
 

@@ -25,10 +25,8 @@
 
 /**
  * This package contains "legacy" substitutions and features that are required to support
- * initializing certain parts of the JDK at image
- * {@linkplain com.oracle.svm.core.jdk.JDKInitializedAtBuildTime build time}. Those parts of the JDK
- * are planned to be initialized at {@linkplain com.oracle.svm.core.jdk.JDKInitializedAtRunTime run
- * time} in the {@linkplain com.oracle.svm.core.FutureDefaultsOptions future}. Once run time
- * initialization is the default, this package will be removed.
+ * initializing certain parts of the JDK at image build time. Those parts of the JDK are planned to
+ * be initialized at run time in the {@linkplain com.oracle.svm.core.FutureDefaultsOptions future}.
+ * Once run time initialization is the default, this package will be removed.
  */
 package com.oracle.svm.core.jdk.buildtimeinit;

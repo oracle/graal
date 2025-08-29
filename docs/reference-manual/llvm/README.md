@@ -20,17 +20,17 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 1. Download the LLVM standalone for your operating system:
 
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-24.2.0-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-24.2.0-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-24.2.0-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-24.2.0-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-24.2.0-windows-amd64.zip)
+      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-25.0.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.0.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-25.0.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.0.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-25.0.0-windows-amd64.zip)
    - JVM standalone
-      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.2.0-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.2.0-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.2.0-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.2.0-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.2.0-windows-amd64.zip)
+      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.0.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.0.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.0.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.0.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.0.0-windows-amd64.zip)
 
 2. Unzip the archive:
 

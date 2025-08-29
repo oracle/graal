@@ -29,15 +29,14 @@ import java.util.zip.Inflater;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libzip.LibZip;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.VersionFilter;
 
 /**
  * EspressoLibs substitution for the Inflater class. The implementation associates a HostInflater
@@ -73,18 +72,18 @@ public final class Target_java_util_zip_Inflater {
         libsState.getInflater(addr).setDictionary(byteArrayB, off, len);
     }
 
-    @Substitution(languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution
     public static void setDictionaryBuffer(long addr, long bufAddress, int len, @Inject LibsState libsState) {
         ByteBuffer dst = NativeUtils.directByteBuffer(bufAddress, len);
         libsState.getInflater(addr).setDictionary(dst);
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true)
     @TruffleBoundary
     public static long inflateBytesBytes(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     @JavaType(byte[].class) StaticObject inputArray, int inputOff, int inputLen,
                     @JavaType(byte[].class) StaticObject outputArray, int outputOff, int outputLen,
-                    @Inject LibsState libsState, @Inject Meta meta, @Inject EspressoLanguage language) {
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage language) {
         // get Input/Output Array/Buffer
         byte[] inputByteArray = inputArray.unwrap(language);
         byte[] outputByteArray = outputArray.unwrap(language);
@@ -99,16 +98,15 @@ public final class Target_java_util_zip_Inflater {
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
-            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, meta);
-            throw meta.throwExceptionWithMessage(meta.java_util_zip_DataFormatException, e.getMessage());
+            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
+            throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
         }
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true)
     public static long inflateBytesBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     @JavaType(byte[].class) StaticObject inputArray, int inputOff, int inputLen,
-                    long outputAddress, int outputLen, @Inject LibsState libsState,
-                    @Inject Meta meta, @Inject EspressoLanguage lang) {
+                    long outputAddress, int outputLen, @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage lang) {
         // get Input/Output Array/Buffer
         byte[] inputByteArray = inputArray.unwrap(lang);
         ByteBuffer outputByteBuffer = NativeUtils.directByteBuffer(outputAddress, outputLen);
@@ -123,16 +121,16 @@ public final class Target_java_util_zip_Inflater {
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
-            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, meta);
-            throw meta.throwExceptionWithMessage(meta.java_util_zip_DataFormatException, e.getMessage());
+            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
+            throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
         }
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true)
     public static long inflateBufferBytes(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     @JavaType(byte[].class) StaticObject outputArray, int outputOff, int outputLen,
-                    @Inject LibsState libsState, @Inject Meta meta,
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
                     @Inject EspressoLanguage lang) {
 
         // get Input/Output Array/Buffer
@@ -149,17 +147,17 @@ public final class Target_java_util_zip_Inflater {
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
-            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, meta);
-            throw meta.throwExceptionWithMessage(meta.java_util_zip_DataFormatException, e.getMessage());
+            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
+            throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
         }
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true)
     @SuppressWarnings("unused")
     public static long inflateBufferBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     long outputAddress, int outputLen,
-                    @Inject LibsState libsState, @Inject Meta meta,
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
                     @Inject EspressoLanguage lang) {
         // get Input/Output Array/Buffer
         ByteBuffer inputByteBuffer = NativeUtils.directByteBuffer(inputAddress, inputLen);
@@ -175,47 +173,17 @@ public final class Target_java_util_zip_Inflater {
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
-            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, meta);
-            throw meta.throwExceptionWithMessage(meta.java_util_zip_DataFormatException, e.getMessage());
-        }
-    }
-
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java8OrEarlier.class)
-    public static int inflateBytes(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
-                    @JavaType(byte[].class) StaticObject outputArray,
-                    int outputOff, int outputLen,
-                    @Inject LibsState libsState, @Inject Meta meta,
-                    @Inject EspressoLanguage lang) {
-        // get Input/Output Array/Buffer
-        byte[] inputArr = meta.java_util_zip_Inflater_buf.getObject(guestInflater).unwrap(lang);
-        int off = meta.java_util_zip_Inflater_off.getInt(guestInflater);
-        int len = meta.java_util_zip_Inflater_len.getInt(guestInflater);
-        byte[] outputByteArray = outputArray.unwrap(lang);
-        // get host Inflater and set Input
-        Inflater hostInflater = libsState.getInflater(addr);
-        hostInflater.setInput(inputArr, off, len);
-        // cache bytesReadOld
-        long bytesReadOld = hostInflater.getBytesRead();
-        try {
-            int written = hostInflater.inflate(outputByteArray, outputOff, outputLen);
-            // update fields
-            int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
-            meta.java_util_zip_Inflater_off.setInt(guestInflater, off + read);
-            meta.java_util_zip_Inflater_len.setInt(guestInflater, hostInflater.getRemaining());
-            meta.java_util_zip_Inflater_needDict.setBoolean(guestInflater, hostInflater.needsDictionary());
-            meta.java_util_zip_Inflater_finished.setBoolean(guestInflater, hostInflater.finished());
-            return written;
-        } catch (DataFormatException e) {
-            throw meta.throwExceptionWithMessage(meta.java_util_zip_DataFormatException, e.getMessage());
+            updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
+            throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
         }
     }
 
     private static void updateGuestInflater(Inflater hostInflater, long bytesReadOld, long bytesWrittenOld,
-                    @JavaType(Inflater.class) StaticObject guestInflater, Meta meta) {
+                    @JavaType(Inflater.class) StaticObject guestInflater, LibsMeta libsMeta) {
         int inputConsumed = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
         int outputConsumed = Math.toIntExact(hostInflater.getBytesWritten() - bytesWrittenOld);
-        meta.java_util_zip_Inflater_inputConsumed.setInt(guestInflater, inputConsumed);
-        meta.java_util_zip_Inflater_outputConsumed.setInt(guestInflater, outputConsumed);
+        libsMeta.java_util_zip_Inflater_inputConsumed.setInt(guestInflater, inputConsumed);
+        libsMeta.java_util_zip_Inflater_outputConsumed.setInt(guestInflater, outputConsumed);
     }
 
     @Substitution

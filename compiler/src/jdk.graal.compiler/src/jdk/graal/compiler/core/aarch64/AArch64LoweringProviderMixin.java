@@ -48,11 +48,6 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportsRounding() {
-        return true;
-    }
-
-    @Override
     default boolean writesStronglyOrdered() {
         /* AArch64 only requires a weak memory model. */
         return false;
@@ -87,10 +82,5 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
                 return supportsSigned;
         }
         return false;
-    }
-
-    @Override
-    default boolean supportsUnsignedFloatConvert() {
-        return true;
     }
 }

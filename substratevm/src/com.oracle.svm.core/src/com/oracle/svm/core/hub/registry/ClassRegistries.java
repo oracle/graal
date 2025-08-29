@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -53,13 +52,9 @@ import com.oracle.svm.espresso.classfile.ParsingContext;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
-import com.oracle.svm.espresso.classfile.descriptors.NameSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
-import com.oracle.svm.espresso.classfile.descriptors.Symbols;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.svm.espresso.classfile.perf.TimerCollection;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -85,16 +80,12 @@ import jdk.internal.misc.PreviewFeatures;
  * <li>When a class is defined (i.e., by runtime class loading when it's enabled)</li>
  * </ul>
  */
-@AutomaticallyRegisteredImageSingleton
 public final class ClassRegistries implements ParsingContext {
     public final TimerCollection timers = TimerCollection.create(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     private final ConcurrentHashMap<ClassLoader, AbstractClassRegistry> buildTimeRegistries;
 
-    private final Utf8Symbols utf8;
-    private final NameSymbols names;
-    private final TypeSymbols types;
     private final AbstractClassRegistry bootRegistry;
     private final EconomicMap<String, String> bootPackageToModule;
 
@@ -105,13 +96,6 @@ public final class ClassRegistries implements ParsingContext {
         } else {
             bootRegistry = new AOTClassRegistry(null);
         }
-        ParserSymbols.ensureInitialized();
-        int initialSymbolTableCapacity = 4 * 1024;
-        Symbols symbols = Symbols.fromExisting(ParserSymbols.SYMBOLS.freeze(), initialSymbolTableCapacity, 0);
-        // let this resize when first used at runtime
-        utf8 = new Utf8Symbols(symbols);
-        names = new NameSymbols(symbols);
-        types = new TypeSymbols(symbols);
         buildTimeRegistries = new ConcurrentHashMap<>();
         bootPackageToModule = computeBootPackageToModuleMap();
     }
@@ -130,7 +114,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     @Fold
-    static ClassRegistries singleton() {
+    public static ClassRegistries singleton() {
         return ImageSingletons.lookup(ClassRegistries.class);
     }
 
@@ -149,10 +133,6 @@ public final class ClassRegistries implements ParsingContext {
         return result;
     }
 
-    TypeSymbols getTypes() {
-        return types;
-    }
-
     public static Class<?> findBootstrapClass(String name) {
         try {
             return singleton().resolve(name, null);
@@ -162,12 +142,12 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     public static Class<?> findLoadedClass(String name, ClassLoader loader) {
-        if (throwMissingRegistrationErrors() && RuntimeClassLoading.followReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
-            MissingReflectionRegistrationUtils.forClass(name);
+        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
+            MissingReflectionRegistrationUtils.reportClassAccess(name);
             return null;
         }
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = singleton().getTypes().lookupValidType(typeBytes);
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
         Class<?> result = null;
         if (type != null) {
             result = singleton().getRegistry(loader).findLoadedClass(type);
@@ -201,9 +181,9 @@ public final class ClassRegistries implements ParsingContext {
      * loader delegation.
      */
     private Class<?> resolve(String name, ClassLoader loader) throws ClassNotFoundException {
-        if (RuntimeClassLoading.followReflectionConfiguration()) {
+        if (shouldFollowReflectionConfiguration()) {
             if (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
-                MissingReflectionRegistrationUtils.forClass(name);
+                MissingReflectionRegistrationUtils.reportClassAccess(name);
                 if (loader == null) {
                     return null;
                 }
@@ -234,7 +214,7 @@ public final class ClassRegistries implements ParsingContext {
              * We know that the array name was registered for reflection. The elemental type might
              * not be, so we have to ignore registration during its lookup.
              */
-            ClassLoadingSupport classLoadingSupport = ImageSingletons.lookup(ClassLoadingSupport.class);
+            ClassLoadingSupport classLoadingSupport = ClassLoadingSupport.singleton();
             classLoadingSupport.startIgnoreReflectionConfigurationScope();
             try {
                 elementalResult = resolveElementalType(name, arrayDimensions, loader);
@@ -285,7 +265,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private Class<?> resolveInstanceType(ClassLoader loader, ByteSequence elementalType) throws ClassNotFoundException {
-        Symbol<Type> type = getTypes().getOrCreateValidType(elementalType);
+        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(elementalType);
         if (type == null) {
             return null;
         }
@@ -301,7 +281,7 @@ public final class ClassRegistries implements ParsingContext {
                     RuntimeClassLoading.getOrCreateArrayHub(hub);
                 } else {
                     if (throwMissingRegistrationErrors()) {
-                        MissingReflectionRegistrationUtils.forClass(name);
+                        MissingReflectionRegistrationUtils.reportClassAccess(name);
                     }
                     return null;
                 }
@@ -315,13 +295,13 @@ public final class ClassRegistries implements ParsingContext {
     public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ClassDefinitionInfo info) {
         // name is a "binary name": `foo.Bar$1`
         assert RuntimeClassLoading.isSupported();
-        if (RuntimeClassLoading.followReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
-            MissingReflectionRegistrationUtils.forClass(name);
+        if (shouldFollowReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
+            MissingReflectionRegistrationUtils.reportClassAccess(name);
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = singleton().getTypes().getOrCreateValidType(typeBytes);
+        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
         if (type == null) {
             throw new NoClassDefFoundError(name);
         }
@@ -387,8 +367,11 @@ public final class ClassRegistries implements ParsingContext {
     public static class ClassRegistryComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            assert receiver != null;
-            return ClassRegistries.singleton().getBuildTimeRegistry((ClassLoader) receiver);
+            if (ClassForNameSupport.respectClassLoader()) {
+                assert receiver != null;
+                return ClassRegistries.singleton().getBuildTimeRegistry((ClassLoader) receiver);
+            }
+            return originalValue;
         }
     }
 
@@ -439,17 +422,21 @@ public final class ClassRegistries implements ParsingContext {
 
     @Override
     public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
-        return ClassRegistries.singleton().names.getOrCreate(byteSequence);
+        return SymbolsSupport.getNames().getOrCreate(byteSequence);
     }
 
     @Override
     public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
-        return ClassRegistries.singleton().getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
+        return SymbolsSupport.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
     }
 
     @Override
     public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
         // Note: all symbols are strong for now
-        return ClassRegistries.singleton().utf8.getOrCreateValidUtf8(byteSequence, true);
+        return SymbolsSupport.getUtf8().getOrCreateValidUtf8(byteSequence, true);
+    }
+
+    private static boolean shouldFollowReflectionConfiguration() {
+        return ClassLoadingSupport.singleton().followReflectionConfiguration();
     }
 }

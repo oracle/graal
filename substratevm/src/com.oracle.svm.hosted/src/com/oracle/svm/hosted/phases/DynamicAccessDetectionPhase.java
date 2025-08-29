@@ -24,23 +24,14 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicSet;
-
+import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
@@ -62,6 +53,26 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.svm.util.ReflectionUtil;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
+
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
+
 /**
  * This phase detects usages of dynamic access calls that might require metadata in reached parts of
  * the project. It does so by analyzing the specified class path entries, modules or packages and
@@ -74,7 +85,8 @@ import java.util.Set;
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     public enum DynamicAccessKind {
         Reflection("reflection-calls.json"),
-        Resource("resource-calls.json");
+        Resource("resource-calls.json"),
+        Foreign("foreign-calls.json");
 
         public final String fileName;
 
@@ -88,6 +100,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
 
     private static final EconomicMap<Class<?>, Set<MethodSignature>> reflectionMethodSignatures = EconomicMap.create();
     private static final EconomicMap<Class<?>, Set<MethodSignature>> resourceMethodSignatures = EconomicMap.create();
+    private static final EconomicMap<Class<?>, Set<MethodSignature>> foreignMethodSignatures = EconomicMap.create();
 
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
@@ -116,6 +129,25 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         new MethodSignature("getSigners"),
                         new MethodSignature("arrayType"),
                         new MethodSignature("newInstance")));
+        reflectionMethodSignatures.put(Field.class, Set.of(
+                        new MethodSignature("get", Object.class),
+                        new MethodSignature("set", Object.class, Object.class),
+                        new MethodSignature("getBoolean", Object.class),
+                        new MethodSignature("setBoolean", Object.class, boolean.class),
+                        new MethodSignature("getByte", Object.class),
+                        new MethodSignature("setByte", Object.class, byte.class),
+                        new MethodSignature("getShort", Object.class),
+                        new MethodSignature("setShort", Object.class, short.class),
+                        new MethodSignature("getChar", Object.class),
+                        new MethodSignature("setChar", Object.class, char.class),
+                        new MethodSignature("getInt", Object.class),
+                        new MethodSignature("setInt", Object.class, int.class),
+                        new MethodSignature("getLong", Object.class),
+                        new MethodSignature("setLong", Object.class, long.class),
+                        new MethodSignature("getFloat", Object.class),
+                        new MethodSignature("setFloat", Object.class, float.class),
+                        new MethodSignature("getDouble", Object.class),
+                        new MethodSignature("setDouble", Object.class, double.class)));
         reflectionMethodSignatures.put(Method.class, Set.of(
                         new MethodSignature("invoke", Object.class, Object[].class)));
         reflectionMethodSignatures.put(MethodHandles.Lookup.class, Set.of(
@@ -155,6 +187,13 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         new MethodSignature("resolveConstantDesc", MethodHandles.Lookup.class)));
         reflectionMethodSignatures.put(MethodHandleProxies.class, Set.of(
                         new MethodSignature("asInterfaceInstance", Class.class, MethodHandle.class)));
+        reflectionMethodSignatures.put(jdk.internal.misc.Unsafe.class, Set.of(
+                        new MethodSignature("allocateInstance", Class.class)));
+        if (ModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+            Class<?> sunMiscUnsafeClass = ReflectionUtil.lookupClass("sun.misc.Unsafe");
+            reflectionMethodSignatures.put(sunMiscUnsafeClass, Set.of(
+                            new MethodSignature("allocateInstance", Class.class)));
+        }
 
         reflectionMethodSignatures.put(ObjectOutputStream.class, Set.of(
                         new MethodSignature("writeObject", Object.class),
@@ -182,7 +221,13 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         new MethodSignature("getResourceAsStream", String.class)));
         resourceMethodSignatures.put(Class.class, Set.of(
                         new MethodSignature("getResource", String.class),
+
                         new MethodSignature("getResourceAsStream", String.class)));
+
+        foreignMethodSignatures.put(Linker.class, Set.of(
+                        new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
     }
 
     public DynamicAccessDetectionPhase() {
@@ -191,18 +236,45 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        List<MethodCallTargetNode> callTargetNodes = graph.getNodes(MethodCallTargetNode.TYPE).snapshot();
-        for (MethodCallTargetNode callTarget : callTargetNodes) {
-            AnalysisType callerClass = (AnalysisType) graph.method().getDeclaringClass();
-            String sourceEntry = getSourceEntry(callerClass);
-            MethodInfo methodInfo = getMethodInfo(callTarget.targetMethod());
+        AnalysisType callerClass = (AnalysisType) graph.method().getDeclaringClass();
+        String sourceEntry = getSourceEntry(callerClass);
+        if (sourceEntry == null) {
+            return;
+        }
 
-            if (methodInfo != null && sourceEntry != null) {
-                NodeSourcePosition nspToShow = getRootSourcePosition(callTarget.getNodeSourcePosition());
-                if (nspToShow != null && !dynamicAccessDetectionFeature.containsFoldEntry(nspToShow.getBCI(), nspToShow.getMethod())) {
-                    String callLocation = nspToShow.getMethod().asStackTraceElement(nspToShow.getBCI()).toString();
-                    dynamicAccessDetectionFeature.addCall(sourceEntry, methodInfo.accessKind(), methodInfo.signature(), callLocation);
-                }
+        for (Node node : graph.getNodes()) {
+            ResolvedJavaMethod targetMethod = null;
+            NodeSourcePosition invokeLocation = null;
+            if (node instanceof MethodCallTargetNode callTarget) {
+                targetMethod = callTarget.targetMethod();
+                invokeLocation = callTarget.getNodeSourcePosition();
+            } else if (node instanceof DynamicNewInstanceNode unsafeNode && unsafeNode.getNodeSourcePosition() != null && unsafeNode.isOriginUnsafeAllocateInstance()) {
+                /*
+                 * Match only DynamicNewInstanceNode intrinsified from Unsafe#allocateInstance. The
+                 * NodeSourcePosition of the node preserves both the intrinsified method
+                 * (getMethod()) and its original caller (getCaller()).
+                 */
+                targetMethod = unsafeNode.getNodeSourcePosition().getMethod();
+                invokeLocation = unsafeNode.getNodeSourcePosition().getCaller();
+            } else if (node instanceof DynamicNewInstanceWithExceptionNode unsafeNodeEx && unsafeNodeEx.getNodeSourcePosition() != null && unsafeNodeEx.isOriginUnsafeAllocateInstance()) {
+                /*
+                 * Match only DynamicNewInstanceWithExceptionNode intrinsified from
+                 * Unsafe#allocateInstance. The NodeSourcePosition of the node preserves both the
+                 * intrinsified method (getMethod()) and its original caller (getCaller()).
+                 */
+                targetMethod = unsafeNodeEx.getNodeSourcePosition().getMethod();
+                invokeLocation = unsafeNodeEx.getNodeSourcePosition().getCaller();
+            }
+            registerDynamicAccessCall(invokeLocation, targetMethod, sourceEntry);
+        }
+    }
+
+    private void registerDynamicAccessCall(NodeSourcePosition invokeLocation, ResolvedJavaMethod targetMethod, String sourceEntry) {
+        if (invokeLocation != null && !dynamicAccessDetectionFeature.containsFoldEntry(invokeLocation.getBCI(), invokeLocation.getMethod())) {
+            MethodInfo dynamicAccessMethodInfo = lookupDynamicAccessMethod(targetMethod);
+            if (dynamicAccessMethodInfo != null) {
+                String callLocation = invokeLocation.getMethod().asStackTraceElement(invokeLocation.getBCI()).toString();
+                dynamicAccessDetectionFeature.addCall(sourceEntry, dynamicAccessMethodInfo.accessKind(), dynamicAccessMethodInfo.signature(), callLocation);
             }
         }
     }
@@ -212,32 +284,38 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * method if it exists in the predetermined set, based on its graph and MethodCallTargetNode;
      * otherwise, returns null.
      */
-    private static MethodInfo getMethodInfo(ResolvedJavaMethod method) {
+    private static MethodInfo lookupDynamicAccessMethod(ResolvedJavaMethod method) {
         Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
-        if (!reflectionMethodSignatures.containsKey(declaringClass) &&
-                        !resourceMethodSignatures.containsKey(declaringClass)) {
-            return null;
+
+        Set<MethodSignature> reflectionSignatures = reflectionMethodSignatures.get(declaringClass);
+        if (reflectionSignatures != null) {
+            MethodSignature methodSignature = new MethodSignature(method);
+            if (reflectionSignatures.contains(methodSignature)) {
+                return new MethodInfo(DynamicAccessKind.Reflection, getClassName(declaringClass) + "#" + methodSignature);
+            }
         }
 
-        String methodName = method.getName();
-        Signature signature = method.getSignature();
-        List<Class<?>> paramList = new ArrayList<>();
-        for (int i = 0; i < signature.getParameterCount(false); i++) {
-            JavaType type = signature.getParameterType(i, method.getDeclaringClass());
-            paramList.add(OriginalClassProvider.getJavaClass(type));
+        Set<MethodSignature> resourceSignatures = resourceMethodSignatures.get(declaringClass);
+        if (resourceSignatures != null) {
+            MethodSignature methodSignature = new MethodSignature(method);
+            if (resourceSignatures.contains(methodSignature)) {
+                return new MethodInfo(DynamicAccessKind.Resource, getClassName(declaringClass) + "#" + methodSignature);
+            }
         }
-        Class<?>[] paramTypes = paramList.toArray(new Class<?>[0]);
-        MethodSignature methodSignature = new MethodSignature(methodName, paramTypes);
 
-        if (reflectionMethodSignatures.containsKey(declaringClass) &&
-                        reflectionMethodSignatures.get(declaringClass).contains(methodSignature)) {
-            return new MethodInfo(DynamicAccessKind.Reflection, declaringClass.getName() + "#" + methodSignature);
-        } else if (resourceMethodSignatures.containsKey(declaringClass) &&
-                        resourceMethodSignatures.get(declaringClass).contains(methodSignature)) {
-            return new MethodInfo(DynamicAccessKind.Resource, declaringClass.getName() + "#" + methodSignature);
+        Set<MethodSignature> foreignSignatures = foreignMethodSignatures.get(declaringClass);
+        if (foreignSignatures != null) {
+            MethodSignature methodSignature = new MethodSignature(method);
+            if (foreignSignatures.contains(methodSignature)) {
+                return new MethodInfo(DynamicAccessKind.Foreign, getClassName(declaringClass) + "#" + methodSignature);
+            }
         }
 
         return null;
+    }
+
+    private static String getClassName(Class<?> clazz) {
+        return clazz.getName().replace('$', '.');
     }
 
     /**
@@ -245,14 +323,14 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * the value specified by the option, otherwise returns null.
      */
     private static String getSourceEntry(AnalysisType callerClass) {
-        UnmodifiableEconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
+        EconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
         try {
             CodeSource entryPathSource = callerClass.getJavaClass().getProtectionDomain().getCodeSource();
             if (entryPathSource != null) {
                 URL entryPathURL = entryPathSource.getLocation();
                 if (entryPathURL != null) {
                     String classPathEntry = entryPathURL.toURI().getPath();
-                    if (classPathEntry.endsWith("/")) {
+                    if (classPathEntry.endsWith(File.separator)) {
                         classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
                     }
                     if (sourceEntries.contains(classPathEntry)) {
@@ -276,17 +354,10 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    private static NodeSourcePosition getRootSourcePosition(NodeSourcePosition nodeSourcePosition) {
-        NodeSourcePosition rootNodeSourcePosition = nodeSourcePosition;
-        while (rootNodeSourcePosition != null && rootNodeSourcePosition.getCaller() != null) {
-            rootNodeSourcePosition = rootNodeSourcePosition.getCaller();
-        }
-        return rootNodeSourcePosition;
-    }
-
     public static void clearMethodSignatures() {
         reflectionMethodSignatures.clear();
         resourceMethodSignatures.clear();
+        foreignMethodSignatures.clear();
     }
 
     private static class MethodSignature {
@@ -296,6 +367,17 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         MethodSignature(String name, Class<?>... paramTypes) {
             this.name = name;
             this.paramTypes = paramTypes;
+        }
+
+        MethodSignature(ResolvedJavaMethod method) {
+            this.name = method.getName();
+            Signature signature = method.getSignature();
+            List<Class<?>> paramList = new ArrayList<>();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                JavaType type = signature.getParameterType(i, method.getDeclaringClass());
+                paramList.add(OriginalClassProvider.getJavaClass(type));
+            }
+            paramTypes = paramList.toArray(new Class<?>[0]);
         }
 
         @Override

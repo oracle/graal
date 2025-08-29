@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.driver;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
@@ -81,6 +84,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
+import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SharedConstants;
@@ -109,7 +113,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.OptionKey;
-import com.oracle.svm.core.JavaVersionUtil;
 import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
@@ -337,6 +340,10 @@ public class NativeImage {
     BundleSupport bundleSupport;
     private final ArchiveSupport archiveSupport;
 
+    /**
+     * When running the Native Image Driver on Espresso with SVM, the available VM flags differ from
+     * those on HotSpot. This accounts for that.
+     */
     public record HostFlags(
                     boolean useJVMCINativeLibrary,
                     boolean hasUseJVMCICompiler,
@@ -345,6 +352,28 @@ public class NativeImage {
                     boolean hasExitOnOutOfMemoryError,
                     boolean hasMaximumHeapSizePercent,
                     boolean hasUseParallelGC) {
+
+        public List<String> defaultMemoryFlags() {
+            List<String> flags = new ArrayList<>();
+            if (hasUseParallelGC) {
+                // native image generation is a throughput-oriented task
+                flags.add("-XX:+UseParallelGC");
+            }
+            if (hasGCTimeRatio) {
+                /*
+                 * Optimize for throughput by increasing the goal of the total time for garbage
+                 * collection from 1% to 10% (N=9). This also reduces peak RSS.
+                 */
+                flags.add("-XX:GCTimeRatio=9"); // 1/(1+N) time for GC
+            }
+            if (hasExitOnOutOfMemoryError) {
+                /*
+                 * Let the builder exit on first OutOfMemoryError to have shorter feedback loops.
+                 */
+                flags.add("-XX:+ExitOnOutOfMemoryError");
+            }
+            return flags;
+        }
     }
 
     protected static class BuildConfiguration {
@@ -994,7 +1023,7 @@ public class NativeImage {
 
     private void prepareImageBuildArgs() {
         addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(MemoryUtil.determineMemoryFlags(config.getHostFlags()));
+        addImageBuilderJavaArgs(config.getHostFlags().defaultMemoryFlags());
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
@@ -1270,6 +1299,17 @@ public class NativeImage {
         }
 
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
+
+        List<String> userMemoryFlags = new ArrayList<>();
+        for (String arg : imageBuilderJavaArgs) {
+            if (MemoryUtil.isMemoryFlag(arg)) {
+                userMemoryFlags.add(arg);
+            }
+        }
+        List<String> memoryFlagsToAdd = MemoryUtil.heuristicMemoryFlags(config.getHostFlags(), userMemoryFlags);
+        for (String memoryFlag : memoryFlagsToAdd.reversed()) {
+            imageBuilderJavaArgs.addFirst(memoryFlag);
+        }
 
         /* Perform option consolidation of imageBuilderArgs */
 
@@ -1863,7 +1903,17 @@ public class NativeImage {
 
         Process p = null;
         try {
-            p = pb.inheritIO().start();
+            if (!useBundle()) {
+                pb.inheritIO();
+            }
+            p = pb.start();
+            if (useBundle()) {
+                var internalOutputDir = bundleSupport.outputDir.toString();
+                var externalOutputDir = bundleSupport.getExternalOutputDir().toString();
+                Function<String, String> filter = line -> line.replace(internalOutputDir, externalOutputDir);
+                ProcessOutputTransformer.attach(p.getInputStream(), filter, System.out);
+                ProcessOutputTransformer.attach(p.getErrorStream(), filter, System.err);
+            }
             imageBuilderPid = p.pid();
             return p.waitFor();
         } catch (IOException | InterruptedException e) {
@@ -1871,6 +1921,22 @@ public class NativeImage {
         } finally {
             if (p != null) {
                 p.destroy();
+            }
+        }
+    }
+
+    private record ProcessOutputTransformer(InputStream in, Function<String, String> filter, PrintStream out) implements Runnable {
+
+        static void attach(InputStream in, Function<String, String> filter, PrintStream out) {
+            Thread.ofVirtual().start(new ProcessOutputTransformer(in, filter, out));
+        }
+
+        @Override
+        public void run() {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+                reader.lines().map(filter).forEach(out::println);
+            } catch (IOException e) {
+                throw showError("Unable to process stdout/stderr of image builder process", e);
             }
         }
     }
@@ -1901,7 +1967,7 @@ public class NativeImage {
         Path jdkRoot = config.rootDir;
         try {
             var reader = ImageReader.open(jdkRoot.resolve("lib/modules"));
-            return new LinkedHashSet<>(List.of(reader.getModuleNames()));
+            return new LinkedHashSet<>(reader.findNode("/modules").getChildNames().map(s -> s.substring("/modules/".length())).toList());
         } catch (IOException e) {
             throw showError("Unable to determine builtin modules of JDK in " + jdkRoot, e);
         }
@@ -1979,19 +2045,9 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LANGUAGE"));
-        Function<String, String> keyMapper;
-        if (OS.WINDOWS.isCurrent()) {
-            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = s -> s.toUpperCase(Locale.ROOT);
-        } else {
-            keyMapper = Function.identity();
-        }
         Map<String, String> restrictedEnvironment = new HashMap<>();
         environment.forEach((key, val) -> {
-            String mappedKey = keyMapper.apply(key);
-            // LC_* are locale vars that override LANG for specific categories (or all, with LC_ALL)
-            if (requiredKeys.contains(mappedKey) || mappedKey.startsWith("LC_")) {
+            if (EnvironmentVariable.isKeyRequired(key)) {
                 restrictedEnvironment.put(key, val);
             }
         });
@@ -2000,8 +2056,9 @@ public class NativeImage {
             if (entry.getValue() != null) {
                 restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
+                EnvironmentVariable imageBuilderEnvironmentVariable = EnvironmentVariable.of(entry);
                 environment.forEach((key, val) -> {
-                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                    if (imageBuilderEnvironmentVariable.keyEquals(key)) {
                         /*
                          * Record key as it was given by -E<key-name> (by using `entry.getKey()`
                          * instead of `key`) to allow creating bundles on Windows that will also

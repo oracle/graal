@@ -90,32 +90,15 @@ public class DebugOptions {
     }
 
     // @formatter:off
-    @Option(help = "Comma separated names of timers that are enabled irrespective of the value for Time option. " +
+    @Option(help = "Comma separated names of timers that are enabled. " +
                    "An empty value enables all timers unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> Timers = new OptionKey<>(null);
-    @Option(help = "Comma separated names of counters that are enabled irrespective of the value for Count option. " +
+    @Option(help = "Comma separated names of counters that are enabled. " +
                    "An empty value enables all counters unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> Counters = new OptionKey<>(null);
-    @Option(help = "Comma separated names of memory usage trackers that are enabled irrespective of the value for TrackMemUse option. " +
+    @Option(help = "Comma separated names of memory usage trackers that are enabled. " +
                    "An empty value enables all memory usage trackers unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> MemUseTrackers = new OptionKey<>(null);
-
-    @Option(help = "Pattern for specifying scopes in which counters are enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all counters unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> Count = new OptionKey<>(null);
-    @Option(help = "Pattern for specifying scopes in which memory use tracking is enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> TrackMemUse = new OptionKey<>(null);
-    @Option(help = "Pattern for specifying scopes in which timing is enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all timers unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> Time = new OptionKey<>(null);
-
-    @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
-                   "See the Dump option for the pattern syntax.", type = OptionType.Debug)
-    public static final OptionKey<String> Verify = new OptionKey<>(null);
     @Option(help = """
                    Filter pattern for specifying scopes in which dumping is enabled.
 
@@ -303,6 +286,9 @@ public class DebugOptions {
     @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
             "Directories are created if they do no exist.", type = OptionType.Debug)
     public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
+
+    @Option(help = "Record the compilations matching the method filter for replay compilation.", type = OptionType.Debug)
+    public static final OptionKey<String> RecordForReplay = new OptionKey<>(null);
     // @formatter:on
 
     /**

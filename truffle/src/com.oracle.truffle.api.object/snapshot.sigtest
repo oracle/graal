@@ -29,6 +29,15 @@ meth public abstract !hasdefault boolean pushEncapsulatingNode()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 
+CLSS public abstract interface static !annotation com.oracle.truffle.api.library.GenerateLibrary$DefaultExport
+ outer com.oracle.truffle.api.library.GenerateLibrary
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.GenerateLibrary$DefaultExport$Repeat)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Repeat
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
+
 CLSS public abstract com.oracle.truffle.api.library.Library
 cons protected init()
 meth public abstract boolean accepts(java.lang.Object)
@@ -196,6 +205,7 @@ meth public boolean isConstant()
 meth public boolean isDeclared()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public boolean isFinal()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="26.0")
 meth public boolean isPrimitive()
 meth public boolean isValue()
 meth public com.oracle.truffle.api.Assumption getFinalAssumption()
@@ -262,48 +272,48 @@ meth public long getLong(com.oracle.truffle.api.object.DynamicObject) throws com
 supr java.lang.Object
 hfds expectedShape,location,property
 
-CLSS public abstract com.oracle.truffle.api.object.Shape
-cons protected init()
+CLSS public final com.oracle.truffle.api.object.Shape
 innr public final static Builder
 innr public final static DerivedBuilder
-meth protected abstract com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
-meth protected abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
-meth protected abstract com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)
-meth protected abstract com.oracle.truffle.api.object.Shape replaceProperty(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
 meth protected boolean hasInstanceProperties()
+meth protected com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
+meth protected com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
+meth protected com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)
+meth protected com.oracle.truffle.api.object.Shape replaceProperty(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
 meth protected com.oracle.truffle.api.object.Shape setDynamicType(java.lang.Object)
 meth protected com.oracle.truffle.api.object.Shape setFlags(int)
-meth public abstract boolean check(com.oracle.truffle.api.object.DynamicObject)
-meth public abstract boolean hasProperty(java.lang.Object)
-meth public abstract boolean isLeaf()
-meth public abstract boolean isValid()
-meth public abstract com.oracle.truffle.api.Assumption getLeafAssumption()
-meth public abstract com.oracle.truffle.api.Assumption getValidAssumption()
-meth public abstract com.oracle.truffle.api.object.Property getLastProperty()
-meth public abstract com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
-meth public abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract com.oracle.truffle.api.object.Shape getRoot()
-meth public abstract com.oracle.truffle.api.object.Shape tryMerge(com.oracle.truffle.api.object.Shape)
-meth public abstract int getPropertyCount()
-meth public abstract java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
-meth public abstract java.lang.Iterable<java.lang.Object> getKeys()
-meth public abstract java.lang.Object getSharedData()
-meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
-meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
-meth public abstract java.util.List<java.lang.Object> getKeyList()
 meth public boolean allPropertiesMatch(java.util.function.Predicate<com.oracle.truffle.api.object.Property>)
+meth public boolean check(com.oracle.truffle.api.object.DynamicObject)
+meth public boolean hasProperty(java.lang.Object)
+meth public boolean isLeaf()
 meth public boolean isShared()
+meth public boolean isValid()
+meth public com.oracle.truffle.api.Assumption getLeafAssumption()
 meth public com.oracle.truffle.api.Assumption getPropertyAssumption(java.lang.Object)
+meth public com.oracle.truffle.api.Assumption getValidAssumption()
+meth public com.oracle.truffle.api.object.Property getLastProperty()
+meth public com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
 meth public com.oracle.truffle.api.object.PropertyGetter makePropertyGetter(java.lang.Object)
+meth public com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
+meth public com.oracle.truffle.api.object.Shape getRoot()
 meth public com.oracle.truffle.api.object.Shape makeSharedShape()
+meth public com.oracle.truffle.api.object.Shape tryMerge(com.oracle.truffle.api.object.Shape)
 meth public int getFlags()
+meth public int getPropertyCount()
 meth public java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject> getLayoutClass()
+meth public java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
+meth public java.lang.Iterable<java.lang.Object> getKeys()
 meth public java.lang.Object getDynamicType()
+meth public java.lang.Object getSharedData()
+meth public java.lang.String toString()
+meth public java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
+meth public java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
+meth public java.util.List<java.lang.Object> getKeyList()
 meth public static com.oracle.truffle.api.object.Shape$Builder newBuilder()
 meth public static com.oracle.truffle.api.object.Shape$DerivedBuilder newBuilder(com.oracle.truffle.api.object.Shape)
 supr java.lang.Object
-hfds OBJECT_FLAGS_MASK,OBJECT_FLAGS_SHIFT,OBJECT_PROPERTY_ASSUMPTIONS,OBJECT_SHARED,PUT_CONSTANT
+hfds FLAG_ALLOW_PROPERTY_ASSUMPTIONS,FLAG_HAS_INSTANCE_PROPERTIES,FLAG_SHARED_SHAPE,LEAF_ASSUMPTION_UPDATER,OBJECT_FLAGS_MASK,OBJECT_FLAGS_SHIFT,PREDECESSOR_SHAPE_UPDATER,PROPERTY_ASSUMPTIONS_UPDATER,TRANSITION_MAP_UPDATER,depth,flags,layout,leafAssumption,objectArrayCapacity,objectArraySize,objectFieldSize,objectType,parent,predecessorShape,primitiveArrayCapacity,primitiveArraySize,primitiveFieldSize,propertyCount,propertyMap,root,sharedData,sharedPropertyAssumptions,successorShape,transitionFromParent,transitionMap,validAssumption
 hcls AbstractBuilder
 
 CLSS public final static com.oracle.truffle.api.object.Shape$Builder

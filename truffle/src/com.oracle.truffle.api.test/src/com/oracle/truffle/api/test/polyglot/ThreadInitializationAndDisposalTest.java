@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.lang.ref.Reference;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.api.test.ThreadUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ThreadUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 
@@ -176,6 +177,9 @@ public class ThreadInitializationAndDisposalTest {
                 Assert.assertEquals(threadId.get() + "," + mainThreadId, context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("initialized").asString());
                 Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("finalized").asString());
                 Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("disposed").asString());
+
+                // the thread needs to stay alive during the test
+                Reference.reachabilityFence(t);
             }
         }
     }

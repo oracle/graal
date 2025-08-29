@@ -50,6 +50,8 @@ They are useful to users and language and tool implementers.
 ```shell
 - `--engine.PreinitializeContexts` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
+- `--engine.SourceCacheStatisticDetails` : Print source cache statistics for an engine when the engine is closed. With the details enabled, statistics for all individual sources are printed.
+- `--engine.SourceCacheStatistics` : Print source cache statistics for an engine when the engine is closed.
 - `--engine.SynchronousThreadLocalActionMaxWait=[0, inf)` : How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.
 - `--engine.SynchronousThreadLocalActionPrintStackTraces` : Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.
 - `--engine.TraceSourceCache` : Print information for source cache misses/evictions/failures.
@@ -142,7 +144,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.CompileOnly=<name>,<name>,...` : Restrict compilation to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.
 - `--engine.DynamicCompilationThresholds=true|false` : Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).
 - `--engine.DynamicCompilationThresholdsMaxNormalLoad=[1, inf)` : The desired maximum compilation queue load. When the load rises above this value, the compilation thresholds are increased. The load is scaled by the number of compiler threads.  (default: 10)
-- `--engine.DynamicCompilationThresholdsMinNormalLoad=[1, inf)` : The desired minimum compilation queue load. When the load falls bellow this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).
+- `--engine.DynamicCompilationThresholdsMinNormalLoad=[1, inf)` : The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).
 - `--engine.DynamicCompilationThresholdsMinScale=[0.0, inf)` : The minimal scale the compilation thresholds can be reduced to (default: 0.1).
 - `--engine.OSRCompilationThreshold=[1, inf)` : Number of loop iterations until on-stack-replacement compilation is triggered (default 100352).
 - `--engine.OSRMaxCompilationReAttempts=[0, inf)` : Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.
@@ -173,6 +175,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
 - `--engine.TraversingQueueOSRBonus=[0.0, inf)` : Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
+- `--compiler.CompilationTimeout` : Time limit in seconds before a compilation expires and throws a bailout (0 to disable the limit). 
 - `--compiler.DeoptCycleDetectionAllowedRepeats` : Maximum allowed repeats of the same compiled code for the same compilable. Works only if the detection of repeated compilation is enabled after DeoptCycleDetectionThreshold has been reached for the compilable. (negative integer means 0, default: 0)
 - `--compiler.DeoptCycleDetectionThreshold` : Threshold for enabling deopt cycle detection for a call target. When the number of successful compilation of the call target reaches the threshold, deopt cycle detection is enabled for the call target. (negative integer means the detection is never enabled, default: 15)
 - `--compiler.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
@@ -190,7 +193,7 @@ These are internal options for debugging language implementations and tools.
 - `--compiler.InstrumentationTableSize` : Maximum number of instrumentation counters available (default: 10000, syntax: [1, inf))
 - `--compiler.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
 - `--compiler.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
-- `--compiler.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
+- `--compiler.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size, disabled if < 0. (default: -1, syntax: [-inf, inf))
 - `--compiler.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
   Accepted values are:
       true - Collect data for the default tier 'truffleTier'.
@@ -243,7 +246,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.InstrumentFilter` : Method filter for host methods in which to add instrumentation (syntax: <method>,<method>,....)
 - `--engine.InstrumentationTableSize` : Maximum number of instrumentation counters available (default: 10000, syntax: [1, inf))
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
-- `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
+- `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size, disabled if < 0. (default: -1, syntax: [-inf, inf))
 - `--engine.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
   Accepted values are:
       true - Collect data for the default tier 'truffleTier'.

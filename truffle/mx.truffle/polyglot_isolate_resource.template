@@ -43,10 +43,13 @@ package <package>;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 
+import com.oracle.truffle.polyglot.enterprise.isolate.PolyglotIsolateLanguages;
+
 import java.io.IOException;
 import java.nio.file.Path;
 
 @InternalResource.Id(value = PolyglotIsolateResource.ID, componentId = "engine", optional = true)
+@PolyglotIsolateLanguages({<languageIds>})
 public final class PolyglotIsolateResource implements InternalResource {
 
     static final String ID = "<resourceId>";

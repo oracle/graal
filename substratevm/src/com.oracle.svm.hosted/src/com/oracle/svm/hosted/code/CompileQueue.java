@@ -42,9 +42,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -61,6 +63,7 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -86,9 +89,10 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -129,6 +133,7 @@ import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -136,6 +141,7 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 public class CompileQueue {
@@ -181,6 +187,9 @@ public class CompileQueue {
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
+    private final boolean allowFoldMethods = NativeImageOptions.AllowFoldMethods.getValue();
+
+    private final ResolvedJavaType generatedFoldInvocationPluginType;
 
     public record UnpublishedTrivialMethods(CompilationGraph unpublishedGraph, boolean newlyTrivial) {
     }
@@ -245,12 +254,12 @@ public class CompileQueue {
         }
     }
 
-    public static class MethodConstantReason extends CompileReason {
+    public static class MethodRefConstantReason extends CompileReason {
 
         private final HostedMethod owner;
         private final HostedMethod callTarget;
 
-        public MethodConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
+        public MethodRefConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
             super(prevReason);
             this.owner = owner;
             this.callTarget = callTarget;
@@ -258,7 +267,7 @@ public class CompileQueue {
 
         @Override
         public String toString() {
-            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer/offset from " + owner.format("%r %h.%n(%p)");
+            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable via MethodRef from " + owner.format("%r %h.%n(%p)");
         }
     }
 
@@ -284,7 +293,7 @@ public class CompileQueue {
 
     protected interface Task extends DebugContextRunnable {
         @Override
-        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        default DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();
         }
     }
@@ -303,7 +312,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
@@ -366,7 +375,7 @@ public class CompileQueue {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
     }
@@ -386,6 +395,7 @@ public class CompileQueue {
         this.defaultParseHooks = new ParseHooks(this);
 
         callForReplacements(debug, runtimeConfig);
+        generatedFoldInvocationPluginType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
     }
 
     protected AnalysisToHostedGraphTransplanter createGraphTransplanter() {
@@ -408,9 +418,7 @@ public class CompileQueue {
                 parseAll();
             }
 
-            // GR-59742 re-enable for open type world and layered images
-            if (SubstrateOptions.useClosedTypeWorld() && !ImageLayerBuildingSupport.buildingImageLayer() &&
-                            !PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
+            if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
                 /*
                  * Reachability Analysis creates call graphs with more edges compared to the
                  * Points-to Analysis, therefore the annotations would have to be added to a lot
@@ -859,10 +867,10 @@ public class CompileQueue {
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
         if (!SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
             /*
-             * We have compiled this method in a prior layer, but don't have the graph available
-             * here.
+             * We have compiled this method in a prior layer or this method's compilation is delayed
+             * to the application layer, but don't have the graph available here.
              */
-            assert callee.isCompiledInPriorLayer() : method;
+            assert callee.isCompiledInPriorLayer() || callee.wrapped.isDelayed() : method;
             return false;
         }
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
@@ -1004,15 +1012,19 @@ public class CompileQueue {
             return;
         }
 
-        if (!(NativeImageOptions.AllowFoldMethods.getValue() || method.getAnnotation(Fold.class) == null ||
-                        (callerMethod != null && metaAccess.lookupJavaType(GeneratedFoldInvocationPlugin.class).isAssignableFrom(callerMethod.getDeclaringClass())))) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + ": " +
-                            method.format("%H.%n(%p)") +
-                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
+        if (!allowFoldMethods && method.getAnnotation(Fold.class) != null && !isFoldInvocationPluginMethod(callerMethod)) {
+            throw VMError.shouldNotReachHere("Parsing method annotated with @%s: %s. " +
+                            "This could happen if either: the Graal annotation processor was not executed on the parent-project of the method's declaring class, " +
+                            "the arguments passed to the method were not compile-time constants, or the plugin was disabled by the corresponding %s.",
+                            Fold.class.getSimpleName(), method.format("%H.%n(%p)"), GraphBuilderContext.class.getSimpleName());
         }
         if (!method.compilationInfo.inParseQueue.getAndSet(true)) {
             executor.execute(new ParseTask(method, reason));
         }
+    }
+
+    private boolean isFoldInvocationPluginMethod(HostedMethod method) {
+        return method != null && generatedFoldInvocationPluginType.isAssignableFrom(OriginalClassProvider.getOriginalType(method.getDeclaringClass()));
     }
 
     protected final void doParse(DebugContext debug, ParseTask task) {
@@ -1204,9 +1216,10 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
-        if (method.isCompiledInPriorLayer()) {
+        if (method.isCompiledInPriorLayer() || method.wrapped.isDelayed()) {
             /*
-             * Since this method was compiled in a prior layer we should not compile it again.
+             * Since this method was compiled in a prior layer or its compilation is delayed to the
+             * application layer we should not compile it.
              */
             return;
         }
@@ -1323,7 +1336,8 @@ public class CompileQueue {
             /* Check that graph is in good shape before compilation. */
             assert GraphOrder.assertSchedulableGraph(graph);
 
-            try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this)) {
+            try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this);
+                            DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
 
                 if (deoptimizeAll && method.compilationInfo.canDeoptForTesting) {
                     DeoptimizationUtils.insertDeoptTests(method, graph);
@@ -1415,7 +1429,7 @@ public class CompileQueue {
                 }
             }
         }
-        ensureCompiledForMethodConstants(method, reason, result);
+        ensureCompiledForMethodRefConstants(method, reason, result);
     }
 
     protected void removeDeoptTargetOptimizations(Suites suites) {
@@ -1426,18 +1440,19 @@ public class CompileQueue {
         DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
     }
 
-    protected final void ensureCompiledForMethodConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
+    protected final void ensureCompiledForMethodRefConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             if (dataPatch.reference instanceof ConstantReference constantRef) {
                 VMConstant constant = constantRef.getConstant();
-                HostedMethod referencedMethod = null;
+                MethodRef ref = null;
                 if (constant instanceof SubstrateMethodPointerConstant pointerConstant) {
-                    referencedMethod = (HostedMethod) pointerConstant.pointer().getMethod();
+                    ref = pointerConstant.pointer();
                 } else if (constant instanceof SubstrateMethodOffsetConstant offsetConstant) {
-                    referencedMethod = (HostedMethod) offsetConstant.offset().getMethod();
+                    ref = offsetConstant.offset();
                 }
-                if (referencedMethod != null) {
-                    ensureCompiled(referencedMethod, new MethodConstantReason(method, referencedMethod, reason));
+                if (ref != null) {
+                    HostedMethod referencedMethod = (HostedMethod) ref.getMethod();
+                    ensureCompiled(referencedMethod, new MethodRefConstantReason(method, referencedMethod, reason));
                 }
             }
         }

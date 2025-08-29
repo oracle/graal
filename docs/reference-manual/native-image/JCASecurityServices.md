@@ -3,14 +3,14 @@ layout: docs
 toc_group: dynamic-features
 link_title: JCA Security Services
 permalink: /reference-manual/native-image/dynamic-features/JCASecurityServices/
-redirect_from: 
+redirect_from:
 - /reference-manual/native-image/features/JCASecurityServices/
 - /reference-manual/native-image/JCASecurityServices/
 ---
 
 # JCA Security Services in Native Image
 
-This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/22/security/java-cryptography-architecture-jca-reference-guide.html) framework.
+This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/25/security/java-cryptography-architecture-jca-reference-guide.html) framework.
 
 The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
 To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.
@@ -38,18 +38,17 @@ The report will detail all registered service classes, the API methods that trig
 
 ## Provider Initialization
 
-Currently security providers are initialized at build time.
-To move their initialization to run time, use the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`. 
-Provider verification will still occur at build time. 
+Currently, security providers are initialized at build time.
+To move their initialization to run time, use the option `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk`.
+Provider verification will still occur at build time.
 Run-time initialization of security providers helps reduce image heap size.
-To move their initialization to run time, you can use the flag `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
 
 ## Provider Registration
 
 The `native-image` builder captures the list of providers and their preference order from the underlying JVM.
 The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
 New security providers cannot be registered at run time by default (see the section above); all providers must be statically configured at executable build time.
-If the user specifies `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk` to move providers initialization to run time, then a specific properties file can be used via the command line option `-Djava.security.properties=<path>`.
+If the user specifies `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk` to move providers initialization to run time, then a specific properties file can be used via the command line option `-Djava.security.properties=<path>`.
 
 ## Providers Reordering at Run Time
 
@@ -61,7 +60,7 @@ Security.removeProvider("BC");
 Security.insertProviderAt(bcProvider, 1);
 ```
 
-If `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk` is enabled, the list of providers is constructed at run time.
+If `--future-defaults=all` or `--future-defaults=run-time-initialize-jdk` is enabled, the list of providers is constructed at run time.
 The same approach to manipulating providers can then be used.
 
 ## SecureRandom

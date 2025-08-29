@@ -32,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
@@ -75,6 +74,10 @@ import jdk.vm.ci.meta.Value;
  */
 public class LinearScan {
 
+    protected boolean isDetailedAsserts() {
+        return Assertions.assertionsEnabled() && detailedAsserts;
+    }
+
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
@@ -90,7 +93,7 @@ public class LinearScan {
          * block. The bit index of an operand is its {@linkplain LinearScan#operandNumber(Value)
          * operand number}.
          */
-        public BitSet liveIn;
+        public SparseBitSet liveIn;
 
         /**
          * Bit map specifying which operands are live upon exit from this block. These are values
@@ -98,20 +101,26 @@ public class LinearScan {
          * to this block. The bit index of an operand is its
          * {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveOut;
+        public SparseBitSet liveOut;
 
         /**
          * Bit map specifying which operands are used (before being defined) in this block. That is,
          * these are the values that are live upon entry to the block. The bit index of an operand
          * is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveGen;
+        public SparseBitSet liveGen;
 
         /**
          * Bit map specifying which operands are defined/overwritten in this block. The bit index of
          * an operand is its {@linkplain LinearScan#operandNumber(Value) operand number}.
          */
-        public BitSet liveKill;
+        public SparseBitSet liveKill;
+
+        /**
+         * State used during {@link LinearScanLifetimeAnalysisPhase#computeGlobalLiveSets()} to
+         * create a worklist.
+         */
+        boolean dirty = true;
     }
 
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
@@ -160,14 +169,14 @@ public class LinearScan {
     private Interval[] sortedIntervals;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
-     * be retrieved with {@link #instructionForId(int)} as the id is not simply an index into this
-     * array.
+     * Map from an instruction {@linkplain LIRInstruction#id() id} to the instruction. Entries
+     * should be retrieved with {@link #instructionForId(int)} as the id is not simply an index into
+     * this array.
      */
     private LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain BasicBlock
+     * Map from an instruction {@linkplain LIRInstruction#id() id} to the {@linkplain BasicBlock
      * block} containing the instruction. Entries should be retrieved with {@link #blockForId(int)}
      * as the id is not simply an index into this array.
      */
@@ -188,7 +197,7 @@ public class LinearScan {
      */
     protected final Interval intervalEndMarker;
     public final Range rangeEndMarker;
-    public final boolean detailedAsserts;
+    private final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
     @SuppressWarnings("this-escape")
@@ -208,8 +217,8 @@ public class LinearScan {
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
-        this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null, ir);
-        this.intervalEndMarker = new Interval(ir, Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
+        this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
+        this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
         this.intervalEndMarker.next = intervalEndMarker;
         this.detailedAsserts = Assertions.detailedAssertionsEnabled(ir.getOptions());
     }
@@ -368,7 +377,7 @@ public class LinearScan {
     Interval createInterval(AllocatableValue operand) {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
-        Interval interval = new Interval(ir, operand, operandNumber, intervalEndMarker, rangeEndMarker);
+        Interval interval = new Interval(operand, operandNumber, intervalEndMarker, rangeEndMarker);
         assert operandNumber < intervalsSize : operandNumber + " " + intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;
@@ -461,7 +470,7 @@ public class LinearScan {
     }
 
     /**
-     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
+     * Converts an {@linkplain LIRInstruction#id() instruction id} to an instruction index. All LIR
      * instructions in a method have an index one greater than their linear-scan order predecessor
      * with the first instruction having an index of 0.
      */
@@ -470,10 +479,10 @@ public class LinearScan {
     }
 
     /**
-     * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id id}.
+     * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id() id}.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
-     * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
+     * @return the instruction whose {@linkplain LIRInstruction#id()} {@code == id}
      */
     public LIRInstruction instructionForId(int opId) {
         assert isEven(opId) : "opId not even";
@@ -485,7 +494,7 @@ public class LinearScan {
     /**
      * Gets the block containing a given instruction.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
      * @return the block containing the instruction denoted by {@code opId}
      */
     public BasicBlock<?> blockForId(int opId) {
@@ -500,7 +509,7 @@ public class LinearScan {
     /**
      * Determines if an {@link LIRInstruction} destroys all caller saved registers.
      *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
+     * @param opId an instruction {@linkplain LIRInstruction#id() id}
      * @return {@code true} if the instruction denoted by {@code id} destroys all caller saved
      *         registers.
      */
@@ -740,14 +749,14 @@ public class LinearScan {
 
                 sortIntervalsAfterAllocation();
 
-                if (detailedAsserts) {
+                if (isDetailedAsserts()) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (detailedAsserts) {
+                if (isDetailedAsserts()) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {

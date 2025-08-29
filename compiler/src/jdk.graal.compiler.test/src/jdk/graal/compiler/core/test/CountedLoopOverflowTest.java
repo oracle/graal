@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,18 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Formatter;
 import java.util.Map;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Test;
-
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -121,7 +121,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
         // first should deopt with a failed speculation, second not
         Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
         try {
-            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, CollectionsUtil.setOf(), null);
             deoptCountsBefore = getDeoptCounts(method);
             executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
         } catch (Throwable t) {
@@ -142,7 +142,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
         // first should deopt with a failed speculation, second not
         Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
         try {
-            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, CollectionsUtil.setOf(), null);
             deoptCountsBefore = getDeoptCounts(method);
             executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
         } catch (Throwable t) {
@@ -163,7 +163,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
         // first should deopt with a failed speculation, second not
         Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
         try {
-            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, CollectionsUtil.setOf(), null);
             deoptCountsBefore = getDeoptCounts(method);
             executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
         } catch (Throwable t) {

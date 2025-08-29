@@ -40,7 +40,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -92,9 +91,9 @@ public class VectorAPIIntrinsics {
     /**
      * Register the Vector API plugins.
      */
-    public static void registerPlugins(InvocationPlugins plugins, Replacements replacements) {
+    public static void registerPlugins(InvocationPlugins plugins) {
         String vectorSupportPackage = "jdk.internal.vm.vector";
-        Registration r = new Registration(plugins, vectorSupportPackage + ".Utils", replacements);
+        Registration r = new Registration(plugins, vectorSupportPackage + ".Utils");
         r.register(new InlineOnlyInvocationPlugin("isNonCapturingLambda", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
@@ -112,7 +111,7 @@ public class VectorAPIIntrinsics {
         });
 
         String vectorSupportName = vectorSupportPackage + ".VectorSupport";
-        r = new Registration(plugins, vectorSupportName, replacements);
+        r = new Registration(plugins, vectorSupportName);
 
         /* Types of vectors and related data. */
         OptionalLazySymbol vectorSpecies = new OptionalLazySymbol(vectorSupportName + "$VectorSpecies");

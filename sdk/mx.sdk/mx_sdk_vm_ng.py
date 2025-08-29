@@ -462,18 +462,18 @@ class NativeImageBuildTask(mx.BuildTask):
             # we want "25.0.0-dev" and not "dev" (the default used in NativeImage#prepareImageBuildArgs)
             '-Dorg.graalvm.version={}'.format(_suite.release_version()),
         ] + mx_sdk_vm_impl.svm_experimental_options(experimental_build_args)
-        build_args += mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
         if os.environ.get('JVMCI_VERSION_CHECK'):
             # Propagate this env var when running native image from mx
             build_args += ['-EJVMCI_VERSION_CHECK']
+        extra_build_args = mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
 
-        return build_args + self.subject.get_build_args()
+        return build_args + self.subject.get_build_args() + extra_build_args
 
     def needsBuild(self, newestInput) -> Tuple[bool, str]:
         ts = TimeStampFile(self.subject.output_file())
         if not ts.exists():
             return True, f"{ts.path} does not exist"
-        if ts.isOlderThan(newestInput):
+        if newestInput and ts.isOlderThan(newestInput):
             return True, f"{ts} is older than {newestInput}"
         previous_build_args = []
         command_file = self._get_command_file()
@@ -565,9 +565,14 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         self.relative_extracted_lib_paths = {k: v.replace('/', os.sep) for k, v in kw_args.pop('relative_extracted_lib_paths', {}).items()}
         self.liblang_relpath = _pop_path(kw_args, 'relative_liblang_path', None)
         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
-        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
-        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
-        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
+
+        if not kw_args.get('multitarget'):
+            # We use our LLVM toolchain on Linux by default because we want to statically link the C++ standard library,
+            # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+            toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
+        else:
+            toolchain = None
+
         super().__init__(
             suite,
             name,
@@ -599,6 +604,15 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         return False
 
     @property
+    def uses_llvm_toolchain(self):
+        return len(self.toolchains) == 1 and mx.dependency('LLVM_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
+
+    @property
+    def uses_musl_swcfi_toolchain(self):
+        # once GR-67435 is fixed we can revisit if we can statically link just like in the branches guarded by uses_llvm_toolchain
+        return len(self.toolchains) == 1 and mx.dependency('BOOTSTRAP_MUSL_SWCFI_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
+
+    @property
     def cflags(self):
         _dynamic_cflags = [
             ('/std:c++17' if mx.is_windows() else '-std=c++17'),
@@ -610,7 +624,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
-        if mx.is_linux():
+        if mx.is_linux() and self.uses_llvm_toolchain:
             _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
@@ -719,12 +733,18 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldflags = []
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
+        if self.uses_musl_swcfi_toolchain:
+            # Use $$ to escape the $ from expansion by mx. If we use musl swcfi
+            # and their libc, the libc++, libc++abi and libunwind must be
+            # either in the LD_LIBRARY_PATH (which takes precedence) or in the
+            # lib folder of the standalone.
+            _dynamic_ldflags.append(r"-Wl,-rpath,'$$ORIGIN/../lib'")
         return super().ldflags + _dynamic_ldflags
 
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if mx.is_linux():
+        if mx.is_linux() and self.uses_llvm_toolchain:
             # Link libc++ statically
             _dynamic_ldlibs += [
                 '-stdlib=libc++',
@@ -751,6 +771,7 @@ class JavaHomeDependency(mx.BaseLibrary):
         self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
         self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
         self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
+        name = name.replace('<version>', str(self.major_version))
         if self.is_ee_implementor:
             the_license = "Oracle Proprietary"
         else:
@@ -865,6 +886,60 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 'tools:TRUFFLE_COVERAGE'
             ]
         register_distribution(mx_pomdistribution.POMDistribution(_suite, "TOOLS_FOR_STANDALONE", [], tools_dists, None, maven=False))
+
+
+        # register toolchains shipped by BOOTSTRAP_GRAALVM, if any
+        if _external_bootstrap_graalvm:
+            toolchain_dir = join(_external_bootstrap_graalvm, "lib", "toolchains")
+            if exists(toolchain_dir):
+                for e in listdir(toolchain_dir):
+                    if not (e == "musl" or e.startswith("musl-")):
+                        # currently only variants of musl are detected
+                        continue
+
+                    binpath = join(toolchain_dir, e, "bin")
+                    ninja_layout = {
+                        "toolchain.ninja" : {
+                            "source_type": "string",
+                            "value": f'''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC={binpath}/clang
+CXX={binpath}/clang++
+AR={binpath}/ar
+'''
+                        },
+                    }
+                    ninja_dependencies = ['mx:GCC_NINJA_TOOLCHAIN']
+                    ninja_native_toolchain = {
+                        'kind': 'ninja',
+                        'compiler': 'llvm',
+                        'target': {
+                            'os': mx.get_os(),
+                            'arch': mx.get_arch(),
+                            'libc': 'musl',
+                            'variant': e.split('-', 1)[1] if '-' in e else None
+                        }
+                    }
+                    ninja_name = 'BOOTSTRAP_' + e.upper().replace('-', '_') + '_NINJA_TOOLCHAIN'
+                    register_distribution(mx.LayoutDirDistribution(_suite, ninja_name, ninja_dependencies, ninja_layout, path=None, theLicense=None, platformDependent=True, native_toolchain=ninja_native_toolchain, native=True, maven=False))
+
+                    cmake_layout = {
+                        "toolchain.cmake" : {
+                            "source_type": "string",
+                            "value": f'''
+set(CMAKE_C_COMPILER {binpath}/clang)
+set(CMAKE_CXX_COMPILER {binpath}/clang++)
+set(CMAKE_AR {binpath}/ar)
+'''
+                        },
+                    }
+                    cmake_dependencies = []
+                    cmake_native_toolchain = dict(**ninja_native_toolchain)
+                    cmake_native_toolchain['kind'] = 'cmake'
+                    cmake_name = 'BOOTSTRAP_' + e.upper().replace('-', '_') + '_CMAKE_TOOLCHAIN'
+                    register_distribution(mx.LayoutDirDistribution(_suite, cmake_name, cmake_dependencies, cmake_layout, path=None, theLicense=None, platformDependent=True, native_toolchain=cmake_native_toolchain, native=True, maven=False))
+
+                    mx.logv(f'Registered toolchain for {e} from bootstrap GraalVM {_external_bootstrap_graalvm}')
 
 
 class DynamicPOMDistribution(mx_pomdistribution.POMDistribution):
@@ -1089,6 +1164,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
+        self.reset_user_group = True
 
     def resolveDeps(self):
         super().resolveDeps()

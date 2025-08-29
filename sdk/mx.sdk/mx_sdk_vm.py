@@ -82,14 +82,13 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
         :type build_args: list[str]
         :param str | None use_modules: Run (with 'launcher') or run and build image with module support (with 'image').
         :type links: list[str] | None
-        :type is_polyglot: bool
         :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
         :type home_finder: bool
         :type build_time: int
@@ -100,7 +99,6 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_args = build_args
         self.use_modules = use_modules
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
-        self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
@@ -184,7 +182,7 @@ class LanguageLauncherConfig(LauncherConfig):
         :param str language
         """
         super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args,
-                                                     is_sdk_launcher=is_sdk_launcher, is_polyglot=False, **kwargs)
+                                                     is_sdk_launcher=is_sdk_launcher, **kwargs)
         self.language = language
 
         # Ensure the language launcher can always find the language home
@@ -320,10 +318,10 @@ class GraalVmComponent(object):
         self.third_party_license_files = third_party_license_files
         self.dependency_names = dependencies or []
         self.provided_executables = provided_executables or []
-        self.polyglot_lib_build_args = polyglot_lib_build_args or []
-        self.polyglot_lib_jar_dependencies = polyglot_lib_jar_dependencies or []
-        self.polyglot_lib_build_dependencies = polyglot_lib_build_dependencies or []
-        self.has_polyglot_lib_entrypoints = has_polyglot_lib_entrypoints
+        self.polyglot_lib_build_args = []
+        self.polyglot_lib_jar_dependencies = []
+        self.polyglot_lib_build_dependencies = []
+        self.has_polyglot_lib_entrypoints = False
         self.boot_jars = boot_jars or []
         self.jvmci_parent_jars = jvmci_parent_jars or []
         self.jar_distributions = jar_distributions or []
@@ -372,15 +370,10 @@ class GraalVmComponent(object):
         assert isinstance(self.license_files, list)
         assert isinstance(self.third_party_license_files, list)
         assert isinstance(self.provided_executables, list)
-        assert isinstance(self.polyglot_lib_build_args, list)
-        assert isinstance(self.polyglot_lib_jar_dependencies, list)
-        assert isinstance(self.polyglot_lib_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
-
-        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -1174,7 +1167,7 @@ def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     import mx_sdk_vm_impl
     child_env = os.environ.copy()
-    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS']:
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None

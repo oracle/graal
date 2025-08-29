@@ -293,7 +293,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     CGlobalDataInfo info = ((CGlobalDataReference) dataPatch.reference).getDataInfo();
                     CGlobalDataImpl<?> data = info.getData();
                     if (info.isSymbolReference() && objectFile.getOrCreateSymbolTable().getSymbol(data.symbolName) == null) {
-                        objectFile.createUndefinedSymbol(data.symbolName, 0, true);
+                        objectFile.createUndefinedSymbol(data.symbolName, true);
                     }
 
                     String symbolName = (String) dataPatch.note;
@@ -319,7 +319,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
             protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
-                ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, 0, true);
+                ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, true);
                 if (global) {
                     globalSymbols.add(symbol);
                 }

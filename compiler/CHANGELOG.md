@@ -2,6 +2,12 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM for JDK 26 (Internal Version 26.0.0)
+* (GR-58163): Added support for recording and replaying JIT compilations. The `-Djdk.graal.RecordForReplay=*` option
+  serializes all compilations matching the pattern to JSON files, which contain the results of JVMCI calls. The
+  recorded compilations can be replayed with the `mx replaycomp` command. Truffle compilations are currently not
+  supported. See `docs/ReplayCompilation.md` for details.
+
 ## GraalVM for JDK 25 (Internal Version 25.0.0)
 * (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building
   libgraal has been moved into the compiler suite in a new `jdk.graal.compiler.libgraal` module

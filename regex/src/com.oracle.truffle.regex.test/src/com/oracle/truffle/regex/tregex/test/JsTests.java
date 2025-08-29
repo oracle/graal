@@ -40,20 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Collections;
+import java.util.Map;
+
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.test.generated.JsGeneratedTests;
 
 public class JsTests extends RegexTestBase {
 
+    public static final Map<String, String> ENGINE_OPTIONS = Collections.emptyMap();
+    private static final Map<String, String> NEVER_UNROLL_OPT = Map.of("regexDummyLang.QuantifierUnrollLimitSingleCC", "1", "regexDummyLang.QuantifierUnrollLimitGroup", "1");
+
     @Override
-    String getEngineOptions() {
-        return "";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
@@ -95,6 +101,7 @@ public class JsTests extends RegexTestBase {
         test("(a||b){100,200}", "", "ab", 0, true, 0, 2, 1, 2);
         test("(a||b){100,200}?", "", "ab", 0, true, 0, 1, 1, 1);
         test("(a||b){100,200}?$", "", "ab", 0, true, 0, 2, 1, 2);
+        test("(a|){1,20}b", "", "aaaaaaaab", 0, true, 0, 9, 7, 8);
     }
 
     @Test
@@ -284,6 +291,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void boundedQuantifierInNFAMode() {
+        testBoolean("a{3}b", "", Collections.emptyMap(), "aab", 0, false);
+    }
+
+    @Test
     public void innerLiteralSurrogates() {
         test("\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
         test("x?\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
@@ -320,6 +332,95 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void boundedQuantifierPaperExample1() {
+        testBoolean(".*a.{4,8}a", "y", NEVER_UNROLL_OPT, "---aaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierPaperExample2() {
+        testBoolean("(?:a{9})*b", "", NEVER_UNROLL_OPT, "aaaaaaaaaaaaaaab", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierPaperExample3() {
+        testBoolean(".*a.{9}.", "y", NEVER_UNROLL_OPT, "aaaaaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifier4() {
+        testBoolean("ab(?:..){100,600}d", "", NEVER_UNROLL_OPT, "ab" + "bc".repeat(250) + "d", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierFixed() {
+        testBoolean("[0-9A-F]{8}", "i", NEVER_UNROLL_OPT,
+                        "OData-EntityId: https://url.com/api/data/v8.2/tests(00000000-0000-0000-0000-000000000001)", 0, true);
+        testBoolean("0{2}", "i", NEVER_UNROLL_OPT,
+                        "0000", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierNullable() {
+        testBoolean("((?:[0-9A-F]?){8})", "i", NEVER_UNROLL_OPT,
+                        "OData-EntityId: https://url.com/api/data/v8.2/tests(00000000-0000-0000-0000-000000000001)", 0, true);
+    }
+
+    @Test
+    public void dateRegex() {
+        testBoolean("\\d{1,2}/\\d{1,2}/\\d{4}", "y", NEVER_UNROLL_OPT, "09/08/2024", 0, true);
+    }
+
+    @Test
+    public void simpleBoundedQuantifier() {
+        testBoolean(".{2,4}", "sy", NEVER_UNROLL_OPT, "aaaaa", 0, true);
+        testBoolean(".{3,4}", "sy", NEVER_UNROLL_OPT, "aa", 0, false);
+        testBoolean("a[ab]{4,8}a", "", NEVER_UNROLL_OPT, "aaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void multiBoundedQuantifier() {
+        testBoolean("a{2,4}-a{3,4}", "s", NEVER_UNROLL_OPT, "aaa-aa-aaa", 0, true);
+    }
+
+    @Test
+    public void anchoredQuantifier() {
+        testBoolean("(?:ab){2,4}$", "", NEVER_UNROLL_OPT, "aaabab", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifiersWithOverlappingIterations() {
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaaaab", 0, true);
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaab", 0, false);
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaaab", 0, false);
+        testBoolean("(?:aa|aaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaab", 0, true);
+        testBoolean("(?:aa|aaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaaaaaaaaaab", 0, true);
+        testBoolean("(?:aa|aaaaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaab", 0, false);
+    }
+
+    @Test
+    public void email() {
+        var prefix = "john.doe@john.@@";
+        var input = "john.doedodoododododod@foobarbabababrbrbrbrbarbr.com";
+        testBoolean("(?:[-!#-''*+/-9=?A-Z^-~]+(?:\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"(?:[ ]!#-[^-~ ]|(?:\\\\[-~ ]))+\")@[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?(?:\\.[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?)+",
+                        "",
+                        NEVER_UNROLL_OPT,
+                        prefix + input + "     ",
+                        0,
+                        true);
+    }
+
+    @Test
+    public void nestedQuantifier() {
+        testBoolean("(?:a{1,2}){1,2}", "", NEVER_UNROLL_OPT, "bbb", 0, false);
+    }
+
+    @Test
+    public void boundedQuantifierWithInversePriority() {
+        testBoolean(".{4,5}d", "", NEVER_UNROLL_OPT, "aaaadddd", 0, true);
+        testBoolean("a{2,3}d", "", NEVER_UNROLL_OPT, "babaaadaaaaa", 0, true);
+    }
+
+    @Test
     public void gr60222() {
         test("(?<=a)b|", "m", "aaabaaa", 3, true, 3, 4);
         test("(?=^(?:[^])+){3}|(?:(^)+(?!\\b(([^]))+))*", "m", "\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n", 10, true, 10, 10, -1, -1, -1, -1, -1, -1);
@@ -327,237 +428,32 @@ public class JsTests extends RegexTestBase {
 
     @Test
     public void generatedTests() {
-        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+        runGeneratedTests(JsGeneratedTests.TESTS);
+    }
 
-        // Generated using V8 version 13.0.245.12-rusty
-        test("((A|){7,10}?){10,17}", "", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, true, 0, 86, 84, 86, 86, 86);
-        test("(a{1,30}){1,4}", "", "a", 0, true, 0, 1, 0, 1);
-        test("((a|){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
-        test("((a?){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
-        test("((|a){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 6, 7, 6, 7);
-        test("((a??){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 6, 7, 6, 7);
-        test("((a?){4,6}){4,6}", "", "aaaaaa", 0, true, 0, 6, 6, 6, 6, 6);
-        test("(a|^){100}", "", "a", 0, true, 0, 1, 0, 1);
-        test("(a|^){100}", "", "aa", 0, true, 0, 2, 1, 2);
-        test("(a|^){100}", "", "aa", 1, false);
-        test("(a|^){100}", "", "ab", 1, false);
-        test("(a|){4,6}", "", "", 0, true, 0, 0, 0, 0);
-        test("(a|){4,6}", "", "a", 0, true, 0, 1, 1, 1);
-        test("(a|){4,6}", "", "aa", 0, true, 0, 2, 2, 2);
-        test("(a|){4,6}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|){4,6}", "", "aaaa", 0, true, 0, 4, 3, 4);
-        test("(a|){4,6}", "", "aaaaa", 0, true, 0, 5, 4, 5);
-        test("(a|){4,6}", "", "aaaaaa", 0, true, 0, 6, 5, 6);
-        test("(a|){4,6}", "", "aaaaaaa", 0, true, 0, 6, 5, 6);
-        test("(a|){4,6}?", "", "", 0, true, 0, 0, 0, 0);
-        test("(a|){4,6}?", "", "a", 0, true, 0, 1, 1, 1);
-        test("(a|){4,6}?", "", "aa", 0, true, 0, 2, 2, 2);
-        test("(a|){4,6}?", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|){4,6}?", "", "aaaa", 0, true, 0, 4, 3, 4);
-        test("(a|){4,6}?", "", "aaaaa", 0, true, 0, 4, 3, 4);
-        test("(a|){4,6}?", "", "aaaaaa", 0, true, 0, 4, 3, 4);
-        test("(a|){4,6}?", "", "aaaaaaa", 0, true, 0, 4, 3, 4);
-        test("(a|){4,6}?a", "", "", 0, false);
-        test("(a|){4,6}?a", "", "a", 0, true, 0, 1, 0, 0);
-        test("(a|){4,6}?a", "", "aa", 0, true, 0, 2, 1, 1);
-        test("(a|){4,6}?a", "", "aaa", 0, true, 0, 3, 2, 2);
-        test("(a|){4,6}?a", "", "aaaa", 0, true, 0, 4, 3, 3);
-        test("(a|){4,6}?a", "", "aaaaa", 0, true, 0, 5, 3, 4);
-        test("(a|){4,6}?a", "", "aaaaaa", 0, true, 0, 5, 3, 4);
-        test("(a|){4,6}?a", "", "aaaaaaa", 0, true, 0, 5, 3, 4);
-        test("(a|){4,6}?a", "", "aaaaaaaa", 0, true, 0, 5, 3, 4);
-        test("(|a){4,6}a", "", "", 0, false);
-        test("(|a){4,6}a", "", "a", 0, true, 0, 1, 0, 0);
-        test("(|a){4,6}a", "", "aa", 0, true, 0, 2, 0, 1);
-        test("(|a){4,6}a", "", "aaa", 0, true, 0, 3, 1, 2);
-        test("(|a){4,6}a", "", "aaaa", 0, true, 0, 3, 1, 2);
-        test("(|a){4,6}a", "", "aaaaa", 0, true, 0, 3, 1, 2);
-        test("(|a){4,6}a", "", "aaaaaa", 0, true, 0, 3, 1, 2);
-        test("(|a){4,6}a", "", "aaaaaaa", 0, true, 0, 3, 1, 2);
-        test("((a|){4,6}){4,6}", "", "", 0, true, 0, 0, 0, 0, 0, 0);
-        test("((a|){4,6}){4,6}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
-        test("((a|){4,6}){4,6}", "", "aa", 0, true, 0, 2, 2, 2, 2, 2);
-        test("((a|){4,6}){4,6}", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
-        test("((a|){4,6}){4,6}", "", "aaaa", 0, true, 0, 4, 4, 4, 4, 4);
-        test("((a|){4,6}){4,6}", "", "aaaaa", 0, true, 0, 5, 5, 5, 5, 5);
-        test("((a|){4,6}){4,6}", "", "aaaaaa", 0, true, 0, 6, 6, 6, 6, 6);
-        test("((a|){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaa", 0, true, 0, 8, 8, 8, 8, 8);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaaa", 0, true, 0, 9, 9, 9, 9, 9);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaaaa", 0, true, 0, 10, 10, 10, 10, 10);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaaaaa", 0, true, 0, 11, 11, 11, 11, 11);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaaaaaa", 0, true, 0, 12, 12, 12, 12, 12);
-        test("((a|){4,6}){4,6}", "", "aaaaaaaaaaaaa", 0, true, 0, 13, 13, 13, 13, 13);
-        test("((|a){4,6}){4,6}", "", "", 0, true, 0, 0, 0, 0, 0, 0);
-        test("((|a){4,6}){4,6}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
-        test("((|a){4,6}){4,6}", "", "aa", 0, true, 0, 2, 2, 2, 2, 2);
-        test("((|a){4,6}){4,6}", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
-        test("((|a){4,6}){4,6}", "", "aaaa", 0, true, 0, 4, 4, 4, 4, 4);
-        test("((|a){4,6}){4,6}", "", "aaaaa", 0, true, 0, 5, 5, 5, 5, 5);
-        test("((|a){4,6}){4,6}", "", "aaaaaa", 0, true, 0, 6, 6, 6, 6, 6);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaa", 0, true, 0, 8, 6, 8, 7, 8);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaaa", 0, true, 0, 9, 8, 9, 8, 9);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaaaa", 0, true, 0, 10, 8, 10, 9, 10);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaaaaa", 0, true, 0, 11, 10, 11, 10, 11);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaaaaaa", 0, true, 0, 12, 10, 12, 11, 12);
-        test("((|a){4,6}){4,6}", "", "aaaaaaaaaaaaa", 0, true, 0, 12, 10, 12, 11, 12);
-        test("((a|){4,6}?){4,6}", "", "", 0, true, 0, 0, 0, 0, 0, 0);
-        test("((a|){4,6}?){4,6}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
-        test("((a|){4,6}?){4,6}", "", "aa", 0, true, 0, 2, 2, 2, 2, 2);
-        test("((a|){4,6}?){4,6}", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
-        test("((a|){4,6}?){4,6}", "", "aaaa", 0, true, 0, 4, 4, 4, 4, 4);
-        test("((a|){4,6}?){4,6}", "", "aaaaa", 0, true, 0, 5, 5, 5, 5, 5);
-        test("((a|){4,6}?){4,6}", "", "aaaaaa", 0, true, 0, 6, 6, 6, 6, 6);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaa", 0, true, 0, 8, 8, 8, 8, 8);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaa", 0, true, 0, 9, 9, 9, 9, 9);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaa", 0, true, 0, 10, 10, 10, 10, 10);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaa", 0, true, 0, 11, 11, 11, 11, 11);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaa", 0, true, 0, 12, 12, 12, 12, 12);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaa", 0, true, 0, 13, 12, 13, 13, 13);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaaa", 0, true, 0, 14, 12, 14, 14, 14);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaaaa", 0, true, 0, 15, 12, 15, 15, 15);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaa", 0, true, 0, 16, 12, 16, 15, 16);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaa", 0, true, 0, 17, 16, 17, 17, 17);
-        test("((a|){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaaa", 0, true, 0, 18, 16, 18, 18, 18);
-        test("((a){4,6}?){4,6}", "", "", 0, false);
-        test("((a){4,6}?){4,6}", "", "a", 0, false);
-        test("((a){4,6}?){4,6}", "", "aa", 0, false);
-        test("((a){4,6}?){4,6}", "", "aaa", 0, false);
-        test("((a){4,6}?){4,6}", "", "aaaa", 0, false);
-        test("((a){4,6}?){4,6}", "", "aaaaa", 0, false);
-        test("((a){4,6}?){4,6}", "", "aaaaaa", 0, false);
-        test("((a){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaa", 0, true, 0, 16, 12, 16, 15, 16);
-        test("((a){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaa", 0, true, 0, 16, 12, 16, 15, 16);
-        test("((a){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaaaaa", 0, true, 0, 20, 16, 20, 19, 20);
-        test("((a){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 24, 20, 24, 23, 24);
-        test("((a){4,6}?){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 24, 20, 24, 23, 24);
-        test("((a){4,6}){4,6}", "", "", 0, false);
-        test("((a){4,6}){4,6}", "", "a", 0, false);
-        test("((a){4,6}){4,6}", "", "aa", 0, false);
-        test("((a){4,6}){4,6}", "", "aaa", 0, false);
-        test("((a){4,6}){4,6}", "", "aaaa", 0, false);
-        test("((a){4,6}){4,6}", "", "aaaaa", 0, false);
-        test("((a){4,6}){4,6}", "", "aaaaaa", 0, false);
-        test("((a){4,6}){4,6}", "", "aaaaaaaaaaaaaaaa", 0, true, 0, 16, 12, 16, 15, 16);
-        test("((a){4,6}){4,6}", "", "aaaaaaaaaaaaaaaaa", 0, true, 0, 17, 13, 17, 16, 17);
-        test("((a){4,6}){4,6}", "", "aaaaaaaaaaaaaaaaaaaa", 0, true, 0, 20, 16, 20, 19, 20);
-        test("((a){4,6}){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 24, 18, 24, 23, 24);
-        test("((a){4,6}){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 24, 18, 24, 23, 24);
-        test("((a){4,}){4,6}", "", "", 0, false);
-        test("((a){4,}){4,6}", "", "a", 0, false);
-        test("((a){4,}){4,6}", "", "aa", 0, false);
-        test("((a){4,}){4,6}", "", "aaa", 0, false);
-        test("((a){4,}){4,6}", "", "aaaa", 0, false);
-        test("((a){4,}){4,6}", "", "aaaaa", 0, false);
-        test("((a){4,}){4,6}", "", "aaaaaa", 0, false);
-        test("((a){4,}){4,6}", "", "aaaaaaaaaaaaaaaa", 0, true, 0, 16, 12, 16, 15, 16);
-        test("((a){4,}){4,6}", "", "aaaaaaaaaaaaaaaaa", 0, true, 0, 17, 13, 17, 16, 17);
-        test("((a){4,}){4,6}", "", "aaaaaaaaaaaaaaaaaaaa", 0, true, 0, 20, 16, 20, 19, 20);
-        test("((a){4,}){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 24, 20, 24, 23, 24);
-        test("((a){4,}){4,6}", "", "aaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 25, 21, 25, 24, 25);
-        test("(.)\\1{2,}", "", "billiam", 0, false);
-        test("(^_(a{1,2}[:])*a{1,2}[:]a{1,2}([.]a{1,4})?_)+", "", "_a:a:a.aaa_", 0, true, 0, 11, 0, 11, 1, 3, 6, 10);
-        test("(a{2}|())+$", "", "aaaa", 0, true, 0, 4, 2, 4, -1, -1);
-        test("^a(b*)\\1{4,6}?", "", "abbbb", 0, true, 0, 1, 1, 1);
-        test("^a(b*)\\1{4,6}?", "", "abbbbb", 0, true, 0, 6, 1, 2);
-        test("(?<=|$)", "", "a", 0, true, 0, 0);
-        test("(?=ab)a", "", "ab", 0, true, 0, 1);
-        test("(?=()|^)|x", "", "empty", 0, true, 0, 0, 0, 0);
-        test("a(?<=ba)", "", "ba", 0, true, 1, 2);
-        test("(?<=(?=|()))", "", "aa", 0, true, 0, 0, -1, -1);
-        test("\\d\\W", "iv", "4\u017f", 0, false);
-        test("[\u08bc-\ucf3a]", "iv", "\u03b0", 0, true, 0, 1);
-        test("[\u0450-\u6c50]\u7e57\u55ad()\u64e7\\d|", "iu", "\u03b0\u7e57\u55ad\u64e79", 0, true, 0, 5, 3, 3);
-        test("a(?:|()\\1){1,2}", "", "a", 0, true, 0, 1, -1, -1);
-        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "", getTRegexEncoding(), "error", 0, ErrorCode.InvalidNamedGroup);
-        test("[a-z][a-z\u2028\u2029].|ab(?<=[a-z]w.)", "", "aac", 0, true, 0, 3);
-        test("(animation|animation-name)", "", "animation", 0, true, 0, 9, 0, 9);
-        test("(a|){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(a|){7,7}?b", "", "aaab", 0, true, 0, 4, 3, 3);
-        test("(|a){7,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(|a){7,7}?b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a||b){7,7}c", "", "aaabc", 0, true, 0, 5, 3, 4);
-        test("(a||b){7,7}c", "", "aaac", 0, true, 0, 4, 3, 3);
-        test("(a||b){7,7}c", "", "aaabac", 0, true, 0, 6, 4, 5);
-        test("($|a){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("($|a){7,7}?", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$){7,7}?", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$|b){7,7}", "", "aaab", 0, true, 0, 4, 4, 4);
-        test("(a|$|b){7,7}", "", "aaa", 0, true, 0, 3, 3, 3);
-        test("(a|$|b){7,7}", "", "aaaba", 0, true, 0, 5, 5, 5);
-        test("((?=a)|a){7,7}b", "", "aaa", 0, false);
-        test("((?=[ab])|a){7,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("((?<=a)|a){7,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("a((?<=a)|a){7,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a|){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a|){0,7}?b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(|a){0,7}?b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a||b){0,7}c", "", "aaabc", 0, true, 0, 5, 3, 4);
-        test("(a||b){0,7}c", "", "aaac", 0, true, 0, 4, 2, 3);
-        test("(a||b){0,7}c", "", "aaabac", 0, true, 0, 6, 4, 5);
-        test("((?=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("((?=[ab])|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("((?<=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("a((?<=a)|a){0,7}b", "", "aaab", 0, true, 0, 4, 2, 3);
-        test("(a*?){11,11}?b", "", "aaaaaaaaaaaaaaaaaaaaaaaaab", 0, true, 0, 26, 0, 25);
-        test("\\w(?<=\\W([l-w]{0,19}?){1,2}\\w)\\2\ua2d2\\1\\z", "", "[qowwllu3\u0002\ua2d2qowwlluz", 0, true, 8, 19, 1, 8);
-        test("(?:a(b{0,19})c)", "", "abbbbbbbcdebbbbbbbf", 0, true, 0, 9, 1, 8);
-        test("(?:a(b{0,19})c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 0, 11, 1, 8);
-        test("(?<=a(b{0,19})c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 9, 11, 1, 8);
-        test("(?<=a(b{0,19}){1,2}c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 9, 11, 1, 8);
-        test("(?<=a(b{0,19}){2,2}c)de", "", "abbbbbbbcdebbbbbbbf", 0, true, 9, 11, 1, 1);
-        test("c(?<=a(b{0,19}){1,2}c)de\\1f", "", "abbbbbbbcdebbbbbbbf", 0, true, 8, 19, 1, 8);
-        test("[\ud0d9](?<=\\S)", "", "\ud0d9", 0, true, 0, 1);
-        test("[\ud0d9](?<=\\W)", "", "\ud0d9", 0, true, 0, 1);
-        test("\u0895(?<=\\S)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895(?<=\\W)", "", "\u0895", 0, true, 0, 1);
-        test("[\u8053](?<=\\S)", "", "\u8053", 0, true, 0, 1);
-        test("[\u8053](?<=\\W)", "", "\u8053", 0, true, 0, 1);
-        test("\u0895(?<=\\S)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895(?<=\\W)", "", "\u0895", 0, true, 0, 1);
-        test("\u0895|[\u8053\ud0d9]+(?<=\\S\\W\\S)", "", "\ud0d9\ud0d9\ud0d9\ud0d9", 0, true, 0, 4);
-        test("\u0895|[\u8053\ud0d9]+(?<=\\S\\W\\S)", "", "\ud0d9\ud0d9\ud0d9\ud0d9", 0, true, 0, 4);
-        test("\u0895|[\u8053\ud0d9]+(?<=\\S\\W\\S)", "", "\ud0d9\ud0d9\ud0d9\ud0d9", 0, true, 0, 4);
-        test("a|[bc]+(?<=[abc][abcd][abc])", "", "bbbb", 0, true, 0, 4);
-        test("a(b*)*c\\1d", "", "abbbbcbbd", 0, true, 0, 9, 3, 5);
-        test("(|a)||b(?<=cde)|", "", "a", 0, true, 0, 0, 0, 0);
-        test("^(\\1)?\\D*", "s", "empty", 0, true, 0, 5, -1, -1);
-        test("abcd(?<=d|c()d)", "", "_abcd", 0, true, 1, 5, -1, -1);
-        test("\\Dw\u3aa7\\A\\S(?<=\ue3b3|\\A()\\S)", "", "\udad1\udcfaw\u3aa7A\ue3b3", 0, true, 1, 6, -1, -1);
-        test("a(?:c|b(?=()))*", "", "abc", 0, true, 0, 3, -1, -1);
-        test("a(?:c|b(?=(c)))*", "", "abc", 0, true, 0, 3, -1, -1);
-        test("a(?:c|(?<=(a))b)*", "", "abc", 0, true, 0, 3, -1, -1);
-        test("(a||b){15,18}c", "", "ababaabbaaac", 0, true, 0, 12, 10, 11);
-        test("(a||b){15,18}?c", "", "ababaabbaaac", 0, true, 0, 12, 10, 11);
-        test("(?:ab|c|^){103,104}", "", "abcababccabccabababccabcababcccccabcababababccccabcabcabccabcabcccabababccabababcababababccababccabcababcabcabccabababccccabcab", 0, true, 0, 127);
-        test("((?<=a)bec)*d", "", "abecd", 0, true, 1, 5, 1, 4);
-        test("(|(^|\\z){2,77}?)?", "", "empty", 0, true, 0, 0, -1, -1, -1, -1);
-        test("a(|a{15,36}){10,11}", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 37, 1, 37);
-        test("a(|a{15,36}?){10,11}", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 16, 1, 16);
-        test("a(|a{15,36}){10,11}$", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 66, 37, 66);
-        test("a(|a{15,36}?){10,11}b$", "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", 0, true, 0, 67, 30, 66);
-        test("(?:a()|b??){22,26}c", "", "aabbbaabaaaaaabaaaac", 0, true, 0, 20, 19, 19);
-        test("b()(a\\1|){4,4}\\2c", "", "baaaac", 0, true, 0, 6, 1, 1, 3, 4);
-        test("a((?=b()|)[a-d])+", "", "abbbcbd", 0, true, 0, 7, 6, 7, -1, -1);
-        test("a(?=b(?<=ab)()|)", "", "ab", 0, true, 0, 1, 2, 2);
-        test("[ab]*?$(?<=[^b][ab][^b])", "", "aaaaaa", 0, true, 0, 6);
-        test("a(?<=([ab]+){0,5})", "", "bbbba", 0, true, 4, 5, 0, 5);
-        test("([ab]+){0,5}", "", "bbbba", 0, true, 0, 5, 0, 5);
-        expectSyntaxError("[--a]", "v", "", getTRegexEncoding(), "empty", 0, ErrorCode.InvalidCharacterClass);
-        test("(?:^\\1|$){10,11}bc", "", "aaaaaabc", 0, false);
-        test("a(?:|[0-9]+?a|[0-9a]){11,13}?[ab]", "", "a372a466a109585878b", 0, true, 0, 5);
-        test("(?<=ab(?:c|$){8,8})", "", "abccccc", 0, true, 7, 7);
-        test("(?:^a|$){1,72}a", "", "aaaaaaaa", 0, true, 0, 2);
-        test("(?<=a)b|", "", "aaabaaa", 3, true, 3, 4);
-        test("^a|(?:^)*", "m", "aa\n\n\naa\n\n\naa\n\n\naa\n\n\n", 10, true, 10, 11);
-        test("(?<=[ab][a])", "", "ababab", 2, true, 3, 3);
-        test("[ab]*(?<=a)$", "", "bbabaa", 1, true, 1, 6);
-        test("[\u7514-\ua3e3\ub107]*(?<=\\S)$", "", "\u76a3\u782b\u782b\ub107\u782b\u9950\u76a3\ub107\u9950\u76a3\u9a36", 3, true, 3, 11);
-        test("$(?<=a)", "y", "aaaaa", 5, true, 5, 5);
-        test("^abc[^]", "m", "abcdabc", 1, false);
+    @Test
+    public void quantifierUnrollNFAExplosion() {
+        test("(?:\\3((?:[^]|.{0}|\\B|\ub9b5\\b|$){4,}){1,4})", "yim", "\ua3bb\n\n\u00a1\n\na\u2f77\n\n\ua3bb\n\n\u00a1\n\na\u2f77\n\n", 0, false);
+    }
 
-        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    @Test
+    public void overlappingBq() {
+        testBoolean("(?=a{2,4})[ab]{4,68}c", "", NEVER_UNROLL_OPT, "aabbbbbbbbbbbbbbbbbbbbbbc", 0, true);
+    }
+
+    @Test
+    public void simpleCGUtf8() {
+        test("^block($|(?=__|_))", "", Encodings.UTF_8, "block_baz", 0, true, 0, 5, 5, 5);
+        test("^foo($|(?=__|_))", "", Encodings.UTF_8, "foo", 0, true, 0, 3, 3, 3);
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
     }
 }

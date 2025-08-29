@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,17 +115,11 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
 
     @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
-        if (arch instanceof AMD64) {
-            return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
-        } else if (arch instanceof AArch64) {
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean canBeEmitted(Architecture arch) {
-        return isSupported(arch);
+        return switch (arch) {
+            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64());
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
     }
 
     @Override

@@ -262,6 +262,8 @@ public abstract class Accessor {
         public abstract void setPath(SourceBuilder builder, String path);
 
         public abstract Map<String, String> getSourceOptions(Source source);
+
+        public abstract URI getOriginalURI(Source source);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -552,6 +554,10 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
+        public abstract boolean isKnownLoggerId(String id);
+
+        public abstract Collection<String> getKnownLoggerIds();
+
         public abstract boolean isContextBoundLogger(Object loggerCache);
 
         public abstract Object getOuterContext(Object polyglotContext);
@@ -604,12 +610,6 @@ public abstract class Accessor {
         public abstract boolean isCreateProcessSupported();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
-
-        public abstract Set<String> getLanguageIds();
-
-        public abstract Set<String> getInstrumentIds();
-
-        public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
@@ -692,7 +692,9 @@ public abstract class Accessor {
 
         public abstract void preinitializeContext(Object polyglotEngine);
 
-        public abstract void finalizeStore(Object polyglotEngine);
+        public abstract Object finalizeStore(Object polyglotEngine);
+
+        public abstract void restoreStore(Object polyglotEngine, Object finalizationResult);
 
         public abstract Object getEngineLock(Object polyglotEngine);
 
@@ -799,6 +801,8 @@ public abstract class Accessor {
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
 
         public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
+
+        public abstract Map<String, InternalResource> getEngineInternalResources();
 
         public abstract Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException;
 
@@ -1294,6 +1298,8 @@ public abstract class Accessor {
         public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
+
+        public abstract boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord);
 
         public abstract void onEngineClosed(Object runtimeData);
 

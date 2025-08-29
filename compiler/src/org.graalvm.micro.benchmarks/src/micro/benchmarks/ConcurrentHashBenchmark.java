@@ -35,6 +35,8 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
+// Checkstyle: stop stable iteration order check
+
 @State(Scope.Benchmark)
 public class ConcurrentHashBenchmark extends BenchmarkBase {
 
@@ -157,3 +159,5 @@ public class ConcurrentHashBenchmark extends BenchmarkBase {
         return map.get(SIZE / 2);
     }
 }
+
+// Checkstyle: resume stable iteration order check

@@ -68,6 +68,7 @@ import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -76,6 +77,8 @@ import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.NotLinkException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -1221,6 +1224,59 @@ public class TruffleFileTest {
         }
     }
 
+    @Test
+    public void testCorrectExceptions() {
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newDefaultFileSystem()).build();
+        try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(context, TestCorrectExceptions.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestCorrectExceptions extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile tmp = env.createTempDirectory(null, "exceptions-test");
+            try {
+                TruffleFile folder = tmp.resolve("folder");
+                folder.createDirectories();
+                TruffleFile file = tmp.resolve("file");
+                file.createFile();
+                TruffleFile nonExistent = tmp.resolve("non-existent");
+                boolean linkSupported;
+                try {
+                    tmp.resolve("link").createSymbolicLink(file);
+                    linkSupported = true;
+                } catch (UnsupportedOperationException unsupported) {
+                    linkSupported = false;
+                }
+                assertFails(() -> {
+                    file.createFile();
+                    return true;
+                }, FileAlreadyExistsException.class);
+                assertFails(() -> {
+                    nonExistent.delete();
+                    return true;
+                }, NoSuchFileException.class);
+                assertFails(() -> {
+                    file.list();
+                    return true;
+                }, NotDirectoryException.class);
+                if (linkSupported) {
+                    assertFails(() -> {
+                        file.readSymbolicLink();
+                        return true;
+                    }, NotLinkException.class);
+                }
+            } finally {
+                delete(tmp);
+            }
+            return null;
+        }
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
@@ -1230,6 +1286,15 @@ public class TruffleFileTest {
             }
         }
         Files.delete(path);
+    }
+
+    private static void delete(TruffleFile file) throws IOException {
+        if (file.isDirectory()) {
+            for (TruffleFile child : file.list()) {
+                delete(child);
+            }
+        }
+        file.delete();
     }
 
     private static Type erase(Type type) {

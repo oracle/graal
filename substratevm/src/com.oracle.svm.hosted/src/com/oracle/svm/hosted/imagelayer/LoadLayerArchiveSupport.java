@@ -24,15 +24,22 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LayerVerifiedOption.Kind;
@@ -40,6 +47,7 @@ import com.oracle.svm.core.option.LayerVerifiedOption.Severity;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.EnvVariableUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -52,10 +60,10 @@ import com.oracle.svm.util.LogUtils;
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
     @SuppressWarnings("this-escape")
-    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport) {
+    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport, Platform current) {
         super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport);
         this.archiveSupport.expandJarToDir(layerFile, layerDir);
-        layerProperties.loadAndVerify();
+        layerProperties.loadAndVerify(current);
         loadBuilderArgumentsFile();
     }
 
@@ -64,6 +72,16 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
             lines.forEach(builderArguments::add);
         } catch (IOException e) {
             throw UserError.abort("Unable to load builder arguments from file " + getBuilderArgumentsFilePath());
+        }
+    }
+
+    private List<EnvironmentVariable> loadEnvironmentVariablesFile() {
+        List<EnvironmentVariable> envVariables = new ArrayList<>();
+        try (Stream<String> lines = Files.lines(getEnvVariablesFilePath())) {
+            lines.map(EnvironmentVariable::of).forEach(envVariables::add);
+            return envVariables;
+        } catch (IOException e) {
+            throw UserError.abort("Unable to load environment variables from file " + getEnvVariablesFilePath());
         }
     }
 
@@ -79,14 +97,15 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
     public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean verbose) {
         Function<String, String> filterFunction = argument -> splitArgumentOrigin(argument).argument;
         boolean violationsFound = false;
-        violationsFound |= verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
-        violationsFound |= verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
+        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
+        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
+        violationsFound |= verifyEnvironmentVariablesCompatibility(loadEnvironmentVariablesFile(), parseEnvVariables(), strict, verbose);
         if (violationsFound && verbose) {
             UserError.abort("Verbose LayerOptionVerification failed.");
         }
     }
 
-    private static boolean verifyCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,
+    private static boolean verifyBuilderArgumentsCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,
                     Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean verbose, boolean positional) {
 
         List<String> left;
@@ -105,59 +124,84 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         List<DiffResult<String>> diffResults = DiffTool.diffResults(filteredLeft, filteredRight);
         Map<DiffResult<String>, Severity> violations = new HashMap<>();
         for (var diffResult : diffResults) {
-            Set<Kind> verificationKinds = switch (diffResult.kind()) {
+            DiffResult.Kind diffResultKind = diffResult.kind();
+            Set<Kind> verificationKinds = switch (diffResultKind) {
+                case Equal -> Set.of();
                 case Removed -> Set.of(Kind.Removed, Kind.Changed);
                 case Added -> Set.of(Kind.Added, Kind.Changed);
-                default -> Set.of();
             };
-            for (Kind verificationKind : verificationKinds) {
-                ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(left, right));
-                NameValue argumentNameAndValue = argumentOrigin.nameValue();
-                var perOptionVerifications = allRequests.get(argumentNameAndValue.name);
-                if (perOptionVerifications == null) {
-                    continue;
-                }
-                LayerVerifiedOption request = perOptionVerifications.requests().get(verificationKind);
-                if (request == null || request.positional() != positional) {
-                    continue;
-                }
-
-                OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
-                String argument = SubstrateOptionsParser.commandArgument(perOptionVerifications.option().getOptionKey(), argumentNameAndValue.value);
-                String message = switch (diffResult.kind()) {
-                    case Removed -> "Previous layer was";
-                    case Added -> "Current layer gets";
-                    case Equal -> throw VMError.shouldNotReachHere("diff for equal");
-                } + " built with option argument '" + argument + "' from " + origin + ".";
-                String suffix;
-                if (!request.message().isEmpty()) {
-                    suffix = request.message();
-                } else {
-                    /* fallback to generic verification message */
-                    suffix = "This is also required to be specified for the " + switch (diffResult.kind()) {
-                        case Removed -> "current layered image build";
-                        case Added -> "previous layer build";
-                        case Equal -> throw VMError.shouldNotReachHere("diff for equal");
-                    };
-                }
-                message += " " + suffix + (positional ? " at the same position." : ".");
-                Severity severity = request.severity();
-                violations.put(diffResult, severity);
-                if (verbose) {
-                    LogUtils.info("Error: ", message);
-                } else {
-                    switch (severity) {
-                        case Warn -> LogUtils.warning(message);
-                        case Error -> {
-                            if (strict) {
-                                UserError.abort(message);
-                            } else {
-                                LogUtils.warning(message);
-                            }
-                        }
-                    }
-                }
+            if (verificationKinds.isEmpty()) {
+                continue;
             }
+
+            ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(left, right));
+            NameValue argumentNameAndValue = argumentOrigin.nameValue();
+            var perOptionVerifications = allRequests.get(argumentNameAndValue.name);
+            if (perOptionVerifications == null) {
+                continue;
+            }
+
+            List<LayerVerifiedOption> requests = perOptionVerifications.requests().stream()
+                            .filter(request -> request.positional() == positional)
+                            .collect(Collectors.toList());
+            String argument = SubstrateOptionsParser.commandArgument(perOptionVerifications.option().getOptionKey(), argumentNameAndValue.value);
+            List<LayerVerifiedOption> matchingAPIRequest = new ArrayList<>();
+            requests.removeIf(request -> {
+                if (request.apiOption().isEmpty()) {
+                    // Keep all non-API requests
+                    return false;
+                }
+                // Do record matching API requests ...
+                if (request.apiOption().equals(argument)) {
+                    matchingAPIRequest.add(request);
+                }
+                // ... but remove all API request entries
+                return true;
+            });
+            if (!matchingAPIRequest.isEmpty()) {
+                /*
+                 * If we have a @LayerVerifiedOption annotation with a matching apiOption set, we
+                 * ignore other @LayerVerifiedOption annotations that do not have apiOption set.
+                 */
+                requests = matchingAPIRequest;
+            }
+
+            requests.stream()
+                            .filter(request -> verificationKinds.contains(request.kind()))
+                            .forEach(request -> {
+
+                                String message = switch (diffResultKind) {
+                                    case Removed -> "Previous layer was";
+                                    case Added -> "Current layer gets";
+                                    case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                                } + " built with option argument '" + argument + "' from " + OptionOrigin.from(argumentOrigin.origin) + ".";
+                                if (!request.message().isEmpty()) {
+                                    message += " " + request.message();
+                                } else {
+                                    /* fallback to generic verification message */
+                                    message += " This is also required to be specified for the " + switch (diffResultKind) {
+                                        case Removed -> "current layered image build";
+                                        case Added -> "previous layer build";
+                                        case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                                    } + (positional ? " at the same position." : ".");
+                                }
+                                Severity severity = request.severity();
+                                violations.put(diffResult, severity);
+                                if (verbose) {
+                                    LogUtils.info("Error: ", message);
+                                } else {
+                                    switch (severity) {
+                                        case Warn -> LogUtils.warning(message);
+                                        case Error -> {
+                                            if (strict) {
+                                                UserError.abort(message);
+                                            } else {
+                                                LogUtils.warning(message);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
         }
 
         boolean violationsFound = !violations.isEmpty();
@@ -173,6 +217,41 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
             }
             System.out.println();
         }
+        return violationsFound;
+    }
+
+    /**
+     * Verifies that the user-specified environment variables in the previous layered image build
+     * are a subset of those used in the current layered image build. The environment variables
+     * obtained via {@link System#getenv()} were previously filtered to include only the
+     * user-specified variables for this verification. This filtering was performed in
+     * {@link LayerArchiveSupport#parseEnvVariables()}, which removed system-dependent variables
+     * defined in {@link EnvVariableUtils}. These excluded variables are required for image builds
+     * but are not considered by this verification, since mismatches between these don't affect
+     * layer compatibility.
+     */
+    private static boolean verifyEnvironmentVariablesCompatibility(List<EnvironmentVariable> previousEnvVars, List<EnvironmentVariable> currentEnvVars, boolean strict, boolean verbose) {
+        Set<EnvironmentVariable> currentEnvVarsSet = new HashSet<>(currentEnvVars);
+        boolean violationsFound = false;
+
+        for (EnvironmentVariable previousEnvVar : previousEnvVars) {
+            if (currentEnvVarsSet.contains(previousEnvVar)) {
+                continue;
+            }
+
+            violationsFound = true;
+            String message = "Current layered image build must set environment variable " + previousEnvVar + " as it was set in the previous layer build.";
+            if (verbose) {
+                LogUtils.info("Error: ", message);
+            } else {
+                if (strict) {
+                    throw UserError.abort(message);
+                } else {
+                    LogUtils.warning(message);
+                }
+            }
+        }
+
         return violationsFound;
     }
 

@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.substitutions.standard;
 
 import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+import static com.oracle.truffle.espresso.threads.ThreadState.PARKED;
+import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_PARKED;
 
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
@@ -75,7 +77,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionNamesProvider;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Throws;
-import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -695,7 +697,7 @@ public final class Target_sun_misc_Unsafe {
     @SuppressWarnings({"try", "unused"})
     public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler location) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
             return;
         }
@@ -707,9 +709,12 @@ public final class Target_sun_misc_Unsafe {
         if (parkReturnCondition(thread, meta)) {
             return;
         }
-        State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
-        try (Transition transition = Transition.transition(context, state)) {
+        ThreadState state = time > 0 ? TIMED_PARKED : PARKED;
+        Transition transition = Transition.transition(state, location);
+        try {
             parkImpl(isAbsolute, time, thread, meta);
+        } finally {
+            transition.restore(location);
         }
     }
 
@@ -906,6 +911,32 @@ public final class Target_sun_misc_Unsafe {
             }
         }
         throw meta.throwException(meta.java_lang_InternalError);
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    static long knownObjectFieldOffset0(@SuppressWarnings("unused") StaticObject self, @JavaType(Class.class) StaticObject c, @JavaType(String.class) StaticObject guestName,
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
+        // Error code -1 is not found, -2 is static field
+        Klass k = c.getMirrorKlass(meta);
+        if (!(k instanceof ObjectKlass kl)) {
+            return -1;
+        }
+        String hostName = meta.toHostString(guestName);
+        Symbol<Name> name = meta.getNames().lookup(hostName);
+        if (name == null) {
+            return -1;
+        }
+        for (Field f : kl.getFieldTable()) {
+            if (!f.isRemoved() && f.getName() == name) {
+                return getGuestFieldOffset(f, language);
+            }
+        }
+        for (Field f : kl.getStaticFieldTable()) {
+            if (!f.isRemoved() && f.getName() == name) {
+                return -2;
+            }
+        }
+        return -1;
     }
 
     // region UnsafeAccessors

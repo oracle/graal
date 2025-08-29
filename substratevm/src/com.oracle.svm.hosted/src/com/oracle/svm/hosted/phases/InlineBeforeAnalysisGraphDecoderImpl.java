@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,31 +71,43 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
     private Node handleEnsureClassInitializedNode(EnsureClassInitializedNode node) {
         AnalysisType type = (AnalysisType) node.constantTypeOrNull(bb.getConstantReflectionProvider());
         if (type != null) {
-            if (type.isReachable()) {
-                /*
-                 * The class initializer is always analyzed for reachable types so that the
-                 * DynamicHub can be properly initialized. Avoid starting a second concurrent
-                 * analysis.
-                 */
-                type.getInitializeMetaDataTask().ensureDone();
-            } else {
-                /*
-                 * Even for types that are not yet reachable, we can analyze the class initializer.
-                 * If the type gets reachable later, the analysis results are re-used. Or the type
-                 * can remain unreachable throughout the whole analysis, because the Graal IR we are
-                 * decoding here could actually be dead code that is removed before building the
-                 * type flow graph.
-                 */
-                simulateClassInitializerSupport.trySimulateClassInitializer(bb, type);
-            }
-            if (simulateClassInitializerSupport.isClassInitializerSimulated(type) && !ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type)) {
+            processClassInitializer(type);
+            if (simulateClassInitializerSupport.isSimulatedOrInitializedAtBuildTime(type) && !ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type)) {
                 return null;
             }
         }
         return node;
     }
 
+    private void processClassInitializer(AnalysisType type) {
+        if (type.isReachable()) {
+            /*
+             * The class initializer is always analyzed for reachable types so that the DynamicHub
+             * can be properly initialized. Since, the simulation might already be in the progress
+             * on another thread, we use ensureDone to avoid starting a second concurrent analysis.
+             */
+            type.getInitializeMetaDataTask().ensureDone();
+        } else {
+            /*
+             * Even for types that are not yet reachable, we can analyze the class initializer. If
+             * the type gets reachable later, the analysis results are re-used. Or the type can
+             * remain unreachable throughout the whole analysis, because the Graal IR we are
+             * decoding here could actually be dead code that is removed before building the type
+             * flow graph.
+             */
+            simulateClassInitializerSupport.trySimulateClassInitializer(bb, type);
+        }
+    }
+
     private Node handleLoadFieldNode(LoadFieldNode node) {
+        var field = (AnalysisField) node.field();
+        if (field.isStatic()) {
+            /*
+             * First, make sure the results of the simulation of the given class initializer are
+             * available, compute them if necessary.
+             */
+            processClassInitializer(field.getDeclaringClass());
+        }
         ConstantNode canonicalized = simulateClassInitializerSupport.tryCanonicalize(bb, node);
         if (canonicalized != null) {
             return canonicalized;
@@ -109,7 +121,7 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
 
     private Node handleIsStaticFinalFieldInitializedNode(IsStaticFinalFieldInitializedNode node) {
         var field = (AnalysisField) node.getField();
-        if (simulateClassInitializerSupport.isClassInitializerSimulated(field.getDeclaringClass())) {
+        if (simulateClassInitializerSupport.isSimulatedOrInitializedAtBuildTime(field.getDeclaringClass())) {
             return ConstantNode.forBoolean(true);
         }
         return node;

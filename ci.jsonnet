@@ -50,7 +50,13 @@ local libgraal(builds, include=true) = [b for b in builds if (std.findSubstr("li
   assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
-  specVersion: "4",
+  specVersion: "7",
+  tierConfig: {
+    tier1: "gate",
+    tier2: "gate",
+    tier3: "gate",
+    tier4: "post-merge",
+  },
   builds: [common.add_excludes_guard(common.with_style_component(b)) for b in (
     common.with_components(compiler.builds + libgraal(vm.builds), ["compiler"]) +
     common.with_components(wasm.builds, ["wasm"]) +

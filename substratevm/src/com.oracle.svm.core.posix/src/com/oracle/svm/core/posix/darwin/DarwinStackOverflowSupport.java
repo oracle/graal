@@ -32,7 +32,6 @@ import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_region;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.vm_region_basic_info_data_64_t;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -43,8 +42,15 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 final class DarwinStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override

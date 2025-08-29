@@ -245,7 +245,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         public DebugCloseable start(StructuredGraph graph, DebugContext debug) {
-            if (debug.isTimeEnabled() || debug.isCountEnabled() || debug.isMemUseTrackingEnabled()) {
+            if (debug.areTimersEnabled() || debug.areCountersEnabled() || debug.areMemUseTrackersEnabled()) {
                 return new DebugCloseable() {
                     final int edgesBefore = graph.getEdgeModificationCount();
                     final DebugCloseable t = timer.start(debug);
@@ -475,9 +475,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpAfter(graph, isTopLevel, dumpedBefore);
             }
-            if (debug.isVerifyEnabled()) {
-                debug.verify(graph, "%s", getName());
-            }
 
             // Only verify inputs if the graph edges have changed
             assert graph.verify(graph.getEdgeModificationCount() != edgesBefore);
@@ -561,7 +558,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Override
         public void changed(NodeEvent e, Node node) {
             if (!graph.isNew(mark, node) && node.isAlive()) {
-                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.ZERO_USAGES) {
+                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.CONTROL_FLOW_CHANGED || e == NodeEvent.ZERO_USAGES) {
                     changed = true;
                 }
             }

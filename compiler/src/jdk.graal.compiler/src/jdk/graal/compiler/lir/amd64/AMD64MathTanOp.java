@@ -130,8 +130,8 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_tan.cpp#L30-L1029",
-          sha1 = "58f80ee7d0957ee96a28c0c6b4804bde83cfa4d1")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/4994bd594299e91e804438692e068b1c5dd5cc02/src/hotspot/cpu/x86/stubGenerator_x86_64_tan.cpp#L30-L1029",
+          sha1 = "9fe289d38934a304d888ad78635fd1d618242c06")
 // @formatter:on
 public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
 

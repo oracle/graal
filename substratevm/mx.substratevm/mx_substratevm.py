@@ -341,7 +341,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.services.ServiceLoaderTest$TestFeature,com.oracle.svm.test.services.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
+_native_unittest_features = '--features=' + ','.join(('com.oracle.svm.test.ImageInfoTest$TestFeature',
+                                                      'com.oracle.svm.test.services.ServiceLoaderTest$TestFeature',
+                                                      'com.oracle.svm.test.services.SecurityServiceTest$TestFeature',
+                                                      'com.oracle.svm.test.ReflectionRegistrationTest$TestFeature',
+                                                      'com.oracle.svm.test.foreign.ForeignTests$TestFeature'))
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 
@@ -1041,6 +1045,20 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q', '-iex', 'set pagination off', '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
 
+def gdb_base_command(logfile, autoload_path):
+    return [
+        os.environ.get('GDB_BIN', 'gdb'),
+        '--nx',
+        '-q',  # do not print the introductory and copyright messages
+        '-iex', 'set pagination off',  # messages from enabling logging could already cause pagination, so this must be done first
+        '-iex', 'set logging redirect on',
+        '-iex', 'set logging overwrite off',
+        '-iex', f"set logging file {logfile}",
+        '-iex', 'set logging enabled on',
+        '-iex', f"set auto-load safe-path {autoload_path}",
+    ]
+
+
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
     # ====== check gdb version ======
@@ -1090,15 +1108,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         'com.oracle.svm.test.debug.helper.ClassLoaderTest'
     ]
 
-    gdb_args = [
-        os.environ.get('GDB_BIN', 'gdb'),
-        '--nx',
-        '-q',  # do not print the introductory and copyright messages
-        '-iex', 'set pagination off',  # messages from enabling logging could already cause pagination, so this must be done first
-        '-iex', 'set logging redirect on',
-        '-iex', 'set logging overwrite off',
-    ]
-
     def run_debug_test(image_name: str, testfile: str, source_path: str, with_isolates: bool = True,
                        build_cinterfacetutorial: bool = False, extra_args: list = None,
                        skip_build: bool = False) -> int:
@@ -1134,7 +1143,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
             else:
                 build_args += ['-o', join(build_dir, image_name)]
 
-            mx.log(f"native_image {' '.join(build_args)}")
+            mx.log(f"native-image {' '.join(build_args)}")
             native_image(build_args)
 
             if build_cinterfacetutorial:
@@ -1147,18 +1156,13 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 else:
                     c_command = ['cl', '-MD', join(tutorial_c_source_dir, 'cinterfacetutorial.c'), '-I.',
                                  'libcinterfacetutorial.lib']
-                mx.log(' '.join(c_command))
                 mx.run(c_command, cwd=build_dir)
         if mx.get_os() == 'linux':
             logfile = join(path, pathlib.Path(testfile).stem + ('' if with_isolates else '_no_isolates') + '.log')
-            os.environ.update({'gdbdebughelperstest_logfile': logfile})
-            gdb_command = gdb_args + [
-                '-iex', f"set logging file {logfile}",
-                '-iex', 'set logging enabled on',
-                '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
+            os.environ.update({'gdb_logfile': logfile})
+            gdb_command = gdb_base_command(logfile, join(build_dir, 'gdb-debughelpers.py')) + [
                 '-x', testfile, join(build_dir, image_name)
             ]
-            mx.log(' '.join(gdb_command))
             # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
             return mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
         return 0
@@ -1180,6 +1184,82 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
     status |= run_debug_test('classLoaderTest', test_class_loader_py, test_source_path,
                              extra_args=test_class_loader_args)
+
+    if status != 0:
+        mx.abort(status)
+
+
+def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=None):
+    """Build and run the runtimedebuginfotest"""
+
+    args = [] if args is None else args
+
+    test_proj = mx.dependency('com.oracle.svm.test')
+    test_source_path = test_proj.source_dirs()[0]
+
+    test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
+    test_runtime_compilation_py = join(test_python_source_dir, 'test_runtime_compilation.py')
+    test_runtime_deopt_py = join(test_python_source_dir, 'test_runtime_deopt.py')
+    testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
+
+    # clean / create output directory
+    if exists(output_path):
+        mx.rmtree(output_path)
+    mx_util.ensure_dir_exists(output_path)
+
+    # Build the native image from Java code
+    build_args = [
+        '-g', '-O0',
+        # set property controlling inclusion of foreign struct header
+        '-DbuildDebugInfoTestExample=true',
+        '--native-compiler-options=-I' + test_source_path,
+        '-o', join(output_path, 'runtimedebuginfotest'),
+        '-cp', classpath('com.oracle.svm.test'),
+        # We do not want to step into class initializer, so initialize everything at build time.
+        '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
+        '--features=com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest$RegisterMethodsFeature',
+        'com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest',
+    ] + svm_experimental_options([
+        '-H:DebugInfoSourceSearchPath=' + test_source_path,
+        '-H:+SourceLevelDebug',
+        '-H:+RuntimeDebugInfo',
+    ]) + args
+
+    mx.log(f"native-image {' '.join(build_args)}")
+    runtime_compile_binary = native_image(build_args)
+
+    logfile = join(output_path, 'test_runtime_compilation.log')
+    os.environ.update({'gdb_logfile': logfile})
+    gdb_command = gdb_base_command(logfile, join(output_path, 'gdb-debughelpers.py')) + [
+        '-x', test_runtime_compilation_py, runtime_compile_binary
+    ]
+    # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+    status = mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
+
+    def run_js_test(eager: bool = False):
+        jslib = mx.add_lib_suffix(native_image(
+            args +
+            svm_experimental_options([
+                '-H:+SourceLevelDebug',
+                '-H:+RuntimeDebugInfo',
+                '-H:-LazyDeoptimization' if eager else '-H:+LazyDeoptimization',
+            ]) +
+            ['-g', '-O0', '--macro:jsvm-library']
+        ))
+        js_launcher = get_js_launcher(jslib)
+        logfile = join(output_path, 'test_runtime_deopt_' + ('eager' if eager else 'lazy') + '.log')
+        os.environ.update({'gdb_logfile': logfile})
+        gdb_command = gdb_base_command(logfile, join(output_path, 'gdb-debughelpers.py')) + [
+            '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
+        ]
+        # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+        return mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
+
+    # G1 does not work for the jsvm library
+    # avoid complications with '-H:+ProtectionKeys' which is not compatible with '-H:-SpawnIsolates' and '-H:-UseCompressedReferences'
+    if '--gc=G1' not in args and '-H:-UseCompressedReferences' not in args and '-H:-SpawnIsolates' not in args:
+        status |= run_js_test()
+        status |= run_js_test(True)
 
     if status != 0:
         mx.abort(status)
@@ -1553,6 +1633,9 @@ libgraal_build_args = [
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
+    # Do not cripple exceptions in libgraal
+    '-H:-ReduceImplicitExceptionStackTraceInformation',
+
     # Generate a .bgv dump upon compilation failure
     '-H:+DumpOnError',
 
@@ -1622,7 +1705,7 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     use_modules='image',
     jar_distributions=['substratevm:SVM_JDWP_SERVER'],
     build_args=libsvmjdwp_build_args + [
-        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature',
+        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature,com.oracle.svm.hosted.classloading.SymbolsFeature',
     ],
     headers=False,
 )
@@ -1762,6 +1845,28 @@ def gdbdebughelperstest(args, config=None):
         config=config
     )
 
+
+@mx.command(suite.name, 'runtimedebuginfotest', 'Runs the runtime debuginfo generation test')
+def runtimedebuginfotest(args, config=None):
+    """
+    runs a native image that compiles code and creates debug info at runtime.
+    """
+    parser = ArgumentParser(prog='mx runtimedebuginfotest')
+    all_args = ['--output-path', '--with-isolates-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "runtimedebuginfotest")])
+    parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    with_isolates_only = parsed.with_isolates_only
+    native_image_context_run(
+        lambda native_image, a:
+        _runtimedebuginfotest(native_image, output_path, with_isolates_only, a), unmask(parsed.image_args),
+        config=config
+    )
+
+
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
 def helloworld(args, config=None):
     """
@@ -1853,6 +1958,7 @@ def java_agent_test(args):
             build_and_run(args, join(tmp_dir, 'agenttest2'), native_image, agents, 'com.oracle.svm.test.javaagent.agent2.TestJavaAgent2,com.oracle.svm.test.javaagent.agent1.TestJavaAgent1')
 
     native_image_context_run(build_and_test_java_agent_image, args)
+
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):

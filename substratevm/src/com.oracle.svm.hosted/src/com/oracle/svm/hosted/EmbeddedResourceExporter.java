@@ -51,7 +51,7 @@ public class EmbeddedResourceExporter {
     public record SourceSizePair(String source, Object origin, int size) {
     }
 
-    public record ResourceReportEntry(Module module, String resourceName, List<SourceSizePair> entries, boolean isDirectory, boolean isMissing) {
+    public record ResourceReportEntry(String module, String resourceName, List<SourceSizePair> entries, boolean isDirectory, boolean isMissing) {
     }
 
     public static void printReport(JsonWriter writer) throws IOException {
@@ -65,7 +65,7 @@ public class EmbeddedResourceExporter {
         w.appendObjectStart();
         w.appendKeyValue("name", p.resourceName()).appendSeparator();
         if (p.module() != null) {
-            w.appendKeyValue("module", p.module().getName()).appendSeparator();
+            w.appendKeyValue("module", p.module()).appendSeparator();
         }
 
         if (p.isDirectory()) {
@@ -100,7 +100,7 @@ public class EmbeddedResourceExporter {
 
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
         Resources.currentLayer().forEachResource((key, value) -> {
-            Module module = key.module();
+            String module = key.getModuleName();
             String resourceName = key.resource();
 
             ResourceStorageEntryBase storageEntry = value.getValueUnconditionally();
@@ -120,7 +120,7 @@ public class EmbeddedResourceExporter {
             List<EmbeddedResourceExporter.SourceSizePair> sources = new ArrayList<>();
             for (int i = 0; i < registeredEntrySources.size(); i++) {
                 SourceAndOrigin sourceAndOrigin = registeredEntrySources.get(i);
-                int size = storageEntry.getData().get(i).length;
+                int size = storageEntry.getData()[i].length;
                 sources.add(new SourceSizePair(sourceAndOrigin.source(), sourceAndOrigin.origin(), size));
             }
 

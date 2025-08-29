@@ -58,7 +58,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -90,9 +89,6 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
@@ -103,6 +99,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -130,10 +127,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext
-                implements RuntimeAccess<Klass, Method, Field> {
-    // MaxJavaStackTraceDepth is 1024 by default
-    public static final int DEFAULT_STACK_SIZE = 32;
+public final class EspressoContext implements RuntimeAccess<Klass, Method, Field> {
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
@@ -207,6 +201,7 @@ public final class EspressoContext
 
     @CompilationFinal private TruffleIO truffleIO = null;
     @CompilationFinal private LibsState libsState = null;
+    @CompilationFinal private LibsMeta libsMeta = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -408,6 +403,10 @@ public final class EspressoContext
         return libsState;
     }
 
+    public LibsMeta getLibsMeta() {
+        return libsMeta;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -441,8 +440,8 @@ public final class EspressoContext
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
             }
 
-            if (!contextJavaVersion.java21OrLater() && getEspressoEnv().RegexSubstitutions) {
-                logger.warning("UseTRegex is not available for context running Java version < 21");
+            if (!getJavaVersion().java21Or25() && getLanguage().useEspressoLibs()) {
+                throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
             }
 
             // Spawn JNI first, then the VM.
@@ -453,7 +452,7 @@ public final class EspressoContext
                 vm.attachThread(Thread.currentThread());
                 vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
-                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
+                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, this, language);
 
                 vm.initializeJavaLibrary();
                 EspressoError.guarantee(getJavaVersion() != null, "Java version");
@@ -487,8 +486,9 @@ public final class EspressoContext
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
-                this.truffleIO = new TruffleIO(this);
                 this.libsState = new LibsState();
+                this.truffleIO = new TruffleIO(this);
+                this.libsMeta = new LibsMeta(this);
             }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -509,6 +509,8 @@ public final class EspressoContext
             }
 
             // Create main thread as soon as Thread class is initialized.
+            // On return, the main thread is in the RUNNABLE state. Keep it that way until we are
+            // done with initializing the guest.
             espressoEnv.getThreadRegistry().createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -579,6 +581,9 @@ public final class EspressoContext
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             meta.postSystemInit();
+            if (language.useEspressoLibs()) {
+                truffleIO.postSystemInit();
+            }
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
             // capable java agent is present
@@ -603,6 +608,10 @@ public final class EspressoContext
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        } finally {
+            // Done with guest initialization, report main thread as out of espresso as we are
+            // yielding control.
+            espressoEnv.getThreadRegistry().reportMainAsInNative();
         }
     }
 
@@ -772,23 +781,7 @@ public final class EspressoContext
     }
 
     private NativeAccess spawnNativeAccess() {
-        String nativeBackend;
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
-            nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
-        } else {
-            // Pick a sane "default" native backend depending on the platform.
-            boolean isInPreInit = (boolean) getEnv().getConfig().getOrDefault("preinit", false);
-            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
-                if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
-                } else {
-                    nativeBackend = NFISulongNativeAccess.Provider.ID;
-                }
-            } else {
-                nativeBackend = NFINativeAccess.Provider.ID;
-            }
-        }
-
+        String nativeBackend = language.nativeBackendId();
         List<String> available = new ArrayList<>();
         for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());
@@ -895,7 +888,7 @@ public final class EspressoContext
     }
 
     public boolean advancedRedefinitionEnabled() {
-        return espressoEnv.JDWPOptions != null;
+        return espressoEnv.AdvancedRedefinition;
     }
 
     public TypeSymbols getTypes() {
@@ -1252,24 +1245,24 @@ public final class EspressoContext
         espressoEnv.getEventListener().onContendedMonitorEntered(obj);
     }
 
-    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Object scope) {
+    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Node node, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), scope);
+        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), node, scope);
     }
 
-    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Object returnValue) {
+    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Node node, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), node, returnValue);
     }
 
-    public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {
+    public boolean reportOnFieldModification(Field field, Node node, StaticObject receiver, Object value) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldModification(field, receiver, value);
+        return espressoEnv.getEventListener().onFieldModification(field, node, receiver, value);
     }
 
-    public boolean reportOnFieldAccess(Field field, StaticObject receiver) {
+    public boolean reportOnFieldAccess(Field field, Node node, StaticObject receiver) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldAccess(field, receiver);
+        return espressoEnv.getEventListener().onFieldAccess(field, node, receiver);
     }
     // endregion VM event reporting
 
@@ -1315,11 +1308,6 @@ public final class EspressoContext
 
     public boolean interfaceMappingsEnabled() {
         return getEspressoEnv().getPolyglotTypeMappings().hasInterfaceMappings();
-    }
-
-    @Idempotent
-    public boolean regexSubstitutionsEnabled() {
-        return getEspressoEnv().RegexSubstitutions && getJavaVersion().java21OrLater();
     }
 
     public PolyglotTypeMappings getPolyglotTypeMappings() {

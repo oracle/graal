@@ -288,9 +288,6 @@ public final class GraalOptions {
     @Option(help = "Enable counters for various paths in snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> SnippetCounters = new OptionKey<>(false);
 
-    @Option(help = "Eagerly construct extra snippet info.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> EagerSnippets = new OptionKey<>(false);
-
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
@@ -350,4 +347,7 @@ public final class GraalOptions {
 
     @Option(help = "Enables target-specific lowering and legalization of SIMD operations. Required for SIMD code generation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TargetVectorLowering = new OptionKey<>(true);
+
+    @Option(help = "Enables caching of data structures like control flow graph or schedule across compiler phases.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> CacheCompilerDataStructures = new OptionKey<>(true);
 }

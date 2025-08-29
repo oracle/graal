@@ -41,11 +41,10 @@
 package com.oracle.truffle.api.library;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -71,13 +70,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public abstract class Message {
 
     private final String simpleName;
-    private final String qualifiedName;
+    private String qualifiedName; // lazy init
     private final int id;
-    private final int hash;
     private final boolean deprecated;
     private final Class<?> returnType;
     private final Class<? extends Library> libraryClass;
-    private final List<Class<?>> parameterTypes;
     @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypesArray;
     private final int parameterCount;
     @CompilationFinal LibraryFactory<Library> library;
@@ -104,15 +101,13 @@ public abstract class Message {
         Objects.requireNonNull(messageName);
         Objects.requireNonNull(returnType);
         this.libraryClass = libraryClass;
-        this.simpleName = messageName.intern();
+        assert messageName.intern() == messageName : "message name must already be interned";
+        this.simpleName = messageName;
         this.returnType = returnType;
         this.parameterTypesArray = parameterTypes;
-        this.parameterTypes = Collections.unmodifiableList(Arrays.asList(parameterTypes));
-        this.qualifiedName = (getLibraryName() + "." + simpleName + parameters(parameterTypes)).intern();
         this.deprecated = deprecated;
         this.id = id;
         this.parameterCount = parameterTypes.length;
-        this.hash = qualifiedName.hashCode();
     }
 
     private static String parameters(Class<?>... parameterTypes) {
@@ -150,6 +145,10 @@ public abstract class Message {
      * @since 19.0
      */
     public final String getQualifiedName() {
+        if (qualifiedName == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            qualifiedName = (getLibraryName() + "." + getSimpleName() + parameters(parameterTypesArray)).intern();
+        }
         return qualifiedName;
     }
 
@@ -208,7 +207,7 @@ public abstract class Message {
      * @since 19.0
      */
     public final List<Class<?>> getParameterTypes() {
-        return parameterTypes;
+        return List.of(parameterTypesArray);
     }
 
     /**
@@ -254,26 +253,6 @@ public abstract class Message {
      */
     public final LibraryFactory<?> getFactory() {
         return library;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 19.0
-     */
-    @Override
-    public final boolean equals(Object obj) {
-        return this == obj;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 19.0
-     */
-    @Override
-    public final int hashCode() {
-        return hash;
     }
 
     /**

@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -73,6 +74,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -93,8 +95,15 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.core.util.RuntimeImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -175,7 +184,7 @@ public class SubstrateDiagnostics {
             log.string(obj.getClass().getName());
 
             if (obj instanceof String s) {
-                log.string(": ").string(s, 60);
+                log.string(": \"").string(s, 60).string("\"");
             } else {
                 int layoutEncoding = DynamicHub.fromClass(obj.getClass()).getLayoutEncoding();
 
@@ -512,6 +521,7 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -891,7 +901,7 @@ public class SubstrateDiagnostics {
             log.string("Runtime information:").indent(true);
             log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
             log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
-            if (SubstrateOptions.RelativeCodePointers.getValue()) {
+            if (SubstrateOptions.useRelativeCodePointers()) {
                 log.string("Code base: ").zhex(KnownIntrinsics.codeBase()).newline();
             }
             log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
@@ -939,12 +949,18 @@ public class SubstrateDiagnostics {
             }
 
             CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            int layerNumber = 0;
             do {
                 Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
                 UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
                 Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                log.string("AOT compiled code");
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    log.string(" - Layer ").unsigned(layerNumber);
+                }
+                log.string(": ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
                 info = CodeInfoAccess.getNextImageCodeInfo(info);
+                layerNumber++;
             } while (info.isNonNull());
 
             log.indent(false);
@@ -1145,7 +1161,7 @@ public class SubstrateDiagnostics {
          * NOTE: this method may only be called by a single thread.
          */
         public boolean printLocationInfo(Log log, UnsignedWord value) {
-            if (SubstrateOptions.RelativeCodePointers.getValue() && KnownIntrinsics.codeBase().equal(value)) {
+            if (SubstrateOptions.useRelativeCodePointers() && KnownIntrinsics.codeBase().equal(value)) {
                 log.string("is the code base");
                 return true;
             }
@@ -1262,6 +1278,7 @@ public class SubstrateDiagnostics {
         public abstract int maxInvocationCount();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class DiagnosticThunkRegistry {
         @Platforms(Platform.HOSTED_ONLY.class) //
         final int runtimeCompilationPosition;
@@ -1272,7 +1289,7 @@ public class SubstrateDiagnostics {
         @Fold
         public static synchronized DiagnosticThunkRegistry singleton() {
             /* The registry is already used very early during the image build. */
-            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
+            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class) && ImageLayerBuildingSupport.firstImageBuild()) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
@@ -1306,12 +1323,14 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void add(DiagnosticThunk thunk) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             thunks.add(thunk);
             resizeInitialInvocationCount();
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void add(int insertPos, DiagnosticThunk... extraThunks) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             for (int i = 0; i < extraThunks.length; i++) {
                 thunks.add(insertPos + i, extraThunks[i]);
             }
@@ -1320,6 +1339,7 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void addAfter(DiagnosticThunk thunk, Class<? extends DiagnosticThunk> before) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             int insertPos = indexOf(before) + 1;
             assert insertPos > 0;
             thunks.add(insertPos, thunk);
@@ -1348,7 +1368,12 @@ public class SubstrateDiagnostics {
         }
 
         DiagnosticThunk getThunk(int index) {
-            return thunks.get(index);
+            /*
+             * Use an explicit cast to aid open-world analysis. Otherwise, this may trigger false
+             * positive violations of @RestrictHeapAccess since some implementations of List.get()
+             * can allocate.
+             */
+            return ((RuntimeImageHeapList<DiagnosticThunk>) thunks).get(index);
         }
 
         int getInitialInvocationCount(int index) {
@@ -1360,6 +1385,7 @@ public class SubstrateDiagnostics {
         }
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
@@ -1370,13 +1396,13 @@ public class SubstrateDiagnostics {
 
                 /*
                  * Copy the value to a field in the image heap so that it is safe to access. During
-                 * image build, it can happen that the singleton does not exist yet. In that case,
-                 * the value will be copied to the image heap when executing the constructor of the
-                 * singleton. This is a bit cumbersome but necessary because we can't use a static
-                 * field. We also need to mark the option as used at run-time (see feature) as the
-                 * static analysis would otherwise remove the option from the image.
+                 * the image build, it can happen that the singleton does not exist yet. In that
+                 * case, the value will be copied to the image heap when executing the constructor
+                 * of the singleton. This is a bit cumbersome but necessary because we can't use a
+                 * static field. We also need to mark the option as used at run-time (see feature)
+                 * as the static analysis would otherwise remove the option from the image.
                  */
-                if (ImageSingletons.contains(Options.class)) {
+                if (wasConstructorExecuted()) {
                     Options.singleton().loopOnFatalError = newValue;
                 }
             }
@@ -1389,7 +1415,7 @@ public class SubstrateDiagnostics {
                 super.onValueUpdate(values, oldValue, newValue);
 
                 /* See comment above. */
-                if (ImageSingletons.contains(Options.class)) {
+                if (wasConstructorExecuted()) {
                     Options.singleton().implicitExceptionWithoutStacktraceIsFatal = newValue;
                 }
             }
@@ -1417,11 +1443,21 @@ public class SubstrateDiagnostics {
         public static boolean implicitExceptionWithoutStacktraceIsFatal() {
             return singleton().implicitExceptionWithoutStacktraceIsFatal;
         }
+
+        private static boolean wasConstructorExecuted() {
+            return (!SubstrateUtil.HOSTED || ImageSingletonsSupport.isInstalled()) && ImageSingletons.contains(Options.class);
+        }
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class SubstrateDiagnosticsFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     /**
      * {@link RuntimeCompilation#isEnabled()} can't be executed in the
      * {@link DiagnosticThunkRegistry} constructor because the feature registration is not

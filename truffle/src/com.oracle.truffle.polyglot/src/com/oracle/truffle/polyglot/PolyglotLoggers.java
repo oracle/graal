@@ -140,6 +140,10 @@ final class PolyglotLoggers {
                         sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? sandboxPolicy : null);
     }
 
+    static boolean isDefault(LogHandler handler) {
+        return handler instanceof StreamLogHandler streamLogHandler && streamLogHandler.isDefault;
+    }
+
     static LogHandler getFileHandler(String path) {
         Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
         synchronized (fileHandlers) {

@@ -883,6 +883,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
+    public void emitArrayCopyWithReverseBytes(Stride stride, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreateReverseBytes(this, stride, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
     public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, boolean assumeValid) {
         Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
@@ -1230,14 +1236,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public boolean supportsCPUFeature(AMD64.CPUFeature feature) {
         return ((AMD64) target().arch).getFeatures().contains(feature);
-    }
-
-    public boolean supportsCPUFeature(String feature) {
-        try {
-            return ((AMD64) target().arch).getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
     }
 
     public boolean usePopCountInstruction() {

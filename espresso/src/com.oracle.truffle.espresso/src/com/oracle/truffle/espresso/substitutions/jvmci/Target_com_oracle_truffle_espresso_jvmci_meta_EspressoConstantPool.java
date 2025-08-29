@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -209,18 +210,20 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         RuntimeConstantPool constantPool = getRuntimeConstantPool(self, meta);
         if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.CLASS) {
             ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(cpi, meta);
-            if (resolvedConstant != null) {
-                Klass klass = (Klass) resolvedConstant.value();
-                LOGGER.finer(() -> "ECP.lookupType found " + klass);
-                return toJVMCIObjectType(klass, meta);
-            } else {
-                return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
-            }
+            return resolvedConstantToJVMCIObjectType(resolvedConstant, constantPool, cpi, meta);
         }
         if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.UTF8) {
             return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.utf8At(cpi)), meta);
         }
         throw meta.throwIllegalArgumentExceptionBoundary();
+    }
+
+    private static StaticObject resolvedConstantToJVMCIObjectType(ResolvedConstant resolvedConstant, RuntimeConstantPool constantPool, int cpi, Meta meta) {
+        if (resolvedConstant == null || !resolvedConstant.isSuccess()) {
+            return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
+        }
+        Klass klass = (Klass) resolvedConstant.value();
+        return toJVMCIObjectType(klass, meta);
     }
 
     @Substitution(hasReceiver = true)
@@ -356,6 +359,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
         ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
+        int classCpi;
         switch (opcode) {
             case CHECKCAST:
             case INSTANCEOF:
@@ -365,16 +369,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             case LDC:
             case LDC_W:
             case LDC2_W:
-                if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.CLASS) {
-                    ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(cpi, meta);
-                    if (resolvedConstant != null) {
-                        Klass klass = (Klass) resolvedConstant.value();
-                        LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
-                        return toJVMCIObjectType(klass, meta);
-                    } else {
-                        return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
-                    }
+                if (safeTagAt(constantPool, cpi, meta) != ConstantPool.Tag.CLASS) {
+                    throw meta.throwIllegalArgumentExceptionBoundary("Opcode and constant pool entry types mismatch");
                 }
+                classCpi = cpi;
                 break;
             case GETSTATIC:
             case PUTSTATIC:
@@ -384,21 +382,28 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             case INVOKESPECIAL:
             case INVOKESTATIC:
             case INVOKEINTERFACE:
-                if (safeTagAt(constantPool, cpi, meta).isMember()) {
-                    int holderClassIndex = constantPool.memberClassIndex(cpi);
-                    Klass holderKlass = findObjectType(holderClassIndex, constantPool, false, meta);
-                    if (holderKlass != null) {
-                        LOGGER.finer(() -> "ECP.lookupReferencedType found " + holderKlass);
-                        return toJVMCIObjectType(holderKlass, meta);
-                    } else {
-                        Symbol<Name> holderName = constantPool.memberClassName(cpi);
-                        return toJVMCIUnresolvedType(TypeSymbols.nameToType(holderName), meta);
-                    }
+                if (!safeTagAt(constantPool, cpi, meta).isMember()) {
+                    throw meta.throwIllegalArgumentExceptionBoundary("Opcode and constant pool entry types mismatch");
                 }
+                classCpi = constantPool.memberClassIndex(cpi);
                 break;
+            default:
+                LOGGER.warning(() -> "Unsupported CP entry type for lookupReferencedType: " + safeTagAt(constantPool, cpi, meta) + " " + constantPool.toString(cpi) + " for " +
+                                Bytecodes.nameOf(opcode));
+                throw meta.throwIllegalArgumentExceptionBoundary("Unsupported CP entry type");
         }
-        LOGGER.warning(() -> "Unsupported CP entry type for lookupReferencedType: " + safeTagAt(constantPool, cpi, meta) + " " + constantPool.toString(cpi) + " for " + Bytecodes.nameOf(opcode));
-        throw meta.throwIllegalArgumentExceptionBoundary();
+        Klass klass;
+        try {
+            klass = findObjectType(classCpi, constantPool, false, meta);
+        } catch (EspressoException e) {
+            throw EspressoError.shouldNotReachHere("findObjectType with resolve=false should never throw", e);
+        }
+        if (klass == null) {
+            Symbol<Name> className = constantPool.className(classCpi);
+            return toJVMCIUnresolvedType(TypeSymbols.nameToType(className), meta);
+        }
+        LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
+        return toJVMCIObjectType(klass, meta);
     }
 
     @Substitution(hasReceiver = true)
@@ -499,29 +504,13 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
         switch (tag) {
             case CLASS -> {
-                if (resolvedConstantOrNull != null) {
-                    Klass klass = (Klass) resolvedConstantOrNull.value();
-                    LOGGER.finer(() -> "ECP.lookupConstant found " + klass);
-                    return toJVMCIObjectType(klass, meta);
-                } else if (resolve) {
-                    throw EspressoError.shouldNotReachHere();
-                } else {
-                    return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
-                }
+                EspressoError.guarantee(!resolve || resolvedConstantOrNull != null, "Should have been resolved");
+                return resolvedConstantToJVMCIObjectType(resolvedConstantOrNull, constantPool, cpi, meta);
             }
             case STRING -> {
                 return wrapEspressoObjectConstant(constantPool.resolvedStringAt(cpi), meta);
             }
-            case METHODHANDLE -> {
-                if (resolvedConstantOrNull != null) {
-                    return wrapEspressoObjectConstant((StaticObject) resolvedConstantOrNull.value(), meta);
-                } else if (resolve) {
-                    throw EspressoError.shouldNotReachHere();
-                } else {
-                    return StaticObject.NULL;
-                }
-            }
-            case METHODTYPE -> {
+            case METHODHANDLE, METHODTYPE -> {
                 if (resolvedConstantOrNull != null) {
                     return wrapEspressoObjectConstant((StaticObject) resolvedConstantOrNull.value(), meta);
                 } else if (resolve) {
@@ -566,7 +555,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
                 }
             }
         }
-        LOGGER.warning(() -> "Unsupported CP entry type for lookupConstant: " + tag + " " + constantPool.toString(cpi));
+        LOGGER.warning(() -> "Unsupported CP entry type for lookupConstant: " + tag + " @ " + cpi + ": " + constantPool.toString(cpi));
         throw meta.throwIllegalArgumentExceptionBoundary();
     }
 
@@ -625,17 +614,42 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
 
     @Substitution(hasReceiver = true)
     @TruffleBoundary
-    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;") StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi,
-                    @SuppressWarnings("unused") int opcode,
+    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;") StaticObject lookupIndyBootstrapMethodInvocation(StaticObject self,
+                    int siteIndex,
                     @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
         ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        JVMCIIndyData indyData = JVMCIIndyData.getExisting(cpHolderKlass, meta);
+        int indyCpi = indyData.recoverFullCpi(siteIndex);
+        return lookupBootstrapMethodInvocation(self, indyCpi, INVOKEDYNAMIC, cpHolderKlass, cpHolder, context);
+    }
+
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;") StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi,
+                    int opcode,
+                    @Inject EspressoContext context) {
+        assert context.getLanguage().isInternalJVMCIEnabled();
+        Meta meta = context.getMeta();
+        StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        return lookupBootstrapMethodInvocation(self, cpi, opcode, cpHolderKlass, cpHolder, context);
+    }
+
+    private static StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi, int opcode, ObjectKlass cpHolderKlass, StaticObject cpHolder, EspressoContext context) {
+        Meta meta = context.getMeta();
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
-        int index = cpi;
-        if (isIndyCPI(index)) {
-            index = indyCpi(index);
+        int index;
+        if (opcode == -1) {
+            assert !isIndyCPI(cpi);
+            index = cpi;
+        } else if (opcode == INVOKEDYNAMIC) {
+            assert isIndyCPI(cpi);
+            index = indyCpi(cpi);
+        } else {
+            throw meta.throwIllegalArgumentExceptionBoundary("Unexpected opcode: " + opcode);
         }
         ConstantPool.Tag tag = safeTagAt(constantPool, index, meta);
         if (tag == ConstantPool.Tag.DYNAMIC || tag == ConstantPool.Tag.INVOKEDYNAMIC) {
@@ -698,10 +712,25 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             StaticObject wrappedType = wrapEspressoObjectConstant(type, meta);
 
             StaticObject result = meta.jvmci.EspressoBootstrapMethodInvocation.allocateInstance(context);
-            meta.jvmci.EspressoBootstrapMethodInvocation_init.invokeDirectSpecial(result, isIndy, methodMirror, meta.toGuestString(name), wrappedType, wrappedArgs);
+            LOGGER.finer(() -> "ECP.lookupBootstrapMethodInvocation: returning EspressoBootstrapMethodInvocation isIndy: " + isIndy + " method: " + bootstrapMethod + " name: " + name + " type: " +
+                            type + " cpi:" + cpi);
+            meta.jvmci.EspressoBootstrapMethodInvocation_init.invokeDirectSpecial(result, isIndy, methodMirror, meta.toGuestString(name), wrappedType, wrappedArgs, cpi, self);
             return result;
         }
         return StaticObject.NULL;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static int getNumIndyEntries(StaticObject self, @Inject EspressoContext context) {
+        assert context.getLanguage().isInternalJVMCIEnabled();
+        Meta meta = context.getMeta();
+        StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        JVMCIIndyData indyData = JVMCIIndyData.maybeGetExisting(cpHolderKlass, meta);
+        if (indyData == null) {
+            return 0;
+        }
+        return indyData.getLocationCount();
     }
 
     @Substitution(hasReceiver = true)

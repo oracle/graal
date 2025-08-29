@@ -1925,7 +1925,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public final Klass resolveClassConstantInPool(int cpi) {
         if (this instanceof ObjectKlass objectKlass) {
             try {
-                return objectKlass.getConstantPool().resolvedKlassAt(objectKlass, cpi);
+                return objectKlass.getConstantPool().resolvedKlassAt(objectKlass, cpi, false);
             } catch (ClassCastException | IndexOutOfBoundsException e) {
                 throw new IllegalArgumentException("No ClassConstant at constant pool index " + cpi);
             }

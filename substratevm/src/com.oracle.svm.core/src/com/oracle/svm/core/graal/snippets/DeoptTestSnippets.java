@@ -28,6 +28,8 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall
 
 import java.util.Map;
 
+import com.oracle.svm.core.graal.nodes.DeoptTestNode;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -37,8 +39,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-
-import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 
 public final class DeoptTestSnippets extends SubstrateTemplates implements Snippets {
 
@@ -69,7 +69,7 @@ public final class DeoptTestSnippets extends SubstrateTemplates implements Snipp
                 return;
             }
 
-            Arguments args = new Arguments(deoptTest, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(deoptTest, node.graph(), tool.getLoweringStage());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

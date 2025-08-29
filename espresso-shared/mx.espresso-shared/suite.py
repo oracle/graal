@@ -23,7 +23,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "7.55.2",
+    "mxversion": "7.58.0",
     "name": "espresso-shared",
     "version" : "26.0.0",
     "release" : False,
@@ -44,21 +44,7 @@ suite = {
 
     # ------------- licenses
 
-    "licenses": {
-        "GPLv2": {
-            "name": "GNU General Public License, version 2",
-            "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
-        },
-        "UPL": {
-            "name": "Universal Permissive License, Version 1.0",
-            "url": "http://opensource.org/licenses/UPL",
-        },
-        "Oracle Proprietary": {
-            "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
-            "url": "http://www.oracle.com/us/legal/copyright/index.html"
-        },
-    },
-    "defaultLicense": "GPLv2",
+    "defaultLicense": "GPLv2-CPE",
 
     # ------------- imports
 

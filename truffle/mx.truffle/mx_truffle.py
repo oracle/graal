@@ -50,12 +50,14 @@ import difflib
 import zipfile
 from argparse import Action, ArgumentParser, RawDescriptionHelpFormatter
 from os.path import dirname, exists, isdir, join, abspath
+from typing import Set
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
 import mx
 import mx_benchmark
 import mx_gate
 import mx_native
+import mx_polybench
 import mx_sdk
 import mx_sdk_vm
 import mx_sdk_vm_impl
@@ -88,7 +90,6 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
-        extraVmArgs.extend(_open_module_exports_args())
         # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         return extraVmArgs
@@ -177,26 +178,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def _open_module_exports_args():
-    """
-    Gets the VM args for exporting all Truffle API packages on JDK9 or later.
-    The default Truffle moduleInfo is opened but closed version is deployed into graalvm.
-    To run benchmarks on the graalvm we need to open the closed Truffle packages.
-    """
-    assert mx.get_jdk().javaCompliance >= '1.9'
-    truffle_api_dist = mx.distribution('TRUFFLE_API')
-    truffle_api_module_name = truffle_api_dist.moduleInfo['name']
-    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo')['exports']
-    args = []
-    for export in module_info_open_exports:
-        if ' to ' in export: # Qualified exports
-            package, targets = export.split(' to ')
-            targets = targets.replace(' ', '')
-        else: # Unqualified exports
-            package = export
-            targets = 'ALL-UNNAMED'
-        args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
-    return args
 
 def enable_truffle_native_access(vmArgs):
     """
@@ -458,34 +439,36 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
 class TruffleGateTags:
     style = ['style']
-    javadoc = ['javadoc']
+    javadoc = ['javadoc', 'style']
     sigtest = ['sigtest', 'test', 'fulltest']
     truffle_test = ['truffle-test', 'test', 'fulltest']
     panama_test = ['panama-test', 'test', 'fulltest']
     string_test = ['string-test', 'test', 'fulltest']
     dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
-    parser_test = ['parser-test', 'test', 'fulltest']
+    generate_slow_path_test = ['fulltest']
+    parser_test = ['parser-test', 'fulltest']
     truffle_jvm = ['truffle-jvm']
-    sl_native = ['sl-native', 'truffle-native']
-    sl_native_quickbuild = ['sl-native-quickbuild', 'truffle-native-quickbuild']
-    unittest_native = ['unittest-native', 'truffle-native']
-    unittest_native_quickbuild = ['unittest-native-quickbuild', 'truffle-native-quickbuild']
+    truffle_jvm_lite = ['truffle-jvm-lite', 'truffle-jvm']
+    truffle_native = ['truffle-native']
+    truffle_native_lite = ['truffle-native-lite', 'truffle-native']
+    # LibC Musl tests need special setup so we can't run them in truffle-native
     truffle_native_libcmusl_static = ['truffle-native-libcmusl-static']
-    truffle_native_libcmusl_static_quickbuild = ['truffle-native-libcmusl-static-quickbuild']
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
-    if jdk.javaCompliance < '9':
-        with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
-            if t: javadoc([])
+    with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
+        if t: javadoc([])
     with Task('File name length check', tasks, tags=TruffleGateTags.style) as t:
         if t: check_filename_length([])
     with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
-        if t: sigtest(['--check', 'binary'])
+        if t:
+            if jdk.javaCompliance == '21':
+                sigtest(['--check', 'all'])
+            else:
+                sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
         if t:
             unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25'])
-            unittest(['--suite', 'truffle', '--enable-timing', '-Dtruffle.object.LayoutFactory=com.oracle.truffle.api.object.CoreLayoutFactory', 'com.oracle.truffle.object'])
     if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks, tags=TruffleGateTags.panama_test) as t:
             if t:
@@ -496,60 +479,81 @@ def _truffle_gate_runner(args, tasks):
         with Task('Truffle DSL max state bit tests', tasks, tags=TruffleGateTags.dsl_max_state_bit_test) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
+    with Task('Truffle DSL Generate Slow Path Tests', tasks, tags=TruffleGateTags.generate_slow_path_test) as t:
+        if t:
+            _truffle_generate_slow_path_tests()
     with Task('Validate parsers', tasks, tags=TruffleGateTags.parser_test) as t:
         if t: validate_parsers()
     gate_truffle_jvm(tasks)
     gate_truffle_native(tasks)
-    gate_truffle_native(tasks, quickbuild=True)
 
 
 def gate_truffle_jvm(tasks):
+    jdk = mx.get_jdk(tag='default')
     if mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(mx.get_jdk(tag='default').home):
         additional_jvm_args = mx_sdk.GraalVMJDKConfig.libgraal_additional_vm_args
     else:
         additional_jvm_args = []
     # GR-62632: Debug VM exception translation failure
     additional_jvm_args += ['-Djdk.internal.vm.TranslatedException.debug=true']
-    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
+
+    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm_lite) as t:
         if t:
             truffle_jvm_module_path_optimized_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ModulePath Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_module_path_fallback_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ClassPath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_class_path_optimized_unit_tests_gate(additional_jvm_args)
+
     with Task('Truffle ClassPath Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_class_path_fallback_unit_tests_gate(additional_jvm_args)
+
+    with Task('Truffle SL JVM Lite', tasks, tags=TruffleGateTags.truffle_jvm) as t:
+        if t:
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=False, compile_immediately=False)
+
     with Task('Truffle SL JVM', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
-            sl_jvm_gate_tests(additional_jvm_args)
+            supports_optimization = mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home)
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=True, compile_immediately=supports_optimization)
+            _sl_jvm_gate_tests(jdk, additional_jvm_args, force_cp=False, compile_immediately=supports_optimization)
 
 
-def gate_truffle_native(tasks, quickbuild=False):
-    tag = TruffleGateTags.sl_native_quickbuild if quickbuild else TruffleGateTags.sl_native
-    name_suffix = ' with quickbuild' if quickbuild else ''
-
-    with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=tag) as t:
+def gate_truffle_native(tasks):
+    with Task('Truffle SL Native ModulePath', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            sl_native_fallback_gate_tests(quickbuild)
+            _sl_native_fallback_gate_tests(force_cp=False)
+            _sl_native_optimized_gate_tests(force_cp=False)
 
-    with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle SL Native ClassPath', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            sl_native_optimized_gate_tests(quickbuild)
+            _sl_native_fallback_gate_tests(force_cp=True)
+            _sl_native_optimized_gate_tests(force_cp=True)
 
-    tag = TruffleGateTags.unittest_native_quickbuild if quickbuild else TruffleGateTags.unittest_native
-    with Task('Truffle API Native Tests' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle Native Unit Preinitialization Tests', tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
-            truffle_native_context_preinitialization_tests(quickbuild)
-            truffle_native_unit_tests_gate(True, quickbuild)
-            truffle_native_unit_tests_gate(False, quickbuild)
+            truffle_native_context_preinitialization_tests()
 
-    tag = TruffleGateTags.truffle_native_libcmusl_static_quickbuild if quickbuild else TruffleGateTags.truffle_native_libcmusl_static
-    with Task('Truffle API Native Tests with static libc musl' + name_suffix, tasks, tags=tag) as t:
+    with Task('Truffle Native Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_native_lite) as t:
         if t:
-            truffle_native_unit_tests_gate(True, False, [
+            truffle_native_unit_tests_gate(use_optimized_runtime=True)
+
+    with Task('Truffle Native Unit Tests Fallback', tasks, tags=TruffleGateTags.truffle_native) as t:
+        if t:
+            truffle_native_unit_tests_gate(use_optimized_runtime=False)
+
+    with Task('Truffle Native Unit Tests Quick Build', tasks, tags=TruffleGateTags.truffle_native) as t:
+        if t:
+            truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=['-Ob'])
+
+    with Task('Truffle API Native Tests with static libc musl', tasks, tags=TruffleGateTags.truffle_native_libcmusl_static) as t:
+        if t:
+            truffle_native_unit_tests_gate(True, [
                 "--libc=musl",
                 "--static"
             ])
@@ -757,21 +761,9 @@ def native_truffle_unittest(args):
             mx.warn(f'The native Truffle unit test has failed, preserving the working directory at {tmp} for further investigation.')
 
 
-# Run with:
-# mx -p ../vm --env ce build
-# export JAVA_HOME=`mx -p ../vm --env ce --quiet --no-warning graalvm-home`
-# mx build
-# mx gate -o -t "Truffle SL JVM"
-def sl_jvm_gate_tests(additional_vm_args):
-    jdk = mx.get_jdk(tag='default')
-    supports_optimization = mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home)
-    _sl_jvm_gate_tests(jdk, additional_vm_args, force_cp=False, supports_optimization=supports_optimization)
-    _sl_jvm_gate_tests(jdk, additional_vm_args, force_cp=True, supports_optimization=supports_optimization)
-
-
-def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True):
+def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, compile_immediately=True):
     default_args = []
-    if not supports_optimization:
+    if not compile_immediately:
         default_args += ['--engine.WarnInterpreterOnly=false']
 
     def run_jvm_fallback(test_file):
@@ -790,7 +782,7 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
     mx.log(f'Run SL JVM JVMCI disabled on {jdk.home} force_cp={force_cp}')
     _run_sl_tests(run_jvmci_disabled)
 
-    if supports_optimization:
+    if compile_immediately:
         mx.log(f'Run SL JVM Optimized Immediately Test on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_optimized_immediately)
 
@@ -808,7 +800,7 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
         mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_no_enterprise_optimized)
 
-        if supports_optimization:
+        if compile_immediately:
             mx.log(f'Run SL JVM Optimized Immediately Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
             _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
 
@@ -816,17 +808,10 @@ def _sl_jvm_gate_tests(jdk, vm_args, force_cp=False, supports_optimization=True)
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
 
 
-# Run in VM suite with:
-# mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -t "Truffle SL Native Optimized"
-def sl_native_optimized_gate_tests(quick_build=False):
-    _sl_native_optimized_gate_tests(force_cp=False, quick_build=quick_build)
-    _sl_native_optimized_gate_tests(force_cp=True, quick_build=quick_build)
-
-def _sl_native_optimized_gate_tests(force_cp, quick_build):
+def _sl_native_optimized_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    vm_args = ['-Ob'] if quick_build else []
+    vm_args = []
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True)
 
     def run_native_optimized(test_file):
@@ -860,27 +845,17 @@ def _sl_native_optimized_gate_tests(force_cp, quick_build):
 
         shutil.rmtree(target_dir)
 
-
-# Run in VM suite with:
-# mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -t "Truffle SL Native Fallback"
-def sl_native_fallback_gate_tests(quick_build=False):
-    _sl_native_fallback_gate_tests(force_cp=False, quick_build=quick_build)
-    _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
-
-
-def truffle_native_context_preinitialization_tests(quick_build=False, build_args=None):
+def truffle_native_context_preinitialization_tests(build_args=None):
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
     # Context pre-initialization is supported only in optimized runtime.
     # See TruffleFeature for details.
     use_build_args = build_args if build_args else []
-    if quick_build:
-        use_build_args = use_build_args + ['-Ob']
     native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + ['--build-args'] + use_build_args)
 
 
-def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False, build_args=None):
+def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
+    jdk = mx.get_jdk(tag='graalvm')
     build_args = build_args if build_args else []
     is_libc_musl = '--libc=musl' in build_args
     is_static = '--static' in build_args
@@ -890,10 +865,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     else:
         build_truffle_runtime_args = ['-Dtruffle.UseFallbackRuntime=true']
         run_truffle_runtime_args = ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-    if quick_build:
-        build_optimize_args = ['-Ob']
-    else:
-        build_optimize_args = []
+    build_optimize_args = []
 
     # Run Truffle and NFI tests
     test_packages = [
@@ -914,20 +886,19 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         'com.oracle.truffle.api.test.nodes.*',    # GR-52262
         'com.oracle.truffle.api.test.host.*',    # GR-52263
         'com.oracle.truffle.api.test.interop.*',    # GR-52264
+        'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
     ]
-    if quick_build:
-        excluded_tests = excluded_tests + [
-            'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
-        ]
     build_args = build_args + build_optimize_args + build_truffle_runtime_args + [
         '-R:MaxHeapSize=2g',
         '-H:MaxRuntimeCompileMethods=5000',
         '--enable-url-protocols=http,jar',
+        '--enable-monitoring=jvmstat',
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
         '--enable-native-access=org.graalvm.truffle',
-    ]
+    ] + (mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal']) if jdk.version < mx.VersionSpec("24") else
+         ['--enable-monitoring=threaddump'])
     run_args = run_truffle_runtime_args + (['-Xss1m'] if is_libc_musl else []) + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
     ]
@@ -935,10 +906,10 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     native_truffle_unittest(test_packages + ['--build-args'] + build_args + ['--run-args'] + run_args + exclude_args)
 
 
-def _sl_native_fallback_gate_tests(force_cp, quick_build):
+def _sl_native_fallback_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    vm_args = ['-Ob'] if quick_build else []
+    vm_args = []
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=False, force_cp=force_cp)
 
     def run_native_fallback(test_file):
@@ -997,6 +968,20 @@ def _truffle_gate_state_bitwidth_tests():
             mx.log('Completed Truffle DSL state bitwidth test. Reproduce with:')
             mx.log('  mx build {0}'.format(" ".join(build_args)))
             mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
+
+def _truffle_generate_slow_path_tests():
+    build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
+                  '-A-Atruffle.dsl.GenerateSlowPathOnly=true']
+
+    unittest_args = ['--suite', 'truffle', '--enable-timing', '--max-class-failures=25',
+                     'com.oracle.truffle.api.test.polyglot', 'com.oracle.truffle.nfi.test']
+    try:
+        mx.build(build_args)
+        unittest(unittest_args)
+    finally:
+        mx.log('Completed Truffle DSL Generate Slow Path Tests. Reproduce with:')
+        mx.log('  mx build {0}'.format(" ".join(build_args)))
+        mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
@@ -1161,6 +1146,8 @@ def mx_post_parse_cmd_line(opts):
         if d.isJARDistribution():
             if _uses_truffle_dsl_processor(d):
                 d.set_archiveparticipant(TruffleArchiveParticipant())
+
+    mx_polybench.mx_post_parse_cmd_line(opts)
 
 _tckHelpSuffix = """
     TCK options:
@@ -1359,11 +1346,11 @@ class _PolyglotIsolateResourceProject(mx.JavaProject):
     and the resource ID is `<language_id>-isolate-<os>-<arch>`.
     """
 
-    def __init__(self, language_suite, subDir, language_id, resource_id, os_name, cpu_architecture, placeholder):
+    def __init__(self, language_suite, subDir, language_id, all_language_ids, resource_id, os_name, cpu_architecture, placeholder):
         name = f'com.oracle.truffle.isolate.resource.{language_id}.{os_name}.{cpu_architecture}'
         javaCompliance = str(mx.distribution('truffle:TRUFFLE_API').javaCompliance) + '+'
         project_dir = os.path.join(language_suite.dir, subDir, name)
-        deps = ['truffle:TRUFFLE_API']
+        deps = ['truffle:TRUFFLE_API', 'truffle-enterprise:TRUFFLE_ENTERPRISE']
         if placeholder:
             deps += ['sdk:NATIVEIMAGE']
         super(_PolyglotIsolateResourceProject, self).__init__(language_suite, name, subDir=subDir, srcDirs=[], deps=deps,
@@ -1373,6 +1360,7 @@ class _PolyglotIsolateResourceProject(mx.JavaProject):
         self.srcDirs.append(src_gen_dir)
         self.declaredAnnotationProcessors = ['truffle:TRUFFLE_DSL_PROCESSOR']
         self.language_id = language_id
+        self.all_language_ids = all_language_ids
         self.resource_id = resource_id
         self.os_name = os_name
         self.cpu_architecture = cpu_architecture
@@ -1450,6 +1438,7 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
         subst_eng = mx_subst.SubstitutionEngine()
         subst_eng.register_no_arg('package', pkg_name)
         subst_eng.register_no_arg('languageId', prj.language_id)
+        subst_eng.register_no_arg('languageIds', ', '.join([f'"{l}"' for l in prj.all_language_ids]))
         subst_eng.register_no_arg('resourceId', prj.resource_id)
         subst_eng.register_no_arg('os', prj.os_name)
         subst_eng.register_no_arg('arch', prj.cpu_architecture)
@@ -1462,9 +1451,10 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
 
 
 
-def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, language_id,
+def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, main_language_id,
                                             subDir, language_pom_distribution, maven_group_id, language_license,
-                                            isolate_build_options=None, platforms=None):
+                                            isolate_build_options=None, platforms=None, additional_image_path_artifacts=None,
+                                            additional_language_ids=None):
     """
     Creates and registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
     The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
@@ -1477,25 +1467,27 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     :type register_project: (mx.Project) -> None
     :param register_distribution: A callback to dynamically register the distribution, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
     :type register_distribution: (mx.Distribution) -> None
-    :param str language_id: The language ID.
+    :param str main_language_id: The language ID.
     :param str subDir: a path relative to `suite.dir` in which the IDE project configuration for this distribution is generated
     :param POMDistribution language_pom_distribution: The language meta pom distribution used to set the image builder module-path.
     :param str maven_group_id: The maven language group id.
     :param str | list | language_license: Language licence(s).
     :param list isolate_build_options: additional options passed to a native image to build the isolate library.
     :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+    :param list additional_image_path_artifacts: additional artifacts to include in the polyglot isolate library image path
+    :param list additional_language_ids: language ids of additional languages added into polyglot isolate library
     """
     assert language_suite
     assert register_project
     assert register_distribution
-    assert language_id
+    assert main_language_id
     assert subDir
     assert language_pom_distribution
     assert maven_group_id
     assert language_license
 
     polyglot_isolates_value = mx_sdk_vm_impl._parse_cmd_arg('polyglot_isolates')
-    if not polyglot_isolates_value or not (polyglot_isolates_value is True or (isinstance(polyglot_isolates_value, list) and language_id in polyglot_isolates_value)):
+    if not polyglot_isolates_value or not (polyglot_isolates_value is True or (isinstance(polyglot_isolates_value, list) and main_language_id in polyglot_isolates_value)):
         return False
 
     if not isinstance(language_license, list):
@@ -1508,7 +1500,18 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     language_pom_distribution = _qualname(language_pom_distribution)
     if isolate_build_options is None:
         isolate_build_options = []
-    language_id_upper_case = language_id.upper()
+    if additional_image_path_artifacts:
+        additional_image_path_artifacts = [_qualname(d) for d in additional_image_path_artifacts]
+    else:
+        additional_image_path_artifacts = []
+    if additional_language_ids:
+        if main_language_id in additional_language_ids:
+            all_language_ids = additional_language_ids
+        else:
+            all_language_ids = [main_language_id] + additional_language_ids
+    else:
+        all_language_ids = [main_language_id]
+    language_id_upper_case = main_language_id.upper()
     if platforms is None:
         platforms = [
             'linux-amd64',
@@ -1524,12 +1527,12 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     platform_meta_poms = []
     for platform in platforms:
         build_for_current_platform = platform == current_platform
-        resource_id = f'{language_id}-isolate-{platform}'
+        resource_id = f'{main_language_id}-isolate-{platform}'
         os_name, cpu_architecture = platform.split('-')
         os_name_upper_case = os_name.upper()
         cpu_architecture_upper_case = cpu_architecture.upper()
         # 1. Register a project generating and building an internal resource for polyglot isolate library
-        build_internal_resource = _PolyglotIsolateResourceProject(language_suite, subDir, language_id, resource_id,
+        build_internal_resource = _PolyglotIsolateResourceProject(language_suite, subDir, main_language_id, all_language_ids, resource_id,
                                                                   os_name, cpu_architecture, not build_for_current_platform)
         register_project(build_internal_resource)
         resources_dist_dependencies = [
@@ -1538,14 +1541,14 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 
         if build_for_current_platform:
             # 2. Register a project building the isolate library
-            isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE']
-            build_library = PolyglotIsolateProject(language_suite, language_id, isolate_deps, isolate_build_options)
+            isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE'] + additional_image_path_artifacts
+            build_library = PolyglotIsolateProject(language_suite, main_language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 
             # 3. Register layout distribution with isolate library and isolate resources
             resource_base_folder = f'META-INF/resources/engine/{resource_id}/libvm'
             attrs = {
-                'description': f'Contains {language_id} language library resources.',
+                'description': f'Contains {main_language_id} language library resources.',
                 'hashEntry': f'{resource_base_folder}/sha256',
                 'fileListEntry': f'{resource_base_folder}/files',
                 'maven': False,
@@ -1555,7 +1558,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                 name=f'{language_id_upper_case}_ISOLATE_LAYOUT_{os_name_upper_case}_{cpu_architecture_upper_case}',
                 deps=[],
                 layout={
-                    f'{resource_base_folder}/': f'dependency:{build_library.name}',
+                    f'{resource_base_folder}/{mx.add_lib_suffix("libpolyglotisolate")}': f'dependency:{build_library.name}',
                     f'{resource_base_folder}/resources/': {"source_type": "dependency",
                                                           "dependency": f'{build_library.name}',
                                                           "path": 'language_resources/resources/*',
@@ -1584,7 +1587,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         # We pass directly the license id
         licenses.update(['GFTC'])
         attrs = {
-            'description': f'Polyglot isolate resources for {language_id} for {platform}.',
+            'description': f'Polyglot isolate resources for {main_language_id} for {platform}.',
             'moduleInfo': {
                 'name': build_internal_resource.name,
             },
@@ -1605,7 +1608,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
             deps=resources_dist_dependencies,
             mainClass=None,
             excludedLibs=[],
-            distDependencies=['truffle:TRUFFLE_API'],
+            distDependencies=['truffle:TRUFFLE_API', 'truffle-enterprise:TRUFFLE_ENTERPRISE'],
             javaCompliance=str(build_internal_resource.javaCompliance)+'+',
             platformDependent=True,
             theLicense=sorted(list(licenses)),
@@ -1617,7 +1620,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         # 5. Register meta POM distribution for the isolate library jar file for a specific platform.
         isolate_dist_name = f'{language_id_upper_case}_ISOLATE_{os_name_upper_case}_{cpu_architecture_upper_case}'
         attrs = {
-            'description': f'The {language_id} polyglot isolate for {platform}.',
+            'description': f'The {main_language_id} polyglot isolate for {platform}.',
             'maven': {
                 'groupId': 'org.graalvm.polyglot',
                 'artifactId': maven_artifact_id,
@@ -1639,10 +1642,10 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     # 6. Register meta POM distribution listing all platform specific meta-POMS.
     isolate_dist_name = f'{language_id_upper_case}_ISOLATE'
     attrs = {
-        'description': f'The {language_id} polyglot isolate.',
+        'description': f'The {main_language_id} polyglot isolate.',
         'maven': {
             'groupId': 'org.graalvm.polyglot',
-            'artifactId': f'{language_id}-isolate',
+            'artifactId': f'{main_language_id}-isolate',
             'tag': ['default', 'public'],
         },
     }
@@ -1969,7 +1972,6 @@ class LibffiBuildTask(mx_native.TargetArchBuildTask):
         mx.rmtree(self.out_dir, ignore_errors=True)
 
 
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
@@ -2127,3 +2129,43 @@ mx.update_commands(_suite, {
 })
 
 mx_gate.add_jacoco_includes(['org.graalvm.*', 'com.oracle.truffle.*'])
+
+
+mx_polybench.register_polybench_language(mx_suite=_suite, language="sl", distributions=resolve_sl_dist_names())
+
+def sl_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags: Set[str]) -> None:
+    if "gate" in tags:
+        polybench_run(["--jvm", "*/*.sl", "-w", "1", "-i", "1"])
+        polybench_run(["--native", "*/*.sl", "-w", "1", "-i", "1"])
+    if "benchmark" in tags:
+        polybench_run(["--jvm", "*/*.sl", "-w", "10", "-i", "10"])
+        polybench_run(["--native", "*/*.sl", "-w", "10", "-i", "10"])
+
+mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="sl", languages=["sl"], benchmark_distribution="SL_BENCHMARKS", benchmark_file_filter=".*sl", runner=sl_polybench_runner, tags={"gate", "benchmark"})
+
+mx_polybench.register_polybench_language(mx_suite=_suite, language="pmh", distributions=["PMH"], native_distributions=["PMH_BENCHMARK_NATIVE"])
+
+def nfi_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+    if "gate" in tags:
+        polybench_run(["--jvm", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        polybench_run(["--native", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+    if "benchmark" in tags:
+        polybench_run(["--jvm", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "nfi/*.pmh"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh"])
+        polybench_run(["--native", "nfi/*.pmh"])
+        polybench_run(["--jvm", "nfi/*.pmh", "--metric=metaspace-memory"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=metaspace-memory"])
+        polybench_run(["--jvm", "nfi/*.pmh", "--metric=application-memory"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=application-memory"])
+        polybench_run(["--jvm", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        polybench_run(["--native", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+
+mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="nfi", languages=["pmh", "js"], benchmark_distribution="NFI_POLYBENCH_BENCHMARKS", benchmark_file_filter=".*pmh", runner=nfi_polybench_runner, tags={"gate", "benchmark"}, suppress_validation_warnings=True)

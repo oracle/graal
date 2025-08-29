@@ -58,7 +58,9 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -68,6 +70,9 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.VMFeature;
+import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.c.InitialLayerCGlobalTracking;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -294,7 +299,13 @@ public class SVMImageLayerSnapshotUtil {
         if (originalMethod != null) {
             return addModuleName(originalMethod.toString(), moduleName);
         }
-        return addModuleName(getQualifiedName(method), moduleName);
+        /*
+         * The wrapped qualified method is needed here as the AnalysisMethod replaces unresolved
+         * parameter or return types with java.lang.Object, potentially causing method descriptor
+         * duplication. The wrapped method signature preserves the original type information,
+         * preventing this issue.
+         */
+        return addModuleName(getWrappedQualifiedName(method), moduleName);
     }
 
     /*
@@ -319,6 +330,10 @@ public class SVMImageLayerSnapshotUtil {
 
     private static String getQualifiedName(AnalysisMethod method) {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
+    }
+
+    private static String getWrappedQualifiedName(AnalysisMethod method) {
+        return method.wrapped.format("%R %H.%n(%P)");
     }
 
     public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
@@ -350,6 +365,9 @@ public class SVMImageLayerSnapshotUtil {
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
             addBuiltin(new VMThreadLocalInfoBuiltIn());
+            LayeredCGlobalTracking cGlobalTracking = new LayeredCGlobalTracking(CGlobalDataFeature.singleton().getInitialLayerCGlobalTracking(), null);
+            addBuiltin(new CGlobalDataImplBuiltIn(cGlobalTracking));
+            addBuiltin(new CGlobalDataInfoBuiltIn(cGlobalTracking));
             if (nodeClassMap != null) {
                 addBuiltin(new NodeClassMapBuiltin(nodeClassMap));
             }
@@ -385,6 +403,9 @@ public class SVMImageLayerSnapshotUtil {
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
             addBuiltin(new VMThreadLocalInfoBuiltIn());
+            LayeredCGlobalTracking cGlobalTracking = new LayeredCGlobalTracking(null, CGlobalDataFeature.singleton().getAppLayerCGlobalTracking());
+            addBuiltin(new CGlobalDataImplBuiltIn(cGlobalTracking));
+            addBuiltin(new CGlobalDataInfoBuiltIn(cGlobalTracking));
             if (nodeClassMap != null) {
                 addBuiltin(new NodeClassMapBuiltin(nodeClassMap));
             }
@@ -763,6 +784,70 @@ public class SVMImageLayerSnapshotUtil {
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(decoder, stream);
             return ImageSingletons.lookup(VMThreadLocalCollector.class).forFastThreadLocal(fastThreadLocal);
+        }
+    }
+
+    static final class LayeredCGlobalTracking {
+        private final InitialLayerCGlobalTracking initialLayerTracking;
+        private final AppLayerCGlobalTracking appLayerTracking;
+
+        private LayeredCGlobalTracking(InitialLayerCGlobalTracking initialLayerTracking, AppLayerCGlobalTracking appLayerTracking) {
+            this.initialLayerTracking = initialLayerTracking;
+            this.appLayerTracking = appLayerTracking;
+        }
+
+        int getEncodedIndex(CGlobalDataImpl<?> data) {
+            return initialLayerTracking.getEncodedIndex(data);
+        }
+
+        CGlobalDataImpl<?> getCGlobalDataImpl(int index) {
+            return appLayerTracking.registerOrGetCGlobalDataImplByPersistedIndex(index);
+        }
+
+        CGlobalDataInfo getCGlobalDataInfo(int index) {
+            return appLayerTracking.registerOrGetCGlobalDataInfoByPersistedIndex(index);
+        }
+    }
+
+    private static class CGlobalDataImplBuiltIn extends ObjectCopier.Builtin {
+        private final LayeredCGlobalTracking cGlobalTracking;
+
+        CGlobalDataImplBuiltIn(LayeredCGlobalTracking cGlobalTracking) {
+            super(CGlobalDataImpl.class);
+            this.cGlobalTracking = cGlobalTracking;
+        }
+
+        @Override
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            int id = cGlobalTracking.getEncodedIndex((CGlobalDataImpl<?>) obj);
+            stream.writePackedUnsignedInt(id);
+        }
+
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readPackedUnsignedInt();
+            return cGlobalTracking.getCGlobalDataImpl(id);
+        }
+    }
+
+    private static class CGlobalDataInfoBuiltIn extends ObjectCopier.Builtin {
+        private final LayeredCGlobalTracking cGlobalTracking;
+
+        CGlobalDataInfoBuiltIn(LayeredCGlobalTracking cGlobalTracking) {
+            super(CGlobalDataInfo.class);
+            this.cGlobalTracking = cGlobalTracking;
+        }
+
+        @Override
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            int id = cGlobalTracking.getEncodedIndex(((CGlobalDataInfo) obj).getData());
+            stream.writePackedUnsignedInt(id);
+        }
+
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readPackedUnsignedInt();
+            return cGlobalTracking.getCGlobalDataInfo(id);
         }
     }
 

@@ -48,6 +48,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import com.oracle.truffle.api.impl.CheckMultiReleaseSupport;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 /**
@@ -105,6 +106,14 @@ public final class Truffle {
     }
 
     private static TruffleRuntime createRuntime() throws InternalError {
+        if (!CheckMultiReleaseSupport.isSupported() && !Boolean.getBoolean("polyglotimpl.DisableMultiReleaseCheck")) {
+            throw new InternalError("Truffle could not be initialized because Multi-Release classes are not configured correctly. " +
+                            "This most likely means Truffle classes have been repackaged incorrectly and the `Multi-Release: true` attribute in META-INF/MANIFEST.MF has been lost. " +
+                            "A common cause of this error is invalid Uber JAR configuration. " +
+                            "For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#uber-jar-file-creation. " +
+                            "This check may be disabled with '-Dpolyglotimpl.DisableMultiReleaseCheck=true'.");
+        }
+
         if (Boolean.getBoolean("truffle.UseFallbackRuntime")) {
             return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.");
         }

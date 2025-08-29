@@ -24,13 +24,11 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
-import jdk.graal.compiler.processor.AbstractProcessor;
-
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +49,8 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+
+import jdk.graal.compiler.processor.AbstractProcessor;
 
 /**
  * Processor for the {@code com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal}
@@ -90,7 +90,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
         return true;
     }
 
-    private final Set<ExecutableElement> processed = new HashSet<>();
+    private final Set<ExecutableElement> processed = new LinkedHashSet<>();
 
     /**
      * The calls made in a single Java source file.
@@ -106,7 +106,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
          * The identifiers for the calls made in the source file.
          */
         final List<Id> ids = new ArrayList<>();
-        final Set<Element> originatingElements = new HashSet<>();
+        final Set<Element> originatingElements = new LinkedHashSet<>();
 
         CallsInfo(Element topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
@@ -279,7 +279,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
             return true;
         }
 
-        Map<Element, CallsInfo> calls = new HashMap<>();
+        Map<Element, CallsInfo> calls = new LinkedHashMap<>();
         for (TypeElement supportedAnnotationElement : annotations) {
             for (Element element : roundEnv.getElementsAnnotatedWith(supportedAnnotationElement)) {
                 processElement((ExecutableElement) element, (DeclaredType) supportedAnnotationElement.asType(), calls);

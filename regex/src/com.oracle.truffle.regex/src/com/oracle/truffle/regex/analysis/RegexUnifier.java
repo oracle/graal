@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,10 @@
  */
 package com.oracle.truffle.regex.analysis;
 
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.JSRegexLexer;
+import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
 /**
@@ -56,17 +55,20 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 public final class RegexUnifier {
 
     private final RegexSource source;
-    private final JSRegexLexer lexer;
+    private final RegexLexer lexer;
 
     private final StringBuilder dump;
 
     public RegexUnifier(RegexSource source) {
         this.source = source;
-        this.lexer = new JSRegexLexer(source, RegexFlags.parseFlags(source), new CompilationBuffer(source.getEncoding()));
+        this.lexer = source.getOptions().getFlavor().createLexer(source, new CompilationBuffer(source.getEncoding()));
         this.dump = new StringBuilder(source.getPattern().length());
     }
 
     public String getUnifiedPattern() throws RegexSyntaxException {
+        if (lexer == null) {
+            return source.toString();
+        }
         dump.append("/");
         while (lexer.hasNext()) {
             Token token = lexer.next();

@@ -33,6 +33,8 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class JsonWriterTest {
@@ -92,13 +94,13 @@ public class JsonWriterTest {
 
     @Test
     public void testMap0() throws IOException {
-        var input = Map.of();
+        var input = (Map<Object, Object>) new EconomicHashMap<>();
         Assert.assertEquals("{}", toJson(input));
     }
 
     @Test
     public void testMap1() throws IOException {
-        var input = Map.of(
+        var input = CollectionsUtil.mapOf(
                         "k1", 1,
                         "k2", 2);
         var output = toJson(input);
@@ -108,7 +110,7 @@ public class JsonWriterTest {
 
     @Test
     public void testMap2() throws IOException {
-        var input = Map.of(
+        var input = CollectionsUtil.mapOf(
                         "k1", List.of(1, 2, 3),
                         "k2", List.of());
         var output = toJson(input);
@@ -118,8 +120,8 @@ public class JsonWriterTest {
 
     @Test
     public void testMap3() throws IOException {
-        var input = Map.of(
-                        "k1", Map.of("k1", List.of(1, 2, 3)),
+        var input = CollectionsUtil.mapOf(
+                        "k1", CollectionsUtil.mapOf("k1", List.of(1, 2, 3)),
                         "k2", "");
         var output = toJson(input);
         // Could be in either order

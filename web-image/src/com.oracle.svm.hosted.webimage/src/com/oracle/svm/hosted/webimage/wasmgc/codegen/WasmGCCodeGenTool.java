@@ -31,8 +31,8 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.InvokeTarget;

@@ -148,7 +148,7 @@ public class NativeImageResourceFileSystemProviderTest {
         // 2. Iterating through all resources in file system starting for the root.
         Path rootPath = fileSystem.getPath(ROOT_DIRECTORY);
         try (Stream<Path> files = Files.walk(rootPath)) {
-            files.forEach(path -> {
+            files.forEach(_ -> {
             });
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the root!");
@@ -163,7 +163,7 @@ public class NativeImageResourceFileSystemProviderTest {
     public void githubIssue5080() {
         Path path = fileSystem.getPath(RESOURCE_DIR + "/");
         try (Stream<Path> files = Files.walk(path)) {
-            files.forEach(p -> {
+            files.forEach(_ -> {
             });
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the path: " + path + "!");

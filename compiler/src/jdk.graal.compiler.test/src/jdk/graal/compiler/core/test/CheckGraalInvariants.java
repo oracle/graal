@@ -42,8 +42,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -111,6 +109,8 @@ import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.test.AddExports;
 import jdk.graal.compiler.test.SubprocessUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -546,20 +546,20 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     }
 
     /**
-     * Initializes a map from a field annotated by {@link Option} to a set that will be used to
-     * collect methods that accesses the option field.
-     *
-     * @param tool
+     * Initializes a map from fields annotated with {@link Option} whose usages should be checked to
+     * empty sets that will collect the methods accessing each field.
+     * <p>
+     * The sets are synchronized to support parallel processing of methods.
      */
     private static Map<ResolvedJavaField, Set<ResolvedJavaMethod>> initOptionFieldUsagesMap(InvariantsTool tool, MetaAccessProvider metaAccess, List<String> errors) {
-        Map<ResolvedJavaField, Set<ResolvedJavaMethod>> optionFields = new HashMap<>();
+        Map<ResolvedJavaField, Set<ResolvedJavaMethod>> optionFields = new EconomicHashMap<>();
         for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor option : set) {
                 if (tool.shouldCheckUsage(option)) {
                     Class<?> declaringClass = option.getDeclaringClass();
                     try {
                         Field javaField = declaringClass.getDeclaredField(option.getFieldName());
-                        optionFields.put(metaAccess.lookupJavaField(javaField), new HashSet<>());
+                        optionFields.put(metaAccess.lookupJavaField(javaField), Collections.synchronizedSet(new EconomicHashSet<>()));
                     } catch (NoSuchFieldException e) {
                         errors.add(e.toString());
                     }

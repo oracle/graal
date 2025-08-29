@@ -15,37 +15,54 @@ A valid [Source](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source
 Here is one way you can build a WebAssembly `Source`:
 
 ```java
-Source source = Source.newBuilder("wasm", new File("example.wasm")).name("example").build();
+Source source = Source.newBuilder("wasm", new File("example.wasm")).build();
 ```
 
-When you evaluate a WebAssembly `Source`, the module is parsed, and validated, and a module instance is returned as the resulting value.
-The module instance can also later be retrieved from the top-level bindings.
-The name of the binding in the top-level scope is the same as the name of the `Source` that was evaluated.
+Or directly from a byte array:
 
 ```java
-// Evaluate the Source named "example".
+Source source = Source.newBuilder("wasm", ByteSequence.create(in.readAllBytes()), "example").build();
+```
+
+When you evaluate a WebAssembly `Source`, the module is parsed and validated, and a module object is returned as the result value.
+This module can then be instantiated using `module.`[`newInstance()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#newInstance(java.lang.Object...)).
+To access exported functions and bindings, first get the _exports_ member of the instance using `instance.getMember("exports")`, which returns an object containing all the exported members.
+You can then use `exports.getMember("bindingName")` to read an exported binding, and either `exports.getMember("functionName").execute(...args)` or `exports.invokeMember("functionName", ...args)` to call an exported function.
+
+```java
+// Evaluate the Source.
 Value exampleModule = context.eval(source);
-// It is now accessible under the binding name "example".
-assert context.getBindings("wasm").getMember("example") == exampleModule;
+// Instantiate the example module (optional: provide an import object).
+Value exampleInstance = exampleModule.newInstance();
+// Get the exports of the module instance.
+Value exampleExports = exampleInstance.getMember("exports");
+// Invoke an exported function.
+assert exampleExports.invokeMember("factorial", 8).asInt() == 40320;
+// Get the value of an exported global.
+assert exampleExports.getMember("theAnswerToLife").asInt() == 42;
 ```
 
 [Source names](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html#getName()) are important in GraalWasm because they are also used to resolve module imports.
 If a module tries to import a symbol from module `foo`, then GraalWasm looks for that symbol in the module whose `Source` was named `foo`.
-These imports are not resolved until when a WebAssembly module instance's members are accessed or executed for the first time in a given context.
+These imports are resolved from the arguments passed to `module.newInstance()` (either the import object or a module argument).
+When using the `wasm.EvalReturnsInstance=true` option, the imports are not resolved until the module instance's exports are accessed or executed for the first time.
 
 ### Module Instance Objects
 
-By evaluating WebAssembly modules through the Polyglot API, you get access to module instance objects.
-Module instance objects expose members for every symbol that was exported from the WebAssembly module.
+By calling [`newInstance()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#newInstance(java.lang.Object...)) on the WebAssembly module value returned by [`Context.eval(Source)`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#eval(org.graalvm.polyglot.Source)), you instantiate the module and create new module instance objects.
+Module instance objects expose a read-only "exports" member, an object that contains a member for every symbol that was exported from the WebAssembly module.
 You can get a list of all exported symbols using [getMemberKeys](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMemberKeys()), access individual exports using [getMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMember(java.lang.String)) and, in the case of mutable globals, use [putMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#putMember(java.lang.String,java.lang.Object)) to set their values.
+You can also call functions using [invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember(java.lang.String,java.lang.Object...)).
 
 Here is how the various kinds of WebAssembly exports map to polyglot values:
 
 * Functions
 
   Functions are exported as executable values, which you can call using [execute](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#execute(java.lang.Object...)).
+  Alternatively, you can use [invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember(java.lang.String,java.lang.Object...)) on the _exports_ object.
   Function arguments and return values are mapped between WebAssembly value types and polyglot values using the [type mapping](#type-mapping).
   If a function returns multiple values, these are wrapped in an interop array.
+  Use [getArrayElement](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getArrayElement(long)) to extract the individual return values.
 
 * Globals
 
@@ -61,7 +78,7 @@ Here is how the various kinds of WebAssembly exports map to polyglot values:
 
 * Tables
 
-  Exported tables are opaque and cannot be queried or modified.
+  Exported tables are opaque and cannot be queried or modified currently.
 
 ## Type Mapping
 

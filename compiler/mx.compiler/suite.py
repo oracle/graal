@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.58.9",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -24,10 +24,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-      },
-      {
-        "name" : "regex",
-        "subdir": True
       },
       {
         "name" : "sdk",
@@ -65,8 +61,8 @@ suite = {
       "packedResource": True,
     },
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.21-6336c496583.zip"],
-      "digest" : "sha512:978b5f2e7f807238dcb2bf4e5b7acdd88176c3742bdc0e472d96cbd5a5d72ff411a110098abbbbcd6ad55c6baa27ea9b530e78736085e1bee80d61f723e47c60",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.22-6cb0d3acbb1.zip"],
+      "digest" : "sha512:8c4795fae203bfa84c40b041fe6d0f46a89bd8b975120d28aea9483eef1c1b63ab685716c1258387c12a255560904284fd0bf9aa947f2efabc4a629148000b5d",
       "packedResource": True,
     },
 
@@ -203,6 +199,7 @@ suite = {
         "java.compiler" # javax.annotation.processing.*
       ],
       "checkPackagePrefix": "false",
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
     },
@@ -300,6 +297,7 @@ suite = {
           "jdk.vm.ci.code"
         ],
       },
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "24+",
       "forceJavac": True,
@@ -325,6 +323,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "jacoco" : "exclude",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
@@ -377,6 +376,7 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
+      "jacoco" : "exclude",
       "workingSets" : "Graal,Test",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -413,6 +413,8 @@ suite = {
           "jdk.vm.ci.hotspot",
         ],
       },
+      # Code coverage is not done when building libgraal
+      "jacoco" : "exclude",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
@@ -439,6 +441,7 @@ suite = {
         ],
       },
       "spotbugs": "false",
+      "jacoco" : "exclude",
     },
   },
 
@@ -457,7 +460,6 @@ suite = {
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
-        "regex:TREGEX",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -521,7 +523,7 @@ suite = {
           "jdk.graal.compiler.code.DisassemblerProvider",
           "jdk.graal.compiler.core.match.MatchStatementSet",
           "jdk.graal.compiler.core.common.LibGraalSupport",
-          "jdk.graal.compiler.debug.DebugHandlersFactory",
+          "jdk.graal.compiler.debug.DebugDumpHandlersFactory",
           "jdk.graal.compiler.debug.TTYStreamProvider",
           "jdk.graal.compiler.debug.PathUtilitiesProvider",
           "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
@@ -544,7 +546,7 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
-      "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
+      "description": "The JAR build of the Graal compiler. This is intended to be used to speed up Graal Languages on OpenJDK distributions that do not ship the Graal compiler. To enable it, \'-XX:+EnableJVMCI\' is required and this Graal compiler JAR and its dependencies need to be on the \'--upgrade-module-path\'.", # pylint: disable=line-too-long
       "maven" : {
         "artifactId" : "compiler",
         "tag": ["default", "public"],

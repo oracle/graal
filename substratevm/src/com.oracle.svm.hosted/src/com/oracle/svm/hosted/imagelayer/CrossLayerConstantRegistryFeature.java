@@ -52,6 +52,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
@@ -117,7 +118,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     public void duringSetup(DuringSetupAccess access) {
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         loader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+        ImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         config.registerObjectToConstantReplacer(obj -> replacePriorMarkersWithConstant(registry, obj));
     }
@@ -245,7 +246,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     private void generateRelocationPatchArray() {
         int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
         List<Integer> patchArray = new ArrayList<>();
-        int heapBeginOffset = tracker.getImageHeapBeginOffset();
+        int heapBeginOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         assert heapBeginOffset >= 0 : "invalid image heap begin offset " + heapBeginOffset;
         for (var entry : tracker.futureKeyToPatchingOffsetsMap.entrySet()) {
             List<Integer> offsetsToPatch = entry.getValue();
@@ -395,18 +396,10 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
 }
 
 class ImageLayerIdTrackingSingleton implements LayeredImageSingleton {
-    private static final int UNKNOWN_HEAP_BEGIN_OFFSET = -1;
-
     private final Map<String, TrackingInfo> keyToTrackingInfoMap = new HashMap<>();
     final Map<String, List<Integer>> futureKeyToPatchingOffsetsMap = new ConcurrentHashMap<>();
-    private final int imageHeapBeginOffset;
 
     ImageLayerIdTrackingSingleton() {
-        this(UNKNOWN_HEAP_BEGIN_OFFSET);
-    }
-
-    ImageLayerIdTrackingSingleton(int imageHeapBeginOffset) {
-        this.imageHeapBeginOffset = imageHeapBeginOffset;
     }
 
     TrackingInfo getTrackingInfo(String key) {
@@ -417,10 +410,6 @@ class ImageLayerIdTrackingSingleton implements LayeredImageSingleton {
         assert key != null && constantId > 0 : Assertions.errorMessage(key, constantId);
         var previous = keyToTrackingInfoMap.putIfAbsent(key, new PriorTrackingInfo(constantId));
         VMError.guarantee(previous == null, "Two values are registered for this key %s", key);
-    }
-
-    public int getImageHeapBeginOffset() {
-        return imageHeapBeginOffset;
     }
 
     public void registerFutureTrackingInfo(FutureTrackingInfo info) {
@@ -500,13 +489,12 @@ class ImageLayerIdTrackingSingleton implements LayeredImageSingleton {
         writer.writeIntList("futureLoaderIds", futureLoaderIds);
         writer.writeIntList("futureOffsets", futureOffsets);
 
-        writer.writeInt("imageHeapBeginOffset", imageHeapBeginOffset == UNKNOWN_HEAP_BEGIN_OFFSET ? Heap.getHeap().getImageHeapOffsetInAddressSpace() : imageHeapBeginOffset);
         return PersistFlags.CREATE;
     }
 
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
-        var tracker = new ImageLayerIdTrackingSingleton(loader.readInt("imageHeapBeginOffset"));
+        var tracker = new ImageLayerIdTrackingSingleton();
 
         Iterator<String> priorKeys = loader.readStringList("priorKeys").iterator();
         Iterator<Integer> priorIds = loader.readIntList("priorIds").iterator();

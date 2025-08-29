@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -41,6 +42,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil.Signedness;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -52,6 +54,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -253,39 +256,107 @@ public class AMD64VectorUnary {
         }
     }
 
-    public static final class AVXConvertOp extends AMD64LIRInstruction {
-        public static final LIRInstructionClass<AVXConvertOp> TYPE = LIRInstructionClass.create(AVXConvertOp.class);
+    /**
+     * Superclass for conversions whose result is a floating point value, covering both
+     * float-to-float and integer-to-float conversions.
+     */
+    public abstract static class AbstractConvertToFloatOp extends AMD64LIRInstruction {
 
-        @Opcode private final VexRVMConvertOp opcode;
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-        private final AMD64SIMDInstructionEncoding encoding;
+        private final Signedness signedness;
 
-        public AVXConvertOp(VexRVMConvertOp opcode, AllocatableValue result, AllocatableValue input, AMD64SIMDInstructionEncoding encoding) {
-            super(TYPE);
-            this.opcode = opcode;
+        public AbstractConvertToFloatOp(LIRInstructionClass<? extends AbstractConvertToFloatOp> type, AllocatableValue result, AllocatableValue input, Signedness signedness) {
+            super(type);
             this.result = result;
             this.input = input;
+            this.signedness = signedness;
+        }
+
+        protected abstract void emitSignedConversion(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultValue, AllocatableValue inputValue);
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (signedness == Signedness.SIGNED) {
+                emitSignedConversion(crb, masm, asRegister(result), input);
+            } else {
+                GraalError.guarantee(signedness == Signedness.UNSIGNED, "signedness must be UNSIGNED: %s", signedness);
+                emitUnsignedConversion(crb, masm);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        public void emitUnsignedConversion(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            throw GraalError.unimplementedParent();
+        }
+    }
+
+    public static final class SSEConvertToFloatOp extends AbstractConvertToFloatOp {
+        public static final LIRInstructionClass<SSEConvertToFloatOp> TYPE = LIRInstructionClass.create(SSEConvertToFloatOp.class);
+
+        @Opcode private final SSEOp opcode;
+
+        private final OperandSize size;
+
+        public SSEConvertToFloatOp(SSEOp opcode, AllocatableValue result, AllocatableValue input, OperandSize size, Signedness signedness) {
+            super(TYPE, result, input, signedness);
+            this.opcode = opcode;
+            this.size = size;
+        }
+
+        @Override
+        public void emitSignedConversion(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultRegister, AllocatableValue inputValue) {
+            if (isRegister(inputValue)) {
+                opcode.emit(masm, size, resultRegister, asRegister(inputValue));
+            } else {
+                opcode.emit(masm, size, resultRegister, (AMD64Address) crb.asAddress(inputValue));
+            }
+        }
+    }
+
+    public static final class AVXConvertToFloatOp extends AbstractConvertToFloatOp {
+        public static final LIRInstructionClass<AVXConvertToFloatOp> TYPE = LIRInstructionClass.create(AVXConvertToFloatOp.class);
+
+        @Opcode private final VexRVMConvertOp opcode;
+
+        private final AMD64SIMDInstructionEncoding encoding;
+
+        public AVXConvertToFloatOp(VexRVMConvertOp opcode, AllocatableValue result, AllocatableValue input, AMD64SIMDInstructionEncoding encoding,
+                        Signedness signedness) {
+            super(TYPE, result, input, signedness);
+            this.opcode = opcode;
             this.encoding = encoding;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        public void emitSignedConversion(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultRegister, AllocatableValue inputValue) {
             // Note that we assume only XMM-size instructions are emitted here. Loosening this
             // restriction would require informing AMD64HotSpotReturnOp when emitting vzeroupper.
-            if (isRegister(input)) {
-                if (AMD64.XMM.equals(asRegister(input).getRegisterCategory())) {
-                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
+            if (isRegister(inputValue)) {
+                if (AMD64.XMM.equals(asRegister(inputValue).getRegisterCategory())) {
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, resultRegister, asRegister(inputValue), asRegister(inputValue));
                 } else {
-                    // clear result register to avoid unnecessary dependency
-                    VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
-                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
+                    // clear resultRegister register to avoid unnecessary dependency
+                    VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, resultRegister, resultRegister, resultRegister);
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, resultRegister, resultRegister, asRegister(inputValue));
                 }
             } else {
-                VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
-                opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
+                VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, resultRegister, resultRegister, resultRegister);
+                opcode.emit(masm, AVXKind.AVXSize.XMM, resultRegister, resultRegister, (AMD64Address) crb.asAddress(inputValue));
             }
+        }
+
+        @Override
+        public void emitUnsignedConversion(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            GraalError.guarantee(masm.supportsFullAVX512(), "should only try to emit unsigned integer to float with AVX-512");
+            emitUnsignedConversionAVX512(masm);
+        }
+
+        private void emitUnsignedConversionAVX512(AMD64MacroAssembler masm) {
+            // clear result register to avoid unnecessary dependency
+            VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
+            opcode.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,9 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -73,7 +73,7 @@ public final class TransitionGuard {
          * an immediate increment, analogous to how {@link #countSet1} represents a counter value
          * initialization to 0 followed by an immediate increment.
          */
-        countSetMin,
+        countSetMinInc,
         /**
          * Check if the loop count is less than {@link Quantifier#getMin()}.
          */
@@ -134,7 +134,9 @@ public final class TransitionGuard {
 
     @CompilationFinal(dimensions = 1) private static final Kind[] KIND_VALUES = Arrays.copyOf(Kind.values(), Kind.values().length);
 
-    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMin, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax);
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMinInc, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax);
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS_ALLOWED_IN_DFA = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax);
+    private static final EnumSet<Kind> QUANTIFIER_OP = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMinInc);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
     private static final EnumSet<Kind> GROUP_NUMBER_GUARDS = EnumSet.of(Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
     private static final EnumSet<Kind> GROUP_BOUNDARY_INDEX_GUARDS = EnumSet.of(Kind.updateCG);
@@ -158,11 +160,11 @@ public final class TransitionGuard {
     }
 
     public static long createCountSetMin(Quantifier quantifier) {
-        return create(Kind.countSetMin, quantifier);
+        return create(Kind.countSetMinInc, quantifier);
     }
 
     public static long createCountSetMin(int quantifierIndex) {
-        return create(Kind.countSetMin, quantifierIndex);
+        return create(Kind.countSetMinInc, quantifierIndex);
     }
 
     public static long createCountLtMin(Quantifier quantifier) {
@@ -182,7 +184,7 @@ public final class TransitionGuard {
     }
 
     public static long createCountLtMax(Quantifier quantifier) {
-        return create(Kind.countLtMax, quantifier);
+        return create(quantifier.getMin() == quantifier.getMax() ? Kind.countLtMin : Kind.countLtMax, quantifier);
     }
 
     public static long createCountLtMax(int quantifierIndex) {
@@ -251,6 +253,18 @@ public final class TransitionGuard {
 
     public static boolean is(long guard, Kind kind) {
         return getKindOrdinal(guard) == kind.ordinal();
+    }
+
+    public static boolean isQuantifierGuard(long guard) {
+        return QUANTIFIER_GUARDS.contains(getKind(guard));
+    }
+
+    public static boolean isQuantifierGuardAllowedInDFA(long guard) {
+        return QUANTIFIER_GUARDS_ALLOWED_IN_DFA.contains(getKind(guard));
+    }
+
+    public static boolean isQuantifierOp(long guard) {
+        return QUANTIFIER_OP.contains(getKind(guard));
     }
 
     public static int getQuantifierIndex(long guard) {

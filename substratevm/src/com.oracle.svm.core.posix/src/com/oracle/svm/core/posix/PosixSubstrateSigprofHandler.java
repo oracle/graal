@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -81,13 +82,19 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
         int savedErrno = LibC.errno();
         try {
             if (tryEnterIsolate()) {
-                CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
-                Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
-                tryUninterruptibleStackWalk(ip, sp, true);
+                dispatch0(uContext);
             }
         } finally {
             LibC.setErrno(savedErrno);
         }
+    }
+
+    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
+    private static void dispatch0(Signal.ucontext_t uContext) {
+        CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
+        Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
+        tryUninterruptibleStackWalk(ip, sp, true);
     }
 
     @Override

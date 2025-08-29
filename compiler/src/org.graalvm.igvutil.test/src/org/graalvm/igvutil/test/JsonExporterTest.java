@@ -26,7 +26,6 @@ package org.graalvm.igvutil.test;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Set;
 
 import org.graalvm.igvutil.JsonExporter;
 import org.junit.Assert;
@@ -41,6 +40,7 @@ import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -145,8 +145,8 @@ public class JsonExporterTest {
         GraphDocument doc = createTestDocument();
 
         StringWriter stringWriter = new StringWriter();
-        JsonExporter exporter = new JsonExporter(Set.of(KnownPropertyNames.PROPNAME_SHORT_NAME),
-                        Set.of(KnownPropertyNames.PROPNAME_PREDECESSOR_COUNT));
+        JsonExporter exporter = new JsonExporter(CollectionsUtil.setOf(KnownPropertyNames.PROPNAME_SHORT_NAME),
+                        CollectionsUtil.setOf(KnownPropertyNames.PROPNAME_PREDECESSOR_COUNT));
 
         try (JsonWriter jsonWriter = new JsonWriter(stringWriter);
                         JsonBuilder.ObjectBuilder builder = jsonWriter.objectBuilder()) {

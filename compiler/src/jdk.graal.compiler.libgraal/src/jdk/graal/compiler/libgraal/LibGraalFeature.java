@@ -34,7 +34,6 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +44,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageInfo;
@@ -73,6 +73,8 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.module.Modules;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
@@ -154,7 +156,7 @@ public final class LibGraalFeature implements Feature {
         // All qualified exports to libgraal modules need to be further exported to
         // ALL-UNNAMED so that access is also possible when the libgraal classes
         // are loaded via the libgraal loader into unnamed modules.
-        Set<String> libgraalModules = Set.copyOf(libgraalLoader.getClassModuleMap().values());
+        Set<String> libgraalModules = CollectionsUtil.setCopyOf(libgraalLoader.getClassModuleMap().values());
         for (Module module : ModuleLayer.boot().modules()) {
             Set<ModuleDescriptor.Exports> exports = module.getDescriptor().exports();
             for (ModuleDescriptor.Exports e : exports) {
@@ -259,7 +261,7 @@ public final class LibGraalFeature implements Feature {
          * Map from {@link Fields} objects to a (newOffsets, newIterationMask) tuple represented as
          * a {@link java.util.Map.Entry} value.
          */
-        private final Map<Object, Map.Entry<long[], Long>> replacements = new IdentityHashMap<>();
+        private final Map<Object, Map.Entry<long[], Long>> replacements = EconomicHashMap.newIdentityMap();
 
         final Field fieldsOffsetsField;
         final Field edgesIterationMaskField;
@@ -314,7 +316,11 @@ public final class LibGraalFeature implements Feature {
 
     private void registerHostedOnlyElements(BeforeAnalysisAccess access, AnnotatedElement... elements) {
         for (AnnotatedElement element : elements) {
-            if (element.getAnnotation(HostedOnly.class) != null) {
+            HostedOnly annotation = element.getAnnotation(HostedOnly.class);
+            if (annotation == null) {
+                continue;
+            }
+            if (annotation.unlessTrue().isEmpty() || !Boolean.parseBoolean(GraalServices.getSavedProperty(annotation.unlessTrue()))) {
                 access.registerReachabilityHandler(new HostedOnlyElementCallback(element, reachedHostedOnlyElements), element);
             }
         }

@@ -65,6 +65,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -72,6 +73,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -79,14 +81,15 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredImageHeapObjectAdder;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
@@ -98,6 +101,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -119,7 +123,9 @@ public final class NativeImageHeap implements ImageHeap {
     private final int minInstanceSize;
     private final int minArraySize;
     private final int fillerArrayBaseOffset;
+
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
+    private final boolean initialLayerBuild = layeredBuild && ImageLayerBuildingSupport.buildingInitialLayer();
 
     /**
      * A Map from objects at construction-time to native image objects.
@@ -225,8 +231,8 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
-        if (ImageSingletons.contains(LayeredImageHeapObjectAdder.class)) {
-            ImageSingletons.lookup(LayeredImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
+        if (ImageSingletons.contains(ImageHeapObjectAdder.class)) {
+            ImageSingletons.lookup(ImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
         }
 
         addStaticFields();
@@ -283,16 +289,18 @@ public final class NativeImageHeap implements ImageHeap {
      * Bypass shadow heap reading for inlined fields. These fields are not actually present in the
      * image (their value is inlined) and are not present in the shadow heap either.
      */
-    public Object readInlinedField(HostedField field, JavaConstant receiver) {
+    public JavaConstant readInlinedFieldAsConstant(HostedField field, JavaConstant receiver) {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the HostedValuesProvider to get direct access to hosted values. */
         HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
-        return hUniverse.getSnippetReflection().asObject(Object.class, hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
+        return hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver);
     }
 
-    private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
-        return hConstantReflection.readFieldValue(field, receiver, true);
+    /** {@link #readInlinedFieldAsConstant}, extracting the object from the {@link JavaConstant}. */
+    public Object readInlinedField(HostedField field, JavaConstant receiver) {
+        JavaConstant constant = readInlinedFieldAsConstant(field, receiver);
+        return hUniverse.getSnippetReflection().asObject(Object.class, constant);
     }
 
     private void addStaticFields() {
@@ -307,7 +315,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
-                addConstant(readConstantField(field, null), false, field);
+                addConstant(hConstantReflection.readConstantField(field, null), false, field);
             }
         }
     }
@@ -416,12 +424,19 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     @Override
-    public int countAndVerifyDynamicHubs() {
+    public int countPatchAndVerifyDynamicHubs() {
+        byte[] refMap = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
+        ObjectInfo refMapInfo = getObjectInfo(refMap);
+        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+
         ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
         for (ObjectInfo o : getObjects()) {
             if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
-                objHeader.verifyDynamicHubOffsetInImageHeap(o.getOffset());
+                DynamicHub hub = (DynamicHub) o.getObject();
+                hub.initializeReferenceMapCompressedOffset(currentLayerRefMapDataStart);
+
+                objHeader.verifyDynamicHubOffset(o.getOffset());
                 count++;
             }
         }
@@ -581,7 +596,7 @@ public final class NativeImageHeap implements ImageHeap {
                     if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
-                            JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant, true);
+                            JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
                                     fieldRelocatable = isRelocatableConstant(fieldValueConstant);
@@ -647,12 +662,34 @@ public final class NativeImageHeap implements ImageHeap {
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable, patched);
     }
 
-    private static boolean isRelocatableConstant(JavaConstant constant) {
+    private boolean isRelocatableConstant(JavaConstant constant) {
         return constant instanceof PatchedWordConstant pwc && isRelocatableValue(pwc.getWord());
     }
 
-    private static boolean isRelocatableValue(Object value) {
-        return value instanceof RelocatedPointer;
+    /** @see NativeImageHeapWriter#writeConstant */
+    private boolean isRelocatableValue(Object value) {
+        if (value instanceof RelocatedPointer) {
+            return true;
+        }
+        /*
+         * In the initial layer, method offsets don't need to be adjusted because they are relative
+         * to that layer's text section (the code base). In other layers, we need to adjust the code
+         * offsets at runtime so that they reflect the displacement between the code base and the
+         * text sections of layers in memory.
+         */
+        if (layeredBuild && value instanceof MethodOffset methodOffset) {
+            if (!initialLayerBuild) {
+                // Need to adjust to reflect displacement between code base and layer's text section
+                return true;
+            }
+            ResolvedJavaMethod method = methodOffset.getMethod();
+            HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : hUniverse.lookup(method);
+            if (NativeImage.isInjectedNotCompiled(hMethod)) {
+                // References code in another (maybe future) layer, which must be patched at runtime
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1120,10 +1157,5 @@ final class BaseLayerPartition implements ImageHeapPartition {
     @Override
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    public boolean isFiller() {
-        return false;
     }
 }

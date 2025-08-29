@@ -76,7 +76,7 @@ public final class FrameDescriptor implements Cloneable {
      */
     @Deprecated static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
 
-    private static final boolean NULL_TAGS_SUPPORTED = Runtime.version().feature() >= 24;
+    private static final boolean NULL_TAGS_SUPPORTED = Runtime.version().feature() >= 25;
 
     // Do not rename or remove. This field is read by the compiler.
     static final Object ILLEGAL_DEFAULT_VALUE = new Object();

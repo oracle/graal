@@ -107,7 +107,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_init.getCallTarget())") DirectCallNode unresolvedTypeConstructor,
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved,
                         @Cached InitCheck initCheck) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
@@ -117,9 +117,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
                 LOGGER.finer(() -> "ERJF.getType0 found " + klass);
                 return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
             } else if (StaticObject.isNull(unresolved)) {
-                StaticObject newUnresolved = meta.jvmci.UnresolvedJavaType.allocateInstance(context);
-                unresolvedTypeConstructor.call(newUnresolved, meta.toGuestString(field.getType()));
-                return newUnresolved;
+                return (StaticObject) createUnresolved.call(meta.toGuestString(field.getType()));
             } else {
                 assert field.getType().toString().equals(meta.toHostString(meta.jvmci.UnresolvedJavaType_name.getObject(unresolved)));
                 return unresolved;

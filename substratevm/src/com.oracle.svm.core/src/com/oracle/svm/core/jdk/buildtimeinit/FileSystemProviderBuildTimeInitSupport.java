@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -46,7 +47,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.JDKInitializedAtBuildTime;
+import com.oracle.svm.core.jdk.FileSystemProvidersInitializedAtBuildTime;
 import com.oracle.svm.core.jdk.JRTSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
@@ -60,8 +61,8 @@ import jdk.internal.util.StaticProperty;
 
 /**
  * This file contains substitutions that are required for initializing {@link FileSystemProvider} at
- * image {@linkplain JDKInitializedAtBuildTime build time}. Run-time initialization related
- * functionality can be found in {@link FileSystemProviderRunTimeInitSupport}.
+ * image {@linkplain FileSystemProvidersInitializedAtBuildTime build time}. Run-time initialization
+ * related functionality can be found in {@link FileSystemProviderRunTimeInitSupport}.
  */
 public final class FileSystemProviderBuildTimeInitSupport {
 
@@ -130,7 +131,7 @@ final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !FutureDefaultsOptions.isJDKInitializedAtRunTime();
+        return !FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
     }
 
     @Override
@@ -158,7 +159,7 @@ final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
     }
 }
 
-@TargetClass(value = java.nio.file.spi.FileSystemProvider.class, onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(value = java.nio.file.spi.FileSystemProvider.class, onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 final class Target_java_nio_file_spi_FileSystemProvider_BuildTime {
     @Substitute
     public static List<FileSystemProvider> installedProviders() {
@@ -188,7 +189,7 @@ final class Target_java_nio_file_spi_FileSystemProvider_BuildTime {
  * c) Allow UnixFileSystem in the image heap and recompute state at run time on first acccess. This
  * approach is implemented here.
  */
-@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixFileSystem_BuildTime {
 
@@ -241,12 +242,12 @@ final class Target_sun_nio_fs_UnixFileSystem_BuildTime {
     native void originalConstructor(Target_sun_nio_fs_UnixFileSystemProvider_BuildTime p, String dir);
 }
 
-@TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixFileSystemProvider_BuildTime {
 }
 
-@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixPath_BuildTime {
 }
@@ -351,7 +352,7 @@ class UnixFileSystemAccessors {
  * fields so we cannot re-use the substitutions.
  */
 
-@TargetClass(className = "sun.nio.fs.WindowsFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.nio.fs.WindowsFileSystem", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.WINDOWS.class})
 final class Target_sun_nio_fs_WindowsFileSystem_BuildTime {
 
@@ -381,7 +382,7 @@ final class Target_sun_nio_fs_WindowsFileSystem_BuildTime {
     native void originalConstructor(Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime p, String dir);
 }
 
-@TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.WINDOWS.class})
 final class Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime {
 }
@@ -420,7 +421,7 @@ class WindowsFileSystemAccessors {
     }
 }
 
-@TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "java.io.UnixFileSystem", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_UnixFileSystem_BuildTime {
 
@@ -429,7 +430,7 @@ final class Target_java_io_UnixFileSystem_BuildTime {
     private String userDir;
 }
 
-@TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "java.io.FileSystem", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 final class Target_java_io_FileSystem_BuildTime {
 
     @Alias
@@ -439,7 +440,7 @@ final class Target_java_io_FileSystem_BuildTime {
 class UserDirAccessors {
     @SuppressWarnings("unused")
     static String getUserDir(Target_java_io_FileSystem_BuildTime that) {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             /*
              * Note that on Windows, we normalize the property value (JDK-8198997) and do not use
              * the `StaticProperty.userDir()` like the rest (JDK-8066709).
@@ -455,7 +456,7 @@ class UserDirAccessors {
     }
 }
 
-@TargetClass(className = "java.io.WinNTFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "java.io.WinNTFileSystem", onlyWith = FileSystemProvidersInitializedAtBuildTime.class)
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem_BuildTime {
 

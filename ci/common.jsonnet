@@ -58,10 +58,14 @@ local common_json = import "../common.json";
   } + {
     'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 25 }
+    for name in ["oraclejdk25"] + variants("labsjdk-ce-25") + variants("labsjdk-ee-25")
+  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {
     'graalvm-ee-21': jdk_base + common_json.jdks["graalvm-ee-21"] + { jdk_version:: 21 },
+    'graalvm-ee-25-ea': jdk_base + common_json.jdks["graalvm-ee-25-ea"] + { jdk_version:: 25 },
   },
   # We do not want to expose galahad-jdk
   assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
@@ -106,7 +110,8 @@ local common_json = import "../common.json";
     oraclejdkLatest: self["oraclejdk-latest"],
   },
 
-  # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
+  # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js).
+  # See deps.windows_devkit to add a devkit on windows conveniently.
   devkits: {
     "windows-jdk17": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
@@ -170,6 +175,12 @@ local common_json = import "../common.json";
     },
 
     # These dependencies are not included by default in any platform object
+
+    # Not included by default in $.windows_amd64 and $.windows_server_2016_amd64 because it needs jdk_name.
+    # As a note, Native Image needs this to build.
+    windows_devkit:: {
+      packages+: if self.os == "windows" then $.devkits["windows-" + self.jdk_name].packages else {},
+    },
 
     eclipse: {
       downloads+: {
@@ -236,6 +247,29 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    maven:: {
+      local this = self,
+      packages+: (if self.os == "linux" && self.arch == "amd64" then {
+        maven: '==3.9.10',
+      } else {}),
+      # no maven package available on other platforms
+      downloads+: (if self.os != "linux" || self.arch != "amd64" then {
+        # GR-68921: 3.9.10 does not work on Windows
+        MAVEN_HOME: {name: 'maven', version: (if this.os == "windows" then '3.3.9' else '3.9.10'), platformspecific: false},
+      } else {}),
+      setup+: (if self.os != "linux" || self.arch != "amd64" then [
+        ['set-export', 'PATH', (if self.os == "windows" then '$MAVEN_HOME\\bin;$PATH' else '$MAVEN_HOME/bin:$PATH')],
+      ] else []),
+    },
+
+    espresso:: {
+      downloads+: {
+       EXTRA_JAVA_HOMES+: {
+                pathlist+: [jdks_data["oraclejdk21"], jdks_data["oraclejdk25"]],
+           }
+       }
+    },
+
     sulong:: self.cmake + {
       packages+: if self.os == "windows" then {
         msvc_source: "==14.0",
@@ -272,11 +306,11 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: self.gradle + self.cmake + {
+    graalpy:: self.gradle + self.cmake + self.maven + {
       packages+: if (self.os == "linux") then {
-        libffi: '>=3.2.1',
-        bzip2: '>=1.0.6',
-        maven: ">=3.3.9",
+        libffi: '==3.2.1',
+        bzip2: '==1.0.6',
+        zlib: '==1.2.11',
       } else {},
     },
 
@@ -362,6 +396,15 @@ local common_json = import "../common.json";
   # Job frequencies
   # ***************
   frequencies: {
+    tier1: {
+      targets+: ["tier1"],
+    },
+    tier2: {
+      targets+: ["tier2"],
+    },
+    tier3: {
+      targets+: ["tier3"],
+    },
     gate: {
       targets+: ["gate"],
     },

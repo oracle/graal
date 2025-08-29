@@ -69,7 +69,7 @@ abstract class Transition {
 
     public abstract boolean isDirect();
 
-    protected boolean hasConstantLocation() {
+    protected boolean isWeak() {
         return false;
     }
 
@@ -105,13 +105,7 @@ abstract class Transition {
                 return false;
             }
             PropertyTransition other = (PropertyTransition) obj;
-            if (!Objects.equals(this.key, other.key)) {
-                return false;
-            }
-            if (this.flags != other.flags) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.key, other.key) && this.flags == other.flags;
         }
 
         public Property getProperty() {
@@ -127,7 +121,7 @@ abstract class Transition {
         }
 
         @Override
-        protected boolean hasConstantLocation() {
+        protected boolean isWeak() {
             return getProperty().getLocation().isConstant();
         }
     }
@@ -160,10 +154,7 @@ abstract class Transition {
                 return false;
             }
             TypedPropertyTransition other = (TypedPropertyTransition) obj;
-            if (!Objects.equals(this.locationOrType, other.locationOrType)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.locationOrType, other.locationOrType);
         }
 
         public Object getLocationOrType() {
@@ -245,6 +236,11 @@ abstract class Transition {
         }
 
         @Override
+        protected boolean isWeak() {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return String.format("objectType(%s)", getObjectType());
         }
@@ -272,13 +268,7 @@ abstract class Transition {
                 return false;
             }
             AbstractReplacePropertyTransition other = (AbstractReplacePropertyTransition) obj;
-            if (!Objects.equals(this.property, other.property)) {
-                return false;
-            }
-            if (!Objects.equals(this.after, other.after)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.property, other.property) && Objects.equals(this.after, other.after);
         }
 
         @Override
@@ -296,7 +286,7 @@ abstract class Transition {
         }
 
         @Override
-        protected boolean hasConstantLocation() {
+        protected boolean isWeak() {
             return getPropertyBefore().getLocation().isConstant() || getPropertyAfter().getLocation().isConstant();
         }
     }

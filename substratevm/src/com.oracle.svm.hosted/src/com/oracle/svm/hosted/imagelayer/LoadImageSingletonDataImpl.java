@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -88,7 +87,6 @@ class LoadImageSingletonDataImpl implements LoadImageSingletonFactory.LoadImageS
         return switch (kind) {
             case APPLICATION_LAYER_SINGLETON -> {
                 Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, false);
-                LayeredImageSingletonBuilderFlags.validateRuntimeLookup(singleton);
                 yield ConstantNode.forConstant(snippetReflectionProvider.forObject(singleton), metaAccess);
             }
             case MULTI_LAYERED_SINGLETON -> {

@@ -36,8 +36,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -523,12 +527,20 @@ public final class Serializers {
     static final ValueSerializer<InterpreterConstantPool> CONSTANT_POOL = createSerializer(
                     (context, in) -> {
                         InterpreterResolvedObjectType holder = context.readReference(in);
-                        Object[] entries = context.readerFor(Object[].class).read(context, in);
-                        return InterpreterConstantPool.create(holder, entries);
+                        byte[] parserConstantPoolBytes = context.readerFor(byte[].class).read(context, in);
+
+                        @SuppressWarnings("unchecked")
+                        ParserConstantPool parserConstantPool = ParserConstantPool.fromBytesForSerialization(parserConstantPoolBytes,
+                                        byteSequence -> {
+                                            return (Symbol<ModifiedUTF8>) SymbolsSupport.getUtf8().getOrCreateValidUtf8(byteSequence);
+                                        });
+                        Object[] cachedEntries = context.readerFor(Object[].class).read(context, in);
+                        return InterpreterConstantPool.create(holder, parserConstantPool, cachedEntries);
                     },
                     (context, out, value) -> {
                         context.writeReference(out, value.getHolder());
-                        context.writerFor(Object[].class).write(context, out, value.getEntries());
+                        context.writerFor(byte[].class).write(context, out, value.getParserConstantPool().toBytesForSerialization());
+                        context.writerFor(Object[].class).write(context, out, value.getCachedEntries());
                     });
 
     static final ValueSerializer<InterpreterResolvedJavaField> RESOLVED_FIELD = createSerializer(

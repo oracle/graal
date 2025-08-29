@@ -42,6 +42,7 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.LogUtils;
@@ -62,12 +63,11 @@ public class LayeredDynamicHubFeature implements InternalFeature, FeatureSinglet
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-            LayeredImageHooks.registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
+            LayeredImageHooks.singleton().registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
         }
     }
 
-    void onDynamicHubWritten(LayeredImageHooks.WrittenDynamicHubInfo info) {
-        DynamicHub hub = info.hub();
+    private void onDynamicHubWritten(DynamicHub hub, @SuppressWarnings("unused") MethodRef[] vTable) {
         if (hub.getArrayHub() == null) {
             DynamicHubMetadataTracking.singleton().recordMissingArrayHub(hub);
         }

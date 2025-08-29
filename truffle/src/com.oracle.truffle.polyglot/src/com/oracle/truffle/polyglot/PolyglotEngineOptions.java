@@ -155,6 +155,12 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
     static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print source cache statistics for an engine when the engine is closed.") //
+    public static final OptionKey<Boolean> SourceCacheStatistics = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print source cache statistics for an engine when the engine is closed. With the details enabled, statistics for all individual sources are printed.") //
+    public static final OptionKey<Boolean> SourceCacheStatisticDetails = new OptionKey<>(false);
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

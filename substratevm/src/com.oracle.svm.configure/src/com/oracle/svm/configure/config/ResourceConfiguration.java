@@ -116,17 +116,23 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
     public static final class BundleConfiguration {
         public final UnresolvedConfigurationCondition condition;
+        public final String module;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        private BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
+        public BundleConfiguration(UnresolvedConfigurationCondition condition, String module, String baseName) {
             this.condition = condition;
+            this.module = module;
             this.baseName = baseName;
         }
 
+        public BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
+            this(condition, null, baseName);
+        }
+
         private BundleConfiguration(BundleConfiguration other) {
-            this(other.condition, other.baseName);
+            this(other.condition, other.module, other.baseName);
             locales.addAll(other.locales);
             classNames.addAll(other.classNames);
         }
@@ -386,9 +392,12 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return ResourceConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserAdapter(this), parserOptions);
     }
 
-    private static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {
+    public static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {
         writer.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer, combinedFile);
+        if (config.module != null) {
+            writer.quote("module").appendFieldSeparator().quote(config.module).appendSeparator();
+        }
         writer.quote(combinedFile ? BUNDLE_KEY : NAME_KEY).appendFieldSeparator().quote(config.baseName);
         if (!combinedFile && !config.locales.isEmpty()) {
             writer.appendSeparator().quote("locales").appendFieldSeparator();
@@ -419,7 +428,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return true;
     }
 
-    private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w, boolean combinedFile) throws IOException {
+    public static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w, boolean combinedFile) throws IOException {
         String pattern = p.element().pattern();
         String module = p.element().module();
         w.appendObjectStart();

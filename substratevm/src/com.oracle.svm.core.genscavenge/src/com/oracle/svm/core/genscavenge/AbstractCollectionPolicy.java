@@ -75,7 +75,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int INITIAL_SURVIVOR_RATIO = 8;
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L409-L411") //
     protected static final int MIN_SURVIVOR_RATIO = 3;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342") //
+    // GR-68417: adopt "JDK-8338977: Parallel: Improve heap resizing heuristics"
+    // @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342")
     protected static final int ADAPTIVE_TIME_WEIGHT = 25;
 
     /* Constants to compute defaults for values which can be set through existing options. */

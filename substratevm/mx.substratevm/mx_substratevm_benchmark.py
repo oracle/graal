@@ -29,19 +29,15 @@ import os
 import tempfile
 import zipfile
 import re
-import json
-import datetime
 from glob import glob
 from pathlib import Path
 from typing import List, Optional
-from contextlib import contextmanager
 
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
-from mx_benchmark import BenchmarkSuite, DataPoints, Rule, Vm, SingleBenchmarkExecutionContext
-from mx._impl.mx_codeowners import _load_toml_from_fd
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Layer, StageName, parse_prefixed_args
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, parse_prefixed_args
+from mx_util import StageName, Layer
 
 _suite = mx.suite("substratevm")
 
@@ -214,13 +210,13 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -r X argument from image run args
-        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        return mx_sdk_benchmark.adjust_arg_with_number('-r', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -r X argument from image run args
         if should_strip_run_args:
-            extra_profile_run_args = ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+            extra_profile_run_args = mx_sdk_benchmark.adjust_arg_with_number('-r', 1, user_args)
         else:
             extra_profile_run_args = user_args
 
@@ -298,6 +294,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def default_stages(self) -> List[str]:
         if self.benchmarkName() == "micronaut-pegasus":
+            if (
+                self.execution_context and
+                self.execution_context.virtual_machine and
+                self.execution_context.virtual_machine.config_name() and
+                self.execution_context.virtual_machine.config_name().endswith("-ce")
+            ):
+                # fails on CE due to --enable-sbom EE only option injected from upstream pom (GR-66891)
+                return []
             # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM (GR-59793)
             return ["instrument-image", "instrument-run", "image", "run"]
         return super().default_stages()
@@ -340,7 +344,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return str(nib_candidates[0])
 
     def get_latest_layer(self) -> Optional[Layer]:
-        latest_image_stage = self.execution_context.virtual_machine.stages_info.get_latest_image_stage()
+        latest_image_stage = self.stages_info.get_latest_image_stage()
         if latest_image_stage is None or not latest_image_stage.is_layered():
             return None
         return latest_image_stage.layer_info
@@ -376,9 +380,19 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
+    def extra_image_build_argument(self, benchmark, args):
+        extra_image_build_args = []
+        if benchmark == "quarkus-tika":
+            # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
+            extra_image_build_args += ["-H:NumberOfThreads=1"]
+        return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
+
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
-        if self.stages_info.current_stage.is_layered:
+        if self.stages_info.current_stage.is_layered():
+            return []
+        # Disable assertions due to transient AssertionError when building spring-hello-world image (GR-59889)
+        if benchmark == "spring-hello-world":
             return []
         return super().build_assertions(benchmark, is_gate)
 
@@ -391,9 +405,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             # we need to move the image from the path that is set inside the nib to the path expected by our vm.
             # This code has no effect if the image is already at the desired location.
             vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
-            if vm.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
+            if self.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
                 desired_image_path = vm.config.instrumented_image_path
-            elif vm.stages_info.should_produce_datapoints(StageName.IMAGE):
+            elif self.stages_info.should_produce_datapoints(StageName.IMAGE):
                 desired_image_path = vm.config.image_path
             else:
                 return
@@ -465,7 +479,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 # Make agent run short
                 cmd += self._short_load_testing_phases()
                 # Add explicit agent stage args
-                cmd += suite._extra_run_options
+                cmd += self._energyTrackerExtraOptions(suite)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-agent-run-arg=", suite.execution_context.bmSuiteArgs)
                 return cmd
@@ -488,7 +502,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
-            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             ni_barista_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
             if stage.is_instrument():
                 # Make instrument run short
@@ -509,437 +523,6 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
 
 mx_benchmark.add_bm_suite(BaristaNativeImageBenchmarkSuite())
-
-
-# Revisit this at some point, maybe derive the config from the file/structure
-# and the scenario files (GR-65000)
-_graalosConfig = {
-    "benchmarks": {
-        "local_binary": {
-            "app": "rawhttp-function",
-            "scenario-path": "local_binary.toml",
-        },
-        "dataplane_smoke_test": {
-            "app": "rawhttp-function",
-            "scenario-path": "dataplane_smoke_test.toml",
-        },
-        "graal-ci-round-robin-rawhttp-function-256": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/round-robin/rawhttp-function-256.toml",
-        },
-        "graal-ci-single-app-micronaut-pegasus-function-256": {
-            "app": "micronaut-pegasus-function",
-            "scenario-path": "graal-ci/single-app/micronaut-pegasus-function-256.toml",
-        },
-        "graal-ci-single-app-micronaut-pegasus-function-2048": {
-            "app": "micronaut-pegasus-function",
-            "scenario-path": "graal-ci/single-app/micronaut-pegasus-function-2048.toml",
-        },
-        "graal-ci-single-app-rawhttp-function-256": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/single-app/rawhttp-function-256.toml",
-        },
-        "graal-ci-single-app-rawhttp-function-2048": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/single-app/rawhttp-function-2048.toml",
-        },
-        "graal-ci-smoke-test-rawhttp-function-256": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/smoke-test/rawhttp-function-256.toml",
-        },
-        "graal-ci-stress-test-timed-compute-function-256": {
-            "app": "timed-compute-function",
-            "scenario-path": "graal-ci/stress-test/timed-compute-function-256.toml",
-        },
-    },
-}
-
-class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
-                                       mx_sdk_benchmark.NativeImageBenchmarkMixin,
-                                       mx_sdk_benchmark.NativeImageBundleBasedBenchmarkMixin):
-    """
-    A collection of benchmarks designed for benchmarking the performance of apps built for GraalOS.
-
-    This benchmark suite utilizes the `graalos-load-tester` harness to execute scenarios that run workloads against
-    images of apps located in the `vm-benchmarks/graalos` repository.
-    """
-    def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
-        if custom_harness_command is None:
-            custom_harness_command = GraalOSNativeImageBenchmarkSuite.GraalOSLoadTesterCommand()
-        super().__init__(custom_harness_command)
-        self._version = None
-        self._gos_scenario_home: Optional[Path] = None
-        self._deployment = None
-        self._bundle_paths: dict[str, str] = {}
-        self._stage_env = os.environ.copy()
-
-    def name(self):
-        return "graalos"
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "substratevm"
-
-    def benchmarkName(self):
-        return self.execution_context.benchmark
-
-    def version(self):
-        if self._version is None:
-            self._version = self._read_gos_scenario_version()
-            mx.log(f"Running GraalOS Load Tester version '{self._version}'")
-        return self._version
-
-    @property
-    def gos_scenario_home(self) -> Path:
-        if self._gos_scenario_home is None:
-            self._gos_scenario_home = self._load_gos_scenario_home()
-        return self._gos_scenario_home
-
-    def _load_gos_scenario_home(self) -> Path:
-        """
-        Returns the path to the 'graalos-load-tester' directory sibling to the root 'graal' directory,
-        cloning the remote repository if it is missing.
-
-        :raises StopIteration: If 'graalos-load-tester' is not found in the list of ignored suites.
-        """
-        try:
-            glt_suite = mx.suite("graalos-load-tester", fatalIfMissing=False)
-            if glt_suite is None:
-                glt_suite = mx.primary_suite().clone_foreign_suite("graalos-load-tester", clone_binary_first=False)
-            return Path(glt_suite.dir)
-        except StopIteration:
-            mx.abort("Cloning of 'graalos-load-tester' as a sibling of the current suite has failed!")
-
-    def _read_gos_scenario_version(self):
-        """
-        Dynamically gets the version of the graalos-load-tester based on git tags,
-        or reverts to default 'unknown' otherwise.
-        """
-        # Revisit this method once we rework versioning for graalos-load-tester (GR-59986)
-        try:
-            return mx.GitConfig().git_command(self.gos_scenario_home, ["describe", "--tags", "--abbrev=0"]).strip()
-        except:
-            return self.defaultSuiteVersion()
-
-    def _gos_scenario_command(self) -> str:
-        """Returns the command that executes the `graalos-load-tester` benchmarking harness."""
-        return "gos-scenario"
-
-    def _gos_scenarios_dir(self) -> Path:
-        """Verifies that the root scenarios directory exists and returns the path to it."""
-        scenarios_dir = self.gos_scenario_home / "scenarios"
-        if not scenarios_dir.is_dir():
-            raise ValueError(f"Directory '{scenarios_dir}' is supposed to contain load-testing scenarios"
-                             f" but instead it does not exist!")
-        return scenarios_dir
-
-    def _vm_benchmarks_graalos_dir(self) -> Path:
-        """Returns the path to the directory containing the applications that comprise the scenarios."""
-        return Path(mx.primary_suite().vc_dir) / "vm-benchmarks" / "graalos"
-
-    def _app_source_dir(self, app: str) -> Path:
-        """Returns the path to the source code directory of the application."""
-        return self._vm_benchmarks_graalos_dir() / app / "app"
-
-    @contextmanager
-    def catch_all_errors(self, propagate):
-        """
-        Context manager that catches any error raised by the managed code and either suppresses or propagates it.
-
-        The error is either propagated or suppressed based on the value of the `propagate` parameter:
-          * If `propagate` is `True` then any error raised by the managed code is propagated - the behaviour is as if
-            the manager was absent.
-          * If `propagate` is `False` then any error raised by the managed code is suppressed.
-        """
-        try:
-            yield
-        except:
-            if propagate:
-                raise
-
-    def completeBenchmarkList(self, bmSuiteArgs):
-        return _graalosConfig["benchmarks"].keys()
-
-    def _get_scenario_path(self, benchmark: str) -> Path:
-        """Returns the path to the scenario '.toml' configuration file for the benchmark, verifying that it exists."""
-        bench_path = self._get_benchmark_config(benchmark)["scenario-path"]
-        scenario_path = self._gos_scenarios_dir() / bench_path
-        if not scenario_path.is_file():
-            raise ValueError(f"Scenario file '{scenario_path}' does not exist!")
-        return scenario_path
-
-    def benchmarkList(self, bmSuiteArgs):
-        # Exclude any benchmarks unsupported on the current platform, JDK version, VM
-        return self.completeBenchmarkList(bmSuiteArgs)
-
-    def _install_graalos_load_tester(self):
-        """
-        Installs the 'graalos-load-tester' project and its dependencies and modifies the PATH
-        environment variable inside `_stage_env` to include paths emitted by the installation script.
-        """
-        install_script_path = self.gos_scenario_home / "mx-devenv" / "local-install.py"
-        install_cmd = [str(install_script_path)]
-
-        mx.log(f"Installing `graalos-load-tester' with: {install_cmd}")
-        out = mx.OutputCapture()
-        err = mx.OutputCapture()
-        try:
-            mx.run(install_cmd, out=out, err=err)
-        except BaseException as e:
-            for line in out.data.split("\n"):
-                mx.log(line)
-            for line in err.data.split("\n"):
-                mx.log_error(line)
-            if isinstance(e, SystemExit):
-                mx.abort(f"Installing 'graalos-load-tester' failed with exit code {e}!")
-            else:
-                mx.abort(f"{e}\nInstalling 'graalos-load-tester' failed!")
-
-        for line in out.data.split("\n"):
-            mx.log(line)
-        path_env_var_pattern = r"^.*export PATH=(.*):\$PATH$"
-        for line in out.data.split("\n"):
-            path_entry_match = re.match(path_env_var_pattern, line)
-            if path_entry_match:
-                new_path_entry = path_entry_match.group(1)
-                mx.log(f"Prepending '{new_path_entry}' to the PATH environment variable for the duration of the benchmark.")
-                self._stage_env["PATH"] = f"{new_path_entry}:{self._stage_env['PATH']}"
-
-    def validateEnvironment(self):
-        # Make sure 'graalos-load-tester' repo is present and dependencies are installed
-        self._install_graalos_load_tester()
-
-    def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
-        return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
-
-    def default_stages(self) -> List[str]:
-        return ["instrument-image", "instrument-run", "image", "run"]
-
-    def register_tracker(self, name, tracker_type):
-        mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
-
-    def all_command_line_args_are_vm_args(self):
-        return True
-
-    def _get_benchmark_config(self, benchmark):
-        """
-        Get the configuration dictionary for the selected benchmark.
-        The configuration dictionary contains information such as the app name and scenario .toml configuration file.
-        """
-        return _graalosConfig["benchmarks"][benchmark]
-
-    def applicationDist(self):
-        app_name = self._get_benchmark_config(self.benchmarkName())["app"]
-        if app_name not in self._bundle_paths:
-            self._bundle_paths[app_name] = self.generate_or_lookup_bundle()
-            mx.log(f"Using bundle at '{self._bundle_paths[app_name]}' for app '{app_name}'.")
-        return self._bundle_paths[app_name].parent
-
-    def generate_or_lookup_bundle(self) -> Path:
-        """
-        Looks up the path to the NIB file for the app asociated with the current benchmark,
-        generating it first if it does not exist.
-        """
-        # Initial NIB lookup
-        app_name = self._get_benchmark_config(self.benchmarkName())["app"]
-        app_dir = self._app_source_dir(app_name)
-        nib_candidates = list(app_dir.glob("**/*.nib"))
-
-        # Generate a NIB file for the app if none exists
-        if len(nib_candidates) == 0:
-            nib_generation_cmd = ["./graalos-gate.py", "build", "--build-profile", "nib", app_name]
-            working_dir = self._vm_benchmarks_graalos_dir()
-            mx.log(f"Generating the NIB file by running {nib_generation_cmd} in working dir {working_dir}")
-            out = mx.OutputCapture()
-            err = mx.OutputCapture()
-            try:
-                mx.run(nib_generation_cmd, cwd=working_dir, out=out, err=err, env=self.get_nib_generation_env())
-            except BaseException as e:
-                for line in out.data.split("\n"):
-                    mx.log(line)
-                for line in err.data.split("\n"):
-                    mx.log_error(line)
-                if isinstance(e, SystemExit):
-                    mx.abort(f"Generating the NIB file failed with exit code {e}!")
-                else:
-                    mx.abort(f"{e}\nGenerating the NIB file failed!")
-            for line in out.data.split("\n"):
-                mx.logvv(line)
-            # Repeat the lookup
-            nib_candidates = list(app_dir.glob("**/*.nib"))
-
-        # Final check
-        if len(nib_candidates) == 0:
-            mx.abort(f"Expected to find exactly one '.nib' file in the '{app_dir}' app directory, instead found none!")
-        if len(nib_candidates) > 1:
-            mx.abort(f"Expected to find exactly one '.nib' file in the '{app_dir}' app directory, instead found "
-                     + "multiple: [" + ", ".join(str(path) for path in nib_candidates) + "]")
-        return nib_candidates[0]
-
-    def uses_bundles(self):
-        return True
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        # Pass the VM options, GraalOSLoadTesterCommand will form the final command.
-        return self.vmArgs(bmSuiteArgs)
-
-    def extra_jvm_arg(self, benchmark, args):
-        # Added by GraalOSLoadTesterCommand
-        return []
-
-    def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        # Added by GraalOSLoadTesterCommand
-        return []
-
-    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
-        # Added by GraalOSLoadTesterCommand
-        return []
-
-    def extra_run_arg(self, benchmark, args, image_run_args):
-        # Added by GraalOSLoadTesterCommand
-        return []
-
-    def rules(self, output, benchmarks, bmSuiteArgs) -> List[Rule]:
-        json_file_group_name = "graalos_json_results_file_path"
-        json_file_pattern = fr"- saved to: (?P<{json_file_group_name}>\S+?)$"
-        # Copies all the datapoints dumped by the graalos-load-tester
-        class DatapointsCopyRule(mx_benchmark.JsonStdOutFileRule):
-            def __init__(self, json_file_pattern, json_file_group_name, suite):
-                super().__init__(json_file_pattern, json_file_group_name, {}, [])
-                self.suite = suite
-
-            def parse(self, text) -> DataPoints:
-                all_datapoints = []
-                for json_file_path in self.getJsonFiles(text):
-                    with open(json_file_path, "r") as json_file:
-                        all_datapoints += json.load(json_file)["queries"]
-                # The following keys should be removed as they are populated in a different way
-                # by the graalos-load-tester than they are populated by `mx benchmark`.
-                # These fields will be repopulated appropriately.
-                keys_to_remove = ["benchmark", "bench-suite", "bench-suite-version"]
-                for dp in all_datapoints:
-                    for key in keys_to_remove:
-                        dp.pop(key, None)
-                    dp["benchmark"] = self.suite.benchmarkName()
-                return all_datapoints
-        return [DatapointsCopyRule(json_file_pattern, json_file_group_name, self)]
-
-    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        retcode, out, dims = super().runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        if self.stages_info.current_stage.is_image() and self._check_if_dataplane_scenario():
-            self._ensure_dataplane_scenario_can_run()
-        return retcode, out, dims
-
-    def _check_if_dataplane_scenario(self) -> bool:
-        """Returns whether the scenario uses 'dataplane' deployment."""
-        return self._get_scenario_deployment() == "dataplane"
-
-    def _get_scenario_deployment(self):
-        """Retrieves the deployment used in the scenario."""
-        if self._deployment is None:
-            self._deployment = self._read_scenario_deployment()
-        return self._deployment
-
-    def _read_scenario_deployment(self):
-        """Reads the deployment field of the first app in the scenario."""
-        scenario_path = self._get_scenario_path(self.benchmarkName())
-        with open(scenario_path, "rb") as scenario_fd:
-            return _load_toml_from_fd(scenario_fd)["apps"][0]["deployment"]
-
-    def _ensure_dataplane_scenario_can_run(self):
-        """
-        Ensures that the app image is in an accessible directory and has adequate permissions
-        so graalhost can execute it.
-        """
-        original_app_image_path = self._get_built_app_image()
-        accessible_app_image_path = Path("/") / "opt" / "preinstalled" / "applications" / original_app_image_path.name
-        copy_cmd = ["cp", str(original_app_image_path), str(accessible_app_image_path)]
-        mx.logv(f"Running {copy_cmd} to ensure that the binary is in a directory accessible to graalhost.")
-        mx.run(copy_cmd)
-        chmod_cmd = ["chmod", "755", str(accessible_app_image_path)]
-        mx.logv(f"Running {chmod_cmd} to ensure that the binary has adequate permissions for graalhost to execute it.")
-        mx.run(chmod_cmd)
-
-    def _get_built_app_image(self):
-        """Retrieves the path to the app image built in the last image stage.
-
-        In the case of `instrument-run`, retrieves the image built during `instrument-image`.
-        In the case of `run`, retrieves the image built during `image`.
-        In the case of an `image` stage, retrieves the image built during the stage.
-        """
-        stage = self.stages_info.current_stage
-        if stage.is_agent():
-            raise ValueError(f"Cannot retrieve the path of the latest image from the '{stage.stage_name}' stage!")
-        vm = self.execution_context.virtual_machine
-        if stage.is_instrument():
-            return vm.config.instrumented_image_path
-        return vm.config.image_path
-
-    def _get_runnable_app_image(self):
-        """Retrieves the path to the accessible copy of the app image built in the last stage."""
-        original_app_image_path = self._get_built_app_image()
-        if self._check_if_dataplane_scenario():
-            accessible_app_image_path = Path("/") / "opt" / "preinstalled" / "applications" / original_app_image_path.name
-            return accessible_app_image_path
-        return original_app_image_path
-
-    def get_stage_env(self) -> Optional[dict]:
-        return self._stage_env
-
-    def get_nib_generation_env(self):
-        env = self.get_stage_env().copy()
-        graalvm_home = self.execution_context.virtual_machine.home()
-        env["GRAALVM_HOME"] = graalvm_home
-        env["GRADLE_CLIENT_JAVA_HOME"] = graalvm_home
-        return env
-
-    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
-        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
-
-    class GraalOSLoadTesterCommand(mx_benchmark.CustomHarnessCommand):
-        """Maps the command produced by NativeImageVM into a command tailored for the `graalos-load-tester` harness."""
-        def produceHarnessCommand(self, cmd: List[str], suite: BenchmarkSuite) -> List[str]:
-            if not isinstance(suite, GraalOSNativeImageBenchmarkSuite):
-                raise TypeError(f"Expected an instance of {GraalOSNativeImageBenchmarkSuite.__name__},"
-                                f" instead got an instance of {suite.__class__.__name__}")
-            scenario = suite._get_scenario_path(suite.benchmarkName())
-            bmSuiteArgs = suite.execution_context.bmSuiteArgs
-
-            original_app_image = str(suite._get_built_app_image())
-            try:
-                index_of_app_image = cmd.index(original_app_image)
-            except:
-                mx.log_error(f"Cannot produce harness command because app image '{original_app_image}' was not found in {cmd}")
-                raise
-            source_cmd_prefix = cmd[:index_of_app_image]
-            options_from_source_cmd = cmd[index_of_app_image + 1:]
-
-            app_cmd = source_cmd_prefix
-            app_cmd += [str(suite._get_runnable_app_image())]
-            app_cmd += options_from_source_cmd
-            app_cmd += suite.runArgs(bmSuiteArgs)
-            app_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", bmSuiteArgs)
-            if suite.stages_info.current_stage.is_instrument():
-                # Add explicit instrument stage args
-                app_cmd += (parse_prefixed_args("-Dnative-image.benchmark.extra-profile-run-arg=", bmSuiteArgs)
-                            or parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", bmSuiteArgs))
-            else:
-                # Add explicit run stage args
-                app_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", bmSuiteArgs)
-
-            gos_cmd = [suite._gos_scenario_command(), f"{scenario}", "--local-load-testers", "--skip-upload"]
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            gos_log_file_name = f"{timestamp}-gos-out.log"
-            gos_cmd += ["--log-to", f"stdout,file:{gos_log_file_name}"]
-            app_cmd_str = " ".join(app_cmd)
-            gos_cmd += ["-p", f"command=\"{app_cmd_str}\""]
-            mx.log(f"Produced 'gos-scenario' command: '{' '.join(gos_cmd)}'")
-            return gos_cmd
-
-
-mx_benchmark.add_bm_suite(GraalOSNativeImageBenchmarkSuite())
 
 
 class BaseDaCapoNativeImageBenchmarkSuite():
@@ -1035,7 +618,6 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
 }
 
 _DACAPO_EXTRA_IMAGE_RUN_ARGS = {
-    'pmd':         ['--no-validation'],
     # JDK21 ForeignAPISupport is broken --- disable `enableMemorySegments` for now
     'lusearch':    ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
     'luindex':     ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
@@ -1101,12 +683,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
 
-    def daCapoPath(self):
-        lib = mx.library(self.daCapoLibraryName(), False)
-        if lib:
-            return lib.get_path(True)
-        return None
-
     def availableSuiteVersions(self):
         # The version 9.12-MR1-git+2baec49 also ships a custom harness class to allow native image to find the entry point in the nested jar
         return ["9.12-MR1-git+2baec49", "23.11-MR2-chopin"]
@@ -1127,7 +703,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
-        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+        return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         self.fixDataLocation()
@@ -1139,7 +715,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
 
         # remove -n X argument from image run args
         if should_strip_run_args:
-            return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+            return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
         else:
             return user_args
 
@@ -1284,13 +860,13 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmark
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
-        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+        return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -n X argument from image run args if the flag is true.
         if should_strip_run_args:
-            return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+            return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
         else:
             return user_args
 

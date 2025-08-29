@@ -118,7 +118,7 @@ public final class Lib implements TruffleObject {
             Symbol<Name> methodName = ctx.getNames().getOrCreate(mName);
             Symbol<Type> holderType = ctx.getTypes().fromClassGetName(holderName);
 
-            refs.add(new MethodKey(holderType, methodName, signature));
+            refs.add(new MethodKey(holderType, methodName, signature, !factory.hasReceiver()));
         }
 
         return refs;

@@ -39,6 +39,8 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.ThreadState;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class ReferenceProcessCache extends EspressoNode {
     /*
@@ -84,9 +86,14 @@ public final class ReferenceProcessCache extends EspressoNode {
         if (context.multiThreadingEnabled()) {
             throw throwIllegalStateException("Manual reference processing was requested, but the context is not in single-threaded mode.");
         }
-        context.triggerDrain();
-        processPendingReferences();
-        processFinalizers();
+        Transition transition = Transition.transition(ThreadState.IN_ESPRESSO, this);
+        try {
+            context.triggerDrain();
+            processPendingReferences();
+            processFinalizers();
+        } finally {
+            transition.restore(this);
+        }
     }
 
     private void processPendingReferences() {

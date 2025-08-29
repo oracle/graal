@@ -24,8 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
@@ -53,10 +54,13 @@ public final class JVMCIVersionCheck {
      * to {@code java.vm.vendor} to {@link Version}. {@link #DEFAULT_VENDOR_ENTRY} can be used as a
      * default/fallback entry.
      */
+    // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "26", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("26+2", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("26+2", 1)));
+                                    "Oracle Corporation", createLabsJDKVersion("26+12", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("26+12", 1)));
+    // Checkstyle: resume stable iteration order check
+
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -262,7 +266,7 @@ public final class JVMCIVersionCheck {
     public static Version getMinVersion(Map<String, String> props, Map<String, Map<String, Version>> jvmciMinVersions) {
         String javaSpecVersion = getRequiredProperty(props, "java.specification.version");
         String javaVmVendor = getRequiredProperty(props, "java.vm.vendor");
-        Map<String, Version> versionMap = jvmciMinVersions.getOrDefault(javaSpecVersion, Map.of());
+        Map<String, Version> versionMap = jvmciMinVersions.getOrDefault(javaSpecVersion, Collections.emptyMap());
         return versionMap.getOrDefault(javaVmVendor, versionMap.get(DEFAULT_VENDOR_ENTRY));
     }
 
@@ -405,7 +409,7 @@ public final class JVMCIVersionCheck {
      */
     public static void main(String[] args) {
         Properties sprops = System.getProperties();
-        Map<String, String> props = new HashMap<>(sprops.size());
+        Map<String, String> props = new LinkedHashMap<>(sprops.size());
         for (String name : sprops.stringPropertyNames()) {
             props.put(name, sprops.getProperty(name));
         }

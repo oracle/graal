@@ -200,7 +200,7 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
-            var conditionalResource = Resources.currentLayer().getResource(createStorageKey(module, resourcePath));
+            var conditionalResource = Resources.currentLayer().resources().get(createStorageKey(module, resourcePath));
             if (conditionalResource != null) {
                 classInitializationSupport.addForTypeReachedTracking(condition.getType());
                 conditionalResource.getConditions().addCondition(condition);
@@ -434,7 +434,7 @@ public class ResourcesFeature implements InternalFeature {
          * enabled. Until a clear SVM core separation is created and included in the base layer,
          * those types should be manually registered as instantiated before the analysis.
          */
-        if (HostedImageLayerBuildingSupport.buildingSharedLayer()) {
+        if (HostedImageLayerBuildingSupport.buildingImageLayer()) {
             String reason = "Included in the base image";
             access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.LiteralNode")).registerAsInstantiated(reason);
             access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.DoubleStarNode")).registerAsInstantiated(reason);
@@ -546,7 +546,7 @@ public class ResourcesFeature implements InternalFeature {
                 if (!rp.moduleNameMatches(moduleName)) {
                     continue;
                 }
-                if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                if (rp.pattern.matcher(resourceName).matches()) {
                     return List.of(); // nothing should match excluded resource
                 }
             }

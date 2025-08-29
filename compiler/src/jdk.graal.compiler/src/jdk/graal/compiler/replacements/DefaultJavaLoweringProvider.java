@@ -282,7 +282,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             } else if (n instanceof LoadHubOrNullNode) {
                 lowerLoadHubOrNullNode((LoadHubOrNullNode) n, tool);
             } else if (n instanceof LoadArrayComponentHubNode) {
-                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
+                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n, tool);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
             } else if (n instanceof UnsafeCompareAndExchangeNode) {
@@ -617,9 +617,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                  * The guard on the read hub should be the null check of the array that was
                  * introduced earlier.
                  */
-                ValueNode arrayClass = createReadHub(graph, array, tool);
+                ValueNode arrayClass = createReadHub(graph, array, tool, tool.lastFixedNode());
                 boolean isKnownObjectArray = arrayType != null && !arrayType.getType().getComponentType().isPrimitive();
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed, tool, tool.lastFixedNode());
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
@@ -669,7 +669,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool, tool.lastFixedNode());
         loadHub.replaceAtUsagesAndDelete(hub);
     }
 
@@ -708,7 +708,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         final AbstractPointerStamp hubStamp = (AbstractPointerStamp) loadHubOrNullNode.stamp(NodeView.DEFAULT);
         ValueNode nullHub = ConstantNode.forConstant(hubStamp.asAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), graph);
         final ValueNode nonNullValue = graph.addOrUniqueWithInputs(PiNode.create(value, stamp.asNonNull(), ifNode.falseSuccessor()));
-        ValueNode hub = createReadHub(graph, nonNullValue, tool);
+        ValueNode hub = createReadHub(graph, nonNullValue, tool, ifNode.falseSuccessor());
         ValueNode[] values = new ValueNode[]{nullHub, hub};
         final PhiNode hubPhi = graph.unique(new ValuePhiNode(hubStamp, merge, values));
         final FixedNode oldNext = predecessor.next();
@@ -717,9 +717,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         loadHubOrNullNode.replaceAtUsagesAndDelete(hubPhi);
     }
 
-    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
+    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub, LoweringTool tool) {
         StructuredGraph graph = loadHub.graph();
-        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub);
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub, tool, tool.lastFixedNode());
         graph.replaceFixed(loadHub, hub);
     }
 
@@ -1447,9 +1447,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return OrNode.create(upperBytes, lowerBytes, NodeView.DEFAULT);
     }
 
-    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
+    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool, FixedWithNextNode insertAfter);
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor);
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor, LoweringTool tool, FixedWithNextNode insertAfter);
 
     protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();

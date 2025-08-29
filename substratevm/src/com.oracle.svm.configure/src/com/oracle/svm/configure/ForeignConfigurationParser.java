@@ -29,7 +29,6 @@ import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 /**
  * A base class for parsing FFM API configurations.
@@ -37,7 +36,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
  * @param <FD> the type of the function descriptor
  * @param <LO> the type of the linker options
  */
-public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationParser {
+public abstract class ForeignConfigurationParser<FD, LO> extends ConditionalConfigurationParser {
     private static final String PARAMETER_TYPES = "parameterTypes";
     private static final String RETURN_TYPE = "returnType";
 
@@ -47,7 +46,11 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        var topLevel = asMap(json, "first level of document must be a map");
+        var foreignJson = getFromGlobalFile(json, FOREIGN_KEY);
+        if (foreignJson == null) {
+            return;
+        }
+        var topLevel = asMap(foreignJson, "first level of document must be a map");
         checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls", "upcalls", "directUpcalls"));
 
         var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of function descriptor and linker options");
@@ -68,20 +71,21 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
 
     private void parseAndRegisterForeignCall(Object call, boolean forUpcall) {
         var map = asMap(call, "a foreign call must be a map");
-        checkAttributes(map, "foreign call", List.of(RETURN_TYPE, PARAMETER_TYPES), List.of("options"));
+        checkAttributes(map, "foreign call", List.of(RETURN_TYPE, PARAMETER_TYPES), List.of(CONDITIONAL_KEY, "options"));
+        var condition = parseCondition(map, true);
         var descriptor = createFunctionDescriptor(map);
         var optionsMap = asMap(map.get("options", EconomicMap.emptyMap()), "options must be a map");
         if (forUpcall) {
             LO upcallOptions = createUpcallOptions(optionsMap, descriptor);
             try {
-                registerUpcall(ConfigurationCondition.alwaysTrue(), descriptor, upcallOptions);
+                registerUpcall(condition, descriptor, upcallOptions);
             } catch (Exception e) {
                 handleRegistrationError(e, map);
             }
         } else {
             LO downcallOptions = createDowncallOptions(optionsMap, descriptor);
             try {
-                registerDowncall(ConfigurationCondition.alwaysTrue(), descriptor, downcallOptions);
+                registerDowncall(condition, descriptor, downcallOptions);
             } catch (Exception e) {
                 handleRegistrationError(e, map);
             }
@@ -90,8 +94,9 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
 
     private void parseAndRegisterDirectUpcall(Object call) {
         var map = asMap(call, "a foreign call must be a map");
-        checkAttributes(map, "foreign call", List.of("class", "method"), List.of(RETURN_TYPE, PARAMETER_TYPES, "options"));
+        checkAttributes(map, "foreign call", List.of("class", "method"), List.of(CONDITIONAL_KEY, RETURN_TYPE, PARAMETER_TYPES, "options"));
 
+        var condition = parseCondition(map, true);
         String className = asString(map.get("class"), "class");
         String methodName = asString(map.get("method"), "method");
         Object returnTypeInput = map.get(RETURN_TYPE);
@@ -102,13 +107,13 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
             FD descriptor = createFunctionDescriptor(map);
             LO upcallOptions = createUpcallOptions(optionsMap, descriptor);
             try {
-                registerDirectUpcallWithDescriptor(className, methodName, descriptor, upcallOptions);
+                registerDirectUpcallWithDescriptor(condition, className, methodName, descriptor, upcallOptions);
             } catch (Exception e) {
                 handleRegistrationError(e, map);
             }
         } else {
             try {
-                registerDirectUpcallWithoutDescriptor(className, methodName, optionsMap);
+                registerDirectUpcallWithoutDescriptor(condition, className, methodName, optionsMap);
             } catch (Exception e) {
                 handleRegistrationError(e, map);
             }
@@ -141,13 +146,13 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
     /** Parses the options allowed for upcalls. */
     protected abstract LO createUpcallOptions(EconomicMap<String, Object> map, FD desc);
 
-    protected abstract void registerDowncall(ConfigurationCondition configurationCondition, FD descriptor, LO options);
+    protected abstract void registerDowncall(UnresolvedConfigurationCondition configurationCondition, FD descriptor, LO options);
 
-    protected abstract void registerUpcall(ConfigurationCondition configurationCondition, FD descriptor, LO options);
+    protected abstract void registerUpcall(UnresolvedConfigurationCondition configurationCondition, FD descriptor, LO options);
 
-    protected abstract void registerDirectUpcallWithoutDescriptor(String className, String methodName, EconomicMap<String, Object> optionsMap);
+    protected abstract void registerDirectUpcallWithoutDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap);
 
-    protected abstract void registerDirectUpcallWithDescriptor(String className, String methodName, FD descriptor, LO options);
+    protected abstract void registerDirectUpcallWithDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, FD descriptor, LO options);
 
     protected abstract void handleRegistrationError(Exception e, EconomicMap<String, Object> map);
 }

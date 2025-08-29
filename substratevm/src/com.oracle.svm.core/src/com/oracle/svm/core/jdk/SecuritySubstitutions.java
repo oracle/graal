@@ -161,7 +161,7 @@ class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(InternalPlatform.WINDOWS_BASE.class)
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider_Windows {
 
@@ -250,7 +250,7 @@ class ProviderVerifierJavaHomeAccessors {
  * properly signed and can be used by JCE. It does that via jar verification which we cannot
  * support.
  */
-@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
@@ -303,7 +303,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 
@@ -377,7 +377,7 @@ final class AllPermissionsPolicy extends Policy {
     }
 }
 
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 

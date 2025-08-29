@@ -35,6 +35,8 @@ import java.nio.ByteBuffer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -48,6 +50,7 @@ import com.oracle.svm.core.hub.ConstantPoolProvider;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 import jdk.internal.reflect.ConstantPool;
@@ -134,8 +137,11 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
+        if (MetadataTracer.enabled()) {
+            MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));
+        }
         if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
-            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
     }
@@ -210,5 +216,12 @@ public final class Target_java_lang_reflect_Method {
             }
             return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
+    }
+}
+
+class MethodUtil {
+    static void traceMethodAccess(Executable meth) {
+        MetadataTracer.singleton().traceMethodAccess(meth.getDeclaringClass(), meth.getName(), SignatureUtil.toInternalSignature(meth.getParameterTypes()),
+                        ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
     }
 }

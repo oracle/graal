@@ -1096,7 +1096,7 @@ public class FlatNodeGenFactory {
                         continue;
                     }
 
-                    inlined.add(createCacheInlinedField(builder, null, null, cache));
+                    inlined.addOptional(createCacheInlinedField(builder, null, null, cache));
                 }
             }
 
@@ -1118,8 +1118,7 @@ public class FlatNodeGenFactory {
                         continue;
                     }
 
-                    inlined.add(createCacheInlinedField(builder, specialization, specializationState, cache));
-
+                    inlined.addOptional(createCacheInlinedField(builder, specialization, specializationState, cache));
                 }
             }
 
@@ -1254,79 +1253,145 @@ public class FlatNodeGenFactory {
         final String fieldName = createLocalCachedInlinedName(specialization, cache);
 
         // for state access we need use the shared cache
+        boolean needsInlineTarget = needsInlineTarget(specialization, cache);
+
+        CodeTreeBuilder b = init.create();
+        b.startStaticCall(cache.getInlinedNode().getMethod());
+        b.startStaticCall(types().InlineSupport_InlineTarget, "create");
+        b.typeLiteral(cache.getParameter().getType());
+
         CacheExpression sharedCache = lookupSharedCacheKey(cache);
-
-        init.startStatement();
-        init.string("this.", fieldName, " = ");
-
-        init.startStaticCall(cache.getInlinedNode().getMethod());
-        init.startStaticCall(types().InlineSupport_InlineTarget, "create");
-        init.typeLiteral(cache.getParameter().getType());
-
-        boolean parentAccess = hasCacheParentAccess(cache);
-
         for (InlineFieldData field : sharedCache.getInlinedNode().getFields()) {
             if (field.isState()) {
                 BitSet bitSet = allMultiState.findSet(InlinedNodeState.class, field);
 
-                if (bitSet == null) {
+                if (bitSet == null) { // bitset in specialized class
                     bitSet = findInlinedState(specializationState, field);
-
-                    CodeVariableElement var = createStateUpdaterField(specialization, specializationState, field, specializationClasses.get(specialization).getEnclosedElements());
-                    init.startCall(var.getName(), "subUpdater");
+                    CodeVariableElement stateVariable = createStateUpdaterField(specialization, specializationState, field, specializationClasses.get(specialization).getEnclosedElements());
                     BitRange range = bitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
-                    init.string(String.valueOf(range.offset));
-                    init.string(String.valueOf(range.length));
-                    init.end();
 
+                    CodeTreeBuilder helper = b.create();
+                    helper.startCall(stateVariable.getName(), "subUpdater");
+                    helper.string(String.valueOf(range.offset));
+                    helper.string(String.valueOf(range.length));
+                    helper.end();
+
+                    /*
+                     * If we need a target to instantiate we should create a constant for the
+                     * individual field to avoid unnecessary allocations for each instance.
+                     *
+                     * If we don't need an inline target, we don't need to extract into a constant
+                     * here as the entire cached initializer result will be stored as constant. No
+                     * need to create constants for individual fields, which would then be more
+                     * costly.
+                     */
+                    if (needsInlineTarget) {
+                        String updaterFieldName = stateVariable.getSimpleName().toString() + "_" + range.offset + "_" + range.length;
+                        CodeVariableElement var = nodeConstants.updaterReferences.get(updaterFieldName);
+                        if (var == null) {
+                            var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), stateVariable.getType(), updaterFieldName);
+                            var.createInitBuilder().tree(helper.build());
+                            nodeConstants.updaterReferences.put(updaterFieldName, var);
+                        }
+                        b.string(updaterFieldName);
+                    } else {
+                        b.tree(helper.build());
+                    }
                 } else {
                     if (specializationState != null && specializationState.findSet(InlinedNodeState.class, field) != null) {
                         throw new AssertionError("Inlined field in specializationState and regular state at the same time.");
                     }
-                    init.startGroup();
-                    init.startCall(bitSet.getName() + "_", "subUpdater");
+                    b.startGroup();
+                    b.startCall(bitSet.getName() + "_", "subUpdater");
                     BitRange range = bitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
-                    init.string(String.valueOf(range.offset));
-                    init.string(String.valueOf(range.length));
-                    init.end();
-                    init.end();
+                    b.string(String.valueOf(range.offset));
+                    b.string(String.valueOf(range.length));
+                    b.end();
+                    b.end();
                 }
             } else {
-
                 String inlinedFieldName = createCachedInlinedFieldName(specialization, cache, field);
-                if (specialization != null && useSpecializationClass(specialization)) {
-                    if (parentAccess) {
-                        init.startGroup();
-                        init.string("this.", inlinedFieldName);
-                        init.end();
-                    } else {
-                        init.startStaticCall(field.getFieldType(), "create");
-                        init.startGroup();
-                        init.tree(createLookupNodeType(createSpecializationClassReferenceType(specialization), specializationClasses.get(specialization).getEnclosedElements()));
-                        init.end();
-                        init.doubleQuote(inlinedFieldName);
-                        if (field.isReference()) {
-                            init.typeLiteral(field.getType());
+                if (specialization != null && useSpecializationClass(specialization) && cache.getSharedGroup() == null) {
+                    CodeTypeElement specializationDataClass = specializationClasses.get(specialization);
+                    CodeTreeBuilder helper = b.create();
+
+                    helper.startStaticCall(field.getFieldType(), "create");
+                    helper.startGroup();
+                    helper.tree(createLookupNodeType(createSpecializationClassReferenceType(specialization), specializationDataClass.getEnclosedElements()));
+                    helper.end();
+                    helper.doubleQuote(inlinedFieldName);
+                    if (field.isReference()) {
+                        helper.typeLiteral(field.getType());
+                    }
+                    helper.end();
+
+                    if (needsInlineTarget) {
+                        String updaterFieldName = ElementUtils.createConstantName(specializationDataClass.getSimpleName().toString() + "_" + inlinedFieldName) + "_UPDATER";
+                        CodeVariableElement var = nodeConstants.updaterReferences.get(updaterFieldName);
+                        if (var == null) {
+                            var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), field.getFieldType(), updaterFieldName);
+                            var.createInitBuilder().tree(helper.build());
+                            nodeConstants.updaterReferences.put(updaterFieldName, var);
                         }
-                        init.end();
+                        b.string(updaterFieldName);
+                    } else {
+                        b.tree(helper.build());
                     }
 
                 } else {
-                    init.string(inlinedFieldName);
+                    b.string(inlinedFieldName);
                 }
             }
-
         }
-        init.end();
-        init.end();
-        init.end();
-        CodeVariableElement var = new CodeVariableElement(modifiers(PRIVATE, FINAL), parameter.getType(), fieldName);
-        CodeTreeBuilder builder = var.createDocBuilder();
-        builder.startJavadoc();
-        addSourceDoc(builder, specialization, cache, null);
-        builder.end();
+        b.end();
+        b.end();
 
-        return var;
+        // if the initializer does not need the target we can create a constant instead
+        if (needsInlineTarget) {
+            init.startStatement();
+            init.string("this.", fieldName, " = ");
+            init.tree(b.build());
+            init.end();
+            CodeVariableElement var = new CodeVariableElement(modifiers(PRIVATE, FINAL), parameter.getType(), fieldName);
+            CodeTreeBuilder builder = var.createDocBuilder();
+            builder.startJavadoc();
+            addSourceDoc(builder, specialization, cache, null);
+            builder.end();
+            return var;
+        } else {
+            String name = createStaticInlinedCacheName(specialization, cache);
+            CodeVariableElement var = nodeConstants.updaterReferences.get(name);
+            if (var == null) {
+                var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), parameter.getType(), name);
+                var.createInitBuilder().tree(b.build());
+                nodeConstants.updaterReferences.put(name, var);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the inlined cache requires any field from the inline target to
+     * get initialized, else <code>false</code>. If it does not depend on the inline target the code
+     * generator can typically extract the instance into a static final field instead of
+     * initializing it in the generated Inlined class constructor.
+     */
+    private boolean needsInlineTarget(SpecializationData specialization, CacheExpression cache) {
+        if (cache.getSharedGroup() != null) {
+            // shared cache -> never in data class
+            return true;
+        }
+        for (InlineFieldData field : cache.getInlinedNode().getFields()) {
+            if (field.isState() && allMultiState.findSet(InlinedNodeState.class, field) == null) {
+                // bit set located in specialization data class, no access to inline target needed
+            } else if (specialization != null && useSpecializationClass(specialization)) {
+                // we use a data class for this specialization so the field is stored there
+            } else {
+                // by default state is stored in the parent node
+                return true;
+            }
+        }
+        return false;
     }
 
     private String createLocalCachedInlinedName(SpecializationData specialization, CacheExpression cache) {
@@ -2179,6 +2244,7 @@ public class FlatNodeGenFactory {
         if (inline != null) {
             Parameter parameter = cache.getParameter();
             String fieldName = createStaticInlinedCacheName(specialization, cache);
+
             ExecutableElement cacheMethod = cache.getInlinedNode().getMethod();
             CodeVariableElement cachedField = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), parameter.getType(), fieldName);
             CodeTreeBuilder builder = cachedField.createInitBuilder();
@@ -2192,12 +2258,13 @@ public class FlatNodeGenFactory {
                     if (generateCachedFields) {
                         BitSet specializationBitSet = findInlinedState(specializationState, field);
                         CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
+                        BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
                         String updaterFieldName = updaterField.getName();
                         builder.startCall(updaterFieldName, "subUpdater");
-                        BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
                         builder.string(String.valueOf(range.offset));
                         builder.string(String.valueOf(range.length));
                         builder.end();
+
                     }
                 } else {
                     /*
@@ -2263,7 +2330,7 @@ public class FlatNodeGenFactory {
             javadoc.end();
 
             if (generateCachedFields) {
-                nodeElements.add(cachedField);
+                nodeConstants.updaterReferences.putIfAbsent(fieldName, cachedField);
             }
         } else {
             Parameter parameter = cache.getParameter();
@@ -2349,7 +2416,7 @@ public class FlatNodeGenFactory {
         if (var == null) {
             var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), field.getFieldType(), updaterFieldName);
             CodeTreeBuilder b = var.createInitBuilder();
-            b.startStaticCall(types().InlineSupport_StateField, "create");
+            b.startStaticCall(field.getFieldType(), "create");
             if (nodeType == null) {
                 b.startStaticCall(context.getType(MethodHandles.class), "lookup").end();
             } else {
@@ -7199,7 +7266,7 @@ public class FlatNodeGenFactory {
             return initializeCache(frameState, specialization, cache);
         }
         if (cache.getInlinedNode() != null) {
-            if (frameState.isInlinedNode()) {
+            if (frameState.isInlinedNode() && needsInlineTarget(specialization, cache)) {
                 CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
                 String cacheFieldName = createLocalCachedInlinedName(specialization, cache);
                 builder.string("this.", cacheFieldName);

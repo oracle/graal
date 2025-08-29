@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -251,8 +251,16 @@ public class LanguageSystemThreadTest {
     @Test
     public void testCreateSystemThreadNotEntered() {
         try (Context context1 = Context.newBuilder().build()) {
-            String errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context1, CreateSystemThreadNotEnteredLanguage.class, "").asString();
-            Assert.assertEquals("There is no current context available.", errorMessage);
+            String successMessage = AbstractExecutableTestLanguage.evalTestLanguage(context1, CreateSystemThreadNotEnteredLanguage.class, "").asString();
+            Assert.assertEquals("OK", successMessage);
+        }
+    }
+
+    @Test
+    public void testCreateNewThreadNotEntered() {
+        try (Context context1 = Context.newBuilder().build()) {
+            String errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context1, CreateNewThreadNotEnteredLanguage.class, "").asString();
+            Assert.assertEquals("Not entered in an Env's context.", errorMessage);
         }
     }
 
@@ -264,6 +272,34 @@ public class LanguageSystemThreadTest {
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             AtomicReference<Throwable> throwableRef = new AtomicReference<>();
             Thread t = env.createSystemThread(() -> {
+                try {
+                    Thread systemT = env.createSystemThread(() -> {
+                    });
+                    // Can create system thread from a system thread.
+                    Assert.assertNotNull(systemT);
+                } catch (Throwable exception) {
+                    throwableRef.set(exception);
+                }
+            });
+            t.start();
+            t.join();
+            Throwable throwable = throwableRef.get();
+            if (throwable != null) {
+                return throwable.getMessage();
+            } else {
+                return "OK";
+            }
+        }
+    }
+
+    @Registration
+    public static final class CreateNewThreadNotEnteredLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            Thread t = new Thread(() -> {
                 try {
                     env.createSystemThread(() -> {
                     });

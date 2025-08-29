@@ -295,7 +295,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 meta.java_lang_ThreadGroup_add.invokeDirectVirtual(effectiveThreadGroup, guestThread);
             }
 
-            getThreadAccess().setState(guestThread, State.RUNNABLE.value);
+            getThreadAccess().initializeState(guestThread, ThreadState.DefaultStates.DEFAULT_ATTACH_THREAD_STATE);
 
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
@@ -333,7 +333,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                         /* group */ mainThreadGroup,
                         /* name */ meta.toGuestString("main"));
 
-        getThreadAccess().setState(mainThread, State.RUNNABLE.value);
+        getThreadAccess().initializeState(mainThread, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
 
         mainThreadCreated = true;
         logger.fine(() -> {
@@ -341,6 +341,16 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             long guestId = getThreadAccess().getThreadId(mainThread);
             return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
         });
+    }
+
+    /**
+     * Notifies us that the main thread will go back to being out of Espresso's control. Set its
+     * state to the default attach state, which means it will be considered in native going forward.
+     */
+    public void reportMainAsInNative() {
+        if (getMainThread() != null) {
+            getThreadAccess().setState(getMainThread(), ThreadState.DefaultStates.DEFAULT_ATTACH_THREAD_STATE);
+        }
     }
 
     private void createMainThreadGroup(Meta meta) {
