@@ -50,7 +50,7 @@ The `--engine.TraceCompilation` command prints a line each time a method is comp
 Here is a quick overview of the information provided in these logs:
 - `engine` - Unique identifier of the engine the compilation is done for.
 - `id` - Unique identifier of the call target.
-- `Tier` - For which compilation tier was the targed scheduled.
+- `Tier` - For which compilation tier was the target scheduled.
 - `Time` - How long did the compilation last, with separation between the Truffle tier (mainly partial evaluation) and the Graal Tiers.
 - `AST` - The targets non-trivial node count.
 - `Inlined` - How many calls were inlined and how many remained calls after inlining.
@@ -558,7 +558,7 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 The `--engine.SpecializationStatistics` command prints detailed histograms about Node classes and their usage of Truffle DSL specializations.
 See [`Specialization Statistics`](SpecializationHistogram.md) for a tutorial on how to use it.
 
-Note: Specialization statistics require a recompilation of the interpeter.
+Note: Specialization statistics require a recompilation of the interpreter.
 
 ```shell
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
