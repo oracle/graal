@@ -2156,9 +2156,9 @@ public class GraphDecoder {
     /**
      * Removes unnecessary nodes from the graph after decoding.
      *
-     * @param methodScope The current method.
+     * @param rootMethodScope The current method.
      */
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope rootMethodScope) {
         for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
             for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()) {
                 placeholder.replaceAndDelete(placeholder.value);

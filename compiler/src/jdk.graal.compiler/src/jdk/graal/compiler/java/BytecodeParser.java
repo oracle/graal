@@ -537,7 +537,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * A scoped object for tasks to be performed after inlining during parsing such as processing
      * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
      */
-    static class InliningScope implements AutoCloseable {
+    protected static class InliningScope implements AutoCloseable {
         final ResolvedJavaMethod callee;
         FrameState stateBefore;
         final Mark mark;
@@ -971,7 +971,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     int entryBCI, IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance.providers);
         invocationPluginReceiver = new InvocationPluginReceiver(this);
-        this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
+        this.bytecodeProvider = intrinsicContext == null ? ResolvedJavaMethodBytecodeProvider.INSTANCE : intrinsicContext.getBytecodeProvider();
         this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
         this.graphBuilderInstance = graphBuilderInstance;

@@ -60,7 +60,7 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
+import jdk.graal.compiler.truffle.CachingPEGraphDecoder;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

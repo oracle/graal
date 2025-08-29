@@ -85,7 +85,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                                 return false;
                             }
                         }, null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator,
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(
                         new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);
         return context.graph;

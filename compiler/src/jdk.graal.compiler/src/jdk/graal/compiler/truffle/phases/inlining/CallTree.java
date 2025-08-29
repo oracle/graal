@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.phases.inlining;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
-import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleTierContext;
@@ -46,11 +45,11 @@ public final class CallTree extends Graph {
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext context, InliningPolicy policy) {
+    CallTree(PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext context, InliningPolicy policy) {
         super(context.graph.getOptions(), context.debug);
         this.policy = policy;
         this.context = context;
-        this.graphManager = new GraphManager(partialEvaluator, postPartialEvaluationSuite, context);
+        this.graphManager = new GraphManager(postPartialEvaluationSuite, context);
         this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(context.compilerOptions);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(context, this);

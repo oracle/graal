@@ -323,7 +323,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     // Hook for SVM
     protected TruffleTier newTruffleTier(OptionValues options) {
-        return new TruffleTier(options, partialEvaluator,
+        return new TruffleTier(options,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
                         new PostPartialEvaluationSuite(options, TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
@@ -642,7 +642,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             throw debug.handle(e);
         }
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            debug.dump(DebugContext.BASIC_LEVEL, TruffleAST.create(partialEvaluator, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
+            debug.dump(DebugContext.BASIC_LEVEL, TruffleDebugAST.create(partialEvaluator, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
         }
 
         CompilationResult result = null;

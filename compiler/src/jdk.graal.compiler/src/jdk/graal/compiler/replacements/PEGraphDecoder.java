@@ -878,7 +878,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.forceLink = forceLink;
     }
 
-    protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
+    private static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
         if (loopExplosionPlugin == null) {
             return LoopExplosionKind.NONE;
         } else {
@@ -917,8 +917,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
-        super.cleanupGraph(methodScope);
+    protected void cleanupGraph(MethodScope rootMethodScope) {
+        super.cleanupGraph(rootMethodScope);
 
         for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
             if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
@@ -928,7 +928,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * anything because the usages of the frameState are not available yet. So we need
                  * to call it again.
                  */
-                PEMethodScope peMethodScope = (PEMethodScope) methodScope;
+                PEMethodScope peMethodScope = (PEMethodScope) rootMethodScope;
                 Invoke invoke = peMethodScope.invokeData != null ? peMethodScope.invokeData.invoke : null;
                 InliningUtil.handleMissingAfterExceptionFrameState(frameState, invoke, null, true);
 

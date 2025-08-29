@@ -53,12 +53,12 @@ public class TruffleDebugHandlersFactory implements DebugDumpHandlersFactory {
 
         @Override
         public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
-            if (object instanceof TruffleAST ast && DebugOptions.PrintGraph.getValue(debug.getOptions()) != PrintGraphTarget.Disable) {
+            if (object instanceof TruffleDebugAST ast && DebugOptions.PrintGraph.getValue(debug.getOptions()) != PrintGraphTarget.Disable) {
                 try {
-                    var output = debug.buildOutput(GraphOutput.newBuilder(TruffleAST.AST_DUMP_STRUCTURE).blocks(TruffleAST.AST_DUMP_STRUCTURE));
+                    var output = debug.buildOutput(GraphOutput.newBuilder(TruffleDebugAST.AST_DUMP_STRUCTURE).blocks(TruffleDebugAST.AST_DUMP_STRUCTURE));
                     Map<Object, Object> properties = new EconomicHashMap<>();
                     output.beginGroup(ast, "AST", "AST", null, 0, null);
-                    output.print((TruffleAST) object, properties, 0, format, arguments);
+                    output.print((TruffleDebugAST) object, properties, 0, format, arguments);
                     output.endGroup();
                     output.close();
                 } catch (IOException e) {
