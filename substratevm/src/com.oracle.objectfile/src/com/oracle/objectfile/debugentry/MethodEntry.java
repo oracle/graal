@@ -48,18 +48,20 @@ public class MethodEntry extends MemberEntry {
     private boolean isInlined;
     private final boolean isOverride;
     private final boolean isConstructor;
+    private final boolean isCompiledInPriorLayer;
     private final int vtableOffset;
     private final String symbolName;
 
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
                     TypeEntry valueType, int modifiers, List<LocalEntry> params, String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor,
-                    int vtableOffset, int lastParamSlot) {
+                    boolean isCompiledInPriorLayer, int vtableOffset, int lastParamSlot) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.params = params;
         this.symbolName = symbolName;
         this.isDeopt = isDeopt;
         this.isOverride = isOverride;
         this.isConstructor = isConstructor;
+        this.isCompiledInPriorLayer = isCompiledInPriorLayer;
         this.vtableOffset = vtableOffset;
         this.lastParamSlot = lastParamSlot;
         this.locals = new ArrayList<>();
@@ -206,6 +208,10 @@ public class MethodEntry extends MemberEntry {
 
     public boolean isConstructor() {
         return isConstructor;
+    }
+
+    public boolean isCompiledInPriorLayer() {
+        return isCompiledInPriorLayer;
     }
 
     public boolean isVirtual() {

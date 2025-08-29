@@ -508,6 +508,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                             pos = writeAdvancePCOp(context, addressDelta, buffer, pos);
                         }
                     }
+                    /*
+                     * Add a row to the line number table and reset some flags. This makes sure a
+                     * debugger can stop here and properly process line and address. Special opcodes
+                     * have a similar effect as the copy operation, hence it is only used here.
+                     */
                     pos = writeCopyOp(context, buffer, pos);
                 }
             }

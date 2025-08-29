@@ -71,6 +71,8 @@ import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
@@ -497,6 +499,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    public boolean isCompiledInPriorLayer(SharedMethod method) {
+        return method instanceof HostedMethod hostedMethod && hostedMethod.isCompiledInPriorLayer();
+    }
+
+    @Override
     public boolean isVirtual(SharedMethod method) {
         return method instanceof HostedMethod hostedMethod && hostedMethod.hasVTableIndex();
     }
@@ -583,7 +590,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
         for (ResolvedJavaField field : type.getStaticFields()) {
             assert field instanceof HostedField;
-            structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+            /*
+             * If we are in a layered build only add debug info for a static field if it is
+             * installed in the current layer.
+             */
+            if (!ImageLayerBuildingSupport.buildingImageLayer() ||
+                            (((HostedField) field).hasInstalledLayerNum() && DynamicImageLayerInfo.getCurrentLayerNumber() == StaticFieldsSupport.getInstalledLayerNum(field))) {
+                structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+            }
         }
     }
 

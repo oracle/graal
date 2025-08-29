@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.missing.classes;
+package com.oracle.svm.test.debug.missing.classes;
 
 public class TestClass {
     public static final Object CONSTANT_OBJECT_FIELD = 42;

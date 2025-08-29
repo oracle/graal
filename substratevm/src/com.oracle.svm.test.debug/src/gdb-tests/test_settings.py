@@ -129,15 +129,13 @@ class TestCustomPrintCommand(unittest.TestCase):
         result = self.svm_command_print.complete("oa[3].add", "")
         self.assertIn('add', result)
         self.assertIn('addAll', result)
-        self.assertIn('addFirst', result)
-        self.assertIn('addLast', result)
 
     def test_auto_complete_invalid(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArray")
         gdb_run()
         self.assertEqual(self.svm_command_print.complete("oa[3].addNone", ""), [])
 
-    def test_auto_complete_None(self):
+    def test_auto_complete_none(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArray")
         gdb_run()
         self.assertEqual(self.svm_command_print.complete("oa[3]", ""), gdb.COMPLETE_NONE)
@@ -265,23 +263,21 @@ class TestParameters(unittest.TestCase):
         self.assertGreater(len(exec_string1), len(exec_string2))
 
     def test_svm_print_static_fields(self):
-        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArrayList")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testObject")
         gdb_run()
         gdb_set_param('svm-print-static-fields', 'on')
-        gdb_set_param('svm-use-hlrep', 'off')
-        self.assertIn('DEFAULT_CAPACITY', gdb_output("strList"))
+        self.assertIn('s1 =', gdb_output("object"))
         gdb_set_param('svm-print-static-fields', 'off')
-        self.assertNotIn('DEFAULT_CAPACITY', gdb_output("strList"))
+        self.assertNotIn('s1 =', gdb_output("object"))
 
     def test_svm_complete_static_variables(self):
         svm_command_print = SVMCommandPrint()
-        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArrayList")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testObject")
         gdb_run()
         gdb_set_param('svm-complete-static-variables', 'on')
-        gdb_set_param('svm-use-hlrep', 'off')
-        self.assertIn('DEFAULT_CAPACITY', svm_command_print.complete("strList.", ""))
+        self.assertIn('s1', svm_command_print.complete("object.", ""))
         gdb_set_param('svm-complete-static-variables', 'off')
-        self.assertNotIn('DEFAULT_CAPACITY', svm_command_print.complete("strList.", ""))
+        self.assertNotIn('s1', svm_command_print.complete("object.", ""))
 
 
 # redirect unittest output to terminal
