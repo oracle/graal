@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.CremaSupport;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -60,7 +60,6 @@ import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
-import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.svm.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
@@ -286,7 +285,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String externalName = getExternalName(parsed, info);
         String simpleBinaryName = getSimpleBinaryName(parsed);
         String sourceFile = getSourceFile(parsed);
-        Class<?> nestHost = getNestHost(parsed);
         Class<?> enclosingClass = getEnclosingClass(parsed);
         String classSignature = getClassSignature(parsed);
 
@@ -351,7 +349,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * - followed by transitive interfaces (ordered by type id)
          * - each interface is followed by its itable offset
          * ## Interface types
-         * a) Without interface hashing 
+         * a) Without interface hashing
          * [Object.id, I1.id, bad, I2.id, bad]
          * - display with Object
          * - followed by transitive interfaces (ordered by type id, including self)
@@ -415,7 +413,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength, afterFieldsOffset, isValueBased);
 
@@ -485,16 +483,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             }
         }
         return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
-    }
-
-    private static Class<?> getNestHost(ParserKlass parsed) {
-        Class<?> nestHost = null;
-        NestHostAttribute nestHostAttribute = (NestHostAttribute) parsed.getAttribute(NestHostAttribute.NAME);
-        if (nestHostAttribute != null) {
-            // must be lazy, should move to companion
-            throw VMError.unimplemented("nest host is not supported yet");
-        }
-        return nestHost;
     }
 
     private static String getExternalName(ParserKlass parsed, ClassDefinitionInfo info) {

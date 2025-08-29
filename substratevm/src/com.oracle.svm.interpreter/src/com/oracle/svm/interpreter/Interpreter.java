@@ -369,6 +369,17 @@ public final class Interpreter {
         return execute0(method, frame, forceStayInInterpreter);
     }
 
+    public static Object newInstance(InterpreterResolvedJavaMethod method, Object[] args) {
+        // this is a constructor call, so we have to allocate a new instance,
+        // expand this into args[0] and then execute
+        Object newReference = InterpreterToVM.createNewReference(method.getDeclaringClass());
+        Object[] finalArgs = new Object[args.length + 1];
+        finalArgs[0] = newReference;
+        System.arraycopy(args, 0, finalArgs, 1, args.length);
+        execute(method, finalArgs, false);
+        return newReference;
+    }
+
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean stayInInterpreter) {
         try {
             if (method.isSynchronized()) {

@@ -31,37 +31,46 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.CremaSupport;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
 import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
+import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -85,27 +94,40 @@ public class CremaSupportImpl implements CremaSupport {
 
         List<InterpreterResolvedJavaMethod> methods = new ArrayList<>();
 
+        // add declared methods
         for (ResolvedJavaMethod wrappedMethod : analysisType.getWrapped().getDeclaredMethods(false)) {
-            if (!analysisUniverse.hostVM().platformSupported(wrappedMethod)) {
-                /* ignore e.g. hosted methods */
-                continue;
-            }
-
-            AnalysisMethod analysisMethod;
-            try {
-                analysisMethod = analysisUniverse.lookup(wrappedMethod);
-            } catch (DeletedElementException e) {
-                /* deleted via substitution */
-                continue;
-            }
-            InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);
-            method.setNativeEntryPoint(new MethodPointer(analysisMethod));
-            methods.add(method);
+            addSupportedElements(btiUniverse, analysisUniverse, methods, wrappedMethod);
+        }
+        // add declared constructors
+        for (ResolvedJavaMethod wrappedMethod : analysisType.getWrapped().getDeclaredConstructors(false)) {
+            addSupportedElements(btiUniverse, analysisUniverse, methods, wrappedMethod);
         }
 
         ((InterpreterResolvedObjectType) interpreterType).setDeclaredMethods(methods.toArray(new InterpreterResolvedJavaMethod[0]));
 
         return interpreterType;
+    }
+
+    private static void addSupportedElements(BuildTimeInterpreterUniverse btiUniverse, AnalysisUniverse analysisUniverse, List<InterpreterResolvedJavaMethod> methods,
+                    ResolvedJavaMethod wrappedMethod) {
+        if (!analysisUniverse.hostVM().platformSupported(wrappedMethod)) {
+            /* ignore e.g. hosted methods */
+            return;
+        }
+
+        AnalysisMethod analysisMethod;
+        try {
+            analysisMethod = analysisUniverse.lookup(wrappedMethod);
+        } catch (UnsupportedFeatureException e) {
+            /*
+             * We are expecting to see exceptions for methods removed by substitutions and for
+             * methods which refer to unsupported types (in the signature or other metadata).
+             */
+            return;
+        }
+        InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);
+        method.setNativeEntryPoint(new MethodPointer(analysisMethod));
+        methods.add(method);
     }
 
     @Override
@@ -124,7 +146,8 @@ public class CremaSupportImpl implements CremaSupport {
         if (componentHub != null) {
             componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
         }
-        InterpreterResolvedObjectType thisType = InterpreterResolvedObjectType.create(table.partialType.parserKlass, hub.getModifiers(), componentType, superType, interfaces, DynamicHub.toClass(hub),
+        CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(table.partialType.parserKlass, hub.getModifiers(), componentType, superType, interfaces,
+                        DynamicHub.toClass(hub),
                         false);
 
         ParserKlass parserKlass = table.partialType.parserKlass;
@@ -155,6 +178,9 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         hub.setInterpreterType(thisType);
+
+        hub.getCompanion().setHubMetadata(new DynamicHub.RuntimeDynamicHubMetadata(thisType));
+        hub.getCompanion().setReflectionMetadata(new DynamicHub.RuntimeReflectionMetadata(thisType));
     }
 
     @Override
@@ -319,7 +345,7 @@ public class CremaSupportImpl implements CremaSupport {
             } else if (itableIndex != -1) {
                 dispatchIndex = itableIndex;
             }
-            resolved = InterpreterResolvedJavaMethod.create(partialType.getThisJavaType(), m, dispatchIndex);
+            resolved = CremaResolvedJavaMethodImpl.create(partialType.getThisJavaType(), m, dispatchIndex);
             return resolved;
         }
     }
@@ -340,7 +366,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         public InterpreterResolvedJavaMethod[] declaredMethods() {
-            InterpreterResolvedJavaMethod[] result = new InterpreterResolvedJavaMethod[partialType.getDeclaredMethodsList().size()];
+            InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
             int i = 0;
             for (var m : partialType.getDeclaredMethodsList()) {
                 result[i] = m.asMethodAccess();
@@ -425,5 +451,63 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public int getAfterFieldsOffset(DynamicHub hub) {
         return ((InterpreterResolvedObjectType) hub.getInterpreterType()).getAfterFieldsOffset();
+    }
+
+    @Override
+    public Class<?> toClass(ResolvedJavaType resolvedJavaType) {
+        /*
+         * A resolved java type, at runtime, will always have a Java class. Hence, the below will
+         * never throw the implicit NPE as checked by getJavaClass().
+         */
+        return ((InterpreterResolvedJavaType) resolvedJavaType).getJavaClass();
+    }
+
+    @Override
+    public Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        try {
+            Class<?> result = loadClass(unresolvedJavaType, (InterpreterResolvedJavaType) accessingClass);
+            if (result == null) {
+                throw new NoClassDefFoundError(getTypeName(unresolvedJavaType));
+            } else {
+                return result;
+            }
+        } catch (ClassNotFoundException e) {
+            NoClassDefFoundError error = new NoClassDefFoundError(getTypeName(unresolvedJavaType));
+            error.initCause(e);
+            throw error;
+        }
+    }
+
+    private static String getTypeName(JavaType unresolvedJavaType) {
+        assert unresolvedJavaType.getElementalType().getName().startsWith("L");
+
+        String internalName = unresolvedJavaType.getElementalType().getName();
+        return internalName.substring(1, internalName.length() - 1);
+    }
+
+    @Override
+    public Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        try {
+            return loadClass(unresolvedJavaType, (InterpreterResolvedJavaType) accessingClass);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    }
+
+    private static Class<?> loadClass(JavaType unresolvedJavaType, InterpreterResolvedJavaType accessingClass) throws ClassNotFoundException {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(accessingClass.getJavaClass().getClassLoader());
+        return registry.loadClass(symbolicType);
+    }
+
+    @Override
+    public Object execute(ResolvedJavaMethod targetMethod, Object[] args) {
+        return Interpreter.execute((InterpreterResolvedJavaMethod) targetMethod, args);
+    }
+
+    @Override
+    public Object newInstance(ResolvedJavaMethod targetMethod, Object[] args) {
+        return Interpreter.newInstance((InterpreterResolvedJavaMethod) targetMethod, args);
     }
 }

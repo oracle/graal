@@ -56,7 +56,7 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     public static final InterpreterResolvedJavaMethod[] NO_METHODS = new InterpreterResolvedJavaMethod[0];
 
     private final Symbol<Type> type;
-    private final Class<?> clazz;
+    protected final Class<?> clazz;
     private final JavaConstant clazzConstant;
     private final boolean isWordType;
     private volatile boolean methodEnterEventEnabled;
@@ -278,7 +278,7 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
-    public final ResolvedJavaField[] getStaticFields() {
+    public ResolvedJavaField[] getStaticFields() {
         throw VMError.intentionallyUnimplemented();
     }
 
@@ -308,12 +308,12 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
-    public final ResolvedJavaMethod[] getDeclaredConstructors() {
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public final InterpreterResolvedJavaMethod[] getDeclaredMethods() {
+    public InterpreterResolvedJavaMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
