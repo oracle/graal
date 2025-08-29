@@ -91,8 +91,16 @@ public final class Signature {
         this.constantOperandsAfterCount = copy.constantOperandsAfterCount;
     }
 
+    public List<TypeMirror> getConstantOperandsBeforeTypes() {
+        return operandTypes.subList(0, constantOperandsBeforeCount);
+    }
+
     public List<TypeMirror> getDynamicOperandTypes() {
         return operandTypes.subList(constantOperandsBeforeCount, constantOperandsBeforeCount + dynamicOperandCount);
+    }
+
+    public List<TypeMirror> getConstantOperandsAfterTypes() {
+        return operandTypes.subList(constantOperandsBeforeCount + dynamicOperandCount, operandTypes.size());
     }
 
     public Signature specializeReturnType(TypeMirror newReturnType) {

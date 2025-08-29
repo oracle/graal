@@ -149,12 +149,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return false;
     }
 
+    /**
+     * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
+     * directly invoke {@link #parseCustomRegularOperation} for code gen use cases.
+     */
     @Override
     protected CustomOperationModel parse(Element element, List<AnnotationMirror> annotationMirrors) {
-        /**
-         * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
-         * directly invoke {@link parseCustomRegularOperation} for code gen use cases.
-         */
         if (!ElementUtils.typeEquals(annotationType, context.getTypes().OperationProxy_Proxyable)) {
             throw new AssertionError();
         }
@@ -177,8 +177,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         String name = getCustomOperationName(typeElement, explicitName);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
-        boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
-        OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
+
+        OperationKind kind;
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation)) {
+            kind = OperationKind.CUSTOM_INSTRUMENTATION;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
+            kind = OperationKind.CUSTOM_YIELD;
+        } else {
+            kind = OperationKind.CUSTOM;
+        }
+
         CustomOperationModel customOperation = parent.customRegularOperation(kind, name, javadoc, typeElement, mirror);
         if (customOperation == null) {
             return null;
@@ -245,12 +253,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new AssertionError("Signature could not be computed, but no error was reported");
         }
 
-        produceConstantOperandWarnings(customOperation, signature, mirror);
-        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
-        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
-                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
-        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
-
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             validateInstrumentationSignature(customOperation, signature);
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
@@ -260,6 +262,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
+            if (operation.kind == OperationKind.CUSTOM_YIELD) {
+                validateYieldSignature(customOperation, signature);
+            }
+
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
             MessageContainer modelForErrors = customOperation.getModelForMessages();
             if (!tags.isEmpty()) {
@@ -289,7 +295,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (variadicReturn != null) {
             if (kind != OperationKind.CUSTOM) {
                 customOperation.addError(variadicReturn, null,
-                                "@%s can only be used on on @%s annotated classes.",
+                                "@%s can only be used on @%s classes.",
                                 getSimpleName(types.Variadic),
                                 getSimpleName(types.Operation));
             }
@@ -316,11 +322,17 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.variadicOffset = signature.variadicOffset;
         operation.isVoid = signature.isVoid;
 
+        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
         DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
         for (int i = 0; i < dynamicOperands.length; i++) {
             dynamicOperands[i] = new DynamicOperandModel(dynamicOperandNames.get(i), false, signature.isVariadicParameter(i));
         }
         operation.dynamicOperands = dynamicOperands;
+
+        produceConstantOperandWarnings(customOperation, signature, mirror);
+        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
+        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
+                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
         operation.constantOperandBeforeNames = constantOperandBeforeNames;
         operation.constantOperandAfterNames = constantOperandAfterNames;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
@@ -428,6 +440,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Remove the variadic annotation to resolve this.",
                             getSimpleName(types.Instrumentation),
                             getSimpleName(types.Variadic)));
+        }
+    }
+
+    private void validateYieldSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.isVoid) {
+            customOperation.addError("A @%s cannot be void. It must return a value, which becomes the result yielded to the caller.", getSimpleName(types.Yield));
+        }
+        if (signature.dynamicOperandCount > 1) {
+            customOperation.addError("A @%s must take zero or one dynamic operands.", getSimpleName(types.Yield));
         }
     }
 
@@ -937,6 +958,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandAfterName(i));
         }
 
+        if (customOperation.isCustomYield()) {
+            // Index of continuation root node.
+            instr.addImmediate(ImmediateKind.CONSTANT, "location");
+        }
+
         if (!instr.canUseNodeSingleton()) {
             instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
         }
@@ -966,7 +992,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         NodeData result;
         try {
-            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+            NodeParser parser = NodeParser.createOperationParser(customOperation);
             result = parser.parse(generatedNode, false);
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();

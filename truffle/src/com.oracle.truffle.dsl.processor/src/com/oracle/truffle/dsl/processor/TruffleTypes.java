@@ -398,6 +398,7 @@ public class TruffleTypes {
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
     public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
+    public static final String Yield_Name = "com.oracle.truffle.api.bytecode.Yield";
 
     public static final String Instruction_Argument_Kind_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument.Kind";
     public static final String Instruction_Argument_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument";
@@ -462,6 +463,7 @@ public class TruffleTypes {
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
     public final DeclaredType Instrumentation = c.getDeclaredTypeOptional(Instrumentation_Name);
+    public final DeclaredType Yield = c.getDeclaredTypeOptional(Yield_Name);
 
     public final DeclaredType Instruction_Argument = c.getDeclaredTypeOptional(Instruction_Argument_Name);
     public final DeclaredType Instruction_Argument_BranchProfile = c.getDeclaredTypeOptional(Instruction_Argument_BranchProfile_Name);

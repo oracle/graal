@@ -56,8 +56,8 @@ import com.oracle.truffle.dsl.processor.model.Template;
  * Model for a user-defined operation.
  *
  * We define this class using composition rather than inheritance because a custom operation is
- * generated based on some template type (an {@link Operation} or {@link OperationProxy}), and it
- * needs to accept warning/error messages when the operation is validated.
+ * generated based on some template type (like an {@link Operation} or {@link OperationProxy}), and
+ * it needs to accept warning/error messages when the operation is validated.
  */
 public class CustomOperationModel extends Template {
 
@@ -65,6 +65,7 @@ public class CustomOperationModel extends Template {
     public final OperationModel operation;
     public final List<TypeMirror> implicitTags = new ArrayList<>();
     public Boolean forceCached;
+    public boolean customYield;
 
     public CustomOperationModel(ProcessorContext context, BytecodeDSLModel bytecode, TypeElement templateType, AnnotationMirror mirror, OperationModel operation) {
         super(context, templateType, mirror);
@@ -97,6 +98,14 @@ public class CustomOperationModel extends Template {
 
     public boolean forcesCached() {
         return forceCached != null && forceCached;
+    }
+
+    public void setCustomYield() {
+        this.customYield = true;
+    }
+
+    public boolean isCustomYield() {
+        return this.customYield;
     }
 
     @Override
