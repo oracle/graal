@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +25,18 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-public class JfrGCNameSerializer implements JfrSerializer {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrGCNameSerializer() {
-    }
-
+/**
+ * The JFR emergency dump mechanism uses platform-specific implementations (see
+ * {@link JfrEmergencyDumpSupport}).
+ */
+@AutomaticallyRegisteredFeature
+public class JfrEmergencyDumpFeature implements InternalFeature {
     @Override
-    public void write(JfrChunkWriter writer) {
-        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
-        writer.writeCompressedLong(JfrType.GCName.getId());
-        writer.writeCompressedLong(gcNames.length);
-        for (int i = 0; i < gcNames.length; i++) {
-            writer.writeCompressedLong(gcNames[i].getId());
-            writer.writeString(gcNames[i].getName());
-        }
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return VMInspectionOptions.hasJfrSupport();
     }
 }

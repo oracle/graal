@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.os.RawFileOperationSupport;
+
 public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
 
     void unlock();
@@ -35,6 +37,8 @@ public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
     void maybeOpenFile();
 
     void openFile(String outputFile);
+
+    void openFile(RawFileOperationSupport.RawFileDescriptor fd);
 
     void write(JfrBuffer buffer);
 

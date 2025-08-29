@@ -109,6 +109,12 @@ public abstract class PosixLibCSupport implements LibCSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
+        return PosixLibC.strncmp(s1, s2, n);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int isdigit(int c) {
         return PosixLibC.isdigit(c);
     }
