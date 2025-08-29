@@ -123,6 +123,7 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport.FieldInfo;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -483,7 +484,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     int[] interfaceHashTableHeapArray,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
-                    int afterFieldsOffset, boolean valueBased) {
+                    FieldInfo[] fieldInfos, int afterFieldsOffset, boolean valueBased) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
 
         ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));
@@ -583,6 +584,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-61330: only write if the field exists according to analysis
         // companion.metaType = null;
 
+
         // GR-57813
         companion.hubMetadata = null;
         companion.reflectionMetadata = null;
@@ -591,7 +593,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         DynamicHub hub = Metaspace.singleton().allocateDynamicHub(vTableEntries);
         int[] openTypeWorldTypeCheckSlots = Metaspace.singleton().copyToMetaspace(typeCheckSlotsHeapArray);
         int[] openTypeWorldInterfaceHashTable = Metaspace.singleton().copyToMetaspace(interfaceHashTableHeapArray);
-        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
+        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub, fieldInfos);
 
         /* Write fields in defining order. */
         DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();

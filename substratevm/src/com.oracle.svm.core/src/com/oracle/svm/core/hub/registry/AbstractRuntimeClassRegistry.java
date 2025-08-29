@@ -406,7 +406,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
-                        dispatchTableLength, afterFieldsOffset, isValueBased);
+                        dispatchTableLength,
+                        dispatchTable.getFieldInfos(), afterFieldsOffset, isValueBased);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 
