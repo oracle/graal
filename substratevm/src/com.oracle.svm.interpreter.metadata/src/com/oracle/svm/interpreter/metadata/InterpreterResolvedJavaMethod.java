@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
  * also abstract methods for vtable calls.
  */
-public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
+public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
 
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
 
@@ -133,7 +133,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
 
     // Only called during universe building
     @Platforms(Platform.HOSTED_ONLY.class)
-    private InterpreterResolvedJavaMethod(ResolvedJavaMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int modifiers, InterpreterResolvedObjectType declaringClass,
+    protected InterpreterResolvedJavaMethod(ResolvedJavaMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int modifiers, InterpreterResolvedObjectType declaringClass,
                     InterpreterUnresolvedSignature signature,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
@@ -171,7 +171,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
         this.signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
     }
 
-    private InterpreterResolvedJavaMethod(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
+    protected InterpreterResolvedJavaMethod(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
         assert RuntimeClassLoading.isSupported();
         this.name = m.getName();
         this.signatureSymbol = m.getSignature();
@@ -202,10 +202,6 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
 
     }
 
-    public static InterpreterResolvedJavaMethod create(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
-        return new InterpreterResolvedJavaMethod(declaringClass, m, vtableIndex);
-    }
-
     @VisibleForSerialization
     public static InterpreterResolvedJavaMethod create(String name, int maxLocals, int maxStackSize, int modifiers, InterpreterResolvedObjectType declaringClass,
                     InterpreterUnresolvedSignature signature,
@@ -229,12 +225,12 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean needsMethodBody() {
+    public final boolean needsMethodBody() {
         return needMethodBody;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ResolvedJavaMethod getOriginalMethod() {
+    public final ResolvedJavaMethod getOriginalMethod() {
         return originalMethod;
     }
 
@@ -243,24 +239,24 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
      * non-standard bytecodes used by the interpreter. For a spec-compliant, without BREAKPOINT and
      * non-standard bytecodes use {@link #getCode()}
      */
-    public byte[] getInterpretedCode() {
+    public final byte[] getInterpretedCode() {
         return interpretedCode;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setCode(byte[] code) {
+    public final void setCode(byte[] code) {
         VMError.guarantee(originalCode == null);
         this.interpretedCode = code;
     }
 
     private volatile byte[] originalCode;
 
-    public int getOriginalOpcodeAt(int bci) {
+    public final int getOriginalOpcodeAt(int bci) {
         return getCode()[bci] & 0xFF;
     }
 
     @Override
-    public byte[] getCode() {
+    public final byte[] getCode() {
         if (interpretedCode == null) {
             return null;
         }
@@ -285,7 +281,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Override
-    public int getCodeSize() {
+    public final int getCodeSize() {
         if (interpretedCode == null) {
             return 0;
         }
@@ -293,94 +289,94 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Override
-    public Symbol<Name> getSymbolicName() {
+    public final Symbol<Name> getSymbolicName() {
         return name;
     }
 
     @Override
-    public Symbol<Signature> getSymbolicSignature() {
+    public final Symbol<Signature> getSymbolicSignature() {
         return signatureSymbol;
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         return name.toString();
     }
 
     @Override
-    public InterpreterResolvedObjectType getDeclaringClass() {
+    public final InterpreterResolvedObjectType getDeclaringClass() {
         return declaringClass;
     }
 
     @Override
-    public InterpreterUnresolvedSignature getSignature() {
+    public final InterpreterUnresolvedSignature getSignature() {
         return signature;
     }
 
     @Override
-    public int getMaxLocals() {
+    public final int getMaxLocals() {
         return maxLocals;
     }
 
     @Override
-    public int getMaxStackSize() {
+    public final int getMaxStackSize() {
         return maxStackSize;
     }
 
     @Override
-    public boolean isDeclared() {
+    public final boolean isDeclared() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isClassInitializer() {
+    public final boolean isClassInitializer() {
         return "<clinit>".equals(getName()) && isStatic();
     }
 
     @Override
-    public boolean isConstructor() {
+    public final boolean isConstructor() {
         return "<init>".equals(getName()) && !isStatic();
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public final ExceptionHandler[] getExceptionHandlers() {
         ExceptionHandler[] result = exceptionHandlers;
         VMError.guarantee(result != null);
         return result;
     }
 
     @Override
-    public InterpreterConstantPool getConstantPool() {
+    public final InterpreterConstantPool getConstantPool() {
         return declaringClass.getConstantPool();
     }
 
     @Override
-    public LineNumberTable getLineNumberTable() {
+    public final LineNumberTable getLineNumberTable() {
         return lineNumberTable;
     }
 
     @Override
-    public LocalVariableTable getLocalVariableTable() {
+    public final LocalVariableTable getLocalVariableTable() {
         return localVariableTable;
     }
 
     @Override
-    public int getModifiers() {
+    public final int getModifiers() {
         return modifiers;
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "InterpreterResolvedJavaMethod<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getSignature().toMethodDescriptor() + ">";
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setExceptionHandlers(ExceptionHandler[] exceptionHandlers) {
+    public final void setExceptionHandlers(ExceptionHandler[] exceptionHandlers) {
         this.exceptionHandlers = MetadataUtil.requireNonNull(exceptionHandlers);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLocalVariableTable(LocalVariableTable localVariableTable) {
+    public final void setLocalVariableTable(LocalVariableTable localVariableTable) {
         this.localVariableTable = MetadataUtil.requireNonNull(localVariableTable);
     }
 
@@ -388,7 +384,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
         BytecodeStream.patchOpcodeOpaque(interpretedCode, bci, newOpcode);
     }
 
-    public void ensureCanSetBreakpointAt(int bci) {
+    public final void ensureCanSetBreakpointAt(int bci) {
         if (!hasBytecodes()) {
             throw new IllegalArgumentException("Cannot set breakpoint: method " + name + " doesn't have bytecodes");
         }
@@ -400,7 +396,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
         }
     }
 
-    public void toggleBreakpoint(int bci, boolean enabled) {
+    public final void toggleBreakpoint(int bci, boolean enabled) {
         ensureCanSetBreakpointAt(bci);
         if (enabled) {
             patchOpcode(bci, BREAKPOINT);
@@ -425,49 +421,49 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
      * Only valid if != 0, 0 means unknown. Allows to precisely extract the
      * {@link InterpreterResolvedJavaMethod interpreter method instance} from a compiled frame.
      */
-    public int getMethodId() {
+    public final int getMethodId() {
         return methodId;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMethodId(int methodId) {
+    public final void setMethodId(int methodId) {
         assert methodId >= 0;
         this.methodId = methodId;
     }
 
-    public void setGOTOffset(int gotOffset) {
+    public final void setGOTOffset(int gotOffset) {
         this.gotOffset = gotOffset;
     }
 
-    public int getGotOffset() {
+    public final int getGotOffset() {
         return gotOffset;
     }
 
-    public void setEnterStubOffset(int offset) {
+    public final void setEnterStubOffset(int offset) {
         this.enterStubOffset = offset;
     }
 
-    public int getEnterStubOffset() {
+    public final int getEnterStubOffset() {
         return enterStubOffset;
     }
 
-    public boolean hasNativeEntryPoint() {
+    public final boolean hasNativeEntryPoint() {
         return nativeEntryPoint != null;
     }
 
-    public MethodPointer getNativeEntryPoint() {
+    public final MethodPointer getNativeEntryPoint() {
         if (nativeEntryPoint == null) {
             return Word.nullPointer();
         }
         return (MethodPointer) nativeEntryPoint.getReferent().functionPointer;
     }
 
-    public ReferenceConstant<FunctionPointerHolder> getNativeEntryPointHolderConstant() {
+    public final ReferenceConstant<FunctionPointerHolder> getNativeEntryPointHolderConstant() {
         return nativeEntryPoint;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setNativeEntryPoint(MethodPointer nativeEntryPoint) {
+    public final void setNativeEntryPoint(MethodPointer nativeEntryPoint) {
         if (this.nativeEntryPoint != null && nativeEntryPoint != null) {
             /* already set, verify if it's the same */
             ResolvedJavaMethod setMethod = ((MethodPointer) this.nativeEntryPoint.getReferent().functionPointer).getMethod();
@@ -482,12 +478,12 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
         }
     }
 
-    public int getVTableIndex() {
+    public final int getVTableIndex() {
         return vtableIndex;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setVTableIndex(int vtableIndex) {
+    public final void setVTableIndex(int vtableIndex) {
         VMError.guarantee(vtableIndex == VTBL_NO_ENTRY || (!isStatic() && !isConstructor()));
         if (vtableIndex >= 0) {
             VMError.guarantee(!isFinal());
@@ -496,22 +492,22 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Override
-    public boolean hasVTableIndex() {
+    public final boolean hasVTableIndex() {
         return vtableIndex != VTBL_NO_ENTRY && vtableIndex != VTBL_ONE_IMPL;
     }
 
-    public void setOneImplementation(InterpreterResolvedJavaMethod oneImplementation) {
+    public final void setOneImplementation(InterpreterResolvedJavaMethod oneImplementation) {
         this.oneImplementation = oneImplementation;
     }
 
-    public InterpreterResolvedJavaMethod getOneImplementation() {
+    public final InterpreterResolvedJavaMethod getOneImplementation() {
         /* if VTBL_ONE_IMPL is set, oneImplementation must have an assignment */
         VMError.guarantee(vtableIndex != VTBL_ONE_IMPL || oneImplementation != null);
         return oneImplementation;
     }
 
     @Override
-    public boolean equals(Object other) {
+    public final boolean equals(Object other) {
         if (this == other) {
             return true;
         }
@@ -523,7 +519,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         int result = MetadataUtil.hashCode(name);
         result = 31 * result + MetadataUtil.hashCode(declaringClass);
         result = 31 * result + MetadataUtil.hashCode(signature);
@@ -531,33 +527,33 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isInterpreterExecutable() {
+    public final boolean isInterpreterExecutable() {
         return hasBytecodes();
     }
 
-    public Set<InterpreterResolvedJavaMethod> getInlinedBy() {
+    public final Set<InterpreterResolvedJavaMethod> getInlinedBy() {
         return inlinedBy.inliners;
     }
 
-    public void addInliner(InterpreterResolvedJavaMethod inliner) {
+    public final void addInliner(InterpreterResolvedJavaMethod inliner) {
         inlinedBy.inliners.add(inliner);
     }
 
-    public Object getInterpreterExecToken() {
+    public final Object getInterpreterExecToken() {
         return interpreterExecToken;
     }
 
-    public void setInterpreterExecToken(Object interpreterExecToken) {
+    public final void setInterpreterExecToken(Object interpreterExecToken) {
         this.interpreterExecToken = interpreterExecToken;
     }
 
     @Override
-    public InterpreterResolvedJavaMethod asMethodAccess() {
+    public final InterpreterResolvedJavaMethod asMethodAccess() {
         return this;
     }
 
     @Override
-    public PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> withVTableIndex(int index) {
+    public final PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> withVTableIndex(int index) {
         assert vtableIndex == VTBL_NO_ENTRY;
         vtableIndex = index;
         return this;
@@ -566,122 +562,122 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, 
     // region Unimplemented methods
 
     @Override
-    public boolean shouldSkipLoadingConstraints() {
+    public final boolean shouldSkipLoadingConstraints() {
         throw VMError.unimplemented("shouldSkipLoadingConstraints");
     }
 
     @Override
-    public CodeAttribute getCodeAttribute() {
+    public final CodeAttribute getCodeAttribute() {
         throw VMError.unimplemented("getCodeAttribute");
     }
 
     @Override
-    public boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
+    public final boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
         throw VMError.unimplemented("accessChecks");
     }
 
     @Override
-    public void loadingConstraints(InterpreterResolvedJavaType accessingClass, Function<String, RuntimeException> errorHandler) {
+    public final void loadingConstraints(InterpreterResolvedJavaType accessingClass, Function<String, RuntimeException> errorHandler) {
         throw VMError.unimplemented("loadingConstraints");
     }
 
     @Override
-    public com.oracle.svm.espresso.classfile.ExceptionHandler[] getSymbolicExceptionHandlers() {
+    public final com.oracle.svm.espresso.classfile.ExceptionHandler[] getSymbolicExceptionHandlers() {
         throw VMError.unimplemented("getSymbolicExceptionHandlers");
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
+    public final Annotation[][] getParameterAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public final Type[] getGenericParameterTypes() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean canBeInlined() {
+    public final boolean canBeInlined() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean hasNeverInlineDirective() {
+    public final boolean hasNeverInlineDirective() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean shouldBeInlined() {
+    public final boolean shouldBeInlined() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Constant getEncoding() {
+    public final Constant getEncoding() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
+    public final boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public SpeculationLog getSpeculationLog() {
+    public final SpeculationLog getSpeculationLog() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Annotation[] getAnnotations() {
+    public final Annotation[] getAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public final Annotation[] getDeclaredAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isSynthetic() {
+    public final boolean isSynthetic() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isVarArgs() {
+    public final boolean isVarArgs() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isBridge() {
+    public final boolean isBridge() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isDefault() {
+    public final boolean isDefault() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean canBeStaticallyBound() {
+    public final boolean canBeStaticallyBound() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public StackTraceElement asStackTraceElement(int bci) {
+    public final StackTraceElement asStackTraceElement(int bci) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+    public final ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public void reprofile() {
+    public final void reprofile() {
         throw VMError.intentionallyUnimplemented();
     }
 
