@@ -14211,6 +14211,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(arrayOf(type(byte.class)), "bc", uncheckedCast(type(byte[].class), "this.bytecodes"));
             if (tier.isCached()) {
                 ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
+                b.declaration(type(int.class), "counter", "0");
+                b.declaration(loopCounter.asType(), "loopCounter", "null");
             }
 
             b.startIf().startStaticCall(types.HostCompilerDirectives, "inInterpreterFastPath").end().end().startBlock();
@@ -14219,20 +14221,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (tier.isCached()) {
                 b.startStatement().startStaticCall(type(Reference.class), "reachabilityFence").tree(uncheckedCast(arrayOf(types.Node), "this.cachedNodes_")).end().end();
             }
-            b.end();
-
-            b.statement("int bci = ", decodeBci("startState"));
-            b.statement("int sp = ", decodeSp("startState"));
-
             if (tier.isCached()) {
-                b.declaration(type(int.class), "counter", "0");
-                b.declaration(loopCounter.asType(), "loopCounter", "null");
-                b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().string("&& !").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+                b.end().startElseIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().end().startBlock();
                 b.lineComment("Using a class for the loop counter is a workaround to prevent PE from merging it at the end of the loop.");
                 b.lineComment("We need to use a class with PE, in the interpreter we can use a regular counter.");
                 b.startAssign("loopCounter").startNew(loopCounter.asType()).end().end();
                 b.end();
+            } else {
+                b.end();
             }
+
+            b.statement("int bci = ", decodeBci("startState"));
+            b.statement("int sp = ", decodeSp("startState"));
+
             if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached()) {
                 // If a bci slot is allocated but not used for non-uncached interpreters, set it to
                 // an invalid value just in case it gets read during a stack walk.
