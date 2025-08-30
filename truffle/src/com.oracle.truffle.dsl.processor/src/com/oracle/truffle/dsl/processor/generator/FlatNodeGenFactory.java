@@ -2805,6 +2805,7 @@ public class FlatNodeGenFactory {
 
         List<SpecializationData> implementedSpecializations = allSpecializations;
         CodeExecutableElement method = createExecuteMethod(type);
+        method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningRoot));
         FrameState frameState = FrameState.load(this, type, Integer.MAX_VALUE, NodeExecutionMode.FAST_PATH, method);
         if (type.getMethod() == null) {
             frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
@@ -2830,6 +2831,10 @@ public class FlatNodeGenFactory {
         }
 
         CodeExecutableElement method = createExecuteMethod(type);
+        // exclude inlined nodes they do not make good inlining roots as they rely on being inlined
+        if (!inlined) {
+            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningRoot));
+        }
         FrameState frameState = FrameState.load(this, type, Integer.MAX_VALUE, NodeExecutionMode.FAST_PATH, method);
         frameState.setInlinedNode(inlined);
         if (type.getMethod() == null) {

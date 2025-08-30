@@ -91,6 +91,7 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningRoot;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -411,6 +412,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         HostCompilerDirectives.BytecodeInterpreterSwitch.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,
                         HostCompilerDirectives.InliningCutoff.class,
+                        HostCompilerDirectives.InliningRoot.class,
                         InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
@@ -537,10 +539,18 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     @Override
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        return new HostMethodInfo(isTruffleBoundary(method),
-                        isBytecodeInterpreterSwitch(method),
-                        isBytecodeInterpreterSwitchBoundary(method),
-                        isInliningCutoff(method));
+        if (JAVA_SPECIFICATION_VERSION >= 26) {
+            return new HostMethodInfo(isTruffleBoundary(method),
+                            isBytecodeInterpreterSwitch(method),
+                            isBytecodeInterpreterSwitchBoundary(method),
+                            isInliningCutoff(method),
+                            isInliningRoot(method));
+        } else {
+            return new HostMethodInfo(isTruffleBoundary(method),
+                            isBytecodeInterpreterSwitch(method),
+                            isBytecodeInterpreterSwitchBoundary(method),
+                            isInliningCutoff(method));
+        }
     }
 
     private static boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
@@ -549,6 +559,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     private static boolean isInliningCutoff(ResolvedJavaMethod method) {
         return getAnnotation(InliningCutoff.class, method) != null;
+    }
+
+    private static boolean isInliningRoot(ResolvedJavaMethod method) {
+        return getAnnotation(InliningRoot.class, method) != null;
     }
 
     @SuppressWarnings("deprecation")
