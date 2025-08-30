@@ -39,13 +39,6 @@ cons public init(java.lang.Throwable)
 supr java.lang.Throwable
 hfds serialVersionUID
 
-CLSS public java.lang.LinkageError
-cons public init()
-cons public init(java.lang.String)
-cons public init(java.lang.String,java.lang.Throwable)
-supr java.lang.Error
-hfds serialVersionUID
-
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
 cons public init()
@@ -60,6 +53,13 @@ CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+
+CLSS public java.lang.LinkageError
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+supr java.lang.Error
+hfds serialVersionUID
 
 CLSS public java.lang.Object
 cons public init()
@@ -142,6 +142,11 @@ CLSS public abstract interface java.util.function.BooleanSupplier
  anno 0 java.lang.FunctionalInterface()
 meth public abstract boolean getAsBoolean()
 
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public final org.graalvm.nativeimage.AnnotationAccess
 meth public static <%0 extends java.lang.annotation.Annotation> {%%0} getAnnotation(java.lang.reflect.AnnotatedElement,java.lang.Class<{%%0}>)
 meth public static boolean isAnnotationPresent(java.lang.reflect.AnnotatedElement,java.lang.Class<? extends java.lang.annotation.Annotation>)
@@ -167,6 +172,7 @@ meth public static boolean inImageRuntimeCode()
 meth public static boolean isExecutable()
 meth public static boolean isSharedLibrary()
 supr java.lang.Object
+hfds BUILDTIME
 
 CLSS public final org.graalvm.nativeimage.ImageSingletons
 meth public static <%0 extends java.lang.Object> void add(java.lang.Class<{%%0}>,{%%0})
@@ -426,15 +432,10 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$RISCV64
 intf org.graalvm.nativeimage.Platform
 meth public java.lang.String getArchitecture()
 
-CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
- outer org.graalvm.nativeimage.Platform
-intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
-meth public java.lang.String getOS()
-
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
-intf org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+intf org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
 
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
  outer org.graalvm.nativeimage.Platform
@@ -1067,8 +1068,8 @@ meth public abstract void requireAnalysisIteration()
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
+meth public abstract <%0 extends java.lang.Object> void registerObjectReachabilityHandler(java.util.function.Consumer<{%%0}>,java.lang.Class<{%%0}>)
 meth public abstract void registerObjectReplacer(java.util.function.Function<java.lang.Object,java.lang.Object>)
-meth public abstract void registerObjectReachabilityHandler(java.util.function.Consumer<T>,java.lang.Class<T>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$FeatureAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -1172,6 +1173,7 @@ supr java.lang.Object
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static NATIVE_ONLY
 innr public abstract interface static PLATFORM_JNI
+innr public abstract interface static WINDOWS_BASE
 
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
  outer org.graalvm.nativeimage.impl.InternalPlatform
@@ -1180,6 +1182,11 @@ intf org.graalvm.nativeimage.Platform
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
  outer org.graalvm.nativeimage.impl.InternalPlatform
 intf org.graalvm.nativeimage.Platform
+
+CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
+ outer org.graalvm.nativeimage.impl.InternalPlatform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
+meth public java.lang.String getOS()
 
 CLSS public abstract interface org.graalvm.word.ComparableWord
 intf org.graalvm.word.WordBase
