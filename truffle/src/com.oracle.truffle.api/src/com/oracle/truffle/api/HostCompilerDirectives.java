@@ -158,4 +158,27 @@ public final class HostCompilerDirectives {
     public @interface InliningCutoff {
     }
 
+    /**
+     * Marks a method as a candidate for Truffle host inlining. The host compiler may use this
+     * information to guide inlining and optimization decisions.
+     * <p>
+     * Annotated methods must be designed for partial evaluation. This annotation should not be
+     * applied to arbitrary Java code or third-party libraries, as doing so may cause severe
+     * performance degradation.
+     * <p>
+     * Typical examples include {@code execute} methods of cached nodes. The Truffle DSL
+     * automatically applies this annotation to every generated execute method. It is recommended to
+     * be used for manually written {@code execute} methods as well.
+     * <p>
+     * For more details, see the
+     * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">
+     * Truffle host compilation documentation</a>.
+     *
+     * @since 26.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+    public @interface InliningRoot {
+    }
+
 }

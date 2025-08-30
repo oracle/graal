@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningRoot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -82,6 +83,7 @@ abstract class HostToGuestRootNode extends RootNode {
     protected abstract Class<?> getReceiverType();
 
     @Override
+    @InliningRoot
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         PolyglotLanguageContext languageContext = layer.getSingleConstantLanguageContext(language);
