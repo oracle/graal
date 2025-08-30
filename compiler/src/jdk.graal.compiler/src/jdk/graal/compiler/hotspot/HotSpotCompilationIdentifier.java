@@ -27,8 +27,8 @@ package jdk.graal.compiler.hotspot;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationRequestIdentifier;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
@@ -98,4 +98,8 @@ public class HotSpotCompilationIdentifier implements CompilationRequestIdentifie
         return request;
     }
 
+    @Override
+    public JavaMethod asJavaMethod() {
+        return getRequest().getMethod();
+    }
 }

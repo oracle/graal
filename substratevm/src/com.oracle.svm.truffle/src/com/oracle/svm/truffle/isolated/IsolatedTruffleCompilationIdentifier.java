@@ -37,6 +37,8 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.vm.ci.meta.JavaMethod;
 
 final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<TruffleCompilationIdentifier> implements TruffleCompilationIdentifier {
 
@@ -94,5 +96,10 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Tru
     private static long getTruffleCompilationId0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle) {
         TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
         return id.getTruffleCompilationId();
+    }
+
+    @Override
+    public JavaMethod asJavaMethod() {
+        return new TruffleDebugJavaMethod(getTask(), getCompilable());
     }
 }
