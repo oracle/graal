@@ -34,7 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -127,7 +127,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath) {
+                public void addCondition(AccessCondition configurationCondition, Module module, String resourcePath) {
 
                 }
 

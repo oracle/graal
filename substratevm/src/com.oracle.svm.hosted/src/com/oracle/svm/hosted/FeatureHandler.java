@@ -63,6 +63,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -90,11 +91,15 @@ public class FeatureHandler {
     public void forEachFeature(Consumer<Feature> consumer) {
         for (Feature feature : featureInstances) {
             try {
+                if (!ImageSingletons.lookup(APIDeprecationSupport.class).isUserEnabledFeaturesStarted() && Options.userEnabledFeatures().contains(feature.getClass().getName())) {
+                    ImageSingletons.lookup(APIDeprecationSupport.class).setUserEnabledFeaturesStarted(true);
+                }
                 consumer.accept(feature);
             } catch (Throwable t) {
                 throw handleFeatureError(feature, t);
             }
         }
+        ImageSingletons.lookup(APIDeprecationSupport.class).setUserEnabledFeaturesStarted(false);
     }
 
     public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
