@@ -35,6 +35,10 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
@@ -42,6 +46,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeature {
     private boolean hasPlatformSocketOptions;

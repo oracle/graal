@@ -42,7 +42,6 @@ import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
-import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -60,6 +59,11 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
@@ -68,6 +72,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 
@@ -87,6 +92,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public final class JNIRegistrationSupport extends JNIRegistrationUtil implements InternalFeature {
 

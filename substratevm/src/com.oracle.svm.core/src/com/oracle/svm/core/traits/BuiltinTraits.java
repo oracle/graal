@@ -123,4 +123,17 @@ public class BuiltinTraits {
             return DUPLICABLE_TRAIT;
         }
     }
+
+    /**
+     * Trait indicating this singleton is not yet fully compatible with layered images. See
+     * {@link SingletonTraitKind#PARTIALLY_LAYER_AWARE} for more information.
+     */
+    public static final SingletonTrait PARTIALLY_LAYER_AWARE = new SingletonTrait(SingletonTraitKind.PARTIALLY_LAYER_AWARE, EmptyMetadata.EMPTY);
+
+    public static class PartiallyLayerAware extends SingletonTraitsSupplier {
+        @Override
+        public SingletonTrait getTrait() {
+            return PARTIALLY_LAYER_AWARE;
+        }
+    }
 }

@@ -38,12 +38,17 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature {
 
