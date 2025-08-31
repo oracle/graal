@@ -321,7 +321,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
             /*
              * The return address is not saved on the stack on ARM, so the stack frames have no
-             * space inbetween them.
+             * space in between them.
              */
             @Override
             public int getCallFrameSeparation() {

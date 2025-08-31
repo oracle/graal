@@ -79,7 +79,7 @@ public abstract class ElementInfo {
     }
 
     /**
-     * Returns a unique identifier string for this element <i>iif</i> this element is a leaf node.
+     * Returns a unique identifier string for this element <i>if</i> this element is a leaf node.
      * <p>
      * </p>
      * Note: This identifier is not unique for intermediate nodes. For example the following enum
