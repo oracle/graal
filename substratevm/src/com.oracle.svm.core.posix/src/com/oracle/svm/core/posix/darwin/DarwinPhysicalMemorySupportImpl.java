@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -37,8 +36,15 @@ import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
+
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
 class DarwinPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
