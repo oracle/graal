@@ -3,14 +3,14 @@ layout: docs
 toc_group: dynamic-features
 link_title: JCA Security Services
 permalink: /reference-manual/native-image/dynamic-features/JCASecurityServices/
-redirect_from: 
+redirect_from:
 - /reference-manual/native-image/features/JCASecurityServices/
 - /reference-manual/native-image/JCASecurityServices/
 ---
 
 # JCA Security Services in Native Image
 
-This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/22/security/java-cryptography-architecture-jca-reference-guide.html) framework.
+This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/25/security/java-cryptography-architecture-jca-reference-guide.html) framework.
 
 The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
 To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.

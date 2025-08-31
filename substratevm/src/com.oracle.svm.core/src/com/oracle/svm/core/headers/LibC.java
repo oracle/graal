@@ -32,6 +32,10 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -111,7 +115,15 @@ public class LibC {
 
     @Fold
     public static boolean isSupported() {
-        return ImageSingletons.contains(LibCSupport.class);
+        return ImageSingletons.contains(LibCSupport.class) || isInstalledInInitialLayer();
+    }
+
+    private static boolean isInstalledInInitialLayer() {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            var trait = LayeredImageSingletonSupport.singleton().getTraitForUninstalledSingleton(LibCSupport.class, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+            return SingletonLayeredInstallationKind.getInstallationKind(trait) == SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY;
+        }
+        return false;
     }
 
     @Fold

@@ -154,7 +154,6 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -203,6 +202,7 @@ import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.OffsetOfSupportImpl;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
@@ -350,13 +350,7 @@ public class NativeImageGenerator {
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
-        /*
-         * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
-         * parsing at run time.
-         */
-        optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getHostedValues().put(CompilationAlarm.Options.CompilationNoProgressPeriod, 0D);
-        optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
 
         if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
             /*
@@ -523,8 +517,7 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
-            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.buildingImageLayer, loader.classLoaderSupport.annotationExtractor),
-                            imageLayerSupport);
+            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor), imageLayerSupport);
 
             ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
             ImageSingletons.add(ProgressReporter.class, reporter);
@@ -847,7 +840,10 @@ public class NativeImageGenerator {
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                            featureHandler.forEachFeature(feature -> {
+                                feature.duringAnalysis(config);
+                                loader.watchdog.recordActivity();
+                            });
                         }
                         /* Analysis is finished if no additional iteration was requested. */
                         return !config.getAndResetRequireAnalysisIteration() && !concurrentConfig.getAndResetRequireAnalysisIteration();
@@ -1010,6 +1006,7 @@ public class NativeImageGenerator {
                     HostedImageLayerBuildingSupport imageLayerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
                     SVMImageLayerLoader imageLayerLoader = HostedConfiguration.instance().createSVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, useSharedLayerGraphs);
                     imageLayerBuildingSupport.setLoader(imageLayerLoader);
+                    CGlobalDataFeature.singleton().getAppLayerCGlobalTracking().initializePriorLayerCGlobals();
                 }
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
@@ -1017,8 +1014,9 @@ public class NativeImageGenerator {
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, annotationSubstitutions, cEnumProcessor,
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions), missingRegistrationSupport);
 
+                SVMImageLayerWriter imageLayerWriter = null;
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    SVMImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
+                    imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
                     aUniverse.setImageLayerWriter(imageLayerWriter);
                     imageLayerWriter.setAnalysisUniverse(aUniverse);
                 }
@@ -1045,7 +1043,11 @@ public class NativeImageGenerator {
                 HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess, classInitializationSupport);
                 aUniverse.hostVM().initializeProviders(aProviders);
 
-                ImageSingletons.add(SimulateClassInitializerSupport.class, (hostVM).createSimulateClassInitializerSupport(aMetaAccess));
+                SimulateClassInitializerSupport simulateClassInitializerSupport = hostVM.createSimulateClassInitializerSupport(aMetaAccess);
+                ImageSingletons.add(SimulateClassInitializerSupport.class, simulateClassInitializerSupport);
+                if (imageLayerWriter != null) {
+                    imageLayerWriter.setSimulateClassInitializerSupport(simulateClassInitializerSupport);
+                }
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
@@ -1064,8 +1066,8 @@ public class NativeImageGenerator {
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
                 aUniverse.setHeapScanner(heapScanner);
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeap(imageHeap);
+                if (imageLayerWriter != null) {
+                    imageLayerWriter.setImageHeap(imageHeap);
                 }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {
@@ -1104,10 +1106,6 @@ public class NativeImageGenerator {
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
                 BuildPhaseProvider.markSetupFinished();
-
-                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                    Heap.getHeap().setStartOffset(HostedImageLayerBuildingSupport.singleton().getLoader().getImageHeapSize());
-                }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
@@ -1417,7 +1415,6 @@ public class NativeImageGenerator {
         }
     }
 
-    @SuppressWarnings("deprecation")
     protected void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {

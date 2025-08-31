@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
@@ -38,6 +39,8 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
@@ -57,7 +60,7 @@ public class SVMImageLayerSingletonLoader {
         this.snapshot = snapshot;
     }
 
-    public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
+    public Map<Object, Set<Class<?>>> loadImageSingletons(Function<SingletonTrait[], Object> forbiddenObjectCreator) {
         Map<Integer, Object> idToObjectMap = new HashMap<>();
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         for (ImageSingletonObject.Reader obj : snapshot.getSingletonObjects()) {
@@ -100,6 +103,7 @@ public class SVMImageLayerSingletonLoader {
         }
 
         Map<Object, Set<Class<?>>> singletonInitializationMap = new HashMap<>();
+        SingletonTrait[] initialLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
         for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
             String className = entry.getKeyClassName().toString();
             PersistFlags persistInfo = PersistFlags.values()[entry.getPersistFlag()];
@@ -113,12 +117,17 @@ public class SVMImageLayerSingletonLoader {
             } else if (persistInfo == PersistFlags.FORBIDDEN) {
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
-                singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
-                singletonInitializationMap.get(forbiddenObject).add(clazz);
+
+                Object forbiddenObject;
                 if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
                     initialLayerKeyToIdMap.put(clazz, constantId);
+                    forbiddenObject = forbiddenObjectCreator.apply(initialLayerOnly);
+                } else {
+                    forbiddenObject = forbiddenObjectCreator.apply(SingletonTrait.EMPTY_ARRAY);
                 }
+                singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
+                singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else {
                 assert persistInfo == PersistFlags.NOTHING : "Unexpected PersistFlags value: " + persistInfo;
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";

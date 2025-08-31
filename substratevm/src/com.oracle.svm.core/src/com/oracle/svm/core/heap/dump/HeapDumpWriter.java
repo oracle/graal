@@ -75,6 +75,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFile;
@@ -584,15 +585,19 @@ public class HeapDumpWriter {
             if (ClassInfoAccess.isValid(classInfo)) {
                 DynamicHub hub = classInfo.getHub();
                 if (hub.isLoaded()) {
-                    startTopLevelRecord(HProfTopLevelRecord.LOAD_CLASS);
-                    writeInt(classInfo.getSerialNum());
-                    writeClassId(hub);
-                    writeInt(DUMMY_STACK_TRACE_ID);
-                    writeObjectId(hub.getName());
-                    endTopLevelRecord();
+                    writeLoadedClass(classInfo, hub);
                 }
             }
         }
+    }
+
+    private void writeLoadedClass(ClassInfo classInfo, DynamicHub hub) {
+        startTopLevelRecord(HProfTopLevelRecord.LOAD_CLASS);
+        writeInt(classInfo.getSerialNum());
+        writeClassId(hub);
+        writeInt(DUMMY_STACK_TRACE_ID);
+        writeObjectId(hub.getName());
+        endTopLevelRecord();
     }
 
     private void writeStackTraces(Pointer currentThreadSp) {
@@ -773,6 +778,9 @@ public class HeapDumpWriter {
             Heap.getHeap().walkImageHeapObjects(dumpObjectsVisitor);
 
             dumpObjectsVisitor.initialize(largeObjects);
+            Metaspace.singleton().walkObjects(dumpObjectsVisitor);
+
+            dumpObjectsVisitor.initialize(largeObjects);
             Heap.getHeap().walkCollectedHeapObjects(dumpObjectsVisitor);
 
             /* Large objects are collected and written separately. */
@@ -836,8 +844,9 @@ public class HeapDumpWriter {
             writeInstance(obj);
         }
 
-        if (Heap.getHeap().isInImageHeap(obj)) {
-            markImageHeapObjectAsGCRoot(obj);
+        if (Heap.getHeap().isInImageHeap(obj) || Metaspace.singleton().isInAddressSpace(obj)) {
+            /* Image heap and metaspace objects are marked as GC_ROOT_JNI_GLOBAL. */
+            markAsJniGlobalGCRoot(obj);
         }
 
         /*
@@ -860,12 +869,6 @@ public class HeapDumpWriter {
         startSubRecord(HProfSubRecord.GC_ROOT_MONITOR_USED, recordSize);
         writeObjectId(monitor);
         endSubRecord(recordSize);
-    }
-
-    /** We mark image heap objects as GC_ROOT_JNI_GLOBAL. */
-    private void markImageHeapObjectAsGCRoot(Object obj) {
-        assert Heap.getHeap().isInImageHeap(obj);
-        markAsJniGlobalGCRoot(obj);
     }
 
     private void markAsJniGlobalGCRoot(Object obj) {
@@ -1363,15 +1366,18 @@ public class HeapDumpWriter {
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public void visitObject(Object obj) {
-            if (!isFillerObject(obj)) {
-                if (isLarge(obj)) {
-                    boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
-                    if (!added) {
-                        Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
-                    }
-                } else {
-                    writeObject(obj);
+            if (isFillerObject(obj)) {
+                /* Skip filler objects as they are irrelevant and only make the heap dump larger. */
+                return;
+            }
+
+            if (isLarge(obj)) {
+                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
+                if (!added) {
+                    Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }
+            } else {
+                writeObject(obj);
             }
         }
 

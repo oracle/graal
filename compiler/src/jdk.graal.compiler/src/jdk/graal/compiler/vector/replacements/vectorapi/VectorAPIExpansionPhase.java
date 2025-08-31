@@ -50,13 +50,16 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -72,7 +75,9 @@ import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMacroNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPISinkNode;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.Equivalence;
 
 /**
  * Expands {@link VectorAPIMacroNode}s to SIMD operations if they are supported by the target
@@ -144,6 +149,12 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
         return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.HIGH_TIER_LOWERING, graphState);
     }
 
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
+    }
+
     /**
      * A "connected component" of macro nodes connected by input/usage relationships or through phi
      * or proxy nodes.
@@ -161,6 +172,36 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
         private ArrayList<ConstantNode> constants;
         /** Unboxable vector values as inputs to other nodes in this component. */
         private ArrayList<ValueNode> unboxes;
+
+        /**
+         * Record locations at which nodes in this component need to be materialized due to
+         * unexpected usage. This cuts the usages off the component, allows the connected component
+         * to be expanded. For example, a macro node {@code v} is used as an argument to a call:
+         *
+         * <pre>
+         * {@code
+         * IntVector v;
+         * consume(v);
+         * }
+         * </pre>
+         *
+         * In general, the escape of {@code v} disallows its expansion. However, if it seems that
+         * the call {@code consume(v)} happens rarely, we may manually box the vector instance, so
+         * that the pseudocode snippet changes to:
+         *
+         * <pre>
+         * {@code
+         * IntVector v;
+         * IntVector v1 = new IntVector;
+         * v.intoArray(v1.payload);
+         * consume(v1);
+         * }
+         * </pre>
+         *
+         * This disconnects {@code v} from the call to {@code consume}, allows it to be expanded.
+         */
+        private ArrayList<VectorAPIMacroNode> boxes;
+
         /**
          * A map from each node in this component to the corresponding SIMD stamp. The keys of this
          * map can be used to iterate over all the nodes in this component, i.e., the union of
@@ -181,6 +222,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             this.proxies = new ArrayList<>();
             this.constants = new ArrayList<>();
             this.unboxes = new ArrayList<>();
+            this.boxes = new ArrayList<>();
             this.simdStamps = EconomicMap.create();
         }
 
@@ -394,6 +436,11 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                          * on the heap.
                          */
                         continue;
+                    } else if (node instanceof VectorAPIMacroNode macro && shouldBox(macro, usage, context)) {
+                        // Manually box the vector node to disconnect the unexpected usage from the
+                        // ConnectedComponent
+                        component.boxes.add(macro);
+                        continue;
                     } else {
                         /*
                          * Some other usage, this would force materialization of the vector object.
@@ -489,6 +536,8 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
 
                 /* Expand unboxing operations that are inputs to the component. */
                 unboxComponentInputs(graph, context, component, expanded);
+                /* Box the nodes that escape to make the component expandable */
+                boxComponentOutputs(graph, context, component, expanded, vectorArch);
                 /* Expand, starting from sinks and recursing upwards through inputs. */
                 for (VectorAPISinkNode sink : component.sinks) {
                     expandRecursivelyUpwards(graph, context, expanded, component.simdStamps, sink, vectorArch);
@@ -546,6 +595,79 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             component.simdStamps.removeKey(unboxableInput);
         }
         component.unboxes.clear();
+    }
+
+    private static void boxComponentOutputs(StructuredGraph graph, CoreProviders providers, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
+        GraalError.guarantee(component.canExpand, "should only place box nodes once we know the component can expand");
+        for (VectorAPIMacroNode macro : component.boxes) {
+            expandRecursivelyUpwards(graph, providers, expanded, component.simdStamps, macro, vectorArch);
+            ValueNode expandedDef = expanded.get(macro);
+            GraalError.guarantee(expandedDef != null, "must be expanded %s", macro);
+            ResolvedJavaType boxType = macro.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess());
+            EconomicSet<Node> uses = EconomicSet.create(Equivalence.DEFAULT);
+            uses.addAll(macro.usages());
+            for (Node use : uses) {
+                // For a use, this operation might replace it with a clone that has the macro input
+                // fixed. As a result, we need to collect the uses here instead of recording them
+                // while constructing the connected components.
+                if (!shouldBox(macro, use, providers)) {
+                    continue;
+                }
+
+                if (use instanceof FixedNode successor) {
+                    // If the usage is a FixedNode, box the macro there and replace the macro input
+                    // with the allocated box instance
+                    ValueNode boxedMacro = VectorAPIBoxingUtils.boxVector(boxType, successor, expandedDef, providers);
+                    successor.replaceAllInputs(macro, boxedMacro);
+                } else {
+                    // The pattern here looks similar to macro -> MethodCallTarget -> Invoke. As a
+                    // result, we need to clone a MethodCallTarget for each of its Invoke output,
+                    // then replace the macro in the cloned MethodCallTarget with a boxed vector
+                    // instance.
+                    GraalError.guarantee(use instanceof MethodCallTargetNode, "unexpected use %s", use);
+                    EconomicSet<Node> successors = EconomicSet.create();
+                    successors.addAll(use.usages());
+                    for (Node successor : successors) {
+                        FixedNode fixedSuccessor = (FixedNode) successor;
+                        ValueNode useCloned = (ValueNode) use.copyWithInputs();
+                        ValueNode boxedMacro = VectorAPIBoxingUtils.boxVector(boxType, fixedSuccessor, expandedDef, providers);
+                        useCloned.replaceAllInputs(macro, boxedMacro);
+                        useCloned = graph.addOrUniqueWithInputs(useCloned);
+                        fixedSuccessor.replaceAllInputs(use, useCloned);
+                    }
+                }
+            }
+
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "after boxing %s for %s", macro, component);
+        }
+
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after boxing all escapes of %s", component);
+    }
+
+    /**
+     * If a {@link VectorAPIMacroNode} has a usage {@code use} that cannot be expanded. We try to
+     * see if it is profitable to box {@code macro} at {@code use}, disconnecting {@code use} from
+     * the {@link ConnectedComponent}, allowing it to be expanded.
+     */
+    private static boolean shouldBox(VectorAPIMacroNode macro, Node use, CoreProviders providers) {
+        if (use instanceof MethodCallTargetNode method) {
+            /*
+             * If a macro node is used in a method call that appears to be uncommon, we can manually
+             * box the vector, disconnecting the method call from the connected component. The
+             * conservative heuristics now is that a method returning a throwable is likely
+             * uncommon. Revisit and expand the heuristic if the need arises.
+             */
+            ResolvedJavaType throwableType = providers.getMetaAccess().lookupJavaType(Throwable.class);
+            if (method.returnKind() == JavaKind.Object && throwableType.isAssignableFrom(method.returnStamp().getTrustedStamp().javaType(providers.getMetaAccess())) &&
+                            method.usages().filter(n -> !(n instanceof Invoke)).isEmpty()) {
+                return true;
+            }
+        } else if (use instanceof ReturnNode returnNode && returnNode.result().equals(macro)) {
+            // If a macro node is returned, we can also box the vector there
+            return true;
+        }
+
+        return false;
     }
 
     private static void anchorAndUnboxInput(StructuredGraph graph, CoreProviders providers, ValueNode usage, ValueNode unboxableInput, FixedNode insertionPoint, NodeMap<ValueNode> expanded) {

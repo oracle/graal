@@ -290,6 +290,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
+        int classFileAccessFlags = parsed.getFlags();
 
         boolean isInterface = Modifier.isInterface(modifiers);
         boolean isRecord = Modifier.isFinal(modifiers) && superClass == Record.class && parsed.getAttribute(RecordAttribute.NAME) != null;
@@ -352,7 +353,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * @formatter:on
          */
         DynamicHub superHub = DynamicHub.fromClass(superClass);
-        int typeID = ClassRegistries.nextTypeId();
+        int typeID = TypeIDs.singleton().nextTypeId();
         short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
         short numClassTypes;
         short typeIDDepth;
@@ -413,7 +414,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, numClassTypes, typeIDDepth, numInterfacesTypes, openTypeWorldTypeCheckSlots, dispatchTableLength, afterFieldsOffset, isValueBased);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, interfaceIndices);

@@ -33,8 +33,6 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
-
 /**
  * For fields with this annotation no static analysis is done.
  *
@@ -46,5 +44,5 @@ import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 @Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface UnknownPrimitiveField {
-    Class<? extends BooleanSupplier> availability() default AfterAnalysis.class;
+    Class<? extends BooleanSupplier> availability();
 }

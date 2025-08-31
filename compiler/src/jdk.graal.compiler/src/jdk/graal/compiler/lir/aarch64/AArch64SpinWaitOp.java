@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,10 @@ import jdk.graal.compiler.lir.SyncPort;
  * Emits spin wait instruction(s).
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/ecd2d83096a1fea7d5086736306770bcffa4fdb6/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L53-L74",
-          sha1 = "6bd5ba27c0b3a8416ee5d8d495a55d86cfe1fad1")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/23985c29b44b489472dcd3aad2cb98d9ce003a7b/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L56-L63",
+          sha1 = "874fea5e6191c9c19947b4dc818a434a24b33358")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/23985c29b44b489472dcd3aad2cb98d9ce003a7b/src/hotspot/cpu/aarch64/spin_wait_aarch64.cpp#L38-L52",
+          sha1 = "9a1f313aa92ab513f5e8cd20fd3b037469455b77")
 // @formatter:on
 @Opcode("SPIN_WAIT")
 public final class AArch64SpinWaitOp extends AArch64LIRInstruction {

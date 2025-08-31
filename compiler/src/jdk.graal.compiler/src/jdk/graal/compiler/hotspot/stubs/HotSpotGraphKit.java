@@ -24,10 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -84,22 +81,8 @@ public class HotSpotGraphKit extends GraphKit {
         assert invoke instanceof Node : Assertions.errorMessage(invoke, reason, phase);
         Node invokeNode = (Node) invoke;
         ResolvedJavaMethod method = invoke.callTarget().targetMethod();
-
-        Plugins plugins = new Plugins(graphBuilderPlugins);
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-
-        StructuredGraph calleeGraph;
-        if (LibGraalSupport.inLibGraalRuntime()) {
-            calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
-        } else {
-            calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
-                            invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
-            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
-            GraphBuilderPhase.Instance instance = createGraphBuilderInstance(config, OptimisticOptimizations.NONE, initialReplacementContext);
-            instance.apply(calleeGraph);
-        }
+        StructuredGraph calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
         new DeadCodeEliminationPhase().apply(calleeGraph);
-
         InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);
     }
 

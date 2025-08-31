@@ -44,6 +44,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -149,6 +150,7 @@ public class UniverseBuilder {
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
         aUniverse.seal();
+        DeadlockWatchdog.singleton().recordActivity();
 
         try (Indent indent = debug.logAndIndent("build universe")) {
             for (AnalysisType aType : aUniverse.getTypes()) {
@@ -193,6 +195,7 @@ public class UniverseBuilder {
                 });
             }
 
+            DeadlockWatchdog.singleton().recordActivity();
             HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);
 
             Collection<HostedType> allTypes = hUniverse.types.values();

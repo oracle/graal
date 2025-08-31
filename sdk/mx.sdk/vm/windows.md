@@ -58,7 +58,7 @@ to work.
 ## Testing
 
 A primitive way to test the windows script is to copy the template to a file
-named `test.cmd`, and make a couple temporary adjustements:
+named `test.cmd`, and make a couple temporary adjustments:
 
 - Prefix the final command invocation with `echo`.
 - Escape all substitution tags that live within strings with `^`. e.g.

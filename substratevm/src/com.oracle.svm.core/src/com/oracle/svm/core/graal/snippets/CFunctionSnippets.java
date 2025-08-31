@@ -49,6 +49,10 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -178,7 +182,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 public SnippetTemplate get() {
                     int newThreadStatus = node.getNewThreadStatus();
                     assert StatusSupport.isValidStatus(newThreadStatus);
-                    Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    Arguments args = new Arguments(prologue, node.graph(), tool.getLoweringStage());
                     args.add("newThreadStatus", newThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
@@ -209,7 +213,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 public SnippetTemplate get() {
                     int oldThreadStatus = node.getOldThreadStatus();
                     assert StatusSupport.isValidStatus(oldThreadStatus);
-                    Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    Arguments args = new Arguments(epilogue, node.graph(), tool.getLoweringStage());
                     args.add("oldThreadStatus", oldThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
@@ -281,6 +285,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
  * deoptimization could destroy stack allocated {@link JavaFrameAnchor} structs when rewriting the
  * stack.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {

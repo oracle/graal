@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -97,11 +98,11 @@ public class TruffleRuntimeCompilationSupport {
      * not prematurely constant folded we must mark them as unknown fields.
      */
 
-    @UnknownObjectField private SubstrateMethod[] methodsToCompile;
-    @UnknownObjectField private byte[] graphEncoding;
-    @UnknownObjectField private Object[] graphObjects;
-    @UnknownObjectField private NodeClassMap graphNodeTypes;
-    @UnknownPrimitiveField private int graphNodeTypesSize;
+    @UnknownObjectField(availability = AfterAnalysis.class) private SubstrateMethod[] methodsToCompile;
+    @UnknownObjectField(availability = AfterAnalysis.class) private byte[] graphEncoding;
+    @UnknownObjectField(availability = AfterAnalysis.class) private Object[] graphObjects;
+    @UnknownObjectField(availability = AfterAnalysis.class) private NodeClassMap graphNodeTypes;
+    @UnknownPrimitiveField(availability = AfterAnalysis.class) private int graphNodeTypesSize;
 
     protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 

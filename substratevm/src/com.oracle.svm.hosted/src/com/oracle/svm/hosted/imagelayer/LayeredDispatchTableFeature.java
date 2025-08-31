@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -49,7 +50,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -144,6 +144,8 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     private Set<Module> builderModules;
 
     static final int INVALID_HOSTED_METHOD_INDEX = -1;
+
+    private static final String UNRESOLVED_VTABLE_ENTRY_SYMBOL = "__svm_vtableSym_";
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
@@ -485,7 +487,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         bitmap.set(offsetInHeapRelocs / wordSize);
     }
 
-    private static String computeUnresolvedMethodSymbol(HostedDispatchSlot slotInfo, Map<ResolvedJavaMethod, String> methodToSymbolMap) {
+    private static String computeUnresolvedMethodSymbol(HostedDispatchSlot slotInfo, Map<ResolvedJavaMethod, String> methodToSymbolMap, Supplier<String> symbolNameSupplier) {
         /*
          * First try to determine the resolved method. This is useful for deduplication.
          */
@@ -503,10 +505,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
         String unresolvedTableSymbol;
         if (resolvedMethod != null) {
-            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> String.format("%s_unresolvedVTableSym", NativeImage.localSymbolNameForMethod(k)));
+            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> symbolNameSupplier.get());
         } else {
-            unresolvedTableSymbol = SubstrateOptions.ImageSymbolsPrefix.getValue() +
-                            String.format("unresolvedVTableSym_typeid%s_slot%s", slotInfo.dispatchTable.type.getWrapped().getId(), slotInfo.slotIndex);
+            unresolvedTableSymbol = symbolNameSupplier.get();
         }
         return unresolvedTableSymbol;
     }
@@ -523,6 +524,11 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         Set<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? new HashSet<>() : null;
 
         Map<ResolvedJavaMethod, String> deduplicatedMethodMap = new HashMap<>();
+        final var unresolvedSlotCount = IntStream.iterate(0, i -> i + 1).iterator();
+        Supplier<String> symbolNameSupplier = () -> {
+            int count = unresolvedSlotCount.nextInt();
+            return String.format("%s_%s", UNRESOLVED_VTABLE_ENTRY_SYMBOL, count);
+        };
 
         /*
          * First calculate symbols for all slots
@@ -543,9 +549,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
                      * We need to make a symbol for this method which can be resolved in a later
                      * build if the target is compiled.
                      */
-                    symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap);
+                    symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap, symbolNameSupplier);
                     if (unresolvedVTableSymbolNames.add(symbol)) {
-                        objectFile.createUndefinedSymbol(symbol, 0, true);
+                        objectFile.createUndefinedSymbol(symbol, true);
                     }
                 }
             } else {

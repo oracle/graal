@@ -51,6 +51,7 @@ public class AMD64MathStub extends SnippetStub {
     private static String snippetName(UnaryOperation operation) {
         return switch (operation) {
             case SIN -> "sin";
+            case SINH -> "sinh";
             case COS -> "cos";
             case TAN -> "tan";
             case TANH -> "tanh";
@@ -81,6 +82,11 @@ public class AMD64MathStub extends SnippetStub {
     @Snippet
     private static double sin(double value) {
         return UnaryMathIntrinsicNode.compute(value, UnaryOperation.SIN);
+    }
+
+    @Snippet
+    private static double sinh(double value) {
+        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.SINH);
     }
 
     @Snippet

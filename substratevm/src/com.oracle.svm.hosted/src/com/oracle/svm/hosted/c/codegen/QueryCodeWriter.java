@@ -54,7 +54,7 @@ import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
-
+    private static final String C_SOURCE_FILE_EXTENSION = ".c";
     private static final String formatFloat = "%.15e";
     private static final String formatString = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
 
@@ -91,8 +91,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String srcFileExtension = CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
-        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + srcFileExtension;
+        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + C_SOURCE_FILE_EXTENSION;
         return writer.writeFile(sourceFileName);
     }
 

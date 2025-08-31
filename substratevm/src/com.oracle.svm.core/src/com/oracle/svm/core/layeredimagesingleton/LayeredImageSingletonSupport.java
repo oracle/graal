@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -58,7 +60,10 @@ public interface LayeredImageSingletonSupport {
 
     void freezeLayeredImageSingletonMetadata();
 
-    boolean isInitialLayerOnlyImageSingleton(Class<?> key);
-
     JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
+
+    /**
+     * @return trait associated with this key if it exists, or else {@code null}.
+     */
+    SingletonTrait getTraitForUninstalledSingleton(Class<?> key, SingletonTraitKind kind);
 }

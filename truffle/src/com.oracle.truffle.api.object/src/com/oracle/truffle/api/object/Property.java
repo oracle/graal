@@ -69,7 +69,7 @@ public abstract sealed class Property permits PropertyImpl {
     @Deprecated(since = "22.2")
     @SuppressWarnings("deprecation")
     public static Property create(Object key, Location location, int flags) {
-        return Layout.getFactory().createProperty(key, location, flags);
+        return new PropertyImpl(key, location, flags);
     }
 
     /**

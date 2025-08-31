@@ -2621,7 +2621,7 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerStringCodingPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "java.lang.StringCoding");
-        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeISOArray0", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
@@ -2634,7 +2634,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeAsciiArray0", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
@@ -2646,17 +2646,10 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("countPositives", byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("countPositives0", byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
-                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
-                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
-                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
-
                     ValueNode array = helper.arrayElementPointer(ba, JavaKind.Byte, off);
                     b.addPush(JavaKind.Int, new CountPositivesNode(array, len));
                     return true;
@@ -2665,7 +2658,7 @@ public class StandardGraphBuilderPlugins {
         });
 
         r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder");
-        r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeISOArray0", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {

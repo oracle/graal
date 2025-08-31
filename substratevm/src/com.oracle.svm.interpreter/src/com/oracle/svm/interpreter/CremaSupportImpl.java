@@ -127,12 +127,14 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedObjectType thisType = InterpreterResolvedObjectType.create(table.partialType.parserKlass, hub.getModifiers(), componentType, superType, interfaces, DynamicHub.toClass(hub),
                         false);
 
-        // GR-60109
-        // thisType.setConstantPool(...);
+        ParserKlass parserKlass = table.partialType.parserKlass;
+        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
 
         table.registerClass(thisType);
 
         thisType.setDeclaredMethods(table.declaredMethods());
+        // TODO(peterssen): GR-60069 Set declared fields.
+        // thisType.setDeclaredFields(declaredFields.toArray(new InterpreterResolvedJavaField[0]));
 
         List<InterpreterResolvedJavaMethod> completeTable = table.cremaVTable(transitiveSuperInterfaces);
         thisType.setVtable(completeTable.toArray(new InterpreterResolvedJavaMethod[0]));

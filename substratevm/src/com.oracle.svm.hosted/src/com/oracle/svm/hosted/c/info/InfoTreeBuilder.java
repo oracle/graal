@@ -531,7 +531,7 @@ public class InfoTreeBuilder {
     }
 
     private static String removePrefix(String name, String prefix) {
-        assert prefix.length() > 0;
+        assert !prefix.isEmpty();
         String result = name;
         if (result.startsWith(prefix)) {
             result = result.substring(prefix.length());
@@ -545,7 +545,7 @@ public class InfoTreeBuilder {
     private static String getConstantName(ResolvedJavaMethod method) {
         CConstant constantAnnotation = getMethodAnnotation(method, CConstant.class);
         String name = constantAnnotation.value();
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = method.getName();
             /* Remove "get" prefix for automatically inferred names. */
             name = removePrefix(name, "get");
@@ -569,7 +569,7 @@ public class InfoTreeBuilder {
             pointerToType = pointerToType.getInterfaces().length == 1 ? pointerToType.getInterfaces()[0] : null;
         } while (pointerToType != null);
 
-        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToCPointerAnnotation != null ? 1 : 0);
+        int n = (!nameOfCType.isEmpty() ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToCPointerAnnotation != null ? 1 : 0);
         if (n != 1) {
             nativeLibs.addError("Exactly one of " +  //
                             "1) literal C type name, " +  //
@@ -629,7 +629,7 @@ public class InfoTreeBuilder {
 
         String name = structAnnotation.value();
 
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = getSimpleJavaName(type);
         }
         if (structAnnotation.addStructKeyword()) {
@@ -650,7 +650,7 @@ public class InfoTreeBuilder {
     }
 
     private static String getStructFieldName(AccessorInfo info, String annotationValue) {
-        if (annotationValue.length() != 0) {
+        if (!annotationValue.isEmpty()) {
             return annotationValue;
         } else {
             return removePrefix(info.getAnnotatedElement().getName(), info.getAccessorPrefix());
@@ -712,7 +712,7 @@ public class InfoTreeBuilder {
             name = fieldAnnotation.value();
             includeInLookup = fieldAnnotation.includeInLookup();
         }
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = field.getName();
         }
 

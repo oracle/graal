@@ -32,11 +32,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -65,13 +67,8 @@ public class MetaspaceImpl implements Metaspace {
     }
 
     @Fold
-    public static boolean isSupported() {
-        return ImageSingletons.contains(MetaspaceImpl.class);
-    }
-
-    @Fold
     public static MetaspaceImpl singleton() {
-        return ImageSingletons.lookup(MetaspaceImpl.class);
+        return (MetaspaceImpl) ImageSingletons.lookup(Metaspace.class);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -100,8 +97,8 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAddressSpace(Pointer ptr) {
-        /* Replace with address range check once GR-60085 is implemented. */
-        return isInAllocatedMemory(ptr);
+        AddressRangeCommittedMemoryProvider m = AddressRangeCommittedMemoryProvider.singleton();
+        return m.isInMetaspace(ptr);
     }
 
     @Override
@@ -112,6 +109,12 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     public byte[] allocateByteArray(int length) {
         return allocator.allocateByteArray(length);
+    }
+
+    @Override
+    public void walkObjects(ObjectVisitor visitor) {
+        assert VMOperation.isInProgress() : "prevent other threads from manipulating the metaspace";
+        space.walkObjects(visitor);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

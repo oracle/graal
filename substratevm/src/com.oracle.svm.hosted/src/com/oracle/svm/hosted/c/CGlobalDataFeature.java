@@ -31,6 +31,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -49,11 +50,18 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.imagelayer.CodeLocation;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -91,6 +99,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class CGlobalDataFeature implements InternalFeature {
 
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
@@ -102,6 +111,13 @@ public class CGlobalDataFeature implements InternalFeature {
 
     private final Map<CGlobalDataImpl<?>, CGlobalDataInfo> map = new ConcurrentHashMap<>();
     private int totalSize = -1;
+
+    private final Set<CodeLocation> seenCodeLocations = ImageLayerBuildingSupport.buildingImageLayer() ? ConcurrentHashMap.newKeySet() : null;
+
+    @SuppressWarnings("this-escape") //
+    private final InitialLayerCGlobalTracking initialLayerCGlobalTracking = ImageLayerBuildingSupport.buildingInitialLayer() ? new InitialLayerCGlobalTracking(this) : null;
+    @SuppressWarnings("this-escape") //
+    private final AppLayerCGlobalTracking appLayerCGlobalTracking = ImageLayerBuildingSupport.buildingApplicationLayer() ? new AppLayerCGlobalTracking(this) : null;
 
     public static CGlobalDataFeature singleton() {
         return ImageSingletons.lookup(CGlobalDataFeature.class);
@@ -198,7 +214,7 @@ public class CGlobalDataFeature implements InternalFeature {
                     AbstractMergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(thenEnd);
                     merge.addForwardEnd(elseEnd);
-                    ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, new ValueNode[]{address, readValue});
+                    ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, address, readValue);
                     phiNode.inferStamp();
                     b.push(targetMethod.getSignature().getReturnKind(), b.getGraph().addOrUnique(phiNode));
                     b.setStateAfter(merge);
@@ -208,17 +224,57 @@ public class CGlobalDataFeature implements InternalFeature {
         });
     }
 
+    CGlobalDataInfo getDataInfo(CGlobalDataImpl<?> data) {
+        return map.get(data);
+    }
+
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {
+        return registerAsAccessedOrGet(obj, true);
+    }
+
+    /**
+     * {@link #registerAsAccessedOrGet(CGlobalData)} should normally be used instead of this method.
+     */
+    CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj, boolean tryCanonicalization) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
-        VMError.guarantee(!isLaidOut() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");
-        return map.computeIfAbsent((CGlobalDataImpl<?>) obj,
-                        o -> {
-                            CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data);
-                            if (data.nonConstant) {
-                                nonConstantRegistry.registerNonConstantSymbol(cGlobalDataInfo);
-                            }
-                            return cGlobalDataInfo;
-                        });
+        if (tryCanonicalization && appLayerCGlobalTracking != null) {
+            data = appLayerCGlobalTracking.getCanonicalRepresentation(data);
+        }
+
+        if (isLaidOut()) {
+            var info = map.get(data);
+            VMError.guarantee(info != null, "CGlobalData instance must have been discovered/registered before or during analysis");
+            return info;
+        } else {
+            return map.computeIfAbsent(data, key -> {
+                if (appLayerCGlobalTracking != null) {
+                    var result = appLayerCGlobalTracking.createCGlobalDataInfo(key);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+                var result = createCGlobalDataInfo(key, false);
+                if (initialLayerCGlobalTracking != null) {
+                    initialLayerCGlobalTracking.registerCGlobal(key);
+                }
+                return result;
+            });
+        }
+    }
+
+    CGlobalDataInfo createCGlobalDataInfo(CGlobalDataImpl<?> data, boolean definedAsGlobalInPriorLayer) {
+        if (data.codeLocation != null && seenCodeLocations != null) {
+            boolean added = seenCodeLocations.add(CodeLocation.fromStackFrame(data.codeLocation));
+            VMError.guarantee(added, "Multiple elements seen at same code location: %s", data.codeLocation);
+            VMError.guarantee(!data.codeLocation.getDeclaringClass().isHidden(),
+                            "We currently do not allow CGlobalData code locations to be in a hidden class. Please adapt the code accordingly. Location: %s",
+                            data.codeLocation);
+        }
+        CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data, definedAsGlobalInPriorLayer);
+        if (data.nonConstant) {
+            nonConstantRegistry.registerNonConstantSymbol(cGlobalDataInfo);
+        }
+        return cGlobalDataInfo;
     }
 
     /**
@@ -252,10 +308,15 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     private Object replaceObject(Object obj) {
-        if (obj instanceof CGlobalDataImpl<?>) {
-            registerAsAccessedOrGet((CGlobalData<?>) obj);
+        if (obj instanceof CGlobalDataImpl<?> cglobal) {
+            if (appLayerCGlobalTracking != null) {
+                cglobal = appLayerCGlobalTracking.getCanonicalRepresentation(cglobal);
+            }
+            registerAsAccessedOrGet(cglobal, false);
+            return cglobal;
+        } else {
+            return obj;
         }
-        return obj;
     }
 
     private static CGlobalDataInfo assignCGlobalDataSize(Map.Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry, int wordSize) {
@@ -294,9 +355,8 @@ public class CGlobalDataFeature implements InternalFeature {
                         .sorted(Comparator.comparing(CGlobalDataInfo::getSize))
                         .reduce(0, (currentOffset, info) -> {
                             info.assignOffset(currentOffset);
-
                             int nextOffset = currentOffset + info.getSize();
-                            return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
+                            return NumUtil.roundUp(nextOffset, wordSize); // align
                         }, Integer::sum);
         assert isLaidOut();
     }
@@ -329,5 +389,19 @@ public class CGlobalDataFeature implements InternalFeature {
                 createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }
+        if (initialLayerCGlobalTracking != null) {
+            initialLayerCGlobalTracking.writeData(createSymbol, map);
+        }
+        if (appLayerCGlobalTracking != null) {
+            appLayerCGlobalTracking.validateCGlobals(map);
+        }
+    }
+
+    public InitialLayerCGlobalTracking getInitialLayerCGlobalTracking() {
+        return Objects.requireNonNull(initialLayerCGlobalTracking);
+    }
+
+    public AppLayerCGlobalTracking getAppLayerCGlobalTracking() {
+        return Objects.requireNonNull(appLayerCGlobalTracking);
     }
 }

@@ -89,9 +89,12 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.NeverInline;
@@ -114,6 +117,9 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -142,6 +148,8 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.access.JavaLangReflectAccess;
@@ -354,12 +362,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute //
     private final DynamicHub componentType;
 
-    /**
-     * Reference map information for this hub. The byte[] array encoding data is available via
-     * {@link DynamicHubSupport#getReferenceMapEncoding()}.
-     */
-    @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
+    /** Index into the current layer's instance reference map {@code byte[]}. */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private int referenceMapIndex;
+
+    /**
+     * A compressed offset, relative to the heap base, that points to the
+     * {@link InstanceReferenceMap} for this hub (see
+     * {@link DynamicHubSupport#getInstanceReferenceMap}).
+     */
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class)//
+    private int referenceMapCompressedOffset = -1;
 
     private final byte layerId;
 
@@ -397,8 +410,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, byte hubType, ReferenceType referenceType, DynamicHub superType,
-                    DynamicHub componentHub, String sourceFileName, int modifiers, short flags, ClassLoader classLoader,
-                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
+                    DynamicHub componentHub, String sourceFileName, int modifiers, int classFileAccessFlags, short flags,
+                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType;
@@ -412,7 +425,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature);
+                        modifiers, classFileAccessFlags, loader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     /**
@@ -432,7 +445,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
+                    int modifiers, int classFileAccessFlags, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
                     Object declaringClass, String signature, int typeID,
                     short numClassTypes,
                     short typeIDDepth,
@@ -457,7 +470,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
 
-        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass,
+                        signature);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
@@ -538,8 +552,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-61330: only write if the field exists according to analysis
         // companion.metaType = null;
 
-        // GR-60080: Proper referenceMap needed.
-        int referenceMapIndex = DynamicHub.fromClass(Object.class).referenceMapIndex;
+        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
 
         // GR-57813
         companion.hubMetadata = null;
@@ -572,15 +585,30 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
 
-        writeInt(hub, dynamicHubOffsets.getReferenceMapIndexOffset(), referenceMapIndex);
+        writeInt(hub, dynamicHubOffsets.getReferenceMapCompressedOffsetOffset(), referenceMapCompressedOffset);
         writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
         // skip vtable (special treatment)
 
-        writeObject(hub, dynamicHubOffsets.getCompanionOffset(), companion);
+        return finishInitialization(hub, companion);
+    }
 
+    /**
+     * The {@link #companion} field must be assigned last during initialization, as it determines
+     * when a class is regarded as loaded (see {@link #isLoaded()}). Once {@code isLoaded()} returns
+     * {@code true}, it is essential that other threads observe consistent and fully initialized
+     * values for every field (ensured by the {@link FenceKind#STORE_STORE} barrier).
+     *
+     * This guarantee is particularly important for scenarios where code may access newly-allocated
+     * {@code DynamicHub}s that might not be fully initialized yet (for example, during heap
+     * dumping).
+     */
+    private static DynamicHub finishInitialization(DynamicHub hub, DynamicHubCompanion companion) {
+        MembarNode.memoryBarrier(FenceKind.STORE_STORE);
+        writeObject(hub, DynamicHubOffsets.singleton().getCompanionOffset(), companion);
+
+        /* Emit a final field barrier as if we executed a normal constructor. */
         FinalFieldBarrierNode.finalFieldBarrier(hub);
-
         return hub;
     }
 
@@ -625,8 +653,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated) {
+    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex, boolean isInstantiated) {
         VMError.guarantee(monitorOffset == -1 || monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == -1 || identityHashOffset == (char) identityHashOffset,
                         "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
@@ -635,9 +662,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.monitorOffset = monitorOffset == -1 ? 0 : (char) monitorOffset;
         this.identityHashOffset = identityHashOffset == -1 ? 0 : (char) identityHashOffset;
 
-        if ((int) referenceMapIndex != referenceMapIndex) {
-            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
-        }
+        VMError.guarantee(NumUtil.isInt(referenceMapIndex), "Reference map index not within integer range");
         this.referenceMapIndex = (int) referenceMapIndex;
 
         assert companion.additionalFlags == 0;
@@ -916,9 +941,28 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.arrayHub;
     }
 
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getReferenceMapIndex() {
-        return referenceMapIndex;
+    public int getReferenceMapCompressedOffset() {
+        assert referenceMapCompressedOffset >= 0;
+        return referenceMapCompressedOffset;
+    }
+
+    /**
+     * Initializes the {@link #referenceMapCompressedOffset} based on the
+     * {@link #referenceMapIndex}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initializeReferenceMapCompressedOffset(long currentLayerRefMapDataStart) {
+        assert referenceMapCompressedOffset == -1;
+        assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
+
+        if (Platform.includedIn(NATIVE_ONLY.class)) {
+            this.referenceMapCompressedOffset = InstanceReferenceMapEncoder.computeReferenceMapCompressedOffset(currentLayerRefMapDataStart, referenceMapIndex);
+        } else {
+            /* Remove once a heap base is supported, see GR-68847. */
+            this.referenceMapCompressedOffset = referenceMapIndex;
+        }
     }
 
     /**
@@ -1038,20 +1082,22 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.modifiers;
     }
 
-    public int getClassAccessFlags() {
+    @Substitute
+    int getClassFileAccessFlags() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * Currently, layered images do not use the Class#classFileAccessFlags. This will be
+             * addressed by GR-68631.
+             */
             int classAccessFlags = 0;
-            for (var reflectionMetadata : LayeredReflectionMetadataSingleton.singletons()) {
-                classAccessFlags |= getClassAccessFlags(reflectionMetadata.getReflectionMetadata(this));
+            for (var reflectionMetadataSingleton : LayeredReflectionMetadataSingleton.singletons()) {
+                ReflectionMetadata reflectionMetadata = reflectionMetadataSingleton.getReflectionMetadata(this);
+                classAccessFlags |= reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
             }
             return classAccessFlags;
         } else {
-            return getClassAccessFlags(reflectionMetadata());
+            return companion.classFileAccessFlags;
         }
-    }
-
-    private int getClassAccessFlags(ReflectionMetadata reflectionMetadata) {
-        return reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
     }
 
     @Substitute
@@ -1135,7 +1181,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
-        return companion.classLoader != NO_CLASS_LOADER;
+        return companion != null && companion.classLoader != NO_CLASS_LOADER;
     }
 
     void setClassLoaderAtRuntime(ClassLoader loader) {

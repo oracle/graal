@@ -289,7 +289,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, target.arch);
                 registerContinuationPlugins(invocationPlugins, config);
                 registerCallSitePlugins(invocationPlugins);
-                registerReflectionPlugins(invocationPlugins, config);
+                registerReflectionPlugins(invocationPlugins);
                 registerAESPlugins(invocationPlugins, config);
                 registerAdler32Plugins(invocationPlugins, config);
                 registerCRC32Plugins(invocationPlugins, config);
@@ -508,26 +508,12 @@ public class HotSpotGraphBuilderPlugins {
         plugins.register(VolatileCallSite.class, plugin);
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerReflectionPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection");
         r.register(new InlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("getClassAccessFlags", Class.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(b.nullCheckedValue(arg));
-                    // Primitive Class case
-                    ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // Return (Klass::_access_flags & jvmAccWrittenFlags)
-                    ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
-                    helper.emitFinalReturn(JavaKind.Int, accessFlags);
-                }
                 return true;
             }
         });
@@ -587,9 +573,9 @@ public class HotSpotGraphBuilderPlugins {
                 b.add(new KlassFullyInitializedCheckNode(clazzLegal));
 
                 if (b.currentBlockCatchesOOME()) {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true, true));
                 } else {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true, true));
                 }
                 return true;
             }
@@ -804,7 +790,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3013-L3067",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L3029-L3083",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -853,7 +839,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3832-L3916",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L3848-L3932",
               sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {

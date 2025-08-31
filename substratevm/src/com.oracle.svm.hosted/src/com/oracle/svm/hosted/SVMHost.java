@@ -74,6 +74,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
@@ -161,7 +162,9 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.internal.loader.NativeLibraries;
+import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -211,7 +214,10 @@ public class SVMHost extends HostVM {
     private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
     private final int layerId;
-    private final boolean useBaseLayer;
+    private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+    private final boolean buildingInitialLayer = ImageLayerBuildingSupport.buildingInitialLayer();
+    private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+    private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
     private Set<ResolvedJavaField> sharedLayerExcludedFields;
@@ -220,9 +226,6 @@ public class SVMHost extends HostVM {
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
-    private final boolean enableTrackAcrossLayers;
-    private final boolean enableReachableInCurrentLayer;
-    private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
     private final MetaAccessProvider originalMetaAccess;
 
@@ -255,15 +258,11 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
-        useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+        layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
+        if (buildingSharedLayer) {
             initializeSharedLayerExcludedFields();
         }
-
-        enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
-        enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        layeredStaticFieldSupport = ImageLayerBuildingSupport.buildingImageLayer() ? LayeredStaticFieldSupport.singleton() : null;
+        layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
         optionKeyType = lookupOriginalType(OptionKey.class);
         featureType = lookupOriginalType(Feature.class);
@@ -282,8 +281,23 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public boolean useBaseLayer() {
-        return useBaseLayer;
+    public boolean buildingImageLayer() {
+        return buildingImageLayer;
+    }
+
+    @Override
+    public boolean buildingInitialLayer() {
+        return buildingInitialLayer;
+    }
+
+    @Override
+    public boolean buildingSharedLayer() {
+        return buildingSharedLayer;
+    }
+
+    @Override
+    public boolean buildingExtensionLayer() {
+        return buildingExtensionLayer;
     }
 
     /**
@@ -528,6 +542,7 @@ public class SVMHost extends HostVM {
             componentHub = dynamicHub(hybrid.componentType());
         }
         int modifiers = javaClass.getModifiers();
+        int classFileAccessFlags = Reflection.getClassAccessFlags(javaClass);
 
         /*
          * If the class is an application class then it was loaded by NativeImageClassLoader. The
@@ -573,7 +588,7 @@ public class SVMHost extends HostVM {
                         isLambdaFormHidden, isLinked, isProxyClass);
 
         return new DynamicHub(javaClass, className, computeHubType(type), ReferenceType.computeReferenceType(javaClass),
-                        superHub, componentHub, sourceFileName, modifiers, flags, hubClassLoader, nestHost,
+                        superHub, componentHub, sourceFileName, modifiers, classFileAccessFlags, flags, hubClassLoader, nestHost,
                         simpleBinaryName, getDeclaringClass(javaClass), getSignature(javaClass), layerId);
     }
 
@@ -849,6 +864,11 @@ public class SVMHost extends HostVM {
                         .anyMatch(filter -> filter.matches(method));
     }
 
+    @Override
+    public boolean hasAlwaysInlineDirective(ResolvedJavaMethod method) {
+        return AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class) || AnnotationAccess.isAnnotationPresent(method, ForceInline.class);
+    }
+
     private InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
         if (parsingSupport != null) {
             return parsingSupport.inlineBeforeAnalysisPolicy(multiMethodKey, inlineBeforeAnalysisPolicy);
@@ -987,7 +1007,7 @@ public class SVMHost extends HostVM {
          * If building layered images sort the fields by kind and name to ensure stable order.
          * Sorting fields in general may lead to some issues. (GR-62599)
          */
-        return ImageLayerBuildingSupport.buildingImageLayer();
+        return buildingImageLayer;
     }
 
     /** If it's not one of the known builder types it must be an original VM type. */
@@ -1173,17 +1193,12 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean enableTrackAcrossLayers() {
-        return enableTrackAcrossLayers;
+        return buildingSharedLayer();
     }
 
     @Override
     public boolean enableReachableInCurrentLayer() {
-        return enableReachableInCurrentLayer;
-    }
-
-    @Override
-    public boolean buildingImageLayer() {
-        return buildingImageLayer;
+        return buildingExtensionLayer;
     }
 
     @Override

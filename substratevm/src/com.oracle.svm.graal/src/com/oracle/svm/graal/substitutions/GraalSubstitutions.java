@@ -31,8 +31,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -49,7 +47,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -69,7 +66,7 @@ import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.KeyRegistry;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
@@ -89,7 +86,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import jdk.graal.compiler.phases.common.inlining.walker.ComputeInliningRelevance;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.printer.NoDeadCodeVerifyHandler;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.vm.ci.code.TargetDescription;
@@ -176,8 +172,8 @@ final class Target_jdk_graal_compiler_debug_DebugContext_Immutable {
     private static Target_jdk_graal_compiler_debug_DebugContext_Immutable[] CACHE;
 }
 
-@TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_debug_DebugHandlersFactory {
+@TargetClass(value = DebugDumpHandlersFactory.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_debug_DebugDumpHandlersFactory {
     static class CachedFactories implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -191,7 +187,7 @@ final class Target_jdk_graal_compiler_debug_DebugHandlersFactory {
      */
     @Alias//
     @RecomputeFieldValue(kind = Custom, declClass = CachedFactories.class)//
-    private static Iterable<DebugHandlersFactory> LOADER;
+    private static Iterable<DebugDumpHandlersFactory> LOADER;
 }
 
 @TargetClass(value = TimeSource.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
@@ -328,13 +324,6 @@ final class Target_jdk_graal_compiler_graph_Edges {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.IterationMaskRecomputation.class)//
     private long iterationMask;
-}
-
-@TargetClass(value = NoDeadCodeVerifyHandler.class)
-final class Target_jdk_graal_compiler_printer_NoDeadCodeVerifyHandler {
-    @Alias//
-    @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    private static Map<String, Boolean> discovered;
 }
 
 @TargetClass(value = NamedLocationIdentity.class, innerClass = "DB", onlyWith = GraalCompilerFeature.IsEnabled.class)

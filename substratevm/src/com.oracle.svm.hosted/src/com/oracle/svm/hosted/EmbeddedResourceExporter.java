@@ -120,7 +120,7 @@ public class EmbeddedResourceExporter {
             List<EmbeddedResourceExporter.SourceSizePair> sources = new ArrayList<>();
             for (int i = 0; i < registeredEntrySources.size(); i++) {
                 SourceAndOrigin sourceAndOrigin = registeredEntrySources.get(i);
-                int size = storageEntry.getData().get(i).length;
+                int size = storageEntry.getData()[i].length;
                 sources.add(new SourceSizePair(sourceAndOrigin.source(), sourceAndOrigin.origin(), size));
             }
 

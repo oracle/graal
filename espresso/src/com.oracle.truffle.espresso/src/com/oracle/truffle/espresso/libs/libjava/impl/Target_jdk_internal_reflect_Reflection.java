@@ -29,11 +29,12 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.substitutions.VersionFilter;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions(type = "Ljdk/internal/reflect/Reflection;", group = LibJava.class)
 public final class Target_jdk_internal_reflect_Reflection {
-    @Substitution
+    @Substitution(languageFilter = VersionFilter.Java25OrEarlier.class)
     public static int getClassAccessFlags(@JavaType(Class.class) StaticObject cls, @Inject EspressoContext ctx) {
         return ctx.getVM().JVM_GetClassAccessFlags(cls);
     }

@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -71,6 +72,10 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -359,7 +364,15 @@ public class SubstrateOptions {
              * precision of implicit stack traces. But for optimized release builds, including pgo
              * builds, it is a valuable image size reduction.
              */
-            SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation) && newLevel == OptimizationLevel.O3) {
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, true);
+            } else if (newLevel == OptimizationLevel.BUILD_TIME) {
+                /*
+                 * Disable in economy mode as there is no final canonicalizer which is required for
+                 * cleanup up after this phase.
+                 */
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, false);
+            }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
@@ -375,18 +388,18 @@ public class SubstrateOptions {
     };
 
     public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
-        enable(GraalOptions.ReduceCodeSize, values);
-        enable(ReduceImplicitExceptionStackTraceInformation, values);
-        enable(GraalOptions.OptimizeLongJumps, values);
+        enableForOs(GraalOptions.ReduceCodeSize, values);
+        enableForOs(ReduceImplicitExceptionStackTraceInformation, values);
+        enableForOs(GraalOptions.OptimizeLongJumps, values);
 
         /*
          * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
          * somehow.
          */
-        disable(GraalOptions.LoopPeeling, values);
-        disable(GraalOptions.LoopUnswitch, values);
-        disable(GraalOptions.FullUnroll, values);
-        disable(GraalOptions.PartialUnroll, values);
+        disableForOs(GraalOptions.LoopPeeling, values);
+        disableForOs(GraalOptions.LoopUnswitch, values);
+        disableForOs(GraalOptions.FullUnroll, values);
+        disableForOs(GraalOptions.PartialUnroll, values);
 
         /*
          * Do not align code to further reduce code size.
@@ -396,17 +409,17 @@ public class SubstrateOptions {
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
         // We cannot check for architecture at the moment because ImageSingletons has not been
         // initialized yet
-        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        disableForOs(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
          */
-        disable(GraalOptions.PartialEscapeAnalysis, values);
+        disableForOs(GraalOptions.PartialEscapeAnalysis, values);
 
         /*
          * Do not fan out division.
          */
-        disable(GraalOptions.OptimizeDiv, values);
+        disableForOs(GraalOptions.OptimizeDiv, values);
 
         /*
          * Do more conditional elimination.
@@ -416,14 +429,22 @@ public class SubstrateOptions {
         /*
          * Every dead code elimination should be non-optional
          */
-        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+        disableForOs(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
-    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to false in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void disableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
-    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to true in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void enableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }
 
@@ -512,7 +533,19 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
-    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateRuntimeDebugInfo);
+
+    private static void validateRuntimeDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            if (!useDebugInfoGeneration()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option can only be enabled if debug info generation is enabled ('-g')");
+            } else if (!OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            } else if (!RuntimeCompilation.isEnabled()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option only works if run-time compilation support is enabled.");
+            }
+        }
+    }
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
@@ -793,6 +826,9 @@ public class SubstrateOptions {
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
 
+    @Option(help = "Write code breakdown information into CSV file", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputCodeBreakdownFile = new HostedOptionKey<>(false);
+
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
@@ -1031,27 +1067,41 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
 
     /**
-     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
-     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
-     * code.
+     * The alignment for JIT compiled methods.
      */
     @Fold
-    public static int codeAlignment() {
+    public static int runtimeCodeAlignment() {
+        int value = ConcealedOptions.CodeAlignment.getValue();
+        // In runtime compiled methods, data is also aligned according to the return value of this
+        // method. As a result, it needs to be at least defaultCodeAlignment() so that it can
+        // support the allocation of large constants such as SIMD ones.
+        return Math.max(value, defaultCodeAlignment());
+    }
+
+    /**
+     * The alignment for AOT compiled methods.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int buildTimeCodeAlignment() {
         int value = ConcealedOptions.CodeAlignment.getValue();
         if (value > 0) {
+            // In contrast to runtimeCodeAlignment, this value can be less than
+            // defaultCodeAlignment() so that methods can be more densely packed in the generated
+            // native image.
             return value;
         }
 
-        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
-            return 32;
-        }
-        return 16;
+        return defaultCodeAlignment();
+    }
+
+    private static int defaultCodeAlignment() {
+        return ConfigurationValues.getTarget().arch instanceof AMD64 ? 32 : 16;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static int codeAlignment(OptionValues options) {
+    public static int buildTimeCodeAlignment(OptionValues options) {
         int value = ConcealedOptions.CodeAlignment.getValue(options);
-        return value > 0 ? value : codeAlignment();
+        return value > 0 ? value : buildTimeCodeAlignment();
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
@@ -1236,7 +1286,10 @@ public class SubstrateOptions {
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
         public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
 
-        /** Use {@link SubstrateOptions#codeAlignment()} instead. */
+        /**
+         * Use {@link SubstrateOptions#buildTimeCodeAlignment()} or
+         * {@link SubstrateOptions#runtimeCodeAlignment()} instead.
+         */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
         public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
@@ -1331,6 +1384,7 @@ public class SubstrateOptions {
         return getImagePath().resolve(reportsPath).toString();
     }
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     public static class ReportingSupport {
         Path reportsPath;
 

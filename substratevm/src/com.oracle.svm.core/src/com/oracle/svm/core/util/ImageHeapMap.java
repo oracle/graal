@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package com.oracle.svm.core.util;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
@@ -51,6 +53,10 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
  * <p>
  * This map implementation allows thread-safe collection of data at image build time and storing it
  * into a space efficient data structure at run time.
+ * <p>
+ * We support <b>append-only</b> semantics. Once added, the elements should never be removed.
+ * Changing the contents of the map via {key, value, entry} iterators is <b>not supported</b>. We
+ * have deliberately chosen this design to limit the number of analysis rescans needed.
  */
 @Platforms(Platform.HOSTED_ONLY.class) //
 public final class ImageHeapMap {
@@ -108,6 +114,12 @@ public final class ImageHeapMap {
         private final EconomicMap<Object, Object> runtimeMap;
 
         /**
+         * Used to signal if the wrapped map has been modified. If true, the change should be
+         * propagated to the {@link #currentLayerMap} by calling {@link #update()}.
+         */
+        private volatile boolean modified;
+
+        /**
          * The {code key} is only used in the Layered Image context, to link the maps across each
          * layer. If an {@link ImageHeapMap} is in a singleton that is already layer aware, there is
          * no need to use a {@link LayeredImageHeapMap}, as the singleton should already handle the
@@ -116,8 +128,18 @@ public final class ImageHeapMap {
          */
         public HostedImageHeapMap(Map<K, V> hostedMap, EconomicMap<Object, Object> currentLayerMap, EconomicMap<Object, Object> runtimeMap) {
             super(hostedMap);
+            assert hostedMap instanceof ConcurrentMap<K, V> : "The implementation of HostedImageHeapMap assumes the wrapped map is thread-safe: " + hostedMap;
             this.currentLayerMap = currentLayerMap;
             this.runtimeMap = runtimeMap;
+        }
+
+        public boolean needsUpdate() {
+            return modified;
+        }
+
+        public void update() {
+            modified = false;
+            currentLayerMap.putAll(this);
         }
 
         @Platforms(Platform.HOSTED_ONLY.class) //
@@ -154,6 +176,48 @@ public final class ImageHeapMap {
             } else {
                 return new HostedImageHeapMap<>(hostedMap, currentLayerMap, currentLayerMap);
             }
+        }
+
+        @Override
+        public V put(K key, V value) {
+            modified = true;
+            return super.put(key, value);
+        }
+
+        @Override
+        public V putIfAbsent(K key, V value) {
+            V previous = super.putIfAbsent(key, value);
+            if (previous == null) {
+                /*
+                 * Either there was no previous value or the previous value was null. In both cases,
+                 * the map was modified.
+                 */
+                modified = true;
+            }
+            return previous;
+        }
+
+        @Override
+        public void clear() {
+            throw notSupported();
+        }
+
+        @Override
+        public V removeKey(K key) {
+            throw notSupported();
+        }
+
+        @Override
+        public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+            throw notSupported();
+        }
+
+        private static UnsupportedOperationException notSupported() {
+            /*
+             * We have deliberately chosen to only support append-only behavior to limit the number
+             * of analysis rescans needed.
+             */
+            throw new UnsupportedOperationException("ImageHeapMap has append-only semantics. Replacing or removing elements is forbidden.");
         }
     }
 }

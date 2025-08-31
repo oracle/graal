@@ -65,6 +65,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -80,8 +81,8 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredImageHeapObjectAdder;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -230,8 +231,8 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
-        if (ImageSingletons.contains(LayeredImageHeapObjectAdder.class)) {
-            ImageSingletons.lookup(LayeredImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
+        if (ImageSingletons.contains(ImageHeapObjectAdder.class)) {
+            ImageSingletons.lookup(ImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
         }
 
         addStaticFields();
@@ -302,10 +303,6 @@ public final class NativeImageHeap implements ImageHeap {
         return hUniverse.getSnippetReflection().asObject(Object.class, constant);
     }
 
-    private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
-        return hConstantReflection.readFieldValue(field, receiver, true);
-    }
-
     private void addStaticFields() {
         addObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
         addObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
@@ -318,7 +315,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
-                addConstant(readConstantField(field, null), false, field);
+                addConstant(hConstantReflection.readConstantField(field, null), false, field);
             }
         }
     }
@@ -427,11 +424,18 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     @Override
-    public int countAndVerifyDynamicHubs() {
+    public int countPatchAndVerifyDynamicHubs() {
+        byte[] refMap = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
+        ObjectInfo refMapInfo = getObjectInfo(refMap);
+        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+
         ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
         for (ObjectInfo o : getObjects()) {
             if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+                DynamicHub hub = (DynamicHub) o.getObject();
+                hub.initializeReferenceMapCompressedOffset(currentLayerRefMapDataStart);
+
                 objHeader.verifyDynamicHubOffset(o.getOffset());
                 count++;
             }
@@ -592,7 +596,7 @@ public final class NativeImageHeap implements ImageHeap {
                     if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
-                            JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant, true);
+                            JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
                                     fieldRelocatable = isRelocatableConstant(fieldValueConstant);

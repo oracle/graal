@@ -38,13 +38,11 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -58,8 +56,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -71,7 +67,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVersionRef;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
-public final class DebuggerController implements ContextsListener {
+public final class DebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
@@ -91,15 +87,14 @@ public final class DebuggerController implements ContextsListener {
     private volatile HandshakeController hsController = null;
     private final Lock resetting = new ReentrantLock();
     private volatile boolean isClosing;
-    private JDWPOptions options;
-    private DebuggerSession debuggerSession;
-    private Ids<Object> ids;
-    private Debugger debugger;
+    private final JDWPOptions options;
+    private final DebuggerSession debuggerSession;
+    private final Ids<Object> ids;
+    private final Debugger debugger;
     private final GCPrevention gcPrevention;
     private final ThreadSuspension threadSuspension;
     private final EventFilters eventFilters;
-    private VMEventListener eventListener;
-    private TruffleContext truffleContext;
+    private final VMEventListener eventListener;
     private Object initialThread;
     private final TruffleLogger jdwpLogger;
     private DebuggerConnection connection;
@@ -110,14 +105,11 @@ public final class DebuggerController implements ContextsListener {
     // itself, it must check this field and exit the context if set.
     private volatile Throwable lateStartupError;
 
-    public DebuggerController(TruffleLogger logger) {
+    public DebuggerController(TruffleLogger logger, Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
         this.jdwpLogger = logger;
-    }
-
-    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
         this.debugger = debug;
         this.options = jdwpOptions;
         this.context = jdwpContext;
@@ -154,9 +146,7 @@ public final class DebuggerController implements ContextsListener {
 
     public void reInitialize() {
         // create a new DebuggerController instance
-        DebuggerController newController = new DebuggerController(jdwpLogger);
-        newController.truffleContext = truffleContext;
-        newController.initialize(debugger, options, context, initialThread, eventListener);
+        DebuggerController newController = new DebuggerController(jdwpLogger, debugger, options, context, initialThread, eventListener);
         context.replaceController(newController);
         assert newController.setupState != null;
 
@@ -361,10 +351,6 @@ public final class DebuggerController implements ContextsListener {
         try {
             Breakpoint bp = Breakpoint.newBuilder(location.getSource()).lineIs(location.getLineNumber()).build();
             bp.setEnabled(true);
-            int ignoreCount = command.getRequestFilter().getIgnoreCount();
-            if (ignoreCount > 0) {
-                bp.setIgnoreCount(ignoreCount);
-            }
             mapBreakpoint(bp, command.getBreakpointInfo());
             fine(() -> "Submitting breakpoint at " + bp.getLocationDescription());
             debuggerSession.install(bp);
@@ -380,10 +366,6 @@ public final class DebuggerController implements ContextsListener {
     void submitExceptionBreakpoint(DebuggerCommand command) {
         Breakpoint bp = Breakpoint.newExceptionBuilder(command.getBreakpointInfo().isCaught(), command.getBreakpointInfo().isUnCaught()).build();
         bp.setEnabled(true);
-        int ignoreCount = command.getBreakpointInfo().getFilter().getIgnoreCount();
-        if (ignoreCount > 0) {
-            bp.setIgnoreCount(ignoreCount);
-        }
         mapBreakpoint(bp, command.getBreakpointInfo());
         debuggerSession.install(bp);
         fine(() -> "exception breakpoint submitted");
@@ -683,23 +665,7 @@ public final class DebuggerController implements ContextsListener {
         return eventListener;
     }
 
-    public Object enterTruffleContext() {
-        assert truffleContext != null;
-        return truffleContext.enter(null);
-    }
-
-    public void leaveTruffleContext(Object previous) {
-        assert truffleContext != null;
-        truffleContext.leave(null, previous);
-    }
-
-    @Override
-    public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-        if (!"java".equals(language.getId())) {
-            return;
-        }
-        truffleContext = con;
-
+    public void onLanguageContextInitialized() {
         // With the Espresso context initialized, we can now complete the JDWP setup and establish
         // the connection.
         assert setupState != null;
@@ -961,18 +927,21 @@ public final class DebuggerController implements ContextsListener {
                 if (callFrames.length > 0) {
                     callFrame = callFrames[0];
                 }
-                if (checkExclusionFilters(steppingInfo, event, callFrame)) {
+                EventInfo eventInfo = callFrame != null ? new EventInfo.Frame(context, callFrame, currentThread) : null;
+                if (checkExclusionFilters(steppingInfo, event, eventInfo)) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
-                    commandRequestIds.put(currentThread, steppingInfo);
+                    RequestFilter requestFilter = eventFilters.getRequestFilter(steppingInfo.getRequestId());
+                    if (requestFilter != null && requestFilter.isActive()) {
+                        commandRequestIds.put(currentThread, steppingInfo);
+                    }
                     return;
                 }
             }
             boolean isAfter = event.getSuspendAnchor() == SuspendAnchor.AFTER;
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, isAfter);
-            RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             // collect any events that need to be sent to the debugger once we're done here
@@ -989,7 +958,7 @@ public final class DebuggerController implements ContextsListener {
                 } else {
                     fine(() -> "step not completed - check for breakpoints");
 
-                    result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                    result = checkForBreakpoints(event, jobs, suspendedInfo, currentThread, callFrames);
                     if (!result.breakpointHit) {
                         // no breakpoint
                         commandRequestIds.put(currentThread, steppingInfo);
@@ -997,7 +966,7 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
             } else {
-                result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                result = checkForBreakpoints(event, jobs, suspendedInfo, currentThread, callFrames);
             }
             if (!commandRequestIds.containsKey(currentThread)) {
                 // we're done stepping then
@@ -1010,7 +979,7 @@ public final class DebuggerController implements ContextsListener {
             suspend(currentThread, result.suspendPolicy, jobs, result.breakpointHit || event.isStep() || event.isUnwind());
         }
 
-        private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, Object currentThread, CallFrame[] callFrames) {
+        private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, SuspendedInfo suspendedInfo, Object currentThread, CallFrame[] callFrames) {
             boolean handledLineBreakpoint = false;
             boolean hit = false;
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
@@ -1021,6 +990,10 @@ public final class DebuggerController implements ContextsListener {
                 }
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
+
+                if (!info.getFilter().isHit(suspendedInfo)) {
+                    continue;
+                }
 
                 if (info instanceof LineBreakpointInfo lineBreakpointInfo) {
                     // only allow one line breakpoint to avoid confusing the debugger
@@ -1034,14 +1007,10 @@ public final class DebuggerController implements ContextsListener {
 
                     handledLineBreakpoint = true;
                     hit = true;
-                    // check if breakpoint request limited to a specific thread
-                    Object thread = info.getThread();
-                    if (thread == null || thread == currentThread) {
-                        jobs.add(() -> {
-                            eventListener.breakpointHit(info, callFrames[0], currentThread);
-                            return null;
-                        });
-                    }
+                    jobs.add(() -> {
+                        eventListener.breakpointHit(info, callFrames[0], currentThread);
+                        return null;
+                    });
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
                     Throwable exception = event.getException().getRawException(context.getLanguageClass());
@@ -1068,15 +1037,7 @@ public final class DebuggerController implements ContextsListener {
                     } else if (getContext().isInstanceOf(guestException, klass)) {
                         fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
                         // check filters if we should not suspend
-                        Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
-                        // verify include patterns
-                        if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
-                            // verify exclude patterns
-                            Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
-                            if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
-                                hit = true;
-                            }
-                        }
+                        hit = true;
                     }
                     if (hit) {
                         fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
@@ -1125,25 +1086,13 @@ public final class DebuggerController implements ContextsListener {
             return new BreakpointHitResult(hit, suspendPolicy, false);
         }
 
-        private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {
-            KlassRef klass = (KlassRef) ids.fromId((int) callFrame.getClassId());
-
-            for (Pattern pattern : patterns) {
-                fine(() -> "Matching klass: " + klass.getNameAsString() + " against pattern: " + pattern.pattern());
-                if (pattern.pattern().matches(klass.getNameAsString().replace('/', '.'))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, CallFrame frame) {
+        private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, EventInfo eventInfo) {
             if (info != null) {
                 if (isSingleSteppingSuspended()) {
                     continueStepping(event, info);
                     return true;
                 }
-                if (frame == null) {
+                if (eventInfo == null) {
                     return false;
                 }
                 RequestFilter requestFilter = eventFilters.getRequestFilter(info.getRequestId());
@@ -1151,19 +1100,7 @@ public final class DebuggerController implements ContextsListener {
                 if (requestFilter != null && requestFilter.getStepInfo() != null) {
                     // we're currently stepping, so check if suspension point
                     // matches any exclusion filters
-                    if (requestFilter.getThisFilterId() != 0) {
-                        Object filterObject = context.getIds().fromId((int) requestFilter.getThisFilterId());
-                        Object thisObject = frame.getThisValue();
-                        if (filterObject != thisObject) {
-                            continueStepping(event, info);
-                            return true;
-                        }
-                    }
-
-                    KlassRef klass = (KlassRef) context.getIds().fromId((int) frame.getClassId());
-
-                    if (klass != null && requestFilter.isKlassExcluded(klass)) {
-                        // should not suspend here then, tell the event to keep going
+                    if (!requestFilter.isHit(eventInfo)) {
                         continueStepping(event, info);
                         return true;
                     }
@@ -1173,6 +1110,8 @@ public final class DebuggerController implements ContextsListener {
         }
 
         private void continueStepping(SuspendedEvent event, SteppingInfo steppingInfo) {
+            // It is wrong to prepare a new step when we should continue with the original one.
+            // This can be fixed after GR-8251 is resolved.
             switch (steppingInfo.getStepKind()) {
                 case STEP_INTO:
                     // stepping into unwanted code which was filtered
@@ -1280,31 +1219,6 @@ public final class DebuggerController implements ContextsListener {
 
     public void severe(String message, Throwable error) {
         jdwpLogger.log(Level.SEVERE, message, error);
-    }
-
-    @Override
-    public void onContextCreated(@SuppressWarnings("unused") TruffleContext con) {
-
-    }
-
-    @Override
-    public void onLanguageContextCreated(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onLanguageContextFinalized(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onLanguageContextDisposed(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onContextClosed(@SuppressWarnings("unused") TruffleContext con) {
-
     }
 
 }

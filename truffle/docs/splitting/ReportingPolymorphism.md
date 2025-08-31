@@ -66,8 +66,8 @@ In order to give the language developer more control over which nodes and which 
 #### Reporting only on Megamorphic Cases
 
 As of version 20.3.0 a new annotation was added: [ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html).
-This annotation can only be applied to specializations, as marks that specialization as megamorphic as it is intented to be used on expensive "generic" specializations that should be fixed by monomorphization.
-The effect of adding this annotation is that, once the annotated specialisation becomes active, the node will report polymorphism to the runtime independant of the state of other specializations.
+This annotation can only be applied to specializations, as marks that specialization as megamorphic as it is intended to be used on expensive "generic" specializations that should be fixed by monomorphization.
+The effect of adding this annotation is that, once the annotated specialisation becomes active, the node will report polymorphism to the runtime independent of the state of other specializations.
 
 This annotation can be used separately from `@ReportPolymorphism`, i.e., a node does *not* need to be annotated with `@ReportPolymorphism` for the megamorphic annotation to work.
 If both annotations are used, then both polymorphic and megamorphic activations will be reported as polymorphism.

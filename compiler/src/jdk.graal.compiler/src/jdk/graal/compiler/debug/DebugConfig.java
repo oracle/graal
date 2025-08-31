@@ -56,34 +56,10 @@ public interface DebugConfig {
     boolean isLogEnabledForMethod(DebugContext.Scope scope);
 
     /**
-     * Determines if counting is enabled in {@code scope}.
-     *
-     * @see DebugContext#counter(CharSequence)
-     */
-    boolean isCountEnabled(DebugContext.Scope scope);
-
-    /**
-     * Determines if memory use tracking is {@code scope}.
-     *
-     * @see DebugContext#memUseTracker(CharSequence)
-     */
-    boolean isMemUseTrackingEnabled(DebugContext.Scope scope);
-
-    /**
      * Determines if dumping is enabled for any {@link JavaMethod} in {@code scope}'s
      * {@linkplain Scope#getCurrentContext() context}.
      */
     boolean isDumpEnabledForMethod(DebugContext.Scope scope);
-
-    /**
-     * @see DebugContext#isVerifyEnabled()
-     */
-    boolean isVerifyEnabled(DebugContext.Scope scope);
-
-    /**
-     * @see DebugContext#timer(CharSequence)
-     */
-    boolean isTimeEnabled(DebugContext.Scope scope);
 
     /**
      * @see DebugContext#methodFilterMatchesCurrentMethod()
@@ -107,11 +83,6 @@ public interface DebugConfig {
      * Gets the {@link PrintStream} for logging.
      */
     PrintStream output();
-
-    /**
-     * Gets an unmodifiable view of the verify handlers registered with this configuration.
-     */
-    Collection<DebugVerifyHandler> verifyHandlers();
 
     default void closeDumpHandlers(boolean ignoreErrors) {
         for (DebugDumpHandler handler : dumpHandlers()) {

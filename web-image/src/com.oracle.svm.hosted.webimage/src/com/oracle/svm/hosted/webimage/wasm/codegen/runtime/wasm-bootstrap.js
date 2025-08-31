@@ -38,6 +38,7 @@ wasmImports.compat = {
     f64log: Math.log,
     f64log10: Math.log10,
     f64sin: Math.sin,
+    f64sinh: Math.sinh,
     f64cos: Math.cos,
     f64tan: Math.tan,
     f64tanh: Math.tanh,

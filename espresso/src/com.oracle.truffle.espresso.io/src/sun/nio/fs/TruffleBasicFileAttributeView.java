@@ -32,8 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 final class TruffleBasicFileAttributeView implements BasicFileAttributeView {
 

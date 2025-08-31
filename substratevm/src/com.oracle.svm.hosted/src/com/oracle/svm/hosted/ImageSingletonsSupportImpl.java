@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -40,7 +41,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
@@ -107,15 +107,19 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     }
 
     @Override
-    public boolean isInitialLayerOnlyImageSingleton(Class<?> key) {
-        var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
-        return loader.isInitialLayerOnlyImageSingleton(key);
-    }
-
-    @Override
     public JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key) {
         var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
         return loader.loadInitialLayerOnlyImageSingleton(key);
+    }
+
+    @Override
+    public SingletonTrait getTraitForUninstalledSingleton(Class<?> key, SingletonTraitKind kind) {
+        SingletonTraitMap map = HostedManagement.getAndAssertExists().getUninstalledSingletonTraitMap(key);
+        if (map == null) {
+            return null;
+        } else {
+            return map.getTrait(kind).orElse(null);
+        }
     }
 
     @Override
@@ -140,6 +144,8 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         final boolean runtimeAccessAllowed;
 
         SingletonInfo(Object singleton, SingletonTraitMap traitMap) {
+            assert traitMap.sealed : traitMap;
+
             this.singleton = singleton;
             this.traitMap = traitMap;
 
@@ -162,19 +168,33 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
      */
     public static final class SingletonTraitMap {
         private final EnumMap<SingletonTraitKind, SingletonTrait> traitMap;
+        private boolean sealed = false;
 
         private SingletonTraitMap(EnumMap<SingletonTraitKind, SingletonTrait> traitMap) {
             this.traitMap = traitMap;
         }
 
+        private static SingletonTraitMap create() {
+            return new SingletonTraitMap(new EnumMap<>(SingletonTraitKind.class));
+        }
+
         void addTrait(SingletonTrait value) {
+            assert !sealed : "cannot add further traits";
             SingletonTraitKind key = value.kind();
             var prev = traitMap.put(key, value);
-            assert prev == null;
+            assert prev == null : Assertions.errorMessage(key, value, prev);
+        }
+
+        public boolean isEmpty() {
+            return traitMap.isEmpty();
         }
 
         public Optional<SingletonTrait> getTrait(SingletonTraitKind key) {
             return Optional.ofNullable(traitMap.get(key));
+        }
+
+        void seal() {
+            sealed = true;
         }
 
         /**
@@ -182,19 +202,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          * a given singleton.
          */
         static SingletonTraitMap getAnnotatedTraits(Class<?> singletonClass, AnnotationExtractor extractor, boolean layeredBuild) {
+            SingletonTraitMap traitMap = SingletonTraitMap.create();
             if (extractor != null) {
                 SingletonTraits annotation = extractor.extractAnnotation(singletonClass, SingletonTraits.class, false);
 
                 if (annotation != null) {
-                    EnumMap<SingletonTraitKind, SingletonTrait> traitMap = new EnumMap<>(SingletonTraitKind.class);
-
                     if (annotation.access() != null) {
                         var accessSupplierClass = annotation.access();
                         SingletonAccessSupplier accessSupplier = ReflectionUtil.newInstance(accessSupplierClass);
                         SingletonTrait accessTrait = accessSupplier.getAccessTrait();
                         assert accessTrait.kind() == SingletonTraitKind.ACCESS && accessTrait.kind().isInConfiguration(layeredBuild) : accessTrait;
-                        var prev = traitMap.put(accessTrait.kind(), accessTrait);
-                        assert prev == null : Assertions.errorMessage("Added multiple access traits", accessTrait, prev);
+                        traitMap.addTrait(accessTrait);
                     }
 
                     if (SingletonTraitKind.LAYERED_CALLBACKS.isInConfiguration(layeredBuild) && annotation.layeredCallbacks() != null) {
@@ -202,8 +220,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                         SingletonLayeredCallbacksSupplier callbacksSupplier = ReflectionUtil.newInstance(callbacksSupplierClass);
                         SingletonTrait callbacksTrait = callbacksSupplier.getLayeredCallbacksTrait();
                         assert callbacksTrait.kind() == SingletonTraitKind.LAYERED_CALLBACKS : callbacksTrait;
-                        var prev = traitMap.put(callbacksTrait.kind(), callbacksTrait);
-                        assert prev == null : Assertions.errorMessage("Added multiple layered callbacks traits", callbacksTrait, prev);
+                        traitMap.addTrait(callbacksTrait);
                     }
 
                     if (SingletonTraitKind.LAYERED_INSTALLATION_KIND.isInConfiguration(layeredBuild) && annotation.layeredInstallationKind() != null) {
@@ -211,28 +228,21 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                         SingletonLayeredInstallationKindSupplier installationKindSupplier = ReflectionUtil.newInstance(installationKindSupplierClass);
                         SingletonTrait installationTrait = installationKindSupplier.getLayeredInstallationKindTrait();
                         assert installationTrait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND : installationTrait;
-                        var prev = traitMap.put(installationTrait.kind(), installationTrait);
-                        assert prev == null : Assertions.errorMessage("Added multiple layered installation kind traits", installationTrait, prev);
+                        traitMap.addTrait(installationTrait);
                     }
 
                     if (annotation.other() != null) {
                         for (var traitSupplierClass : annotation.other()) {
                             SingletonTraitsSupplier traitSupplier = ReflectionUtil.newInstance(traitSupplierClass);
-                            SingletonTrait traitInfo = traitSupplier.getTrait();
-                            if (traitInfo.kind().isInConfiguration(layeredBuild)) {
-                                var prev = traitMap.put(traitInfo.kind(), traitInfo);
-                                assert prev == null : Assertions.errorMessage("Added multiple traits for singleton kind", traitInfo, prev);
+                            SingletonTrait trait = traitSupplier.getTrait();
+                            if (trait.kind().isInConfiguration(layeredBuild)) {
+                                traitMap.addTrait(trait);
                             }
                         }
                     }
-
-                    if (!traitMap.isEmpty()) {
-                        return new SingletonTraitMap(traitMap);
-                    }
                 }
             }
-
-            return new SingletonTraitMap(new EnumMap<>(SingletonTraitKind.class));
+            return traitMap;
         }
     }
 
@@ -241,15 +251,19 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
      */
     public static final class HostedManagement {
 
-        static {
-            ImageSingletonsSupport.installSupport(new ImageSingletonsSupportImpl());
-        }
-
         /**
          * Marker for ImageSingleton keys which cannot have a value installed. This can happen when
          * a {@link LayeredImageSingleton} specified {@link PersistFlags#FORBIDDEN}.
          */
         private static final Object SINGLETON_INSTALLATION_FORBIDDEN = new Object();
+        private static final SingletonInfo FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+
+        static {
+            ImageSingletonsSupport.installSupport(new ImageSingletonsSupportImpl());
+            var traitMap = SingletonTraitMap.create();
+            traitMap.seal();
+            FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS = new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+        }
 
         /**
          * The {@link ImageSingletons} removes static state from the image generator, and in theory
@@ -305,12 +319,30 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         private void installPriorSingletonInfo(SVMImageLayerSingletonLoader info) {
-            var result = info.loadImageSingletons(SINGLETON_INSTALLATION_FORBIDDEN);
+            Function<SingletonTrait[], Object> forbiddenObjectCreator = (traits) -> {
+                if (traits.length == 0) {
+                    return FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+                }
+
+                var traitMap = SingletonTraitMap.create();
+                for (var trait : traits) {
+                    traitMap.addTrait(trait);
+                }
+                traitMap.seal();
+                return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+            };
+            var result = info.loadImageSingletons(forbiddenObjectCreator);
             Set<Class<?>> installedKeys = new HashSet<>();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
                 for (Class<?> key : entry.getValue()) {
-                    addSingleton(key, singletonToInstall);
+                    if (singletonToInstall instanceof SingletonInfo forbiddenSingletonInfo) {
+                        assert forbiddenSingletonInfo.singleton == SINGLETON_INSTALLATION_FORBIDDEN : forbiddenSingletonInfo.singleton;
+                        var prev = configObjects.put(key, forbiddenSingletonInfo);
+                        VMError.guarantee(prev == null, "Overwriting key %s existing value: %s", key.getTypeName(), prev);
+                    } else {
+                        addSingleton(key, singletonToInstall);
+                    }
                     installedKeys.add(key);
                 }
             }
@@ -333,25 +365,36 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         private final Map<Class<?>, SingletonInfo> configObjects;
         private final Map<Object, SingletonTraitMap> singletonToTraitMap;
 
-        /**
-         * At first, only
-         * {@link com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind#DISALLOWED}
-         * is forbidden. More forbidden kinds can be added via {@link #forbidNewTraitInstallations}.
-         */
-        private final EnumSet<SingletonLayeredInstallationKind.InstallationKind> forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
+        private final EnumSet<SingletonLayeredInstallationKind.InstallationKind> forbiddenInstallationKinds;
         private Set<Class<?>> multiLayeredImageSingletonKeys;
         private final boolean layeredBuild;
         private final AnnotationExtractor extractor;
+        private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
 
         public HostedManagement() {
-            this(false, null);
+            this(null, null);
         }
 
-        public HostedManagement(boolean layeredBuild, AnnotationExtractor extractor) {
+        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
             this.multiLayeredImageSingletonKeys = ConcurrentHashMap.newKeySet();
-            this.layeredBuild = layeredBuild;
+            forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
+            if (support != null) {
+                this.layeredBuild = support.buildingImageLayer;
+                this.singletonTraitInjector = support.getSingletonTraitInjector();
+                if (support.buildingImageLayer) {
+                    if (!support.buildingApplicationLayer) {
+                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.InstallationKind.APP_LAYER_ONLY);
+                    }
+                    if (!support.buildingInitialLayer) {
+                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
+                    }
+                }
+            } else {
+                this.layeredBuild = false;
+                this.singletonTraitInjector = null;
+            }
             this.extractor = extractor;
         }
 
@@ -399,9 +442,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (traitMap == null) {
                 traitMap = SingletonTraitMap.getAnnotatedTraits(value.getClass(), extractor, layeredBuild);
                 injectLayeredInformation(value, traitMap);
-                traitMap.getTrait(SingletonTraitKind.ACCESS).ifPresent(trait -> {
-                    LayeredImageSingletonBuilderFlags.verifyImageBuilderFlags(value, SingletonAccess.getAccess(trait));
-                });
                 if (layeredBuild) {
                     traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
                         var kind = SingletonLayeredInstallationKind.getInstallationKind(trait);
@@ -410,8 +450,19 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                         }
                     });
                 }
+                /*
+                 * We are adding injected traits after checking for forbidden kinds because they do
+                 * not adhere to the same restrictions (e.g., sometimes a singleton in a shared
+                 * layer will be labelled as ApplicationLayerOnly).
+                 */
+                if (singletonTraitInjector != null) {
+                    for (var trait : singletonTraitInjector.apply(key)) {
+                        traitMap.addTrait(trait);
+                    }
+                }
             }
             SingletonTraitMap candidateTraitMap = traitMap;
+            candidateTraitMap.seal();
             traitMap = singletonToTraitMap.computeIfAbsent(value, k -> candidateTraitMap);
             addSingletonToMap(key, value, traitMap);
         }
@@ -422,25 +473,18 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 throw UserError.abort("ImageSingletons do not allow null value for key %s", key.getTypeName());
             }
 
-            if (value instanceof LayeredImageSingleton singleton) {
-                if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
-
-                    if (singleton instanceof MultiLayeredImageSingleton && ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
-                        throw UserError.abort("Singleton cannot implement both %s and %s. singleton: %s", MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class, singleton);
-                    }
-
-                    if (ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton) && !ImageLayerBuildingSupport.lastImageBuild()) {
-                        throw UserError.abort("Application layer only image singleton can only be installed in the final layer: %s", singleton);
-                    }
-
-                    if (singleton instanceof MultiLayeredImageSingleton) {
-                        multiLayeredImageSingletonKeys.add(key);
-                    }
-                }
+            if (value instanceof MultiLayeredImageSingleton) {
+                multiLayeredImageSingletonKeys.add(key);
             }
 
-            Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
+            traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
+                switch (SingletonLayeredInstallationKind.getInstallationKind(trait)) {
+                    case APP_LAYER_ONLY, MULTI_LAYER ->
+                        VMError.guarantee(key == value.getClass(), "singleton key %s must match singleton class %s", key, value);
+                }
+            });
 
+            Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
             if (prevValue != null) {
                 throw UserError.abort("ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
             }
@@ -456,9 +500,15 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
         Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
             return configObjects.values().stream().filter(singletonInfo -> {
-                var optionalTrait = singletonInfo.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
-                if (optionalTrait.orElse(null) instanceof SingletonTrait trait) {
-                    return SingletonLayeredInstallationKind.getInstallationKind(trait) == kind;
+                /*
+                 * We must filter out forbidden objects, as they are not actually installed in this
+                 * image.
+                 */
+                if (singletonInfo.singleton != SINGLETON_INSTALLATION_FORBIDDEN) {
+                    var optionalTrait = singletonInfo.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+                    if (optionalTrait.orElse(null) instanceof SingletonTrait trait) {
+                        return SingletonLayeredInstallationKind.getInstallationKind(trait) == kind;
+                    }
                 }
                 return false;
             }).map(SingletonInfo::singleton).collect(Collectors.toUnmodifiableSet());
@@ -511,6 +561,52 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (key == null) {
                 throw UserError.abort("ImageSingletons do not allow null keys");
             }
+        }
+
+        public SingletonTraitMap getUninstalledSingletonTraitMap(Class<?> key) {
+            VMError.guarantee(layeredBuild && SingletonTraitKind.LAYERED_INSTALLATION_KIND.isInConfiguration(layeredBuild));
+
+            SingletonInfo info = configObjects.computeIfAbsent(key, k -> {
+
+                SingletonTraits annotation = extractor.extractAnnotation(k, SingletonTraits.class, false);
+                if (annotation != null) {
+                    if (annotation.layeredInstallationKind() != null) {
+                        var installationKindSupplierClass = annotation.layeredInstallationKind();
+                        /*
+                         * Initial Layer information should never be injected, as this is something
+                         * which occurred in the past and should already be present in configObject
+                         * when it exists.
+                         */
+                        if (installationKindSupplierClass != SingletonLayeredInstallationKind.InitialLayerOnly.class) {
+                            SingletonLayeredInstallationKindSupplier installationKindSupplier = ReflectionUtil.newInstance(installationKindSupplierClass);
+                            SingletonTrait installationTrait = installationKindSupplier.getLayeredInstallationKindTrait();
+                            assert installationTrait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND : installationTrait;
+                            SingletonTraitMap traitMap = SingletonTraitMap.create();
+                            traitMap.addTrait(installationTrait);
+                            traitMap.seal();
+                            return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+                        }
+                    }
+                }
+
+                if (singletonTraitInjector != null) {
+                    var traits = singletonTraitInjector.apply(key);
+                    if (traits.length != 0) {
+                        SingletonTraitMap traitMap = SingletonTraitMap.create();
+                        for (var trait : traits) {
+                            traitMap.addTrait(trait);
+                        }
+                        traitMap.seal();
+                        return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+                    }
+                }
+
+                return FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+            });
+
+            VMError.guarantee(info.singleton == SINGLETON_INSTALLATION_FORBIDDEN, "We can only use this for uninstalled singletons");
+
+            return info.traitMap();
         }
     }
 }

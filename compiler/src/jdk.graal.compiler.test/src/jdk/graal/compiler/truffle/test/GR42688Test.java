@@ -173,7 +173,7 @@ public class GR42688Test {
         CountDownLatch calleeCompilationStartLatch = new CountDownLatch(1);
         CountDownLatch calleeCompilationFinishedLatch = new CountDownLatch(1);
         AtomicBoolean intCallerCompilationFailed = new AtomicBoolean();
-        optimizedTruffleRuntime.addListener(new OptimizedTruffleRuntimeListener() {
+        OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
             @Override
             public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph, TruffleCompilerListener.CompilationResultInfo result) {
                 if (target == calleeRef.get()) {
@@ -198,7 +198,8 @@ public class GR42688Test {
                     intCallerCompilationFailed.set(true);
                 }
             }
-        });
+        };
+        optimizedTruffleRuntime.addListener(listener);
         try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "true").option(
                         "engine.DynamicCompilationThresholds", "false").option("engine.MultiTier", "false").option("engine.Splitting", "false").option("engine.SingleTierCompilationThreshold",
                                         "10").option("engine.CompilationFailureAction", "Silent").build()) {
@@ -242,6 +243,8 @@ public class GR42688Test {
                 intCaller.call(42, Integer.class);
             }
             Assert.assertTrue(intCallerCompilationFailed.get());
+        } finally {
+            optimizedTruffleRuntime.removeListener(listener);
         }
     }
 }

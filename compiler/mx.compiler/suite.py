@@ -26,10 +26,6 @@ suite = {
         "subdir": True,
       },
       {
-        "name" : "regex",
-        "subdir": True
-      },
-      {
         "name" : "sdk",
         "subdir": True
       }
@@ -464,7 +460,6 @@ suite = {
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
-        "regex:TREGEX",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -528,7 +523,7 @@ suite = {
           "jdk.graal.compiler.code.DisassemblerProvider",
           "jdk.graal.compiler.core.match.MatchStatementSet",
           "jdk.graal.compiler.core.common.LibGraalSupport",
-          "jdk.graal.compiler.debug.DebugHandlersFactory",
+          "jdk.graal.compiler.debug.DebugDumpHandlersFactory",
           "jdk.graal.compiler.debug.TTYStreamProvider",
           "jdk.graal.compiler.debug.PathUtilitiesProvider",
           "jdk.graal.compiler.hotspot.HotSpotBackendFactory",

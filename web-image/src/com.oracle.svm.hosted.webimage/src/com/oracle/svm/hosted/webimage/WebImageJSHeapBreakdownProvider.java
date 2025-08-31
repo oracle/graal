@@ -47,7 +47,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
      * of bytes used if they were laid out in binary without alignment gaps.
      */
     @Override
-    protected void calculate(FeatureImpl.BeforeImageWriteAccessImpl access) {
+    protected void calculate(FeatureImpl.BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
         long totalByteSize = 0;
         WebImageJSProviders providers = (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
         ConstantIdentityMapping identityMapping = providers.typeControl().getConstantMap().identityMapping;
@@ -56,7 +56,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
         for (ConstantIdentityMapping.IdentityNode node : identityMapping.identityNodes()) {
             HostedClass type = (HostedClass) providers.getMetaAccess().lookupJavaType(node.getDefinition().getConstant());
             long size = node.getDefinition().getSize();
-            objectTypeEntries.computeIfAbsent(type, HeapBreakdownEntry::new).add(size);
+            objectTypeEntries.computeIfAbsent(type, HeapBreakdownEntry::of).add(size);
             totalByteSize += size;
         }
 

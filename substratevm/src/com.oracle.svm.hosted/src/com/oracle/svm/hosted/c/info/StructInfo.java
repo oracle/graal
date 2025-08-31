@@ -34,7 +34,7 @@ public class StructInfo extends SizableInfo {
     private final ResolvedJavaType annotatedType;
 
     private final boolean isIncomplete;
-    private String typedefName;
+    private final String typedefName;
 
     public static StructInfo create(String typeName, ResolvedJavaType annotatedType) {
         String typedefAnnotation = InfoTreeBuilder.getTypedefName(annotatedType);

@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -45,9 +46,16 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
@@ -203,6 +211,56 @@ public class VectorAPIBoxingUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * Box the given value by allocating an appropriate Java instance and storing the payload of the
+     * value into the {@code payload} field of the box instance. The allocation will be inserted
+     * before {@code successor}.
+     */
+    static ValueNode boxVector(ResolvedJavaType boxType, FixedNode successor, ValueNode vector, CoreProviders providers) {
+        VectorAPIType typeMeta = VectorAPIType.ofType(boxType, providers);
+        GraalError.guarantee(typeMeta != null, "unexpected vector type %s", boxType);
+        StructuredGraph graph = vector.graph();
+
+        // Allocate the payload array
+        ResolvedJavaType payloadElementType = providers.getMetaAccess().lookupJavaType(typeMeta.payloadKind.toJavaClass());
+        NewArrayNode payloadArray = graph.add(new NewArrayNode(payloadElementType, ConstantNode.forInt(typeMeta.vectorLength, graph), false));
+        graph.addBeforeFixed(successor, payloadArray);
+
+        // Store the value into the payload array
+        ValueNode payload;
+        if (typeMeta.isMask) {
+            payload = graph.addOrUniqueWithInputs(logicAsBooleans(vector, VectorAPIUtils.vectorArchitecture(providers)));
+        } else {
+            payload = vector;
+        }
+        AddressNode payloadArrayAddress = graph.addOrUnique(new IndexAddressNode(payloadArray, ConstantNode.forInt(0, graph), payloadElementType.getJavaKind()));
+        WriteNode storeToPayload = graph.add(new WriteNode(payloadArrayAddress, LocationIdentity.INIT_LOCATION, payload, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        graph.addBeforeFixed(successor, storeToPayload);
+
+        // Publish the allocated array
+        graph.addBeforeFixed(successor, graph.add(MembarNode.forInitialization()));
+        PublishWritesNode publishedPayloadArray = graph.add(new PublishWritesNode(payloadArray));
+        graph.addBeforeFixed(successor, publishedPayloadArray);
+
+        // Allocate the box instance, fillContents must be true because the field is an oop
+        NewInstanceNode box = graph.add(new NewInstanceNode(boxType, true));
+        graph.addBeforeFixed(successor, box);
+
+        // Store the allocated payload array into the corresponding field of the box instance
+        ResolvedJavaField[] boxFields = boxType.getInstanceFields(true);
+        GraalError.guarantee(boxFields.length == 1, "unexpected field count in %s", boxType);
+        ResolvedJavaField payloadField = boxFields[0];
+        GraalError.guarantee(payloadField.getName().equals("payload"), "unexpected field %s %s in %s", payloadField.getDeclaringClass(), payloadField.getName(), boxType);
+        StoreFieldNode storeToBox = graph.add(new StoreFieldNode(box, payloadField, publishedPayloadArray));
+        graph.addBeforeFixed(successor, storeToBox);
+
+        // Publish the allocated box instance
+        graph.addBeforeFixed(successor, graph.add(MembarNode.forInitialization()));
+        PublishWritesNode publishedBox = graph.add(new PublishWritesNode(box));
+        graph.addBeforeFixed(successor, publishedBox);
+        return publishedBox;
     }
 
     /**

@@ -744,6 +744,7 @@ suite = {
         "TRUFFLE_API",
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
+        "TRUFFLE_RUNTIME",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1730,7 +1731,6 @@ suite = {
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.runtime.LoopNodeFactory",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.EngineCacheSupport",
           "com.oracle.truffle.runtime.jfr.EventFactory.Provider",

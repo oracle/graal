@@ -231,6 +231,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {
+        // keep in sync with truffle/docs/DeoptCyclePatterns.md
         List<ResolvedJavaType> types = new ArrayList<>(16);
         types.add(UnexpectedResultException);
         types.add(SlowPathException);

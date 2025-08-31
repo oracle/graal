@@ -112,7 +112,7 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected List<Class<?>> getClassesInImageHeap() {
         return null;
     }
 
@@ -139,8 +139,13 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    public int getPreferredAddressSpaceAlignment() {
-        return 0;
+    public int getHeapBaseAlignment() {
+        return 1;
+    }
+
+    @Override
+    public int getImageHeapAlignment() {
+        return 1;
     }
 
     @Override
@@ -228,16 +233,6 @@ public class WebImageJSHeap extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getUsedMemoryAfterLastGC() {
         return Word.zero();
-    }
-
-    @Override
-    public UnsignedWord getImageHeapReservedBytes() {
-        throw VMError.unimplemented("Native Memory Tracking is not supported");
-    }
-
-    @Override
-    public UnsignedWord getImageHeapCommittedBytes() {
-        throw VMError.unimplemented("Native Memory Tracking is not supported");
     }
 
     @Override

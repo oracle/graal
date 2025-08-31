@@ -23,8 +23,8 @@ Providing the builder with correct and exhaustive reachability metadata guarante
 
 Metadata can be provided to the `native-image` builder in the following ways:
 - By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/\<group.Id>\/\<artifactId>\/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
-- For more advanced use cases, where classpath scanning or build-time initialization is needed, by using the [public API](#public-api).
+- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/&lt;group.Id&gt;/&lt;artifactId&gt;/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- For more advanced use cases, where classpath scanning or build-time initialization is needed.
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
@@ -43,6 +43,7 @@ Metadata can be provided to the `native-image` builder in the following ways:
 * [Metadata Types](#metadata-types)
 * [Reflection (Including Dynamic Proxies)](#reflection)
 * [Java Native Interface](#java-native-interface)
+* [Foreign Function and Memory API](#foreign-function-and-memory-api)
 * [Resources](#resources)
 * [Resource Bundles](#resource-bundles)
 * [Serialization](#serialization)
@@ -484,6 +485,19 @@ Failing to provide metadata for an element that is dynamically accessed from nat
 
 > Note that most libraries that use JNI do not handle exceptions properly, so to see which elements are missing `--exact-reachability-metadata` in combination with `-XX:MissingRegistrationReportingMode=Warn` must be used.   
 
+## Foreign Function and Memory API
+
+The [Foreign Function and Memory (FFM) API](FFM-API.md) is an interface that enables Java code to interact with native code and vice versa.
+
+In particular, it allows you to create _downcall handles_ and _upcall stubs_.
+* A downcall handle is a method handle that refers to a native function. Invoking it results in a call to the native function.
+* An upcall stub is executable code generated at run time that can be passed as a function pointer to native code. Calling this function pointer results in the execution of a Java method handle.
+
+To perform downcalls or upcalls at run time, supporting code must be generated at image build time.
+Therefore, the `native-image` builder must be provided with descriptors that characterize the functions with which downcalls or upcalls can be performed at run time.
+
+If the necessary metadata is not provided, a `MissingForeignRegistrationError` will be thrown at run time.
+
 ## Resources
 
 Java is capable of accessing any resource on the application class path, or the module path for which the requesting code has permission to access.
@@ -764,7 +778,29 @@ See below is a sample reachability metadata configuration that you can use in _r
     {
       "bundle": "fully.qualified.bundle.name"
     }
-  ]
+  ],
+  "foreign": {
+    "downcalls": [
+      {
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ],
+    "upcalls": [
+      {
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ],
+    "directUpcalls": [
+      {
+        "class": "org.example.SomeClass",
+        "method": "method1",
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ]
+  }
 }
 ```
 

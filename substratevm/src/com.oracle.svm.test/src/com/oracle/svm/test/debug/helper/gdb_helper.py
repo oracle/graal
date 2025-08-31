@@ -45,7 +45,9 @@ string_rexp = re.compile(r'(null|".*")')
 boolean_rexp = re.compile(r"(true|false)")
 array_rexp = re.compile(r'.+\[\d+]\s*=\s*{.*}')
 args_rexp = re.compile(r'.*\(.*\)\s*\((?P<args>.*)\)')
-hex_rexp = re.compile(r"[\da-fA-F]+")
+hex_pattern = r"[\da-fA-F]+"
+hex_rexp = re.compile(hex_pattern)
+value_pattern = r"[a-zA-Z0-9$_<> ]+"
 
 
 def gdb_execute(command: str) -> str:
@@ -116,6 +118,11 @@ def gdb_get_param(name: str) -> str:
 def gdb_delete_breakpoints() -> None:
     logger.info("Deleting all breakpoints")
     gdb_execute("delete breakpoints")
+
+
+def gdb_disable_breakpoints() -> None:
+    logger.info("Disabling all breakpoints")
+    gdb_execute("disable breakpoints")
 
 
 def gdb_run() -> None:

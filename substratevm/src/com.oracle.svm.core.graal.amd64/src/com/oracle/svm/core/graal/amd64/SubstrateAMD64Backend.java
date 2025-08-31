@@ -687,15 +687,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
             if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
-                /*
-                 * Load the address for the start of the text section and then add in the offset for
-                 * this specific method.
-                 */
-                var methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
-                AllocatableValue basePointerAddress = newVariable(getLIRKindTool().getWordKind());
-                append(new AMD64CGlobalDataLoadAddressOp(methodLocation.base(), basePointerAddress));
-                Value codeOffsetInSection = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(methodLocation.offset()));
-                return getArithmetic().emitAdd(basePointerAddress, codeOffsetInSection, false);
+                DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                if (dynamicImageLayerInfo.isMethodCompilationDelayed(targetMethod)) {
+                    AllocatableValue methodAddress = newVariable(getLIRKindTool().getWordKind());
+                    append(new AMD64CGlobalDataLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(targetMethod), methodAddress));
+                    return methodAddress;
+                } else {
+                    /*
+                     * Load the address for the start of the text section and then add in the offset
+                     * for this specific method.
+                     */
+                    var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(targetMethod);
+                    AllocatableValue basePointerAddress = newVariable(getLIRKindTool().getWordKind());
+                    append(new AMD64CGlobalDataLoadAddressOp(methodLocation.base(), basePointerAddress));
+                    Value codeOffsetInSection = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(methodLocation.offset()));
+                    return getArithmetic().emitAdd(basePointerAddress, codeOffsetInSection, false);
+                }
             }
             if (!shouldEmitOnlyIndirectCalls()) {
                 return null;
@@ -1497,13 +1504,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public AMD64LIRInstruction createLoadMethodPointerConstant(AllocatableValue dst, SubstrateMethodPointerConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                 if (constant.pointer().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
-                    /*
-                     * AMD64LoadMethodPointerConstantOp retrieves the address via a PC-relative
-                     * load. This is not possible to do in extension layers when referring to
-                     * methods defined in prior layers.
-                     */
-                    var methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(sharedMethod);
-                    return new AMD64CGlobalDataLoadAddressOp(methodLocation.base(), dst, methodLocation.offset());
+                    DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                    if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
+                        return new AMD64CGlobalDataLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst);
+                    } else {
+                        /*
+                         * AMD64LoadMethodPointerConstantOp retrieves the address via a PC-relative
+                         * load. This is not possible to do in extension layers when referring to
+                         * methods defined in prior layers.
+                         */
+                        var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(sharedMethod);
+                        return new AMD64CGlobalDataLoadAddressOp(methodLocation.base(), dst, methodLocation.offset());
+                    }
                 }
             }
 
@@ -1902,7 +1914,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         var substrateAMD64FrameMap = (SubstrateAMD64FrameMap) frameMap;
         sharedCompilationResult.setFrameSize(substrateAMD64FrameMap.frameSize());
         if (SubstrateUtil.HOSTED) {
-            sharedCompilationResult.setCodeAlignment(SubstrateOptions.codeAlignment(options));
+            sharedCompilationResult.setCodeAlignment(SubstrateOptions.buildTimeCodeAlignment(options));
         }
         if (substrateAMD64FrameMap.needsFramePointer()) {
             sharedCompilationResult.setFramePointerSaveAreaOffset(substrateAMD64FrameMap.getFramePointerSaveAreaOffset());

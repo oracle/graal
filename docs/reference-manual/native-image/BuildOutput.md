@@ -23,57 +23,60 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (2.8s @ 0.15GB)
- Java version: 25+13, vendor version: GraalVM CE 25-dev+13.1
+[1/8] Initializing...                                            (2.0s @ 0.19GB)
+ Java version: 26+9, vendor version: GraalVM CE 26-dev+9.1
  Graal compiler: optimization level: 2, target machine: x86-64-v3
- C compiler: gcc (linux, x86_64, 12.2.0)
+ C compiler: gcc (linux, x86_64, 15.2.1)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
- Build resources:
- - 13.24GB of memory (42.7% of system memory, using available memory)
- - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
-[2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
-    3,158 types,   3,625 fields, and  14,804 methods found reachable
-    1,012 types,      36 fields, and     377 methods registered for reflection
-       57 types,      57 fields, and      52 methods registered for JNI access
+Build resources:
+ - 14.69GiB of memory (47.0% of system memory, using all available memory)
+ - 20 thread(s) (100.0% of 20 available processor(s), determined at start)
+[2/8] Performing analysis...  [******]                           (3.4s @ 0.40GB)
+    3,297 types,   3,733 fields, and  15,247 methods found reachable
+    1,066 types,      36 fields, and     415 methods registered for reflection
+       58 types,      59 fields, and      52 methods registered for JNI access
+        0 downcalls and 0 upcalls registered for foreign access
         4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (0.8s @ 0.99GB)
-[4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
-[5/8] Inlining methods...     [***]                              (0.3s @ 0.32GB)
-[6/8] Compiling methods...    [**]                               (3.7s @ 0.60GB)
-[7/8] Laying out methods...   [*]                                (0.8s @ 0.83GB)
-[8/8] Creating image...       [**]                               (3.1s @ 0.58GB)
-   5.32MB (24.22%) for code area:     8,702 compilation units
-   7.03MB (32.02%) for image heap:   93,301 objects and 5 resources
-   8.96MB (40.83%) for debug info generated in 1.0s
- 659.13kB ( 2.93%) for other data
-  21.96MB in total image size, 21.04MB in total file size
+[3/8] Building universe...                                       (1.0s @ 0.60GB)
+[4/8] Parsing methods...      [*]                                (0.4s @ 0.62GB)
+[5/8] Inlining methods...     [****]                             (0.2s @ 0.59GB)
+[6/8] Compiling methods...    [**]                               (3.7s @ 0.66GB)
+[7/8] Laying out methods...   [*]                                (0.7s @ 0.60GB)
+[8/8] Creating image...       [**]                               (2.3s @ 0.65GB)
+   5.24MB (21.86%) for code area:     8,788 compilation units
+   7.67MB (32.01%) for image heap:   90,323 objects and 55 resources
+   9.43MB (39.34%) for debug info generated in 0.3s
+  11.05MB (46.13%) for other data
+  23.96MB in total image size, 13.31MB in total file size
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
-   4.03MB java.base                        1.14MB byte[] for code metadata
- 927.05kB svm.jar (Native Image)         927.31kB java.lang.String
- 111.71kB java.logging                   839.68kB byte[] for general heap data
-  63.38kB org.graalvm.nativeimage.base   736.91kB java.lang.Class
-  47.59kB jdk.proxy1                     713.13kB byte[] for java.lang.String
-  35.85kB jdk.proxy3                     272.85kB c.o.s.c.h.DynamicHubCompanion
-  27.06kB jdk.internal.vm.ci             250.83kB java.util.HashMap$Node
-  23.44kB org.graalvm.sdk                196.52kB java.lang.Object[]
-  11.42kB jdk.proxy2                     182.77kB java.lang.String[]
-   8.07kB jdk.graal.compiler             154.26kB byte[] for embedded resources
-   1.39kB for 2 more packages              1.38MB for 884 more object types
+ 791.32kB java.base/java.util              1.41MB byte[] for code metadata
+ 363.66kB java.base/java.lang              1.21MB byte[] for string data
+ 323.39kB java.base/java.text            838.53kB java.base/java.lang.String
+ 241.87kB java.base/java.util.stream     633.02kB o.g.n.~e/c.o.s.c.h.Dyna~anion
+ 229.23kB java.base/java.util.regex      431.58kB heap alignment
+ 214.23kB java.base/java.util.concurrent 428.26kB java.base/java.lang.Class
+ 166.60kB o.g.n.~e/c.o.svm.core.code     323.23kB java.base/j.util.HashMap$Node
+ 153.78kB java.base/java.time.format     284.47kB byte[] for general heap data
+ 152.90kB java.base/java.math            232.06kB java.base/java.lang.Object[]
+ 142.02kB o.g.n.~e/c.o.s.c.genscavenge   183.10kB java.base/j.u.HashMap$Node[]
+   2.32MB for 146 more packages            1.70MB for 966 more object types
 --------------------------------------------------------------------------------
 Recommendations:
+ FUTR: Use '--future-defaults=all' to prepare for future releases.
  HEAP: Set max heap for improved and more predictable memory usage.
  CPU:  Enable more CPU features with '-march=native' for improved performance.
 --------------------------------------------------------------------------------
-    0.8s (4.6% of total time) in 35 GCs | Peak RSS: 1.93GB | CPU load: 9.61
+    0.9s (6.1% of total time) in 54 GCs | Peak RSS: 1.82GB | CPU load: 13.25
 --------------------------------------------------------------------------------
 Build artifacts:
+ /home/janedoe/helloworld/gdb-debughelpers.py (debug_info)
  /home/janedoe/helloworld/helloworld (executable)
  /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
 ================================================================================
-Finished generating 'helloworld' in 17.0s.
+Finished generating 'helloworld' in 14.2s.
 ```
 
 ## Build Stages
@@ -93,7 +96,7 @@ Please report version and vendor when you [file issues](https://github.com/oracl
 The selected optimization level and targeted machine type used by the Graal compiler.
 The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
 Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling).
-This is useful during development to reduce image build time. 
+This is useful during development to reduce image build time.
 Use `-Os` to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
@@ -142,11 +145,13 @@ The memory limit and number of threads used by the build process.
 
 More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the build process uses the dedicated mode (up to 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
-Otherwise, it tries to use available memory to avoid memory pressure on developer machines (shared mode).
+The actual memory consumption can also be lower than the limit set, as the GC only commits memory that it needs.
+By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
+Otherwise, it uses shared mode, which uses the available memory to avoid memory pressure on developer machines.
 If less than 8GB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
 It is possible to override the default behavior and set relative or absolute memory limits, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
+`Xms` (for example, `-J-Xms9g`) can also be used to ensure a minimum for the limit, if you know the image needs at least that much memory to build.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).
@@ -171,8 +176,8 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
-#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign functions stubs
-The number of downcalls and upcalls registered for [foreign](ForeignInterface.md) function access.
+#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign Access Registrations
+The number of downcalls and upcalls registered for [foreign function access](FFM-API.md).
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -216,7 +221,7 @@ An origin is a group of Java sources and can be a JAR file, a package name, or a
 The [`java.base` module](https://docs.oracle.com/en/java/javase/22/docs/api/java.base/module-summary.html), for example, contains base classes from the JDK.
 The `svm.jar` file, the `org.graalvm.nativeimage.base` module, and similar origins contain internal sources for the Native Image runtime.
 To reduce the size of the code area and with that, the total size of the native executable, re-evaluate the dependencies of your application based on the code area breakdown.
-Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint. 
+Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint.
 
 #### <a name="glossary-image-heap"></a>Image Heap
 The heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
@@ -266,11 +271,11 @@ This shows whether Java deserialization is included in the native executable or 
 If not included, the attack surface of the executable is reduced as the executable cannot be exploited with attacks based on Java deserialization.
 
 #### <a name="glossary-sbom"></a><a name="glossary-embedded-sbom"></a>Software Bill of Material (SBOM)
-This section indicates whether a SBOM was assembled and in what ways it was stored. 
-The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact. 
-The SBOM feature is enabled by default and defaults to the `embed` option. 
-When embedded, the SBOM size is displayed. 
-The number of components is always displayed. 
+This section indicates whether an SBOM was assembled and in what ways it was stored.
+The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact.
+The SBOM feature is enabled by default and defaults to the `embed` option.
+When embedded, the SBOM size is displayed.
+The number of components is always displayed.
 The SBOM feature can be disabled with `--enable-sbom=false`.
 
 Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
@@ -278,7 +283,7 @@ If these types contain vulnerabilities, SBOM scanning will not detect them.
 To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
 
 Use the [build report](BuildReport.md) to view included components, their dependencies, and any unassociated types.
-For more information, see [Software Bill of Materials](../../security/native-image.md).
+For more information, see [Software Bill of Materials (SBOM) in Native Image](../../security/SBOM.md).
 
 #### <a name="glossary-obfuscation"></a>Advanced Obfuscation
 This section indicates whether advanced obfuscation was applied.
@@ -295,8 +300,11 @@ Advanced obfuscation is applied to your application code and third-party depende
 * Module and package names containing a class that loads a resource
 * Names of annotations, lambdas, and proxies
 
-To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`. 
-See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated. 
+To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`.
+Use the mapping file and the `native-image-configure deobfuscate` command to deobfuscate stack traces.
+See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated.
+
+For more information, see [Advanced Obfuscation in Native Image](../../security/Obfuscation.md).
 
 > Native Image obfuscates binaries by removing class files, applying aggressive optimizations, and eliminating dead code. The advanced obfuscation feature also obfuscates symbol names.
 
@@ -320,7 +328,7 @@ Additionally, it safeguards against unexpected changes in future GraalVM updates
 
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
-The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/22/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
+The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/25/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
 Use the [Tracing Agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
 Otherwise, your application is unlikely to work properly.
 If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
@@ -372,8 +380,8 @@ Note, however, that the overall peak throughput of the executable may be lower d
 #### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
 
 Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
-This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
-This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
+This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`.
+This effectively reduces the number of configuration entries necessary to achieve build-time initialization.
 When adopting the new mode it is best to start introducing build-time initialization from scratch.
 During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
 Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too.

@@ -1242,7 +1242,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
             svm_experimental_options([
                 '-H:+SourceLevelDebug',
                 '-H:+RuntimeDebugInfo',
-                '-H:+LazyDeoptimization' if eager else '-H:-LazyDeoptimization',
+                '-H:-LazyDeoptimization' if eager else '-H:+LazyDeoptimization',
             ]) +
             ['-g', '-O0', '--macro:jsvm-library']
         ))
@@ -1633,6 +1633,9 @@ libgraal_build_args = [
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
+    # Do not cripple exceptions in libgraal
+    '-H:-ReduceImplicitExceptionStackTraceInformation',
+
     # Generate a .bgv dump upon compilation failure
     '-H:+DumpOnError',
 
@@ -1702,7 +1705,7 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     use_modules='image',
     jar_distributions=['substratevm:SVM_JDWP_SERVER'],
     build_args=libsvmjdwp_build_args + [
-        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature,com.oracle.svm.hosted.SymbolsFeature',
+        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature,com.oracle.svm.hosted.classloading.SymbolsFeature',
     ],
     headers=False,
 )

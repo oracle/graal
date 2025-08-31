@@ -29,6 +29,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 
@@ -65,5 +66,10 @@ public final class NoMetaspace implements Metaspace {
     @Override
     public byte[] allocateByteArray(int length) {
         throw VMError.shouldNotReachHere("Must not be called if metaspace support is not available.");
+    }
+
+    @Override
+    public void walkObjects(ObjectVisitor visitor) {
+        /* Nothing to do. */
     }
 }

@@ -87,10 +87,10 @@ public class AssertionSnippets implements Snippets {
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
             StructuredGraph graph = assertionNode.graph();
-            Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph, tool.getLoweringStage());
             args.add("condition", assertionNode.condition());
             args.add("message",
-                            graph.unique(new ConstantNode(new CStringConstant("failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")"),
+                            graph.unique(new ConstantNode(new CStringConstant("failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method().format("%H.%n(%p)") + ")"),
                                             StampFactory.pointer())));
             args.add("l1", assertionNode.getL1());
             args.add("l2", assertionNode.getL2());

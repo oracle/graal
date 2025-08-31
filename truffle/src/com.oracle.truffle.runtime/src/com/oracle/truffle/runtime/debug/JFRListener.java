@@ -74,7 +74,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
-    private static final EventFactory factory = lookupFactory();
+    private static final EventFactory FACTORY = lookupFactory();
 
     // Support for JFRListener#isInstrumented
     private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
@@ -87,11 +87,20 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private JFRListener(OptimizedTruffleRuntime runtime) {
         super(runtime);
         statistics = new Statistics();
-        factory.addPeriodicEvent(CompilationStatisticsEvent.class, statistics);
+
+        if (FACTORY.isInitialized()) {
+            FACTORY.addPeriodicEvent(CompilationStatisticsEvent.class, statistics);
+        } else {
+            // avoid eager initialization for better class initialization
+            FACTORY.addInitializationListener(() -> {
+                FACTORY.addPeriodicEvent(CompilationStatisticsEvent.class, statistics);
+            });
+        }
+
     }
 
     public static void install(OptimizedTruffleRuntime runtime) {
-        if (factory != null) {
+        if (FACTORY != null) {
             runtime.addListener(new JFRListener(runtime));
         }
     }
@@ -107,7 +116,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
-        CompilationEvent event = factory.createCompilationEvent();
+        CompilationEvent event = FACTORY.createCompilationEvent();
         if (event.isEnabled()) {
             event.setRootFunction(target);
             event.compilationStarted();
@@ -119,9 +128,10 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        DeoptimizationEvent event = factory.createDeoptimizationEvent();
+        DeoptimizationEvent event = FACTORY.createDeoptimizationEvent();
         if (event.isEnabled()) {
             event.setRootFunction(target);
+            event.setInvalidated(!target.isValid());
             event.publish();
         }
     }
@@ -180,7 +190,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         statistics.invalidations.incrementAndGet();
-        InvalidationEvent event = factory.createInvalidationEvent();
+        InvalidationEvent event = FACTORY.createInvalidationEvent();
         if (event.isEnabled()) {
             event.setRootFunction(target);
             event.setReason(reason);
@@ -233,7 +243,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
         @Override
         public void run() {
-            CompilationStatisticsEvent event = factory.createCompilationStatisticsEvent();
+            CompilationStatisticsEvent event = FACTORY.createCompilationStatisticsEvent();
             if (event.isEnabled()) {
                 synchronized (this) {
                     event.setCompiledMethods(compiledMethods);
@@ -317,11 +327,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private static InstrumentedFilterState initializeInstrumentedFilter() {
         // Do not initialize during image building.
         if (!ImageInfo.inImageBuildtimeCode()) {
-            if (factory != null) {
-                factory.addInitializationListener(() -> {
+            if (FACTORY != null) {
+                FACTORY.addInitializationListener(() -> {
                     instrumentedFilterState.set(InstrumentedFilterState.ACTIVE);
                 });
-                InstrumentedFilterState currentState = factory.isInitialized() ? InstrumentedFilterState.ACTIVE : InstrumentedFilterState.INACTIVE;
+                InstrumentedFilterState currentState = FACTORY.isInitialized() ? InstrumentedFilterState.ACTIVE : InstrumentedFilterState.INACTIVE;
                 instrumentedFilterState.compareAndSet(InstrumentedFilterState.NEW, currentState);
             } else {
                 instrumentedFilterState.set(InstrumentedFilterState.INACTIVE);

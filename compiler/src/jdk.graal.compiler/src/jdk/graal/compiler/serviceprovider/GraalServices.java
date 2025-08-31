@@ -36,11 +36,16 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
+import jdk.graal.compiler.debug.CounterKey;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.code.Architecture;
@@ -515,6 +520,47 @@ public final class GraalServices {
             return null;
         }
         return jmx.getGCTimeStatistics();
+    }
+
+    public record GCTimerScope(DebugContext debug, JMXService.GCTimeStatistics gcStats, TimerKey garbageCollectionTime, CounterKey garbageCollectionCount) implements DebugCloseable {
+
+        /**
+         * Time spent in garbage collection during this compilation.
+         */
+        static final TimerKey GarbageCollectionTime = DebugContext.timer("GarbageCollectionTime").doc("Time spent in GC during compilation and code installation.");
+
+        /**
+         * Number of garbage collection during this compilation.
+         */
+        static final CounterKey GarbageCollectionCount = DebugContext.counter("GarbageCollectionCount").doc("Number of GCs during compilation and code installation.");
+
+        public static DebugCloseable create(DebugContext debug) {
+            if (debug.areCountersEnabled() || debug.areTimersEnabled()) {
+                final JMXService.GCTimeStatistics gcStats = GraalServices.getGCTimeStatistics();
+                if (gcStats != null) {
+                    return new GCTimerScope(debug, gcStats, GarbageCollectionTime, GarbageCollectionCount);
+                }
+            }
+            return null;
+        }
+
+        public static DebugCloseable create(DebugContext debug, String prefix, Class<?> forClass) {
+            if (debug.areCountersEnabled() || debug.areTimersEnabled()) {
+                final JMXService.GCTimeStatistics gcStats = GraalServices.getGCTimeStatistics();
+                if (gcStats != null) {
+                    return new GCTimerScope(debug, gcStats,
+                                    DebugContext.timer("%s%s_GarbageCollectionTime", prefix, forClass),
+                                    DebugContext.counter("%s%s_GarbageCollectionCount", prefix, forClass));
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void close() {
+            garbageCollectionCount.add(debug, gcStats.getGCCount());
+            garbageCollectionTime.add(debug, gcStats.getGCTimeMillis(), TimeUnit.MILLISECONDS);
+        }
     }
 
     /**

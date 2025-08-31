@@ -239,19 +239,26 @@ public final class InputStringGenerator {
                 return new InputString(string, fromIndex, matchStart);
             }
             TruffleString string = TruffleString.fromIntArrayUTF32Uncached(codepoints).switchEncodingUncached(encoding.getTStringEncoding());
-            return new InputString(string, translateIndex(string, encoding, fromIndex), translateIndex(string, encoding, matchStart));
+            return new InputString(string, translateIndex(string, encoding, codepoints, fromIndex), translateIndex(string, encoding, codepoints, matchStart));
         }
 
-        private static int translateIndex(TruffleString string, Encodings.Encoding encoding, int index) {
+        private static int translateIndex(TruffleString string, Encodings.Encoding encoding, int[] codepoints, int index) {
             TruffleString.Encoding tsEncoding = encoding.getTStringEncoding();
             if (encoding == Encodings.UTF_32) {
                 return index;
-            } else {
-                int indexEnc = index == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, index, tsEncoding);
-                if (encoding == Encodings.UTF_16) {
-                    return indexEnc >> 1;
+            } else if (encoding == Encodings.UTF_16) {
+                int cpIndex = index;
+                for (int i = 1; i < index; i++) {
+                    int prevCp = codepoints[i - 1];
+                    int cp = codepoints[i];
+                    if (cp >= Character.MIN_LOW_SURROGATE && cp <= Character.MAX_LOW_SURROGATE && prevCp >= Character.MIN_HIGH_SURROGATE && prevCp <= Character.MAX_HIGH_SURROGATE) {
+                        cpIndex--;
+                    }
                 }
-                return indexEnc;
+                int indexEnc = cpIndex == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, cpIndex, tsEncoding);
+                return indexEnc >> 1;
+            } else {
+                return index == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, index, tsEncoding);
             }
         }
 

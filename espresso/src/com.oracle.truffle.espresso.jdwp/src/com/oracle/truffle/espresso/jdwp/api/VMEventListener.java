@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import java.util.function.Consumer;
+
 import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.MethodBreakpointEvent;
 import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 import com.oracle.truffle.espresso.jdwp.impl.SocketConnection;
@@ -38,6 +41,10 @@ public interface VMEventListener extends VMListener {
     void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread);
 
     boolean vmDied();
+
+    void addClassConsumer(Consumer<KlassRef> classConsumer);
+
+    void removeClassConsumer(Consumer<KlassRef> classConsumer);
 
     void addClassUnloadRequestId(int id);
 
@@ -56,6 +63,10 @@ public interface VMEventListener extends VMListener {
     void addBreakpointRequest(int requestId, BreakpointInfo info);
 
     void removeBreakpointRequest(int requestId);
+
+    void addFieldRequest(FieldBreakpointInfo info);
+
+    void removeFieldRequest(int requestId, FieldRef field);
 
     void stepCompleted(SteppingInfo info, CallFrame currentFrame);
 

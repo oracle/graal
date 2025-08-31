@@ -1,6 +1,6 @@
 # /vm-enterprise,/substratevm-enterprise,/truffle-enterprise,/sulong,/tools-enterprise,/regex with EE components, with libgraal, doesn't build native standalone
 DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/truffle-enterprise,/sulong,/tools-enterprise,/regex
-COMPONENTS=cmp,cmpee,gvm,jipher,lg,ni,nic,niee,nil,sdkni,svm,svmjdwp,svmt,svmee,svmte,svmsl,tflc,tflsm
+COMPONENTS=cmp,cmpee,gvm,lg,ni,nic,niee,nil,sdkni,svm,svmjdwp,svmt,svmee,svmte,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:jvmcicompiler
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
 JVM_STANDALONE_WITH_LLVM=true

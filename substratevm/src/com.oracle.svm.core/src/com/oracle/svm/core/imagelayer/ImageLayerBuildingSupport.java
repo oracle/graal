@@ -63,8 +63,8 @@ import jdk.graal.compiler.util.ObjectCopier;
  */
 public abstract class ImageLayerBuildingSupport {
     public final boolean buildingImageLayer;
-    private final boolean buildingInitialLayer;
-    private final boolean buildingApplicationLayer;
+    public final boolean buildingInitialLayer;
+    public final boolean buildingApplicationLayer;
 
     protected ImageLayerBuildingSupport(boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer) {
         this.buildingImageLayer = buildingImageLayer;

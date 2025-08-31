@@ -31,6 +31,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ParserConstantPool;
 import com.oracle.truffle.espresso.classfile.ParserException;
 
 /**
@@ -428,6 +429,29 @@ public final class TypeSymbols {
         ByteSequence wrap = ByteSequence.wrap(bytes);
         assert Validation.validTypeDescriptor(wrap, true) : wrap;
         return wrap;
+    }
+
+    /**
+     * Reverse operation of {@link #fromClassNameEntry(Symbol)}. This conversion is <b>NOT</b> valid
+     * for primitive types, to avoid ambiguity e.g. LI; vs I
+     */
+    public static ByteSequence toClassNameEntry(Symbol<Type> type) {
+        assert !isPrimitive(type);
+        if (isArray(type)) {
+            return type;
+        }
+        assert type.byteAt(0) == 'L';
+        assert type.byteAt(type.length() - 1) == ';';
+        return type.subSequence(1, type.length() - 1);
+    }
+
+    /**
+     * Reverse operation of {@link #fromClassNameEntry(Symbol)}. This conversion is <b>NOT</b> valid
+     * for primitive types, to avoid ambiguity e.g. LI; vs I
+     */
+    public static Symbol<Name> toClassNameEntry(Symbol<Type> type, ParserConstantPool.Symbolify<Name> symbolify) {
+        ByteSequence className = toClassNameEntry(type);
+        return symbolify.apply(className);
     }
 
     public static ByteSequence getRuntimePackage(ByteSequence symbol) {

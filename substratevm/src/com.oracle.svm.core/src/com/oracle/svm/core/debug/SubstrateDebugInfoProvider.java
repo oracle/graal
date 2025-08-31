@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
@@ -39,12 +38,14 @@ import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
@@ -73,16 +74,17 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
         public static Path getRuntimeSourceDestDir() {
             String sourceDestDir = RuntimeSourceDestDir.getValue();
-            if (sourceDestDir != null) {
-                return Path.of(sourceDestDir);
-            }
-            Path result = Path.of("sources");
-            Path exeDir = Path.of(ProcessProperties.getExecutableName()).getParent();
-            if (exeDir != null) {
-                result = exeDir.resolve(result);
-            }
-            return result;
+            /*
+             * If not set, use source cache root from the native image debug info. This makes sure
+             * the cachePath is the same as in the native image debug info.
+             */
+            return sourceDestDir != null ? Path.of(sourceDestDir) : getHostedSourceCacheRoot();
         }
+    }
+
+    @Fold
+    static Path getHostedSourceCacheRoot() {
+        return SubstrateOptions.getDebugInfoSourceCacheRoot();
     }
 
     private final SharedMethod sharedMethod;

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
-import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
@@ -34,6 +33,7 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_TO_23;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_24_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_26_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
@@ -117,6 +117,9 @@ public final class Meta extends ContextAccessImpl
         java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Names.classLoader, Types.java_lang_ClassLoader);
         java_lang_Class_modifiers = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.modifiers, Types._char) //
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classFileAccessFlags = diff() //
+                        .field(VERSION_26_OR_HIGHER, Names.classFileAccessFlags, Types._char) //
                         .notRequiredField(java_lang_Class);
         java_lang_Class_primitive = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.primitive, Types._boolean) //
@@ -431,35 +434,6 @@ public final class Meta extends ContextAccessImpl
         java_nio_file_InvalidPathException = knownKlass(Types.java_nio_file_InvalidPathException);
         java_nio_file_NotDirectoryException = knownKlass(Types.java_nio_file_NotDirectoryException);
         java_nio_file_NotLinkException = knownKlass(Types.java_nio_file_NotLinkException);
-
-        if (context.getLanguage().useEspressoLibs()) {
-            java_util_zip_CRC32 = knownKlass(Types.java_util_zip_CRC32);
-            HIDDEN_CRC32 = diff().field(ALL, Names.HIDDEN_CRC32, Types._int).maybeHiddenfield(java_util_zip_CRC32);
-        } else {
-            java_util_zip_CRC32 = null;
-            HIDDEN_CRC32 = null;
-        }
-
-        java_util_zip_Inflater = knownKlass(Types.java_util_zip_Inflater);
-        if (getJavaVersion().java11OrLater()) {
-            java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.inputConsumed, Types._int);
-            java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.outputConsumed, Types._int);
-            java_util_zip_Inflater_buf = null;
-            java_util_zip_Inflater_len = null;
-            java_util_zip_Inflater_off = null;
-            java_util_zip_Inflater_needDict = null;
-            java_util_zip_Inflater_finished = null;
-        } else {
-            java_util_zip_Inflater_inputConsumed = null;
-            java_util_zip_Inflater_outputConsumed = null;
-            java_util_zip_Inflater_buf = java_util_zip_Inflater.requireDeclaredField(Names.buf, Types._byte_array);
-            java_util_zip_Inflater_len = java_util_zip_Inflater.requireDeclaredField(Names.len, Types._int);
-            java_util_zip_Inflater_off = java_util_zip_Inflater.requireDeclaredField(Names.off, Types._int);
-            java_util_zip_Inflater_needDict = java_util_zip_Inflater.requireDeclaredField(Names.needDict, Types._boolean);
-            java_util_zip_Inflater_finished = java_util_zip_Inflater.requireDeclaredField(Names.finished, Types._boolean);
-        }
-
-        java_util_zip_DataFormatException = knownKlass(Types.java_util_zip_DataFormatException);
 
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
@@ -1391,6 +1365,7 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_Class_module;
     public final Field java_lang_Class_classLoader;
     public final Field java_lang_Class_modifiers;
+    public final Field java_lang_Class_classFileAccessFlags;
     public final Field java_lang_Class_primitive;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
@@ -1665,19 +1640,6 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_nio_file_NotDirectoryException;
     public final ObjectKlass java_nio_file_InvalidPathException;
     public final ObjectKlass java_nio_file_NotLinkException;
-
-    public final ObjectKlass java_util_zip_CRC32;
-    public final Field HIDDEN_CRC32;
-
-    public final ObjectKlass java_util_zip_Inflater;
-    public final Field java_util_zip_Inflater_inputConsumed;
-    public final Field java_util_zip_Inflater_outputConsumed;
-    public final Field java_util_zip_Inflater_buf;
-    public final Field java_util_zip_Inflater_len;
-    public final Field java_util_zip_Inflater_off;
-    public final Field java_util_zip_Inflater_needDict;
-    public final Field java_util_zip_Inflater_finished;
-    public final ObjectKlass java_util_zip_DataFormatException;
 
     public final Method sun_nio_ch_NativeThread_isNativeThread;
     public final Method sun_nio_ch_NativeThread_current0;

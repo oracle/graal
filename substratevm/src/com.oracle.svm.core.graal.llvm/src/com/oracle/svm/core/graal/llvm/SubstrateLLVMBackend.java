@@ -154,7 +154,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     private static void dumpDebugInfo(CompilationResult compilationResult, StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
 
-        if (debug.isCountEnabled()) {
+        if (debug.areCountersEnabled()) {
             List<DataPatch> ldp = compilationResult.getDataPatches();
             JavaKind[] kindValues = JavaKind.values();
             CounterKey[] dms = new CounterKey[kindValues.length];

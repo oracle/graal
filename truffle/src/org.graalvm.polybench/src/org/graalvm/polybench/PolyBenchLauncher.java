@@ -302,11 +302,6 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     @Override
-    protected String[] getDefaultLanguages() {
-        return new String[0];
-    }
-
-    @Override
     protected void printHelp(OptionCategory maxCategory) {
         try {
             InputStream inputStream = PolyBenchLauncher.class.getResource("help.txt").openStream();
@@ -317,6 +312,16 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         } catch (IOException e) {
             throw new AssertionError(e);
         }
+    }
+
+    /**
+     * Suppress the runtime options printed by the parent implementation. Some of these options
+     * (like --jvm, --native) are handled by mx polybench, so using them in the launcher is
+     * discouraged (and confusing).
+     */
+    @Override
+    protected void printDefaultHelp(OptionCategory helpCategory) {
+        printHelp(helpCategory);
     }
 
     static String getExtension(String path) {

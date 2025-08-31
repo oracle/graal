@@ -25,8 +25,8 @@ native-image --shared -o <libraryname> <class name>
 native-image --shared -jar <jarfile> -o <libraryname>
 ```
 
-GraalVM makes it easy to use C to call into a native shared library. 
-There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/23/docs/specs/jni/invocation.html).
+GraalVM makes it easy to use C to call into a native shared library.
+There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/25/docs/specs/jni/invocation.html).
 
 This guide describes how to use the **Native Image C API**.
 It consists of the following steps:
@@ -69,7 +69,7 @@ A native shared library can have an unlimited number of entrypoints, for example
 In the following example, you create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses that shared library.
 The C application takes a String as an argument, passes it to the shared library, and prints environment variables that contain the argument.
 
-### Prerequisite 
+### Prerequisite
 Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
@@ -101,14 +101,14 @@ For other installation options, visit the [Downloads section](https://www.graalv
         }
     }
     ```
-    Notice how the method `filterEnv()` is identified as an entrypoint using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation. 
+    Notice how the method `filterEnv()` is identified as an entrypoint using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation.
 
 2. Compile the Java code and build a native shared library, as follows:
     ```shell
     javac LibEnvMap.java
     ```
     ```shell
-    native-image -o libenvmap --shared 
+    native-image -o libenvmap --shared
     ```
 
     It produces the following artifacts:
@@ -121,7 +121,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     /demo/libenvmap_dynamic.h (header)
     ```
 
-    If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
+    If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings.
 
 3. Create a C application, _main.c_, in the same directory containing the following code:
     ```c
@@ -149,7 +149,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     graal_tear_down_isolate(thread);
     }
     ```
-    
+
     The statement `#include "libenvmap.h"` loads the native shared library.
 
 4. Compile _main.c_ using the `clang` compiler available on your system:
@@ -162,11 +162,11 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```shell
     ./main USER
     ```
-    It correctly prints out the name and value of the matching environment variable(s). 
+    It correctly prints out the name and value of the matching environment variable(s).
 
-The advantage of using the Native Image C API is that you can determine what your API will look like. 
+The advantage of using the Native Image C API is that you can determine what your API will look like.
 The restriction is that your parameter and return types must be non-object types.
-If you want to manage Java objects from C, you should consider [JNI Invocation API](../JNI.md). 
+If you want to manage Java objects from C, you should consider [JNI Invocation API](../JNI.md).
 
 ### Related Documentation
 

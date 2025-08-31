@@ -55,6 +55,7 @@ public class SnippetRuntime {
      * sequence.
      */
     private static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignJdkCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_SINH = findForeignJdkCall(UnaryOperation.SINH.foreignCallSignature.getName(), Math.class, "sinh", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignJdkCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignJdkCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_TANH = findForeignJdkCall(UnaryOperation.TANH.foreignCallSignature.getName(), Math.class, "tanh", NO_SIDE_EFFECT, true, true);
@@ -64,8 +65,8 @@ public class SnippetRuntime {
     private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_CBRT = findForeignJdkCall(UnaryOperation.CBRT.foreignCallSignature.getName(), Math.class, "cbrt", NO_SIDE_EFFECT, true, true);
 
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_COS, ARITHMETIC_TAN,
-                    ARITHMETIC_TANH, ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW, ARITHMETIC_CBRT};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_SINH, ARITHMETIC_COS,
+                    ARITHMETIC_TAN, ARITHMETIC_TANH, ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW, ARITHMETIC_CBRT};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);

@@ -141,7 +141,7 @@ public class PointstoOptions {
      * cannot accurately track which fields can be unsafe accessed.
      */
     @Option(help = "Conservative unsafe access injects all unsafe accessed fields with the instantiated subtypes of their declared type and saturates all unsafe loads.")//
-    public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(false);
+    public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(true);
 
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
     static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
@@ -197,6 +197,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 0);
                     MinCallingContextDepth.update(values, 0);
                     MaxCallingContextDepth.update(values, 0);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_1obj":
@@ -205,6 +206,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 0);
                     MinCallingContextDepth.update(values, 1);
                     MaxCallingContextDepth.update(values, 1);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_2obj1h":
@@ -213,6 +215,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 1);
                     MinCallingContextDepth.update(values, 2);
                     MaxCallingContextDepth.update(values, 2);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_3obj2h":
@@ -221,6 +224,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 2);
                     MinCallingContextDepth.update(values, 3);
                     MaxCallingContextDepth.update(values, 3);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_4obj3h":
@@ -229,6 +233,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 3);
                     MinCallingContextDepth.update(values, 4);
                     MaxCallingContextDepth.update(values, 4);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 default:

@@ -123,7 +123,10 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.c.InitialLayerCGlobalTracking;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -201,7 +204,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private final MessageBuilder snapshotFileBuilder = new MessageBuilder();
     private final SharedLayerSnapshot.Builder snapshotBuilder = this.snapshotFileBuilder.initRoot(SharedLayerSnapshot.factory);
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
-    private final Map<String, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
+    /**
+     * This map is only used for validation, to ensure that all method descriptors are unique. A
+     * duplicate method descriptor would cause methods to be incorrectly matched across layers,
+     * which is really hard to debug and can have unexpected consequences.
+     */
+    private final Map<String, AnalysisMethod> methodDescriptors = new HashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisMethod>> polymorphicSignatureCallers = new ConcurrentHashMap<>();
     private final GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
@@ -210,6 +219,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
     private final ClassInitializationSupport classInitializationSupport;
+    private SimulateClassInitializerSupport simulateClassInitializerSupport;
 
     private boolean polymorphicSignatureSealed = false;
 
@@ -227,13 +237,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         static final MethodGraphsInfo NO_GRAPHS = new MethodGraphsInfo(null, false, null);
 
-        MethodGraphsInfo withAnalysisGraph(String location, boolean isIntrinsic) {
-            assert analysisGraphLocation == null && !analysisGraphIsIntrinsic;
+        MethodGraphsInfo withAnalysisGraph(AnalysisMethod method, String location, boolean isIntrinsic) {
+            assert analysisGraphLocation == null && !analysisGraphIsIntrinsic : "Only one analysis graph can be persisted for a given method: " + method;
             return new MethodGraphsInfo(location, isIntrinsic, strengthenedGraphLocation);
         }
 
-        MethodGraphsInfo withStrengthenedGraph(String location) {
-            assert strengthenedGraphLocation == null;
+        MethodGraphsInfo withStrengthenedGraph(AnalysisMethod method, String location) {
+            assert strengthenedGraphLocation == null : "Only one strengthened graph can be persisted for a given method: " + method;
             return new MethodGraphsInfo(analysisGraphLocation, analysisGraphIsIntrinsic, location);
         }
     }
@@ -292,6 +302,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         this.aUniverse = aUniverse;
     }
 
+    public void setSimulateClassInitializerSupport(SimulateClassInitializerSupport simulateClassInitializerSupport) {
+        this.simulateClassInitializerSupport = simulateClassInitializerSupport;
+    }
+
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
         this.nativeImageHeap = nativeImageHeap;
     }
@@ -319,8 +333,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         imageLayerSnapshotUtil.initializeExternalValues();
     }
 
-    public void setImageHeapSize(long imageHeapSize) {
-        snapshotBuilder.setImageHeapSize(imageHeapSize);
+    public void setEndOffset(long endOffset) {
+        snapshotBuilder.setImageHeapEndOffset(endOffset);
     }
 
     @Override
@@ -371,10 +385,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         AnalysisMethod[] methodsToPersist = aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisMethod::getId))
                         .toArray(AnalysisMethod[]::new);
         initSortedArray(snapshotBuilder::initMethods, methodsToPersist, this::persistMethod);
+        methodDescriptors.clear();
 
         AnalysisField[] fieldsToPersist = aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisField::getId))
                         .toArray(AnalysisField[]::new);
         initSortedArray(snapshotBuilder::initFields, fieldsToPersist, this::persistField);
+
+        InitialLayerCGlobalTracking initialLayerCGlobalTracking = CGlobalDataFeature.singleton().getInitialLayerCGlobalTracking();
+        initSortedArray(snapshotBuilder::initCGlobals, initialLayerCGlobalTracking.getInfosOrderedByIndex(), initialLayerCGlobalTracking::persistCGlobalInfo);
 
         /*
          * Note the set of elements within the hosted method array are created as a side effect of
@@ -428,7 +446,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setHasArrayType(hub.getArrayHub() != null);
 
         ClassInitializationInfo info = hub.getClassInitializationInfo();
-        if (info != null) {
+        if (info == null) {
+            /* Type metadata was not initialized. */
+            assert !type.isReachable();
+            builder.setHasClassInitInfo(false);
+        } else {
+            builder.setHasClassInitInfo(true);
             Builder b = builder.initClassInitializationInfo();
             b.setIsNoInitializerNoTracking(info == ClassInitializationInfo.forNoInitializerInfo(false));
             b.setIsInitializedNoTracking(info == ClassInitializationInfo.forInitializedInfo(false));
@@ -457,6 +480,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
         builder.setIsInitialized(type.isInitialized());
+        boolean successfulSimulation = simulateClassInitializerSupport.isSuccessfulSimulation(type);
+        boolean failedSimulation = simulateClassInitializerSupport.isFailedSimulation(type);
+        VMError.guarantee(!(successfulSimulation && failedSimulation), "Class init simulation cannot be both successful and failed.");
+        builder.setIsSuccessfulSimulation(successfulSimulation);
+        builder.setIsFailedSimulation(failedSimulation);
         builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type.getJavaClass()));
         builder.setIsLinked(type.isLinked());
         if (type.getSourceFileName() != null) {
@@ -561,18 +589,20 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private void persistMethod(AnalysisMethod method, Supplier<PersistedAnalysisMethod.Builder> builderSupplier) {
         PersistedAnalysisMethod.Builder builder = builderSupplier.get();
-        MethodGraphsInfo graphsInfo = methodsMap.putIfAbsent(imageLayerSnapshotUtil.getMethodDescriptor(method), MethodGraphsInfo.NO_GRAPHS);
+        MethodGraphsInfo graphsInfo = methodsMap.putIfAbsent(method, MethodGraphsInfo.NO_GRAPHS);
         Executable executable = method.getJavaMethod();
 
-        if (builder.getId() != 0) {
-            throw GraalError.shouldNotReachHere("The method descriptor should be unique, but " + imageLayerSnapshotUtil.getMethodDescriptor(method) + " got added twice.");
-        }
         if (executable != null) {
             initStringList(builder::initArgumentClassNames, Arrays.stream(executable.getParameterTypes()).map(Class::getName));
             builder.setClassName(executable.getDeclaringClass().getName());
         }
 
-        builder.setDescriptor(imageLayerSnapshotUtil.getMethodDescriptor(method));
+        String methodDescriptor = imageLayerSnapshotUtil.getMethodDescriptor(method);
+        if (methodDescriptors.put(methodDescriptor, method) != null) {
+            throw GraalError.shouldNotReachHere("The method descriptor should be unique, but %s got added twice.\nThe first method is %s and the second is %s."
+                            .formatted(methodDescriptor, methodDescriptors.get(methodDescriptor), method));
+        }
+        builder.setDescriptor(methodDescriptor);
         builder.setDeclaringTypeId(method.getDeclaringClass().getId());
         initInts(builder::initArgumentTypeIds, method.getSignature().toParameterList(null).stream().mapToInt(AnalysisType::getId));
         builder.setId(method.getId());
@@ -602,11 +632,15 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsImplementationInvoked(method.isSimplyImplementationInvoked());
         builder.setIsIntrinsicMethod(method.isIntrinsicMethod());
 
+        builder.setCompilationBehaviorOrdinal((byte) method.getCompilationBehavior().ordinal());
+
         if (graphsInfo != null && graphsInfo.analysisGraphLocation != null) {
+            assert !method.isDelayed() : "The method " + method + " has an analysis graph, but is delayed to the application layer";
             builder.setAnalysisGraphLocation(graphsInfo.analysisGraphLocation);
             builder.setAnalysisGraphIsIntrinsic(graphsInfo.analysisGraphIsIntrinsic);
         }
         if (graphsInfo != null && graphsInfo.strengthenedGraphLocation != null) {
+            assert !method.isDelayed() : "The method " + method + " has a strengthened graph, but is delayed to the application layer";
             builder.setStrengthenedGraphLocation(graphsInfo.strengthenedGraphLocation);
         }
 
@@ -701,6 +735,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
         persistAnnotations(field, builder::initAnnotationList);
+
+        JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
+        writeConstant(simulatedFieldValue, builder.initSimulatedFieldValue());
     }
 
     private void persistAnnotations(AnnotatedElement annotatedElement, IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
@@ -1025,18 +1062,19 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     @Override
     public void persistAnalysisParsedGraph(AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
-        String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
-        MethodGraphsInfo graphsInfo = methodsMap.get(name);
-        if (graphsInfo == null || graphsInfo.analysisGraphLocation == null) {
+        /*
+         * A copy of the encoded graph is needed here because the nodeStartOffsets can be
+         * concurrently updated otherwise, which causes the ObjectCopier to fail.
+         */
+        String location = persistGraph(method, new EncodedGraph(analysisParsedGraph.getEncodedGraph()));
+        if (location != null) {
             /*
-             * A copy of the encoded graph is needed here because the nodeStartOffsets can be
-             * concurrently updated otherwise, which causes the ObjectCopier to fail.
+             * This method should only be called once for each method. This check is performed by
+             * withAnalysisGraph as it will throw if the MethodGraphsInfo already has an analysis
+             * graph.
              */
-            String location = persistGraph(method, new EncodedGraph(analysisParsedGraph.getEncodedGraph()));
-            if (location != null) {
-                methodsMap.compute(name, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
-                                .withAnalysisGraph(location, analysisParsedGraph.isIntrinsic()));
-            }
+            methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
+                            .withAnalysisGraph(method, location, analysisParsedGraph.isIntrinsic()));
         }
     }
 
@@ -1045,14 +1083,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             return;
         }
 
-        String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
-        MethodGraphsInfo graphsInfo = methodsMap.get(name);
-
-        if (graphsInfo == null || graphsInfo.strengthenedGraphLocation == null) {
-            EncodedGraph analyzedGraph = method.getAnalyzedGraph();
-            String location = persistGraph(method, analyzedGraph);
-            methodsMap.compute(name, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(location));
-        }
+        EncodedGraph analyzedGraph = method.getAnalyzedGraph();
+        String location = persistGraph(method, analyzedGraph);
+        /*
+         * This method should only be called once for each method. This check is performed by
+         * withStrengthenedGraph as it will throw if the MethodGraphsInfo already has a strengthened
+         * graph.
+         */
+        methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(method, location));
     }
 
     private String persistGraph(AnalysisMethod method, EncodedGraph analyzedGraph) {

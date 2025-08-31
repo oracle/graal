@@ -281,9 +281,8 @@ public class GraphUtil {
             EconomicSet<Node> unusedNodes = null;
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
-            OptionValues options = node.getOptions();
             boolean verifyGraalGraphEdges = node.graph().verifyGraphEdges;
-            boolean verifyKillCFGUnusedNodes = GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options);
+            boolean verifyKillCFGUnusedNodes = node.graph().verifyKillCFGUnusedNodes;
             if (verifyGraalGraphEdges) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }

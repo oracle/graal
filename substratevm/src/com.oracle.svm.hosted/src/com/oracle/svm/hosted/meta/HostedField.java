@@ -144,7 +144,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped.isWritten();
     }
 
-    @Override
     public boolean isValueAvailable() {
         return FieldValueInterceptionSupport.singleton().isValueAvailable(wrapped);
     }
