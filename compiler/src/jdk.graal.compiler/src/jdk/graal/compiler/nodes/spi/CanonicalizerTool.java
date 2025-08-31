@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,11 +64,6 @@ public interface CanonicalizerTool extends CoreProviders {
      * method returns null, then there is no known smallest compare width.
      */
     Integer smallestCompareWidth();
-
-    /**
-     * Indicates whether this target platform supports lowering {@code RoundNode}.
-     */
-    boolean supportsRounding();
 
     OptionValues getOptions();
 

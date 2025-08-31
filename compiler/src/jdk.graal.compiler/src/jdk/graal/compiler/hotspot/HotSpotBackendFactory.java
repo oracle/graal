@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.ArchitectureSpecific;
@@ -215,7 +215,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
-                HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
+                HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, options);
                 providers.setSuites(suites);
             }
             Replacements replacements2 = replacements.getProviders().getReplacements();
@@ -241,8 +241,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                     HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options, BarrierSet barrierSet);
 
     protected abstract HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration,
-                    GraphBuilderConfiguration.Plugins plugins,
-                    HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options);
+                    Plugins plugins, HotSpotRegistersProvider registers, OptionValues options);
 
     protected abstract HotSpotRegistersProvider createRegisters();
 
