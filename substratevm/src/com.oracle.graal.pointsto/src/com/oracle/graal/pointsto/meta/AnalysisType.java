@@ -28,7 +28,6 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -1197,22 +1196,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    /**
-     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
-     * class file format doesn't disallow duplicated names with differing types in the same class.
-     * Even though you cannot declare duplicated names in source code the class file can be
-     * manipulated such that two fields will have the same name.
-     */
-    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
-
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        ResolvedJavaField[] localOriginals = originals;
-        if (universe.hostVM.sortFields()) {
-            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
-            localOriginals = originals.clone();
-            Arrays.sort(localOriginals, FIELD_COMPARATOR);
-        }
-        for (ResolvedJavaField original : localOriginals) {
+        for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
                     AnalysisField aField = universe.lookup(original);
