@@ -23,11 +23,17 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (2.0s @ 0.19GB)
- Java version: 26+9, vendor version: GraalVM CE 26-dev+9.1
- Graal compiler: optimization level: 2, target machine: x86-64-v3
- C compiler: gcc (linux, x86_64, 15.2.1)
- Garbage collector: Serial GC (max heap size: 80% of RAM)
+[1/8] Initializing...                                                                                    (5.1s @ 0.23GB)
+ Builder configuration:
+ - Java version: 26+12, vendor version: Oracle GraalVM 26-dev+12.1
+ - Graal compiler: optimization level: 2, target machine: x86-64-v3
+ - C compiler: gcc (linux, x86_64, 13.3.0)
+ - Assertions: enabled, system assertions: enabled
+ - 1 user-specific feature(s):
+   - com.oracle.svm.thirdparty.gson.GsonFeature
+ Image configuration:
+ - Garbage collector: Serial GC (max heap size: 80% of RAM)
+ - Assertions: disabled (class-specific config may apply), system assertions: disabled
 --------------------------------------------------------------------------------
 Build resources:
  - 14.69GiB of memory (47.0% of system memory, using all available memory)
