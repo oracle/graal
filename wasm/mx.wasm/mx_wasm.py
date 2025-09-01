@@ -665,10 +665,10 @@ def emscripten_init(args):
     config_path = os.path.join(os.getcwd(), args.config_path)
     emsdk_path = args.emsdk_path
 
-    llvm_root = os.path.join(emsdk_path, "llvm", "git", "build_master_64", "bin")
-    binaryen_root = os.path.join(emsdk_path, "binaryen", "master_64bit_binaryen")
-    emscripten_root = os.path.join(emsdk_path, "emscripten", "master")
-    node_js = os.path.join(emsdk_path, "node", "12.9.1_64bit", "bin", "node")
+    llvm_root = os.path.join(emsdk_path, "upstream", "bin")
+    binaryen_root = os.path.join(emsdk_path, "binaryen", "main_64bit_binaryen")
+    emscripten_root = os.path.join(emsdk_path, "upstream", "emscripten")
+    node_js = os.path.join(emsdk_path, "node", "22.16.0_64bit", "bin", "node")
 
     def find_executable(exe_name):
         for root, _, files in os.walk(args.emsdk_path):
