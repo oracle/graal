@@ -50,6 +50,6 @@ public record JitdumpRecordHeader(JitdumpRecordId id, int recordSize, long times
     public static final int SIZE = 16;
 
     public JitdumpRecordHeader(JitdumpRecordId id, int recordSize) {
-        this(id, recordSize, System.currentTimeMillis());
+        this(id, recordSize, System.nanoTime());
     }
 }

@@ -75,8 +75,12 @@ public record JitdumpDebugInfoRecord(JitdumpRecordHeader header, long address, L
     private static final int BASE_SIZE = JitdumpRecordHeader.SIZE + 16;
 
     public static JitdumpDebugInfoRecord create(CompiledMethodEntry compiledMethodEntry, long address) {
-        List<JitdumpDebugEntry> entries = compiledMethodEntry.topDownRangeStream(false).map(r -> new JitdumpDebugEntry(r.getLo(), r.getLine(), 0, r.getFileName())).toList();
-        int recordSize = BASE_SIZE + entries.stream().mapToInt(JitdumpDebugEntry::getSize).sum();
+        List<JitdumpDebugEntry> entries = compiledMethodEntry.topDownRangeStream(false)
+                        .map(r -> new JitdumpDebugEntry(r.getLo(), r.getLine(), 0, r.getFileName()))
+                        .toList();
+        int recordSize = BASE_SIZE + entries.stream()
+                        .mapToInt(JitdumpDebugEntry::getSize)
+                        .sum();
         JitdumpRecordHeader header = new JitdumpRecordHeader(JitdumpRecordId.JIT_CODE_DEBUG_INFO, recordSize);
         return new JitdumpDebugInfoRecord(header, address, entries);
     }

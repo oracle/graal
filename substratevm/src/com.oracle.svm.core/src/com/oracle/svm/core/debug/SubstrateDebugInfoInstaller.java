@@ -28,7 +28,7 @@ package com.oracle.svm.core.debug;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
+import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -81,41 +81,39 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         }
     }
 
-    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig,
-                    Pointer code, int codeSize) {
+    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, Pointer code, int codeSize) {
         debug = debugContext;
         long codeAddress = code.rawValue();
 
-        // Produce a full debug info object file.
+        // Initialize the debug info generator.
+        SubstrateDebugInfoProvider debugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(), codeAddress, codeSize);
+
+        // Produce a full debug info object file if needed.
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoObjectFileSupport()) {
-            debugInfoData = getDebugInfoData(method, compilation, runtimeConfig, codeSize, codeAddress);
+            debugInfoData = getDebugInfoData(debugInfoProvider);
         } else {
-            debugInfoData = null;
+            debugInfoData = Word.nullPointer();
         }
 
         // Create a perf map for the current pid if it does not exist and append a new entry.
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoPerfMapSupport()) {
-            writePerfMap(method, codeSize, codeAddress);
+            writePerfMap(debugInfoProvider);
         }
 
-        // Create a jitdump file for the native image if it does not exist and append new records.
+        // Append new records to the jitdump file.
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoJitdumpSupport()) {
-            writeJitdump(method, compilation, runtimeConfig, codeSize, codeAddress);
+            writeJitdump(debugInfoProvider);
         }
     }
 
-    private NonmovableArray<Byte> getDebugInfoData(SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, int codeSize, long codeAddress) {
-        // Initialize the debug info generator.
-        SubstrateDebugInfoProvider substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(),
-                        codeAddress);
-
+    private NonmovableArray<Byte> getDebugInfoData(SubstrateDebugInfoProvider debugInfoProvider) {
         // Set up the debug info object file.
         int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
         ObjectFile objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
-        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(codeSize));
+        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(debugInfoProvider.getCodeSize()));
 
         // Generate debug info and bake the object file.
-        objectFile.installDebugInfo(substrateDebugInfoProvider);
+        objectFile.installDebugInfo(debugInfoProvider);
         ArrayList<ObjectFile.Element> sortedObjectFileElements = new ArrayList<>();
         int debugInfoSize = objectFile.bake(sortedObjectFileElements);
 
@@ -125,7 +123,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
 
         if (debug.isLogEnabled()) {
             // Dump the object file to the file system.
-            StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
+            StringBuilder sb = new StringBuilder(debugInfoProvider.getCompilationName()).append(".debug");
             try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
                             StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
                             StandardOpenOption.CREATE)) {
@@ -139,43 +137,49 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         return debugInfoData;
     }
 
-    private void writePerfMap(SharedMethod method, int codeSize, long codeAddress) {
-        String methodName = method.format("%R %H.%n(%P)");
+    @SuppressWarnings({"unsused", "try"})
+    private void writePerfMap(SubstrateDebugInfoProvider debugInfoProvider) {
+        String methodName = debugInfoProvider.getMethod().format("%R %H.%n(%P)");
         String perfMapFilename = "perf-" + ProcessProperties.getProcessID() + ".map";
         Path perfMapPath = Paths.get("/tmp", perfMapFilename);
 
-        try {
-            Files.write(perfMapPath, String.format("%x %x %s%n", codeAddress, codeSize, methodName).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        /*
+         * Create one line for the perf map write to the perf map file.
+         */
+        ByteBuffer perfMapEntry = ByteBuffer.wrap(String.format("%x %x %s%n", debugInfoProvider.getCodeAddress(), debugInfoProvider.getCodeSize(), methodName).getBytes());
+        try (FileChannel channel = FileChannel.open(perfMapPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                        FileLock lock = channel.lock()) {
+            int written = channel.write(perfMapEntry);
+            assert written == perfMapEntry.limit();
         } catch (IOException e) {
             debug.log("Failed to write perf map entry for " + methodName);
         }
     }
 
-    private void writeJitdump(SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, int codeSize, long codeAddress) {
-        Path jitdumpPath = Paths.get("jit-" + Paths.get(ProcessProperties.getExecutableName()).getFileName() + ".dump");
+    @SuppressWarnings({"unsused", "try"})
+    private void writeJitdump(SubstrateDebugInfoProvider debugInfoProvider) {
+        /*
+         * Fetch the compiled method entry for the run-time compiled method.
+         */
+        CompiledMethodEntry compiledMethodEntry = debugInfoProvider.lookupCompiledMethodEntry(debugInfoProvider.getMethod(), debugInfoProvider.getCompilation());
 
-        // Initialize the debug info generator and fetch the compiled method entry for the run-time
-        // compiled method.
-        SubstrateDebugInfoProvider substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(),
-                        codeAddress);
-        CompiledMethodEntry compiledMethodEntry = substrateDebugInfoProvider.lookupCompiledMethodEntry(method, compilation);
-
-        try {
-            // Check if file already exists.
-            if (!Files.exists(jitdumpPath)) {
-                // Create file and write header.
-                Files.write(jitdumpPath, JitdumpProvider.writeHeader(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-            }
-            // Write records for run-time compilation.
-            Files.write(jitdumpPath, JitdumpProvider.writeRecords(compiledMethodEntry, compilation, codeSize, codeAddress), StandardOpenOption.APPEND);
+        /*
+         * Create the records for a run-time compilation and write them to the jitdump file.
+         */
+        ByteBuffer records = JitdumpProvider.createRecords(debugInfoProvider, compiledMethodEntry);
+        try (FileChannel channel = FileChannel.open(JitdumpProvider.getJitdumpPath(), StandardOpenOption.APPEND);
+                        FileLock lock = channel.lock()) {
+            int written = channel.write(records);
+            assert written == records.limit();
         } catch (IOException e) {
-            debug.log("Failed to write jitdump.");
+            debug.log("Failed to write the jitdump records for " + compiledMethodEntry.primary().getFullMethodName());
         }
     }
 
     @Override
     public InstalledCodeObserverHandle install() {
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoObjectFileSupport()) {
+            assert debugInfoData.isNonNull() : "Run-time debug info file is emtpy!";
             return GdbJitAccessor.createHandle(debug, debugInfoData);
         } else {
             return Word.nullPointer();

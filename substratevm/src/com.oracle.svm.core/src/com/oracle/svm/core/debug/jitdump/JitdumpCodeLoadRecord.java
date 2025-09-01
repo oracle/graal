@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
 
+import jdk.graal.compiler.code.CompilationResult;
+
 /**
  * The record has the following fields following the fixed-size record header in order:
  * <ul>
@@ -68,16 +70,16 @@ import com.oracle.objectfile.debugentry.MethodEntry;
  * @param size size in bytes of the generated jitted code
  * @param name function name
  */
-public record JitdumpCodeLoadRecord(JitdumpRecordHeader header, int pid, int tid, long address, long size, String name) {
+public record JitdumpCodeLoadRecord(JitdumpRecordHeader header, int pid, int tid, long address, long size, String name, byte[] code) {
 
     private static final int BASE_SIZE = JitdumpRecordHeader.SIZE + 40;
 
-    public static JitdumpCodeLoadRecord create(MethodEntry method, int codeSize, long address) {
-        String name = method.getMethodName();
+    public static JitdumpCodeLoadRecord create(MethodEntry method, CompilationResult compilation, int codeSize, long address) {
+        String name = method.getSymbolName();
         int recordSize = BASE_SIZE + name.getBytes().length + 1 + codeSize;
         JitdumpRecordHeader header = new JitdumpRecordHeader(JitdumpRecordId.JIT_CODE_LOAD, recordSize);
         int pid = (int) ProcessProperties.getProcessID();
         int tid = (int) Thread.currentThread().threadId();
-        return new JitdumpCodeLoadRecord(header, pid, tid, address, codeSize, name);
+        return new JitdumpCodeLoadRecord(header, pid, tid, address, codeSize, name, compilation.getTargetCode());
     }
 }

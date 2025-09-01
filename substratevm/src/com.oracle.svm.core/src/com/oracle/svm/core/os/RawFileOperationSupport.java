@@ -295,5 +295,6 @@ public interface RawFileOperationSupport {
         READ,
         READ_WRITE,
         WRITE,
+        APPEND,
     }
 }

@@ -54,10 +54,7 @@ import com.oracle.objectfile.elf.ELFMachine;
  *
  * @param elfMach the {@code ELFMachine} for the current architecture
  * @param pid JIT runtime process identification
- * @param timestamp timestamp of when the file was created /
- * 
- *            /**
- *
+ * @param timestamp timestamp of when the file was created
  */
 public record JitdumpHeader(ELFMachine elfMach, int pid, long timestamp) {
 
@@ -66,6 +63,6 @@ public record JitdumpHeader(ELFMachine elfMach, int pid, long timestamp) {
     public static final int SIZE = 40;
 
     public JitdumpHeader() {
-        this(ELFMachine.from(ImageSingletons.lookup(Platform.class).getArchitecture()), (int) ProcessProperties.getProcessID(), System.currentTimeMillis());
+        this(ELFMachine.from(ImageSingletons.lookup(Platform.class).getArchitecture()), (int) ProcessProperties.getProcessID(), System.nanoTime());
     }
 }

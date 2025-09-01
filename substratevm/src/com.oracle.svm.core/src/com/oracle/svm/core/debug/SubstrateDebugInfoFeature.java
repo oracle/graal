@@ -38,9 +38,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.InstalledCodeObserverSupportFeature;
 import com.oracle.svm.core.debug.gdb.GdbJitAccessor;
+import com.oracle.svm.core.debug.jitdump.JitdumpProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 
@@ -61,18 +63,13 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
 
         @Option(help = "Specify formats for run-time debug info generation. Comma-separated list can contain " + DEBUG_INFO_ALLOWED_VALUES_TEXT + ". ")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeDebugInfoFormat = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
-                        Options::validateRuntimeDebugInfoFormats) {
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
             @Override
             public AccumulatingLocatableMultiOptionValue.Strings getValue() {
                 var value = super.getValue();
                 return Objects.requireNonNullElseGet(value, () -> AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(DEBUG_INFO_OBJFILE_NAME));
             }
         };
-
-        private static void validateRuntimeDebugInfoFormats(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionKey) {
-            // TODO add validation for each of the options here
-        }
 
         private static Set<String> getEnabledRuntimeDebugInfoFormats() {
             return new HashSet<>(RuntimeDebugInfoFormat.getValue().values());
@@ -111,6 +108,17 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
         installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig));
         if (Options.hasRuntimeDebugInfoObjectFileSupport()) {
             ImageSingletons.add(GdbJitAccessor.class, new GdbJitAccessor());
+        }
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (Options.hasRuntimeDebugInfoJitdumpSupport()) {
+            JitdumpProvider jitdumpProvider = new JitdumpProvider();
+            ImageSingletons.add(JitdumpProvider.class, jitdumpProvider);
+
+            RuntimeSupport.getRuntimeSupport().addStartupHook(jitdumpProvider.startupHook());
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(jitdumpProvider.shutdownHook());
         }
     }
 }
