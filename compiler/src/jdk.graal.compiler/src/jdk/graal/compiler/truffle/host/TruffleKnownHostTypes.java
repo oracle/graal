@@ -49,6 +49,7 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaMethod CompilerDirectives_transferToInterpreter = findMethod(CompilerDirectives, "transferToInterpreter");
     public final ResolvedJavaMethod CompilerDirectives_transferToInterpreterAndInvalidate = findMethod(CompilerDirectives, "transferToInterpreterAndInvalidate");
     public final ResolvedJavaMethod CompilerDirectives_inInterpreter = findMethod(CompilerDirectives, "inInterpreter");
+    public final ResolvedJavaMethod CompilerDirectives_hasNextTier = findMethod(CompilerDirectives, "hasNextTier");
     public final ResolvedJavaType TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
     public final ResolvedJavaType BytecodeInterpreterSwitch = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch");
     public final ResolvedJavaType BytecodeInterpreterSwitchBoundary = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary");
@@ -75,6 +76,10 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
      */
     public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
         return method.equals(HostCompilerDirectives_inInterpreterFastPath);
+    }
+
+    public boolean isHasNextTier(ResolvedJavaMethod method) {
+        return method.equals(CompilerDirectives_hasNextTier);
     }
 
     /**
