@@ -117,6 +117,8 @@ public class LinearScan {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
+        @Option(help = "Use binary search interval longer than this limit", type = OptionType.Debug)
+        public static final OptionKey<Integer> IntervalBinarySearchLimit = new OptionKey<>(100);
         // @formatter:on
     }
 
@@ -231,9 +233,9 @@ public class LinearScan {
      * Sentinel interval to denote the end of an interval list.
      */
     protected final Interval intervalEndMarker;
-    public final Range rangeEndMarker;
     private final boolean detailedAsserts;
     private final LIRGenerationResult res;
+    public final int intervalBinarySearchLimit;
 
     @SuppressWarnings("this-escape")
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, int[] sortedBlocks,
@@ -252,10 +254,10 @@ public class LinearScan {
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
-        this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
-        this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
+        this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null);
         this.intervalEndMarker.next = intervalEndMarker;
         this.detailedAsserts = Assertions.detailedAssertionsEnabled(ir.getOptions());
+        this.intervalBinarySearchLimit = Options.IntervalBinarySearchLimit.getValue(ir.getOptions());
     }
 
     /**
@@ -412,7 +414,7 @@ public class LinearScan {
     Interval createInterval(AllocatableValue operand) {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
-        Interval interval = new Interval(operand, operandNumber, intervalEndMarker, rangeEndMarker);
+        Interval interval = new Interval(operand, operandNumber, intervalEndMarker);
         assert operandNumber < intervalsSize : operandNumber + " " + intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;
@@ -899,14 +901,14 @@ public class LinearScan {
                     throw new GraalError("");
                 }
 
-                if (i1.first().isEndMarker()) {
+                if (i1.isEmpty()) {
                     debug.log("Interval %d has no Range", i1.operandNumber);
                     debug.log(i1.logString(this));
                     throw new GraalError("");
                 }
 
-                for (Range r = i1.first(); !r.isEndMarker(); r = r.next) {
-                    if (r.from >= r.to) {
+                for (Interval.RangeIterator r = new Interval.RangeIterator(i1); !r.isAtEnd(); r.next()) {
+                    if (r.from() >= r.to()) {
                         debug.log("Interval %d has zero length range", i1.operandNumber);
                         debug.log(i1.logString(this));
                         throw new GraalError("");

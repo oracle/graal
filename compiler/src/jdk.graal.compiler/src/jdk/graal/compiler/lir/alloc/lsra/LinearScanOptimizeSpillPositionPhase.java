@@ -190,12 +190,12 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
      */
     private class IntervalBlockIterator implements Iterator<BasicBlock<?>> {
 
-        Range range;
+        Interval.RangeIterator range;
         BasicBlock<?> block;
 
         IntervalBlockIterator(Interval interval) {
-            range = interval.first();
-            block = allocator.blockForId(range.from);
+            range = new Interval.RangeIterator(interval);
+            block = allocator.blockForId(range.from());
         }
 
         @Override
@@ -204,12 +204,12 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             int nextBlockIndex = block.getLinearScanNumber() + 1;
             if (nextBlockIndex < allocator.sortedBlocks().length) {
                 block = allocator.getLIR().getBlockById(allocator.sortedBlocks()[nextBlockIndex]);
-                if (range.to <= allocator.getFirstLirInstructionId(block)) {
-                    range = range.next;
-                    if (range.isEndMarker()) {
+                if (range.to() <= allocator.getFirstLirInstructionId(block)) {
+                    range.next();
+                    if (range.isAtEnd()) {
                         block = null;
                     } else {
-                        block = allocator.blockForId(range.from);
+                        block = allocator.blockForId(range.from());
                     }
                 }
             } else {
