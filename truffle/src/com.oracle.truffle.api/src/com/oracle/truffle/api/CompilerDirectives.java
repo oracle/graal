@@ -160,16 +160,32 @@ public final class CompilerDirectives {
         return CompilerDirectives.inInterpreter();
     }
 
+    // @formatter:off
     /**
-     * Returns a boolean indicating whether or not a given value is seen as constant during the
-     * initial partial evaluation phase. If this method is called in the interpreter this method
-     * will always return <code>true</code>.
+     * Returns a boolean indicating whether a given value is seen as constant during the initial
+     * partial evaluation phase. If this method is called in the interpreter this method will always
+     * return <code>true</code>.
+     * <p>
+     * Because of that one should consider if the code guarded by this check should be run in interpreter or not.
+     * If it's faster to not run the guarded code in interpreter one can use:
+     * {@snippet :
+     * if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(value)) {
+     *     // logic only run in compiled code if value is a PE constant
+     * }
+     * }
+     * but beware that code is never run in interpreter and so might lead to subtle bugs and is harder to debug.
+     * If it does not matter much whether the code runs in interpreter it's best to just:
+     * {@snippet :
+     * if (CompilerDirectives.isPartialEvaluationConstant(value)) {
+     *     // logic run in interpreter and in compiled code if value is a PE constant
+     * }
+     * }
      *
      * @param value
-     * @return {@code true} when given value is seen as compilation constant, {@code false} if not
-     *         compilation constant.
+     * @return {@code true} when given value is seen as compilation constant or in interpreter, {@code false} otherwise.
      * @since 0.8 or earlier
      */
+    // @formatter:on
     public static boolean isPartialEvaluationConstant(Object value) {
         return CompilerDirectives.inInterpreter();
     }

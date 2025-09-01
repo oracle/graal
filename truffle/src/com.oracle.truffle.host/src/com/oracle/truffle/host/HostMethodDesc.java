@@ -395,7 +395,7 @@ abstract class HostMethodDesc {
             public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
                 MethodHandle handle = methodHandle;
                 if (handle == null) {
-                    if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                    if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
                         // we must not repeatedly deoptimize if MHBase is uncached.
                         // it ok to modify the methodHandle here even though it is compilation final
                         // because it is always initialized to the same value.

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.CompilerDirectives.isPartialEvaluationConstant;
 import static com.oracle.truffle.api.strings.TStringGuards.bigEndian;
 import static com.oracle.truffle.api.strings.TStringGuards.indexOfCannotMatch;
 import static com.oracle.truffle.api.strings.TStringGuards.is7BitCompatible;
@@ -75,6 +74,7 @@ import java.lang.ref.Reference;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
@@ -2935,7 +2935,7 @@ public final class TruffleString extends AbstractTruffleString {
         static CompactionLevel getStringCompactionLevel(AbstractTruffleString a, Encoding expectedEncoding) {
             a.checkEncoding(expectedEncoding);
             int stride = a.stride();
-            if (isPartialEvaluationConstant(expectedEncoding)) {
+            if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(expectedEncoding)) {
                 if (isUTF16(expectedEncoding)) {
                     return stride == 0 ? CompactionLevel.S1 : CompactionLevel.S2;
                 } else if (isUTF32(expectedEncoding)) {
