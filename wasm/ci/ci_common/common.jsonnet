@@ -117,7 +117,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
-      ['mx', 'emscripten-init', '--detect', '$EM_CONFIG', '$EMSDK_DIR']
+      ['mx', 'emscripten-init', '$EM_CONFIG', '$EMSDK_DIR']
     ],
   },
 
