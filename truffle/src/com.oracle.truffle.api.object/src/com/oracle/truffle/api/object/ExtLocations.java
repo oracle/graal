@@ -630,13 +630,7 @@ abstract class ExtLocations {
                 maybeInvalidateFinalAssumption();
             }
             maybeInvalidateTypeAssumption(value);
-
-            boolean valueGuard = canStore(value);
-            if (valueGuard) {
-                setObjectInternal(store, value, guard);
-            } else {
-                throw incompatibleLocationException();
-            }
+            setObjectInternal(store, value, guard);
         }
 
         private void setObjectInternal(DynamicObject store, Object value, boolean guard) {
@@ -690,13 +684,7 @@ abstract class ExtLocations {
                 maybeInvalidateFinalAssumption();
             }
             maybeInvalidateTypeAssumption(value);
-
-            boolean condition = canStore(value);
-            if (condition) {
-                setObjectInternal(store, value);
-            } else {
-                throw incompatibleLocationException();
-            }
+            setObjectInternal(store, value);
         }
 
         private void setObjectInternal(DynamicObject store, Object value) {
