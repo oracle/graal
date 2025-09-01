@@ -45,7 +45,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport.FieldInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -53,7 +52,6 @@ import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
@@ -70,7 +68,6 @@ import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.interpreter.fieldlayout.FieldLayout;
-import com.oracle.svm.interpreter.fieldlayout.FieldLayoutFactory;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -237,13 +234,13 @@ public class CremaSupportImpl implements CremaSupport {
 
         // Fields
         ParserField[] fields = table.getParserKlass().getFields();
-        ArrayList<InterpreterResolvedJavaField> declaredFields = new ArrayList<>();
+        InterpreterResolvedJavaField[] declaredFields = fields.length == 0 ? InterpreterResolvedJavaField.EMPTY_ARRAY : new InterpreterResolvedJavaField[fields.length];
         for (int j = 0; j < fields.length; j++) {
             ParserField f = fields[j];
-            declaredFields.add(InterpreterResolvedJavaField.create(thisType, f, Math.toIntExact(table.layout().getOffset(j))));
+            declaredFields[j] = InterpreterResolvedJavaField.create(thisType, f, table.layout.getOffset(j));
         }
-        thisType.setAfterFieldsOffset(Math.toIntExact(table.layout().afterInstanceFieldOffset()));
-        thisType.setDeclaredFields(declaredFields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY));
+        thisType.setAfterFieldsOffset(table.layout().afterFieldsOffset());
+        thisType.setDeclaredFields(declaredFields);
 
         // Done
         hub.setInterpreterType(thisType);
@@ -421,33 +418,25 @@ public class CremaSupportImpl implements CremaSupport {
 
     private abstract static class CremaDispatchTableImpl implements CremaDispatchTable {
         protected final CremaPartialType partialType;
-        public final FieldLayout layout;
+        private final FieldLayout layout;
 
         CremaDispatchTableImpl(CremaPartialType partialType) {
             this.partialType = partialType;
-            this.layout = FieldLayoutFactory.FACTORY.build(getParserKlass().getFields(), getSuperResolvedType().getAfterFieldsOffset(), /*- GR-69003 */ 0);
+            this.layout = FieldLayout.build(getParserKlass().getFields(), getSuperResolvedType().getAfterFieldsOffset());
         }
 
-        public void registerClass(InterpreterResolvedObjectType thisType) {
+        public final void registerClass(InterpreterResolvedObjectType thisType) {
             partialType.thisJavaType = thisType;
         }
 
         @Override
         public int afterFieldsOffset(int superAfterFieldsOffset) {
-            return Math.toIntExact(layout.afterInstanceFieldOffset());
+            return layout.afterFieldsOffset();
         }
 
         @Override
-        public FieldInfo[] getFieldInfos() {
-            ArrayList<FieldInfo> infos = new ArrayList<>();
-            ParserField[] fields = getParserKlass().getFields();
-            for (int i = 0; i < fields.length; i++) {
-                ParserField f = fields[i];
-                if (!f.isStatic()) {
-                    infos.add(new FieldInfo(Math.toIntExact(layout.getOffset(i)), f.getKind() == JavaKind.Object));
-                }
-            }
-            return infos.toArray(new FieldInfo[0]);
+        public int[] getDeclaredInstanceReferenceFieldOffsets() {
+            return layout().getReferenceFieldsOffsets();
         }
 
         public final ParserKlass getParserKlass() {
@@ -458,15 +447,15 @@ public class CremaSupportImpl implements CremaSupport {
             return layout;
         }
 
-        public Class<?> superType() {
+        public final Class<?> superType() {
             return partialType.superClass;
         }
 
-        public InterpreterResolvedObjectType getSuperResolvedType() {
+        public final InterpreterResolvedObjectType getSuperResolvedType() {
             return (InterpreterResolvedObjectType) DynamicHub.fromClass(superType()).getInterpreterType();
         }
 
-        public InterpreterResolvedJavaMethod[] declaredMethods() {
+        public final InterpreterResolvedJavaMethod[] declaredMethods() {
             InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
             int i = 0;
             for (var m : partialType.getDeclaredMethodsList()) {

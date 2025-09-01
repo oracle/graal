@@ -27,46 +27,62 @@ package com.oracle.svm.interpreter.fieldlayout;
 import com.oracle.svm.espresso.classfile.ParserField;
 
 /**
- * Represents the result of a {@link FieldLayoutFactory field layout strategy}.
+ * Represents the result of a field layout strategy.
  * <p>
  * The {@code offset} provided at index {@code idx} corresponds to the offset of the field at index
- * {@code idx} in the fields array provided to the
- * {@link FieldLayoutFactory#build(ParserField[], long, long)} call.
+ * {@code idx} in the fields array provided to the {@link FieldLayout#build(ParserField[], long)}
+ * call.
  * <p>
  * If the field is a static field, that offset corresponds to the offset in the static storage of
  * the class being constructed. Otherwise, the offset corresponds to an offset in instances of that
  * class.
  */
 public final class FieldLayout {
-    private final long afterInstanceFieldsOffset;
-    private final long afterStaticFieldsOffset;
-    private final long[] offsets;
+    private final int afterInstanceFieldsOffset;
+    private final int[] offsets;
+    private final int[] referenceFieldsOffsets;
 
-    FieldLayout(long afterInstanceFieldsOffset, long afterStaticFieldsOffset, long[] offsets) {
+    FieldLayout(int afterInstanceFieldsOffset, int[] offsets, int[] referenceFieldsOffsets) {
         this.afterInstanceFieldsOffset = afterInstanceFieldsOffset;
-        this.afterStaticFieldsOffset = afterStaticFieldsOffset;
         this.offsets = offsets;
+        this.referenceFieldsOffsets = referenceFieldsOffsets;
     }
 
     /**
-     * @return The size of an instance of the class being created.
+     * Creates a field layout from the given fields array and start offset.
+     *
+     * @param parsedDeclaredFields The parsed declared fields, obtained from
+     *            {@link com.oracle.svm.espresso.classfile.ClassfileParser#parse parsing} a
+     *            classfile.
+     * @param startOffset The offset at which the fields should start being layout. This generally
+     *            corresponds to the offset after a class' super's own fields.
+     *
+     * @implNote The strategy used for layouting fields is implemented at
+     *           {@link GreedyFieldLayoutStrategy}.
      */
-    public long afterInstanceFieldOffset() {
+    public static FieldLayout build(ParserField[] parsedDeclaredFields, long startOffset) {
+        return GreedyFieldLayoutStrategy.build(parsedDeclaredFields, startOffset);
+    }
+
+    /**
+     * @return The offset after all instance fields.
+     */
+    public int afterFieldsOffset() {
         return afterInstanceFieldsOffset;
-    }
-
-    /**
-     * @return The size of the static storage of the class being created.
-     */
-    public long afterStaticFieldsOffset() {
-        return afterStaticFieldsOffset;
     }
 
     /**
      * @param idx index in the fields array of the field to obtain an offset for.
      * @return the offset of the field.
      */
-    public long getOffset(int idx) {
+    public int getOffset(int idx) {
         return offsets[idx];
+    }
+
+    /**
+     * @return Offsets of all the declared instance fields that have a reference type.
+     */
+    public int[] getReferenceFieldsOffsets() {
+        return referenceFieldsOffsets;
     }
 }

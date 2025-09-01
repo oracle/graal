@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport.FieldInfo;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 
 import jdk.vm.ci.meta.JavaType;
@@ -51,7 +50,7 @@ public interface CremaSupport {
 
         int afterFieldsOffset(int superAfterFieldsOffset);
 
-        FieldInfo[] getFieldInfos();
+        int[] getDeclaredInstanceReferenceFieldOffsets();
     }
 
     CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
