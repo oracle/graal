@@ -71,13 +71,11 @@ public class RuntimeInstanceReferenceMapSupport {
      * @return a compressed offset, relative to the heap base, that points to an
      *         {@link InstanceReferenceMap}.
      */
-    public int getOrCreateReferenceMap(DynamicHub superHub, FieldInfo... declaredInstanceFields) {
+    public int getOrCreateReferenceMap(DynamicHub superHub, int... declaredInstanceReferenceFieldsOffsets) {
         /* Create a bitmap and mark where there are declared object fields. */
         SubstrateReferenceMap map = new SubstrateReferenceMap();
-        for (var field : declaredInstanceFields) {
-            if (field.hasObjectType()) {
-                map.markReferenceAtOffset(field.offset(), true);
-            }
+        for (int offset : declaredInstanceReferenceFieldsOffsets) {
+            map.markReferenceAtOffset(offset, true);
         }
 
         /* If there are no declared object fields, reuse the reference map from the super class. */
@@ -120,10 +118,6 @@ public class RuntimeInstanceReferenceMapSupport {
         NonmovableArray<Byte> array = (NonmovableArray<Byte>) Word.objectToUntrackedPointer(metaspaceRefMapArray);
         InstanceReferenceMap metaspaceMap = NonmovableArrays.getArrayBase(array);
         return InstanceReferenceMapEncoder.computeReferenceMapCompressedOffset(metaspaceMap);
-    }
-
-    /* Remove once GR-60069 is merged. */
-    public record FieldInfo(int offset, boolean hasObjectType) {
     }
 
     private record ReferenceMapHolder(byte[] refMap) {

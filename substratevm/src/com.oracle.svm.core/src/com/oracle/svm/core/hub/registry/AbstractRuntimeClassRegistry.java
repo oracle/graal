@@ -407,7 +407,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
                         sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength,
-                        dispatchTable.getFieldInfos(), afterFieldsOffset, isValueBased);
+                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 
