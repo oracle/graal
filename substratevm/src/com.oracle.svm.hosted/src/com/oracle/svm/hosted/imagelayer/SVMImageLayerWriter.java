@@ -454,16 +454,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         } else {
             builder.setHasClassInitInfo(true);
             Builder b = builder.initClassInitializationInfo();
-            b.setIsNoInitializerNoTracking(info == ClassInitializationInfo.forNoInitializerInfo(false));
-            b.setIsInitializedNoTracking(info == ClassInitializationInfo.forInitializedInfo(false));
-            b.setIsFailedNoTracking(info == ClassInitializationInfo.forFailedInfo(false));
             b.setIsInitialized(info.isInitialized());
             b.setIsInErrorState(info.isInErrorState());
             b.setIsLinked(info.isLinked());
             b.setHasInitializer(info.hasInitializer());
             b.setIsBuildTimeInitialized(info.isBuildTimeInitialized());
             b.setIsTracked(info.isTracked());
-            FunctionPointerHolder classInitializer = info.getClassInitializer();
+            FunctionPointerHolder classInitializer = info.getRuntimeClassInitializer();
             if (classInitializer != null) {
                 MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
                 AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();

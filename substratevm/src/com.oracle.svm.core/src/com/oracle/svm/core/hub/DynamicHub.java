@@ -507,8 +507,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
-
-        companion.classInitializationInfo = new ClassInitializationInfo(false);
+        companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(false);
 
         assert !isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
         boolean isInterface = isFlagSet(flags, IS_INTERFACE_FLAG_BIT);
