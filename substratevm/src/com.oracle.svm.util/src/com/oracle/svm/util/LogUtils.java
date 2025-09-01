@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.Platforms;
 // Checkstyle: Allow raw info or warning printing - begin
 public class LogUtils {
     /**
-     * Number of warnings seen during image build. Note this is limited to the current process, i.e. there is a split
-     * between Driver and Builder.
+     * Number of warnings seen during image build. Note this is limited to the current process, i.e.
+     * there is a split between Driver and Builder.
      */
     private static int warningsCount = 0;
 

@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -796,8 +797,9 @@ public class ProgressReporter {
         l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
-        printWarningMessages();
+        printWarningsCount();
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+        checkTreatWarningsAsError();
     }
 
     private static String outcomePrefix(NativeImageGeneratorRunner.BuildOutcome buildOutcome) {
@@ -808,7 +810,7 @@ public class ProgressReporter {
         };
     }
 
-    private void printWarningMessages() {
+    private void printWarningsCount() {
         int warningsCount = LogUtils.getWarningsCount() + SubstrateOptions.DriverWarningsCount.getValue();
         if (warningsCount == 0) {
             return;
@@ -817,6 +819,35 @@ public class ProgressReporter {
         l().println();
         l().yellowBold().a("The build process encountered ").a(warningsCount).a(warningsCount == 1 ? " warning." : " warnings.").reset().println();
         l().println();
+    }
+
+    private void checkTreatWarningsAsError() {
+        if (SubstrateOptions.TreatWarningsAsError.getValue().contains("all")) {
+            deleteBuiltArtifacts();
+            throw UserError.abort("Build failed: Warnings are treated as errors because the -Werror flag is set.");
+        }
+    }
+
+    /**
+     * Delete built artifacts. This is done e.g. in the -Werror case to ensure we don't "fail on
+     * error" but still have built - but potentially broken - artifacts created.
+     */
+    private void deleteBuiltArtifacts() {
+        BuildArtifacts.singleton().forEach((artifactType, paths) -> {
+            if (artifactType != ArtifactType.BUILD_INFO) {
+                for (Path path : paths) {
+                    try {
+                        if (path.startsWith(SubstrateOptions.getImagePath())) {
+                            java.nio.file.Files.delete(path);
+                        } else {
+                            LogUtils.warning("Cleaning up due to -Werror failed: Cannot delete artifacts not in " + SubstrateOptions.getImagePath() + ". Invalid: " + path);
+                        }
+                    } catch (IOException ex) {
+                        LogUtils.warning("Cleaning up due to -Werror failed: cannot delete " + path + ": " + ex.getMessage());
+                    }
+                }
+            }
+        });
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
