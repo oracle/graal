@@ -26,6 +26,7 @@ package com.oracle.svm.graal.substitutions;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -239,6 +240,13 @@ final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
         }
         VMRuntime.dumpHeap(outputFile, live);
     }
+}
+
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
+    @Alias//
+    @RecomputeFieldValue(kind = Reset)//
+    private volatile long address;
 }
 
 /*
