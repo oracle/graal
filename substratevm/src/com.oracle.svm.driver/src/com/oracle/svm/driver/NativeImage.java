@@ -1493,7 +1493,7 @@ public class NativeImage {
         var enableNativeAccessModules = getModulesFromPath(imageBuilderModulePath).keySet();
         imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", enableNativeAccessModules));
         // pass the number of warnings to the builder process
-        imageBuilderArgs.add(oH(SubstrateOptions.DriverWarningsCount)+LogUtils.getWarningsCount());
+        imageBuilderArgs.add(oH(SubstrateOptions.DriverWarningsCount) + LogUtils.getWarningsCount());
 
         boolean useColorfulOutput = configureBuildOutput();
 
