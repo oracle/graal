@@ -447,9 +447,7 @@ abstract class ExtLocations {
         }
 
         protected final Object assumedTypeCast(Object value, boolean condition) {
-            if (CompilerDirectives.inInterpreter()) {
-                return value;
-            }
+            assert CompilerDirectives.inCompiledCode();
             TypeAssumption curr = getTypeAssumption();
             if (curr != null && curr != TypeAssumption.ANY && curr.getAssumption().isValid()) {
                 Class<? extends Object> type = curr.type;
@@ -623,7 +621,7 @@ abstract class ExtLocations {
         @Override
         public Object get(DynamicObject store, boolean guard) {
             Object value = UnsafeAccess.unsafeGetObject(getArray(store, guard), getOffset(), guard, this);
-            return assumedTypeCast(value, guard);
+            return CompilerDirectives.inInterpreter() ? value : assumedTypeCast(value, guard);
         }
 
         @Override
@@ -683,7 +681,7 @@ abstract class ExtLocations {
         @Override
         public Object get(DynamicObject store, boolean guard) {
             Object value = getInternal(store, guard);
-            return assumedTypeCast(value, guard);
+            return CompilerDirectives.inInterpreter() ? value : assumedTypeCast(value, guard);
         }
 
         @Override
