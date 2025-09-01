@@ -530,13 +530,16 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private static final Set<String> knownPassThroughOptions = Set.of(
-                    "SharedArchiveFile",
-                    "WhiteBoxAPI",
-                    "EnableJVMCI");
+    private static final Set<String> jvmPassThroughVMOptions = Set.of(
+                    "PrintFlagsFinal",
+                    "MaxRAMPercentage",
+                    "UseParallelGC",
+                    "GCTimeRatio",
+                    "ExitOnOutOfMemoryError");
 
     private static final Set<String> ignoredXXOptions = Set.of(
                     "UseJVMCICompiler",
+                    "UseJVMCINativeLibrary",
                     "EnableDynamicAgentLoading");
 
     private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
@@ -559,8 +562,13 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             getError().println("Ignoring " + arg);
             return;
         }
-        if (knownPassThroughOptions.contains(name)) {
-            espressoOptions.put("java." + name, value);
+        String polyglotOption = "java." + name;
+        if (findOptionDescriptor("java", polyglotOption) != null) {
+            espressoOptions.put(polyglotOption, value);
+            return;
+        }
+        if (!isAOT() && jvmPassThroughVMOptions.contains(name)) {
+            unrecognized.add("--vm." + fullArg.substring(1));
             return;
         }
         switch (name) {
