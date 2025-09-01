@@ -460,6 +460,22 @@ public class StandardOp {
         }
     }
 
+    public static final class NewScratchRegisterOp extends LIRInstruction {
+        public static final LIRInstructionClass<NewScratchRegisterOp> TYPE = LIRInstructionClass.create(NewScratchRegisterOp.class);
+
+        @Def(OperandFlag.REG) private Value value;
+
+        public NewScratchRegisterOp(Value value) {
+            super(TYPE);
+            this.value = value;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            // do nothing, just define a value
+        }
+    }
+
     @Opcode("SPILLREGISTERS")
     public static final class SpillRegistersOp extends LIRInstruction {
         public static final LIRInstructionClass<SpillRegistersOp> TYPE = LIRInstructionClass.create(SpillRegistersOp.class);
