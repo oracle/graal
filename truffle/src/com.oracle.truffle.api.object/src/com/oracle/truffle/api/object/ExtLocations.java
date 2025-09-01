@@ -747,7 +747,17 @@ abstract class ExtLocations {
         }
     }
 
-    abstract static sealed class AbstractPrimitiveFieldLocation extends InstanceLocation implements FieldLocation {
+    /**
+     * Non-sealed because there used to be BooleanFieldLocation and Graal.js still uses
+     * {@link com.oracle.truffle.api.object.BooleanLocation}. If sealed it would cause a javac
+     * error:
+     *
+     * <pre>
+     * .../PropertySetNode.java:577: error: incompatible types: Location cannot be converted to BooleanLocation
+     *             this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
+     * </pre>
+     */
+    abstract static non-sealed class AbstractPrimitiveFieldLocation extends InstanceLocation implements FieldLocation {
 
         protected final FieldInfo field;
 
