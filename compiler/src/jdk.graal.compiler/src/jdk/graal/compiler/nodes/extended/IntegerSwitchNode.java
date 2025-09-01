@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -728,5 +728,16 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     @Override
     public Stamp genericSuccessorStamp() {
         return value.stamp(NodeView.DEFAULT);
+    }
+
+    /**
+     * @return true if {@link #keys} do not fully cover the input stamp.
+     */
+    public boolean inputMayBeOutOfRange() {
+        assert assertSorted() : "Keys must be sorted";
+        if (value().stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp) {
+            return inputStamp.lowerBound() < keys[0] || inputStamp.upperBound() > keys[keys.length - 1];
+        }
+        return true;
     }
 }

@@ -854,8 +854,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
-            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key);
+        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                        boolean inputMayBeOutOfRange) {
+            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, inputMayBeOutOfRange);
             markIndirectBranchTargets(targets);
         }
 
