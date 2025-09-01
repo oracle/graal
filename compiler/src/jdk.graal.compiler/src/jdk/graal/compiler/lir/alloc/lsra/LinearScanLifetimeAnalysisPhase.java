@@ -606,13 +606,12 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             interval.setKind(kind);
         }
 
-        Range r = interval.first();
-        if (r.from <= defPos) {
+        if (interval.from() <= defPos) {
             /*
              * Update the starting point (when a range is first created for a use, its start is the
              * beginning of the current block until a def is encountered).
              */
-            r.from = defPos;
+            interval.setFrom(defPos);
             interval.addUsePos(defPos, registerPriority, detailedAsserts);
 
         } else {

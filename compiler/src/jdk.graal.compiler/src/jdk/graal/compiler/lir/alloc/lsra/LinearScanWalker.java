@@ -240,11 +240,17 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(freeCollectInactiveFixed)) {
             Interval interval = inactiveLists.get(RegisterBinding.Fixed);
             while (!interval.isEndMarker()) {
-                if (current.to() <= interval.currentFrom()) {
-                    assert !interval.currentIntersects(current) : "must not intersect";
-                    setUsePos(interval, interval.currentFrom(), true);
-                } else {
-                    setUsePosAtIntersection(interval, current);
+                if (isRegisterInterval(interval)) {
+                    int currentFrom = interval.currentFrom();
+                    if (current.to() <= currentFrom) {
+                        assert !interval.currentIntersects(current) : "must not intersect";
+                        int i = asRegister(interval.location()).number;
+                        if (usePos[i] > currentFrom) {
+                            usePos[i] = currentFrom;
+                        }
+                    } else {
+                        setUsePosAtIntersection(interval, current);
+                    }
                 }
                 interval = interval.next;
             }
@@ -308,9 +314,17 @@ class LinearScanWalker extends IntervalWalker {
     void spillCollectInactiveAny(Interval current) {
         try (DebugCloseable t = allocator.start(spillCollectInactiveAny)) {
             Interval interval = inactiveLists.get(RegisterBinding.Any);
+            int intervalBinarySearchLimit = allocator.intervalBinarySearchLimit;
             while (!interval.isEndMarker()) {
                 if (isRegisterInterval(interval)) {
-                    if (interval.currentIntersects(current)) {
+                    boolean intersects;
+                    if (intervalBinarySearchLimit != -1 &&
+                                    (interval.rangePairCount() > intervalBinarySearchLimit || current.rangePairCount() > intervalBinarySearchLimit)) {
+                        intersects = interval.binarySearchInterval(current);
+                    } else {
+                        intersects = interval.currentIntersects(current);
+                    }
+                    if (intersects) {
                         setUsePos(interval, Math.min(interval.nextUsage(RegisterPriority.LiveAtLoopEnd, currentPosition), interval.to()), false);
                     }
                 }
