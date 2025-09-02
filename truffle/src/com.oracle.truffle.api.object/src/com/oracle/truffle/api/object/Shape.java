@@ -62,6 +62,7 @@ import java.util.function.BiConsumer;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.impl.AbstractAssumption;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
@@ -130,7 +131,7 @@ public final class Shape {
     private final int depth;
     private final int propertyCount;
 
-    private final Assumption validAssumption;
+    private final AbstractAssumption validAssumption;
     @CompilationFinal private volatile Assumption leafAssumption;
 
     /**
@@ -843,6 +844,11 @@ public final class Shape {
         return validAssumption;
     }
 
+    @Idempotent
+    AbstractAssumption getValidAbstractAssumption() {
+        return validAssumption;
+    }
+
     /**
      * Check whether this shape is valid.
      *
@@ -850,7 +856,7 @@ public final class Shape {
      */
     @NonIdempotent
     public boolean isValid() {
-        return getValidAssumption().isValid();
+        return validAssumption.isValid();
     }
 
     /**
@@ -1582,12 +1588,12 @@ public final class Shape {
         return this.getRoot() == other.getRoot();
     }
 
-    private static Assumption createValidAssumption() {
-        return Truffle.getRuntime().createAssumption("valid shape");
+    private static AbstractAssumption createValidAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("valid shape");
     }
 
     void invalidateValidAssumption() {
-        getValidAssumption().invalidate();
+        validAssumption.invalidate();
     }
 
     private static Assumption createLeafAssumption() {
