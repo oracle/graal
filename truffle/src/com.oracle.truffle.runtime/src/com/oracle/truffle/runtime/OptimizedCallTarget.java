@@ -951,7 +951,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                                     "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
                 }
                 // Flush the compilation queue and mark all methods as not compilable.
-                for (OptimizedCallTarget target : runtime().getCompileQueue().getQueuedTargets(null)) {
+                for (OptimizedCallTarget target : runtime().getCompileQueue().getAllTargets(null)) {
                     target.cancelCompilation("Compilation permanently disabled due to full code cache.");
                     target.compilationFailed = true;
                 }
@@ -1017,6 +1017,16 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                             handleCompilationFailure(() -> failureReason, false, true, true);
                             return false;
                         }
+
+                        if (engine.isClosed()) {
+                            /*
+                             * This should not happen in practice, but for testing when call targets
+                             * escape the boundary of an engine this can in theory happen. So we
+                             * check for this defensively.
+                             */
+                            return false;
+                        }
+
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
                     } catch (RejectedExecutionException e) {
                         return false;
@@ -1141,6 +1151,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             /* no cancellation necessary if the call target was initialized */
             return false;
         }
+
         CompilationTask task = this.compilationTask;
         if (task != null && cancelAndResetCompilationTask()) {
             runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);

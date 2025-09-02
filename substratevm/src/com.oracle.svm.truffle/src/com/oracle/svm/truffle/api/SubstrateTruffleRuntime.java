@@ -103,6 +103,7 @@ class SubstrateTruffleOptions {
          */
         return SubstrateTruffleOptions.TruffleMultiThreaded.getValue();
     }
+
 }
 
 public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
@@ -168,7 +169,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
             Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(firstIsolate -> teardownCompilerIsolate());
     }
 
     @Override
@@ -200,16 +201,16 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return super.getConstantFieldInfo(field);
     }
 
-    private void teardown() {
-        long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
-        BackgroundCompileQueue queue = getCompileQueue();
-        if (queue != null) {
-            queue.shutdownAndAwaitTermination(timeout);
-        }
-
+    private void teardownCompilerIsolate() {
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {
-            ((SubstrateTruffleCompiler) tcp).teardown();
+            ((SubstrateTruffleCompiler) tcp).teardown(() -> {
+                long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
+                BackgroundCompileQueue queue = getCompileQueue();
+                if (queue != null) {
+                    queue.shutdownAndAwaitTermination(timeout);
+                }
+            });
         }
     }
 
