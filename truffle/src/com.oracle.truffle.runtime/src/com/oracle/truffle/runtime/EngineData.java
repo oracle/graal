@@ -182,6 +182,7 @@ public final class EngineData {
     private Map<String, String> compilerOptions;
 
     private volatile Object polyglotEngine;
+    private volatile boolean closed;
 
     /*
      * Extension data for dynamically bound engine extensions.
@@ -198,6 +199,14 @@ public final class EngineData {
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
+    }
+
+    public void ensureClosed() {
+        this.closed = true;
+    }
+
+    public boolean isClosed() {
+        return this.closed;
     }
 
     public static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {

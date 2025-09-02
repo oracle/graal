@@ -212,7 +212,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void flushCompileQueue(Object runtimeData) {
+        public void shutdownCompilationForEngine(Object runtimeData) {
             // default runtime has no compile queue.
         }
 
