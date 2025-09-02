@@ -74,6 +74,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 import org.graalvm.word.WordBase;
 
@@ -1128,7 +1129,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
-    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, RecreateInfo recreateInfo, EconomicMap<String, Object> keyStore) {
+    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int singletonId, RecreateInfo recreateInfo, int keyStoreId, EconomicMap<String, Object> keyStore) {
     }
 
     // GR-66792 remove once no custom persist actions exist
@@ -1152,9 +1153,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
+        /*
+         * First write the image singleton keys
+         */
         StructList.Builder<ImageSingletonKey.Builder> singletonsBuilder = snapshotBuilder.initSingletonKeys(layeredImageSingletons.size());
-        Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new HashMap<>();
-        int nextID = 1;
+        Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new IdentityHashMap<>();
+        int nextSingletonId = 0;
+        int nextKeyStoreId = 0;
         Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         for (int i = 0; i < layeredImageSingletons.size(); i++) {
             var singletonEntry = layeredImageSingletons.get(i);
@@ -1165,61 +1170,90 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
                 SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
                 var flags = action.doPersist(writer, singleton);
-                boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
                 if (initialLayerOnly) {
                     VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
                                     singleton);
                 }
-                int id = -1;
+                int singletonId = SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID;
+                int keyStoreId = SVMImageLayerSnapshotUtil.UNDEFINED_KEY_STORE_ID;
                 RecreateInfo recreateInfo = null;
                 EconomicMap<String, Object> keyValueStore = null;
-                if (persistData) {
-                    id = nextID++;
+                if (flags == LayeredImageSingleton.PersistFlags.CREATE) {
+                    VMError.guarantee(!(singleton instanceof Feature), "Features cannot return %s. Use %s instead. Feature: %s", LayeredImageSingleton.PersistFlags.CREATE,
+                                    LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION, singleton);
+                    singletonId = nextSingletonId++;
                     recreateInfo = createRecreateInfo(action);
                     keyValueStore = writer.getKeyValueStore();
+                    keyStoreId = nextKeyStoreId++;
+                } else if (flags == LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION) {
+                    keyValueStore = writer.getKeyValueStore();
+                    keyStoreId = nextKeyStoreId++;
+                } else {
+                    VMError.guarantee(writer.getKeyValueStore().isEmpty(), "ImageSingletonWriter was used, but the results will not be persisted %s %s", singletonEntry.getKey(), singleton);
                 }
 
-                var info = new SingletonPersistInfo(flags, id, recreateInfo, keyValueStore);
+                var info = new SingletonPersistInfo(flags, singletonId, recreateInfo, keyStoreId, keyValueStore);
                 singletonPersistInfoMap.put(singleton, info);
             }
             var info = singletonPersistInfoMap.get(singleton);
 
             ImageSingletonKey.Builder sb = singletonsBuilder.get(i);
             sb.setKeyClassName(key);
-            sb.setObjectId(info.id);
+            sb.setObjectId(info.singletonId);
             sb.setPersistFlag(info.flags.ordinal());
-            int constantId = -1;
+            int constantId = UNDEFINED_CONSTANT_ID;
             if (initialLayerOnly) {
                 ImageHeapConstant imageHeapConstant = (ImageHeapConstant) aUniverse.getSnippetReflection().forObject(singleton);
                 constantId = ImageHeapConstant.getConstantID(imageHeapConstant);
             }
             sb.setConstantId(constantId);
             sb.setIsInitialLayerOnly(initialLayerOnly);
+            sb.setKeyStoreId(info.keyStoreId);
         }
 
-        var sortedByIDs = singletonPersistInfoMap.entrySet().stream()
+        /*
+         * Next write the singleton objects.
+         */
+        var sortedBySingletonIds = singletonPersistInfoMap.entrySet().stream()
                         .filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE)
-                        .sorted(Comparator.comparingInt(e -> e.getValue().id))
+                        .sorted(Comparator.comparingInt(e -> e.getValue().singletonId))
                         .toList();
-        StructList.Builder<ImageSingletonObject.Builder> objectsBuilder = snapshotBuilder.initSingletonObjects(sortedByIDs.size());
-        for (int i = 0; i < sortedByIDs.size(); i++) {
-            var entry = sortedByIDs.get(i);
+        StructList.Builder<ImageSingletonObject.Builder> objectsBuilder = snapshotBuilder.initSingletonObjects(sortedBySingletonIds.size());
+        for (int i = 0; i < sortedBySingletonIds.size(); i++) {
+            var entry = sortedBySingletonIds.get(i);
             var info = entry.getValue();
+            assert info.singletonId == i : Assertions.errorMessage(i, info);
 
             ImageSingletonObject.Builder ob = objectsBuilder.get(i);
-            ob.setId(info.id);
+            ob.setId(info.singletonId);
             ob.setClassName(entry.getKey().getClass().getName());
             ob.setRecreateClass(info.recreateInfo().clazz());
             ob.setRecreateMethod(info.recreateInfo().method());
-            writeImageSingletonKeyStore(ob, info.keyStore);
+            ob.setKeyStoreId(info.keyStoreId);
+        }
+
+        /* Finally write out the KeyStoreContainers. */
+        var sortedByKeyStoreIds = singletonPersistInfoMap.entrySet().stream()
+                        .filter(e -> e.getValue().keyStoreId != -1)
+                        .sorted(Comparator.comparingInt(e -> e.getValue().keyStoreId))
+                        .toList();
+        var keyStores = snapshotBuilder.initKeyStoreInstances(sortedByKeyStoreIds.size());
+        for (int i = 0; i < sortedByKeyStoreIds.size(); i++) {
+            var entry = sortedByKeyStoreIds.get(i);
+            var info = entry.getValue();
+            assert info.keyStoreId == i : Assertions.errorMessage(i, info);
+
+            var keyStoreInstance = keyStores.get(i);
+            keyStoreInstance.setId(info.keyStoreId);
+            writeImageSingletonKeyStore(keyStoreInstance, info.keyStore);
         }
     }
 
-    private static void writeImageSingletonKeyStore(ImageSingletonObject.Builder objectData, EconomicMap<String, Object> keyStore) {
-        StructList.Builder<KeyStoreEntry.Builder> lb = objectData.initStore(keyStore.size());
+    private static void writeImageSingletonKeyStore(SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.Builder keyStoreBuilder, EconomicMap<String, Object> keyStore) {
+        StructList.Builder<KeyStoreEntry.Builder> entryBuilder = keyStoreBuilder.initKeyStore(keyStore.size());
         MapCursor<String, Object> cursor = keyStore.getEntries();
         for (int i = 0; cursor.advance(); i++) {
-            KeyStoreEntry.Builder b = lb.get(i);
+            KeyStoreEntry.Builder b = entryBuilder.get(i);
             b.setKey(cursor.getKey());
             switch (cursor.getValue()) {
                 case Integer iv -> b.getValue().setI(iv);

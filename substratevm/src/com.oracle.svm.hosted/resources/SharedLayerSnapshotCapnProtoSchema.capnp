@@ -12,6 +12,7 @@ using MethodId = Int32;
 using FieldId = Int32;
 using ConstantId = Int32;
 using SingletonObjId = Int32;
+using KeyStoreId = Int32;
 using HostedMethodIndex = Int32;
 
 struct PersistedAnalysisType {
@@ -243,15 +244,21 @@ struct ImageSingletonKey {
   objectId @2 :SingletonObjId;
   constantId @3 :ConstantId;
   isInitialLayerOnly @4 :Bool;
+  keyStoreId @5 :KeyStoreId;
 }
 
 struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
-  store @2 :List(KeyStoreEntry);
+  keyStoreId @2 :KeyStoreId;
   recreateClass @3 :Text;
   # GR-66792 remove once no custom persist actions exist
   recreateMethod @4 :Text;
+}
+
+struct KeyStoreInstance {
+  id @0 :KeyStoreId;
+  keyStore @1 :List(KeyStoreEntry);
 }
 
 struct Annotation {
@@ -303,6 +310,7 @@ struct SharedLayerSnapshot {
   sharedLayerBootLayerModules @21 :List(Text);
   layeredModule @22 :LayeredModule;
   cGlobals @23 :List(CGlobalDataInfo);
+  keyStoreInstances @24 :List(KeyStoreInstance);
 }
 
 struct StaticFinalFieldFoldingSingleton {
