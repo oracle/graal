@@ -229,9 +229,31 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     }
 
     @Override
-    public void teardown() {
+    public void teardown(Runnable shutdownCompilationsAndWaitAction) {
         if (SubstrateOptions.shouldCompileInIsolates()) {
-            tearDownIsolateOnShutdown();
+            /*
+             * Start a separate thread for shutting down any ongoing compilations. If we are in a
+             * process with a single Truffle runtime (e.g. a language launcher), it can {@linkplain
+             * System#exit exit} early without waiting for this thread to finish. If there are
+             * potentially multiple isolates in the current process, the thread will delay the
+             * shutdown of the runtime isolate until the compilation isolate has been fully torn
+             * down.
+             */
+            Thread t = new Thread(() -> {
+                shutdownCompilationsAndWaitAction.run();
+                tearDownIsolateOnShutdown();
+            });
+            // we ignore uncaught exceptions here. For example
+            // if the waiting thread was interrupted.
+            t.setUncaughtExceptionHandler((_, _) -> {
+            });
+            /*
+             * Technically this does not need to be a daemon thread, as either way this thread is
+             * still being waited on when tearing down the isolate. However it seems more correct to
+             * mark this thread as daemon as it should not prevent the regular JVM shutdown.
+             */
+            t.setDaemon(true);
+            t.start();
         }
     }
 
