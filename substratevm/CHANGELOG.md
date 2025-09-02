@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 26 (Internal Version 26.0.0)
+* (GR-69280): Allow use of the `graal.` prefix for options without issuing a warning.
+
 ## GraalVM for JDK 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
 * (GR-58668) Enabled [Whole-Program Sparse Conditional Constant Propagation (WP-SCCP)](https://github.com/oracle/graal/pull/9821) by default, improving the precision of points-to analysis in Native Image. This optimization enhances static analysis accuracy and scalability, potentially reducing the size of the final native binary.

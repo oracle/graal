@@ -29,16 +29,15 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import java.io.PrintStream;
 import java.util.Map;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
-
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.common.InitTimer;
 
 /**
@@ -65,11 +64,6 @@ public class HotSpotGraalOptionValues {
      * Prefix for system properties that correspond to libgraal Native Image options.
      */
     public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.internal.";
-
-    /**
-     * Guard for issuing warning about deprecated Graal option prefix at most once.
-     */
-    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong("LEGACY_OPTION_DEPRECATION_WARNED", 0L);
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -113,15 +107,9 @@ public class HotSpotGraalOptionValues {
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
                 String name = e.getKey();
                 if (name.startsWith(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX)) {
+                    // Convert legacy name to new name
                     String baseName = name.substring(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX.length());
                     name = GRAAL_OPTION_PROPERTY_PREFIX + baseName;
-                    if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndSet(0L, 1L)) {
-                        System.err.printf("""
-                                        WARNING: The 'graal.' property prefix for the Graal option %s
-                                        WARNING: (and all other Graal options) is deprecated and will be ignored
-                                        WARNING: in a future release. Please use 'jdk.graal.%s' instead.%n""",
-                                        baseName, baseName);
-                    }
                 }
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
                     if (name.startsWith(LIBGRAAL_VM_OPTION_PROPERTY_PREFIX)) {
