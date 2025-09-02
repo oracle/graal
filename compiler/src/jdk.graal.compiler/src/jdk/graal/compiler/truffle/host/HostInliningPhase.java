@@ -106,6 +106,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods.")//
         public static final OptionKey<Integer> TruffleHostInliningBaseBudget = new OptionKey<>(5_000);
 
+        @Option(help = "Maximum exploration budget for Truffle host inlining when exploring inlining candidates.")//
+        public static final OptionKey<Integer> TruffleHostInliningExploreBudget = new OptionKey<>(10_000);
+
         @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods with a BytecodeInterpreterSwitch annotation.")//
         public static final OptionKey<Integer> TruffleHostInliningByteCodeInterpreterBudget = new OptionKey<>(100_000);
 
@@ -116,7 +119,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
         public static final OptionKey<Integer> TruffleHostInliningMaxExplorationDepth = new OptionKey<>(1000);
 
         @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
-        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(20);
+        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(32);
 
         @Option(help = "Minimum relative frequency for calls to get inlined. Default 0.001 on HotSpot and no minimum frequency on SVM.")//
         public static final OptionKey<Double> TruffleHostInliningMinFrequency = new OptionKey<>(DEFAULT_MIN_FREQUENCY);
@@ -144,7 +147,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
-        return isBytecodeInterpreterSwitch(env, method);
+        return isBytecodeInterpreterSwitch(env, method) || isInliningRoot(env, method);
     }
 
     protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
@@ -154,12 +157,16 @@ public class HostInliningPhase extends AbstractInliningPhase {
         return null;
     }
 
-    private boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+    protected final boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return env.getHostMethodInfo(translateMethod(targetMethod)).isBytecodeInterpreterSwitch();
     }
 
     private boolean isInliningCutoff(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningCutoff();
+    }
+
+    private boolean isInliningRoot(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningRoot();
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -213,11 +220,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
              * all together and fail if the graph becomes too big.
              */
             sizeLimit = Options.TruffleHostInliningByteCodeInterpreterBudget.getValue(context.graph.getOptions());
-            exploreLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
         } else {
             sizeLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
-            exploreLimit = sizeLimit;
         }
+        exploreLimit = Options.TruffleHostInliningExploreBudget.getValue(context.graph.getOptions());
 
         if (sizeLimit < 0) {
             /*
