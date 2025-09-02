@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
+import com.oracle.truffle.api.impl.AbstractAssumption;
 import sun.misc.Unsafe;
 
 /**
@@ -261,16 +262,16 @@ abstract class ExtLocations {
 
         protected final int index;
 
-        @CompilationFinal protected volatile Assumption finalAssumption;
+        @CompilationFinal protected volatile AbstractAssumption finalAssumption;
 
-        private static final AtomicReferenceFieldUpdater<InstanceLocation, Assumption> FINAL_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                        InstanceLocation.class, Assumption.class, "finalAssumption");
+        private static final AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> FINAL_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                        InstanceLocation.class, AbstractAssumption.class, "finalAssumption");
 
         static final boolean LAZY_FINAL_ASSUMPTION = true;
         private static final DebugCounter assumedFinalLocationAssumptionCount = DebugCounter.create("Final location assumptions allocated");
         private static final DebugCounter assumedFinalLocationAssumptionInvalidationCount = DebugCounter.create("Final location assumptions invalidated");
 
-        protected InstanceLocation(int index, Assumption finalAssumption) {
+        protected InstanceLocation(int index, AbstractAssumption finalAssumption) {
             this.index = index;
             this.finalAssumption = finalAssumption;
         }
@@ -279,17 +280,17 @@ abstract class ExtLocations {
             return index;
         }
 
-        final Assumption getFinalAssumptionField() {
+        final AbstractAssumption getFinalAssumptionField() {
             return finalAssumption;
         }
 
-        static Assumption createFinalAssumption() {
+        static AbstractAssumption createFinalAssumption() {
             assumedFinalLocationAssumptionCount.inc();
-            return Truffle.getRuntime().createAssumption("final location");
+            return (AbstractAssumption) Truffle.getRuntime().createAssumption("final location");
         }
 
         protected final void maybeInvalidateFinalAssumption() {
-            Assumption assumption = getFinalAssumptionField();
+            AbstractAssumption assumption = getFinalAssumptionField();
             if (assumption == null || assumption.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 invalidateFinalAssumption(assumption);
@@ -297,13 +298,13 @@ abstract class ExtLocations {
         }
 
         @SuppressWarnings("unchecked")
-        private void invalidateFinalAssumption(Assumption lastAssumption) {
+        private void invalidateFinalAssumption(AbstractAssumption lastAssumption) {
             CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<InstanceLocation, Assumption> updater = FINAL_ASSUMPTION_UPDATER;
+            AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> updater = FINAL_ASSUMPTION_UPDATER;
             assumedFinalLocationAssumptionInvalidationCount.inc();
-            Assumption assumption = lastAssumption;
+            AbstractAssumption assumption = lastAssumption;
             if (assumption == null) {
-                while (!updater.compareAndSet(this, assumption, Assumption.NEVER_VALID)) {
+                while (!updater.compareAndSet(this, assumption, (AbstractAssumption) Assumption.NEVER_VALID)) {
                     assumption = updater.get(this);
                     if (assumption == Assumption.NEVER_VALID) {
                         break;
@@ -312,7 +313,7 @@ abstract class ExtLocations {
                 }
             } else if (assumption.isValid()) {
                 assumption.invalidate();
-                updater.set(this, Assumption.NEVER_VALID);
+                updater.set(this, (AbstractAssumption) Assumption.NEVER_VALID);
             }
         }
 
@@ -320,8 +321,8 @@ abstract class ExtLocations {
          * Needs to be implemented so that {@link Location#getFinalAssumption()} is overridden.
          */
         @Override
-        public final Assumption getFinalAssumption() {
-            Assumption assumption = getFinalAssumptionField();
+        public final AbstractAssumption getFinalAssumption() {
+            AbstractAssumption assumption = getFinalAssumptionField();
             if (assumption != null) {
                 return assumption;
             }
@@ -330,10 +331,10 @@ abstract class ExtLocations {
         }
 
         @SuppressWarnings("unchecked")
-        private Assumption initializeFinalAssumption() {
+        private AbstractAssumption initializeFinalAssumption() {
             CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<InstanceLocation, Assumption> updater = FINAL_ASSUMPTION_UPDATER;
-            Assumption newAssumption = createFinalAssumption();
+            AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> updater = FINAL_ASSUMPTION_UPDATER;
+            AbstractAssumption newAssumption = createFinalAssumption();
             if (updater.compareAndSet(this, null, newAssumption)) {
                 return newAssumption;
             } else {
@@ -347,7 +348,7 @@ abstract class ExtLocations {
          */
         @Override
         public final boolean isAssumedFinal() {
-            Assumption assumption = getFinalAssumptionField();
+            AbstractAssumption assumption = getFinalAssumptionField();
             return assumption == null || assumption.isValid();
         }
 
@@ -407,7 +408,7 @@ abstract class ExtLocations {
         private static final DebugCounter assumedTypeLocationAssumptionInvalidationCount = DebugCounter.create("Typed location assumptions invalidated");
         private static final DebugCounter assumedTypeLocationAssumptionRenewCount = DebugCounter.create("Typed location assumptions renewed");
 
-        AbstractObjectLocation(int index, Assumption finalAssumption, TypeAssumption typeAssumption) {
+        AbstractObjectLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
             super(index, finalAssumption);
             this.typeAssumption = typeAssumption;
         }
@@ -481,7 +482,7 @@ abstract class ExtLocations {
                 return TypeAssumption.ANY;
             }
             assumedTypeLocationAssumptionCount.inc();
-            return new TypeAssumption(Truffle.getRuntime().createAssumption("typed object location"), type, nonNull);
+            return new TypeAssumption((AbstractAssumption) Truffle.getRuntime().createAssumption("typed object location"), type, nonNull);
         }
 
         static TypeAssumption createTypeAssumptionFromValue(Object value) {
@@ -606,7 +607,7 @@ abstract class ExtLocations {
      */
     static final class ObjectArrayLocation extends AbstractObjectLocation implements ArrayLocation {
 
-        ObjectArrayLocation(int index, Assumption finalAssumption, TypeAssumption typeAssumption) {
+        ObjectArrayLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
             super(index, finalAssumption, typeAssumption);
         }
 
@@ -659,7 +660,7 @@ abstract class ExtLocations {
     static final class ObjectFieldLocation extends AbstractObjectLocation implements FieldLocation {
         private final FieldInfo field;
 
-        ObjectFieldLocation(int index, FieldInfo field, Assumption finalAssumption, TypeAssumption typeAssumption) {
+        ObjectFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
             super(index, finalAssumption, typeAssumption);
             this.field = Objects.requireNonNull(field);
         }
@@ -747,7 +748,7 @@ abstract class ExtLocations {
 
         protected final FieldInfo field;
 
-        AbstractPrimitiveFieldLocation(int index, FieldInfo field, Assumption finalAssumption) {
+        AbstractPrimitiveFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
             assert field.type() == long.class : field;
             this.field = Objects.requireNonNull(field);
@@ -777,7 +778,7 @@ abstract class ExtLocations {
 
     static final class IntFieldLocation extends AbstractPrimitiveFieldLocation implements IntLocation {
 
-        IntFieldLocation(int index, FieldInfo field, Assumption finalAssumption) {
+        IntFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
             super(index, field, finalAssumption);
         }
 
@@ -845,7 +846,7 @@ abstract class ExtLocations {
     static final class DoubleFieldLocation extends AbstractPrimitiveFieldLocation implements DoubleLocation {
         private final boolean allowInt;
 
-        DoubleFieldLocation(int index, FieldInfo field, boolean allowInt, Assumption finalAssumption) {
+        DoubleFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
         }
@@ -938,7 +939,7 @@ abstract class ExtLocations {
 
     abstract static sealed class AbstractPrimitiveArrayLocation extends InstanceLocation implements ArrayLocation {
 
-        AbstractPrimitiveArrayLocation(int index, Assumption finalAssumption) {
+        AbstractPrimitiveArrayLocation(int index, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
         }
 
@@ -955,7 +956,7 @@ abstract class ExtLocations {
 
     static final class IntArrayLocation extends AbstractPrimitiveArrayLocation implements IntLocation {
 
-        IntArrayLocation(int index, Assumption finalAssumption) {
+        IntArrayLocation(int index, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
         }
 
@@ -1019,7 +1020,7 @@ abstract class ExtLocations {
     static final class DoubleArrayLocation extends AbstractPrimitiveArrayLocation implements DoubleLocation {
         private final boolean allowInt;
 
-        DoubleArrayLocation(int index, boolean allowInt, Assumption finalAssumption) {
+        DoubleArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
             this.allowInt = allowInt;
         }
@@ -1104,7 +1105,7 @@ abstract class ExtLocations {
     static final class LongFieldLocation extends AbstractPrimitiveFieldLocation implements LongLocation {
         private final boolean allowInt;
 
-        LongFieldLocation(int index, FieldInfo field, boolean allowInt, Assumption finalAssumption) {
+        LongFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
         }
@@ -1193,7 +1194,7 @@ abstract class ExtLocations {
     static final class LongArrayLocation extends AbstractPrimitiveArrayLocation implements LongLocation {
         private final boolean allowInt;
 
-        LongArrayLocation(int index, boolean allowInt, Assumption finalAssumption) {
+        LongArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
             this.allowInt = allowInt;
         }
@@ -1284,19 +1285,19 @@ abstract class ExtLocations {
      * Assumption-based object location type speculation.
      */
     static final class TypeAssumption {
-        final Assumption assumption;
+        final AbstractAssumption assumption;
         final Class<? extends Object> type;
         final boolean nonNull;
 
-        static final TypeAssumption ANY = new TypeAssumption(Assumption.ALWAYS_VALID, Object.class, false);
+        static final TypeAssumption ANY = new TypeAssumption((AbstractAssumption) Assumption.ALWAYS_VALID, Object.class, false);
 
-        TypeAssumption(Assumption assumption, Class<? extends Object> type, boolean nonNull) {
+        TypeAssumption(AbstractAssumption assumption, Class<? extends Object> type, boolean nonNull) {
             this.assumption = assumption;
             this.type = type;
             this.nonNull = nonNull;
         }
 
-        public Assumption getAssumption() {
+        public AbstractAssumption getAssumption() {
             return assumption;
         }
 
