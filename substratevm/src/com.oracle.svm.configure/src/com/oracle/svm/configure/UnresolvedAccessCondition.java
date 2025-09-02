@@ -26,38 +26,38 @@ package com.oracle.svm.configure;
 
 import java.util.Objects;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 /**
- * Represents a {@link ConfigurationCondition} during parsing before it is resolved in a context of
- * the classpath.
+ * Represents a {@link AccessCondition} during parsing before it is resolved in a context of the
+ * classpath.
  */
-public final class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
-    private static final UnresolvedConfigurationCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedConfigurationCondition(
+public final class UnresolvedAccessCondition implements Comparable<UnresolvedAccessCondition> {
+    private static final UnresolvedAccessCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedAccessCondition(
                     NamedConfigurationTypeDescriptor.fromTypeName(Object.class.getTypeName()), true);
     public static final String TYPE_REACHED_KEY = "typeReached";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
     private final NamedConfigurationTypeDescriptor type;
     private final boolean runtimeChecked;
 
-    public static UnresolvedConfigurationCondition create(NamedConfigurationTypeDescriptor type) {
+    public static UnresolvedAccessCondition create(NamedConfigurationTypeDescriptor type) {
         return create(type, true);
     }
 
-    public static UnresolvedConfigurationCondition create(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
+    public static UnresolvedAccessCondition create(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
         Objects.requireNonNull(type);
         if (JAVA_LANG_OBJECT_REACHED.getTypeName().equals(type.name())) {
             return JAVA_LANG_OBJECT_REACHED;
         }
-        return new UnresolvedConfigurationCondition(type, runtimeChecked);
+        return new UnresolvedAccessCondition(type, runtimeChecked);
     }
 
-    private UnresolvedConfigurationCondition(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
+    private UnresolvedAccessCondition(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
         this.type = type;
         this.runtimeChecked = runtimeChecked;
     }
 
-    public static UnresolvedConfigurationCondition alwaysTrue() {
+    public static UnresolvedAccessCondition unconditional() {
         return JAVA_LANG_OBJECT_REACHED;
     }
 
@@ -81,7 +81,7 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        UnresolvedConfigurationCondition that = (UnresolvedConfigurationCondition) o;
+        UnresolvedAccessCondition that = (UnresolvedAccessCondition) o;
         return runtimeChecked == that.runtimeChecked && Objects.equals(type, that.type);
     }
 
@@ -91,7 +91,7 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
     }
 
     @Override
-    public int compareTo(UnresolvedConfigurationCondition o) {
+    public int compareTo(UnresolvedAccessCondition o) {
         int res = Boolean.compare(runtimeChecked, o.runtimeChecked);
         if (res != 0) {
             return res;
