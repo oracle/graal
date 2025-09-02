@@ -97,10 +97,10 @@ Recommendations:
    1.3s (4.8% of total time) in 88 GCs | Peak RSS: 2.14GiB | CPU load: 18.03
 --------------------------------------------------------------------------------
 Build artifacts:
- /home/janedoe/helloworld/gdb-debughelpers.py (debug_info)
- /home/janedoe/helloworld/helloworld (executable)
- /home/janedoe/helloworld/helloworld.debug (debug_info)
- /home/janedoe/helloworld/sources (debug_info)
+ /home/janedoe/helloworld/gdb-debughelpers.py (debug_info, 80.60KiB)
+ /home/janedoe/helloworld/helloworld (executable, 6.88MiB)
+ /home/janedoe/helloworld/helloworld.debug (debug_info, 6.66MiB)
+ /home/janedoe/helloworld/sources (debug_info, 37.61MiB)
 ================================================================================
 Finished generating 'helloworld' in 25.5s.
 ```
