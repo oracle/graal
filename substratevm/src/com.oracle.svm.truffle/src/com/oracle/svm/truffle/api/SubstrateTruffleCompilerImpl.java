@@ -110,7 +110,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     }
 
     @Override
-    public void teardown() {
+    public void teardown(Runnable shutdownCompilationsAndWaitAction) {
     }
 
     @Override
