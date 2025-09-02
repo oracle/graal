@@ -52,7 +52,7 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
     private static final String LAYERED_REFLECTION_METADATA_HUBS = "layered reflection metadata hubs";
     private static final String LAYERED_REFLECTION_METADATA_CLASS_FLAGS = "layered reflection metadata classFlags";
 
-    private final EconomicMap<Integer, DynamicHub.ImageReflectionMetadata> reflectionMetadataMap = EconomicMap.create();
+    private final EconomicMap<Integer, ImageReflectionMetadata> reflectionMetadataMap = EconomicMap.create();
 
     /**
      * The class flags registered in previous layers. This map is used to check if the class flags
@@ -82,7 +82,7 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setReflectionMetadata(DynamicHub hub, DynamicHub.ImageReflectionMetadata reflectionMetadata) {
+    public void setReflectionMetadata(DynamicHub hub, ImageReflectionMetadata reflectionMetadata) {
         /* GR-63472: Two different classes could have the same name in different class loaders */
         assert !reflectionMetadataMap.containsKey(hub.getTypeID()) : "The hub %s was added twice in the same layered reflection metadata".formatted(hub);
         if (isClassFlagsSubsetOfPreviousLayer(hub.getTypeID(), reflectionMetadata) && isReflectionMetadataEmpty(reflectionMetadata)) {
@@ -100,12 +100,12 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
         return previousLayerFlags | reflectionMetadata.getClassFlags();
     }
 
-    private static boolean isReflectionMetadataEmpty(DynamicHub.ImageReflectionMetadata reflectionMetadata) {
+    private static boolean isReflectionMetadataEmpty(ImageReflectionMetadata reflectionMetadata) {
         return reflectionMetadata.fieldsEncodingIndex == -1 && reflectionMetadata.methodsEncodingIndex == -1 &&
                         reflectionMetadata.constructorsEncodingIndex == -1 && reflectionMetadata.recordComponentsEncodingIndex == -1;
     }
 
-    public DynamicHub.ImageReflectionMetadata getReflectionMetadata(DynamicHub hub) {
+    public ImageReflectionMetadata getReflectionMetadata(DynamicHub hub) {
         return reflectionMetadataMap.get(hub.getTypeID());
     }
 

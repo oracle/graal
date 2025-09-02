@@ -129,10 +129,10 @@ public final class DynamicHubCompanion {
      * Metadata for querying the reflection data. When using layered images this field is always
      * null and should not be queried. Instead, use {@link LayeredReflectionMetadataSingleton}.
      */
-    @UnknownObjectField(canBeNull = true, types = DynamicHub.ImageReflectionMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @UnknownObjectField(canBeNull = true, types = ImageReflectionMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable ReflectionMetadata reflectionMetadata;
 
-    @UnknownObjectField(canBeNull = true, types = DynamicHub.ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHubMetadata hubMetadata;
 
     /**
@@ -182,11 +182,11 @@ public final class DynamicHubCompanion {
         this.classLoader = classLoader;
     }
 
-    public void setHubMetadata(DynamicHub.RuntimeDynamicHubMetadata hubMetadata) {
+    public void setHubMetadata(RuntimeDynamicHubMetadata hubMetadata) {
         this.hubMetadata = hubMetadata;
     }
 
-    public void setReflectionMetadata(DynamicHub.RuntimeReflectionMetadata reflectionMetadata) {
+    public void setReflectionMetadata(RuntimeReflectionMetadata reflectionMetadata) {
         this.reflectionMetadata = reflectionMetadata;
     }
 }

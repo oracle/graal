@@ -36,6 +36,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 
+import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
+import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
@@ -179,8 +181,8 @@ public class CremaSupportImpl implements CremaSupport {
 
         hub.setInterpreterType(thisType);
 
-        hub.getCompanion().setHubMetadata(new DynamicHub.RuntimeDynamicHubMetadata(thisType));
-        hub.getCompanion().setReflectionMetadata(new DynamicHub.RuntimeReflectionMetadata(thisType));
+        hub.getCompanion().setHubMetadata(new RuntimeDynamicHubMetadata(thisType));
+        hub.getCompanion().setReflectionMetadata(new RuntimeReflectionMetadata(thisType));
     }
 
     @Override
