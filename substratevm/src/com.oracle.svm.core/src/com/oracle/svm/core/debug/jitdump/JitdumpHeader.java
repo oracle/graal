@@ -34,7 +34,8 @@ import com.oracle.objectfile.elf.ELFMachine;
 /**
  * Each jitdump file starts with a fixed size header containing the following fields in order:
  * <ul>
- * <li><code>uint32_t magic ...... : a magic number tagging the file type. The value is 4-byte long and represents the string "JiTD" in ASCII form. It written is as 0x4A695444. The reader will detect an endian mismatch when it reads 0x4454694a.</code>
+ * <li><code>uint32_t magic ...... : a magic number tagging the file type. The value is 4-byte long and represents the string "JiTD" in ASCII form. It written is as 0x4A695444.
+ * The reader will detect an endian mismatch when it reads 0x4454694a.</code>
  * <li><code>uint32_t version .... : a 4-byte value representing the format version. It is currently set to 1</code>
  * <li><code>uint32_t total_size . : size in bytes of file header</code>
  * <li><code>uint32_t elf_mach ... : ELF architecture encoding (ELF e_machine value as specified in /usr/include/elf.h)</code>

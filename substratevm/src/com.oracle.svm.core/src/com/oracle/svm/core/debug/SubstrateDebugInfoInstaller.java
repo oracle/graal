@@ -152,7 +152,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
             int written = channel.write(perfMapEntry);
             assert written == perfMapEntry.limit();
         } catch (IOException e) {
-            debug.log("Failed to write perf map entry for " + methodName);
+            debug.log("Failed to write perf map entry for %s.", methodName);
         }
     }
 
@@ -172,7 +172,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
             int written = channel.write(records);
             assert written == records.limit();
         } catch (IOException e) {
-            debug.log("Failed to write the jitdump records for " + compiledMethodEntry.primary().getFullMethodName());
+            debug.log("Failed to write the jitdump records for %s.", compiledMethodEntry.primary().getFullMethodName());
         }
     }
 

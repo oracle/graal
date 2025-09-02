@@ -26,7 +26,8 @@
 package com.oracle.svm.core.debug.jitdump;
 
 /**
- * The following record types are defined:
+ * A jitdump record header specifies the type and length of a jitdump record. The following record
+ * types are defined:
  * <ul>
  * <li><code>Value 0 : JIT_CODE_LOAD      : record describing a jitted function</code>
  * <li><code>Value 1 : JIT_CODE_MOVE      : record describing an already jitted function which is moved</code>
@@ -37,7 +38,6 @@ package com.oracle.svm.core.debug.jitdump;
  * <p>
  * See <a href=
  * "https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jitdump-specification.txt">jitdump-specification</a>
- *
  */
 public enum JitdumpRecordId {
     JIT_CODE_LOAD(0),
