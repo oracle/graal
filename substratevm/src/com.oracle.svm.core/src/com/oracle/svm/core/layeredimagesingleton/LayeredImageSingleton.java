@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 
 /**
  * In additional to the traditional singleton model, i.e. a key-value map whose lookups are constant
@@ -79,7 +80,18 @@ public interface LayeredImageSingleton {
          * Indicates in a subsequent image a new singleton should be created and linked via calling
          * {@code Object createFromLoader(ImageSingletonLoader)}.
          */
-        CREATE
+        CREATE,
+        /**
+         * Indicates that when and/or if this singleton is registered in the next image via
+         * {@link ImageSingletons#add}, then
+         * {@link SingletonLayeredCallbacks#onSingletonRegistration} should be called on this
+         * singleton.
+         * <p>
+         * If a singleton is registered under multiple keys, then
+         * {@link SingletonLayeredCallbacks#onSingletonRegistration} should only be called once and
+         * will have finished executing before the singleton is installed into the registry.
+         */
+        CALLBACK_ON_REGISTRATION
     }
 
     /*

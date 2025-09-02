@@ -106,6 +106,8 @@ public class SVMImageLayerSnapshotUtil {
 
     public static final int UNDEFINED_CONSTANT_ID = -1;
     public static final int UNDEFINED_FIELD_INDEX = -1;
+    public static final int UNDEFINED_KEY_STORE_ID = -1;
+    public static final int UNDEFINED_SINGLETON_OBJ_ID = -1;
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
