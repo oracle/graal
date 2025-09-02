@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.phases;
 
 import jdk.graal.compiler.core.phases.BaseTier;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleTierContext;
@@ -35,8 +34,8 @@ import jdk.graal.compiler.truffle.phases.inlining.AgnosticInliningPhase;
 public class TruffleTier extends BaseTier<TruffleTierContext> {
 
     @SuppressWarnings("this-escape")
-    public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, PostPartialEvaluationSuite postPartialEvaluationSuite) {
-        appendPhase(new AgnosticInliningPhase(partialEvaluator, postPartialEvaluationSuite));
+    public TruffleTier(OptionValues options, InstrumentationSuite instrumentationSuite, PostPartialEvaluationSuite postPartialEvaluationSuite) {
+        appendPhase(new AgnosticInliningPhase(postPartialEvaluationSuite));
         appendPhase(instrumentationSuite);
         appendPhase(new ReportPerformanceWarningsPhase());
         appendPhase(new VerifyFrameDoesNotEscapePhase());

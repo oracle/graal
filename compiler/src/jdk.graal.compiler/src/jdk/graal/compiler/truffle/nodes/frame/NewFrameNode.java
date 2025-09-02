@@ -80,11 +80,11 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
      */
     public static final byte FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
     public static final byte FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
-    private static final byte FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
-    private static final byte FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
-    private static final byte FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
-    private static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
-    private static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
+    public static final byte FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
+    public static final byte FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
+    public static final byte FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
+    public static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
+    public static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
     public static final byte FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
     public static final byte FrameSlotKindStaticTag = 8; // FrameSlotKind.Static.tag
 
