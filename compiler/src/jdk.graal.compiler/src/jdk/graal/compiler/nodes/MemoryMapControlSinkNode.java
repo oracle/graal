@@ -33,7 +33,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.memory.MemoryMapNode;
 
 /**
- * {@link ControlSinkNode}that might have a {@link MemoryMapNode} attached. This map can be used to
+ * {@link ControlSinkNode} that might have a {@link MemoryMapNode} attached. This map can be used to
  * update the memory graph during inlining.
  */
 @NodeInfo

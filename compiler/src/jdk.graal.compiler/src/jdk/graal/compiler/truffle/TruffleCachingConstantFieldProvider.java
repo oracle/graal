@@ -28,7 +28,6 @@ import com.oracle.truffle.compiler.ConstantFieldInfo;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**

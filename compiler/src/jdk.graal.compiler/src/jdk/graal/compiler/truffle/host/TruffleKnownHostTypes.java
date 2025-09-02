@@ -83,7 +83,7 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     }
 
     /**
-     * Determines if {@code method} is a method is a transferToInterpreter method from
+     * Determines if {@code method} is a transferToInterpreter method from
      * CompilerDirectives.
      */
     public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
