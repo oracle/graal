@@ -97,7 +97,6 @@ import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -124,11 +123,6 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -142,7 +136,6 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -166,9 +159,7 @@ import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.UnresolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -195,7 +186,7 @@ import sun.reflect.generics.repository.ClassRepository;
 public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable, TypeDescriptor.OfField<DynamicHub>, Constable {
 
     @Substitute //
-    private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+    static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
     /** Marker value for {@link DynamicHubCompanion#classLoader}. */
     static final Object NO_CLASS_LOADER = new Object();
@@ -1246,7 +1237,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    private native ClassLoader getClassLoader0();
+    native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
         return companion != null && companion.classLoader != NO_CLASS_LOADER;
@@ -1688,10 +1679,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         /* Not found in layers or not building layers. */
         if (reflectionMetadata() == null) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
-            throw ImageReflectionMetadata.recordsNotAvailable(this);
+            throw recordsNotAvailable(this);
         }
         return reflectionMetadata().getRecordComponents(this, layerNum);
+    }
 
+    static RuntimeException recordsNotAvailable(DynamicHub declaringClass) {
+        return VMError.unsupportedFeature("Record components not available for record class " + declaringClass.getTypeName() + ". " +
+                        "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
     }
 
     @KeepOriginal
@@ -2436,419 +2431,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         @SuppressWarnings("unused")
         private static void setCachedConstructor(DynamicHub that, Constructor<?> value) {
             that.companion.cachedConstructor = value;
-        }
-    }
-
-    static final class ImageDynamicHubMetadata implements DynamicHubMetadata {
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class) //
-        final int enclosingMethodInfoIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int annotationsIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int typeAnnotationsIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int classesEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int permittedSubclassesEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int nestMembersEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int signersEncodingIndex;
-
-        private ImageDynamicHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex,
-                        int nestMembersEncodingIndex, int signersEncodingIndex) {
-            this.enclosingMethodInfoIndex = enclosingMethodInfoIndex;
-            this.annotationsIndex = annotationsIndex;
-            this.typeAnnotationsIndex = typeAnnotationsIndex;
-            this.classesEncodingIndex = classesEncodingIndex;
-            this.permittedSubclassesEncodingIndex = permittedSubclassesEncodingIndex;
-            this.nestMembersEncodingIndex = nestMembersEncodingIndex;
-            this.signersEncodingIndex = signersEncodingIndex;
-        }
-
-        @Override
-        public Object[] getEnclosingMethod(DynamicHub declaringClass) {
-            if (enclosingMethodInfoIndex == NO_DATA) {
-                return null;
-            }
-            Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(enclosingMethodInfoIndex, declaringClass);
-            if (enclosingMethod != null) {
-                PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], declaringClass.getClassLoader0());
-            }
-            return enclosingMethod;
-        }
-
-        @Override
-        public Object[] getSigners(DynamicHub declaringClass) {
-            if (signersEncodingIndex == NO_DATA) {
-                return null;
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(signersEncodingIndex, declaringClass);
-        }
-
-        @Override
-        public byte[] getRawAnnotations(DynamicHub declaringClass) {
-            if (annotationsIndex == NO_DATA) {
-                return null;
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(annotationsIndex, declaringClass);
-        }
-
-        @Override
-        public byte[] getRawTypeAnnotations(DynamicHub declaringClass) {
-            if (typeAnnotationsIndex == NO_DATA) {
-                return null;
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(typeAnnotationsIndex, declaringClass);
-        }
-
-        @Override
-        public Class<?>[] getDeclaredClasses(DynamicHub declaringClass) {
-            if (classesEncodingIndex == NO_DATA) {
-                return new Class<?>[0];
-            }
-            Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(classesEncodingIndex, declaringClass);
-            for (Class<?> clazz : declaredClasses) {
-                PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
-            }
-            return declaredClasses;
-        }
-
-        @Override
-        public Class<?>[] getNestMembers(DynamicHub declaringClass) {
-            if (nestMembersEncodingIndex == NO_DATA) {
-                return new Class<?>[]{DynamicHub.toClass(declaringClass)};
-            }
-            Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(nestMembersEncodingIndex, declaringClass);
-            for (Class<?> clazz : nestMembers) {
-                PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
-            }
-            return nestMembers;
-        }
-
-        @Override
-        public Class<?>[] getPermittedSubClasses(DynamicHub declaringClass) {
-            if (permittedSubclassesEncodingIndex == NO_DATA) {
-                return new Class<?>[0];
-            }
-            Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(permittedSubclassesEncodingIndex, declaringClass);
-            for (Class<?> clazz : permittedSubclasses) {
-                PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
-            }
-            return permittedSubclasses;
-        }
-    }
-
-    public static final class RuntimeDynamicHubMetadata implements DynamicHubMetadata {
-
-        private final CremaResolvedJavaType type;
-
-        private Object[] signers;
-
-        public RuntimeDynamicHubMetadata(CremaResolvedJavaType type) {
-            this.type = type;
-        }
-
-        @Override
-        public Object[] getEnclosingMethod(DynamicHub declaringClass) {
-            // (GR-69095) getEnclosingMethod is not implemented yet for Crema
-            return null;
-        }
-
-        @Override
-        public Object[] getSigners(DynamicHub declaringClass) {
-            if (signers == null) {
-                return null;
-            }
-            // return a copy of the signers
-            return signers.clone();
-        }
-
-        public void setSigners(Object[] signers) {
-            assert this.signers == null : "setSigners should only be called once";
-            this.signers = signers;
-        }
-
-        @Override
-        public byte[] getRawAnnotations(DynamicHub declaringClass) {
-            return type.getRawAnnotations();
-        }
-
-        @Override
-        public byte[] getRawTypeAnnotations(DynamicHub dynamicHub) {
-            return type.getRawTypeAnnotations();
-        }
-
-        @Override
-        public Class<?>[] getDeclaredClasses(DynamicHub declaringClass) {
-            List<Class<?>> declaredClasses = new ArrayList<>();
-            for (JavaType declaredMember : type.getDeclaredClasses()) {
-                Class<?> declaredClass = toClassOrNull(declaredMember, type);
-                if (declaredClass != null) {
-                    declaredClasses.add(declaredClass);
-                }
-            }
-            return declaredClasses.toArray(EMPTY_CLASS_ARRAY);
-        }
-
-        @Override
-        public Class<?>[] getNestMembers(DynamicHub declaringClass) {
-            List<Class<?>> nestMembers = new ArrayList<>();
-            for (ResolvedJavaType nestMember : type.getNestMembers()) {
-                Class<?> nestMemberClass = toClassOrNull(nestMember, type);
-                if (nestMemberClass != null) {
-                    nestMembers.add(nestMemberClass);
-                }
-            }
-            return nestMembers.toArray(EMPTY_CLASS_ARRAY);
-        }
-
-        @Override
-        public Class<?>[] getPermittedSubClasses(DynamicHub declaringClass) {
-            List<Class<?>> permittedSubClasses = new ArrayList<>();
-            for (JavaType permittedSubType : type.getPermittedSubClasses()) {
-                Class<?> permittedSubClass = toClassOrNull(permittedSubType, type);
-                if (permittedSubClass != null) {
-                    permittedSubClasses.add(permittedSubClass);
-                }
-            }
-            return permittedSubClasses.toArray(EMPTY_CLASS_ARRAY);
-        }
-
-        private static Class<?> toClassOrNull(JavaType javaType, ResolvedJavaType accessingType) {
-            if (javaType instanceof UnresolvedJavaType unresolvedJavaType) {
-                return CremaSupport.singleton().resolveOrNull(unresolvedJavaType, accessingType);
-            } else /* resolved type */ {
-                return CremaSupport.singleton().toClass((ResolvedJavaType) javaType);
-            }
-        }
-
-        public Class<?> getNestHost(DynamicHub declaringClass) {
-            /* (GR-69095) type.getNestHost() */
-            return DynamicHub.toClass(declaringClass);
-        }
-    }
-
-    public static final class ImageReflectionMetadata implements ReflectionMetadata {
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int fieldsEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int methodsEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int constructorsEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int recordComponentsEncodingIndex;
-
-        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
-        final int classFlags;
-
-        private ImageReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classFlags) {
-            this.fieldsEncodingIndex = fieldsEncodingIndex;
-            this.methodsEncodingIndex = methodsEncodingIndex;
-            this.constructorsEncodingIndex = constructorsEncodingIndex;
-            this.recordComponentsEncodingIndex = recordComponentsEncodingIndex;
-            this.classFlags = classFlags;
-        }
-
-        public int getClassFlags() {
-            return classFlags;
-        }
-
-        @Override
-        public Field[] getDeclaredFields(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            if (fieldsEncodingIndex == NO_DATA) {
-                return new Field[0];
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(declaringClass, fieldsEncodingIndex, publicOnly, layerNum);
-        }
-
-        @Override
-        public Method[] getDeclaredMethods(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            if (methodsEncodingIndex == NO_DATA) {
-                return new Method[0];
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(declaringClass, methodsEncodingIndex, publicOnly, layerNum);
-        }
-
-        @Override
-        public Constructor<?>[] getDeclaredConstructors(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            if (constructorsEncodingIndex == NO_DATA) {
-                return new Constructor<?>[0];
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(declaringClass, constructorsEncodingIndex, publicOnly, layerNum);
-        }
-
-        @Override
-        public RecordComponent[] getRecordComponents(DynamicHub declaringClass, int layerNum) {
-            if (recordComponentsEncodingIndex == NO_DATA) {
-                /* See ReflectionDataBuilder.buildRecordComponents() for details. */
-                throw recordsNotAvailable(declaringClass);
-            }
-            return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(declaringClass, recordComponentsEncodingIndex, layerNum);
-        }
-
-        private static RuntimeException recordsNotAvailable(DynamicHub declaringClass) {
-            return VMError.unsupportedFeature("Record components not available for record class " + declaringClass.getTypeName() + ". " +
-                            "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
-        }
-    }
-
-    public static final class RuntimeReflectionMetadata implements ReflectionMetadata {
-
-        private final CremaResolvedJavaType type;
-
-        public RuntimeReflectionMetadata(CremaResolvedJavaType type) {
-            this.type = type;
-        }
-
-        @Override
-        public int getClassFlags() {
-            return type.getModifiers();
-        }
-
-        public Field[] getDeclaredFields(DynamicHub declaringClass, boolean publicOnly, @SuppressWarnings("unused") int layerNum) {
-            ArrayList<Field> result = new ArrayList<>();
-            includeFields(declaringClass, publicOnly, type.getDeclaredFields(), result);
-            return result.toArray(new Field[0]);
-        }
-
-        private static void includeFields(DynamicHub declaringClass, boolean publicOnly, CremaResolvedJavaField[] fields, ArrayList<Field> result) {
-            for (CremaResolvedJavaField field : fields) {
-                if (!publicOnly || Modifier.isPublic(field.getModifiers())) {
-                    result.add(fromResolvedField(declaringClass, field));
-                }
-            }
-        }
-
-        private static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
-            return ReflectionObjectFactory.newField(
-                            RuntimeConditionSet.unmodifiableEmptySet(),
-                            DynamicHub.toClass(declaringClass),
-                            resolvedField.getName(),
-                            toClassOrThrow(resolvedField.getType(), resolvedField.getDeclaringClass()),
-                            resolvedField.getModifiers(),
-                            resolvedField.isTrustedFinal(),
-                            resolvedField.getGenericSignature(),
-                            resolvedField.getRawAnnotations(),
-                            resolvedField.getOffset(),
-                            null,
-                            resolvedField.getRawTypeAnnotations());
-        }
-
-        @Override
-        public Method[] getDeclaredMethods(DynamicHub declaringClass, boolean publicOnly, @SuppressWarnings("unused") int layerNum) {
-            CremaResolvedJavaMethod[] declaredMethods = type.getDeclaredCremaMethods();
-            ArrayList<Method> result = new ArrayList<>();
-            for (CremaResolvedJavaMethod declaredMethod : declaredMethods) {
-                if (!publicOnly || Modifier.isPublic(declaredMethod.getModifiers())) {
-                    result.add(fromResolvedMethod(declaringClass, declaredMethod));
-                }
-            }
-            return result.toArray(new Method[0]);
-        }
-
-        private Method fromResolvedMethod(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedJavaMethod) {
-            Class<?> receiverType = DynamicHub.toClass(declaringClass);
-            Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedJavaMethod.getSignature().toParameterTypes(null), type);
-            return ReflectionObjectFactory.newMethod(
-                            RuntimeConditionSet.unmodifiableEmptySet(),
-                            receiverType,
-                            resolvedJavaMethod.getName(),
-                            parameterTypes,
-                            toClassOrThrow(resolvedJavaMethod.getSignature().getReturnType(type), type),
-                            /* (GR-69097) resolvedJavaMethod.getDeclaredExceptions() */
-                            toClassArrayOrThrow(new JavaType[0], type),
-                            resolvedJavaMethod.getModifiers(),
-                            resolvedJavaMethod.getGenericSignature(),
-                            /* (GR-69096) resolvedJavaMethod.getRawAnnotations() */
-                            new byte[0],
-                            /* (GR-69096) resolvedJavaMethod.getRawParameterAnnotations() */
-                            new byte[0],
-                            /* (GR-69096) resolvedJavaMethod.getRawAnnotationDefault() */
-                            new byte[0],
-                            resolvedJavaMethod.getAccessor(receiverType, parameterTypes),
-                            /* (GR-69096) resolvedJavaMethod.getRawParameters() */
-                            null,
-                            /* (GR-69096) resolvedJavaMethod.getRawTypeAnnotations() */
-                            new byte[0],
-                            declaringClass.layerId);
-        }
-
-        @Override
-        public Constructor<?>[] getDeclaredConstructors(DynamicHub declaringClass, boolean publicOnly, @SuppressWarnings("unused") int layerNum) {
-            CremaResolvedJavaMethod[] declaredConstructors = type.getDeclaredConstructors();
-            ArrayList<Constructor<?>> result = new ArrayList<>();
-            for (CremaResolvedJavaMethod declaredConstructor : declaredConstructors) {
-                if (!publicOnly || Modifier.isPublic(declaredConstructor.getModifiers())) {
-                    result.add(fromResolvedConstructor(declaringClass, declaredConstructor));
-                }
-            }
-            return result.toArray(new Constructor<?>[0]);
-        }
-
-        private Constructor<?> fromResolvedConstructor(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedConstructor) {
-            Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedConstructor.toParameterTypes(), type);
-            return ReflectionObjectFactory.newConstructor(
-                            RuntimeConditionSet.unmodifiableEmptySet(),
-                            DynamicHub.toClass(declaringClass),
-                            parameterTypes,
-                            /* (GR-69097) resolvedConstructor.getDeclaredExceptions() */
-                            toClassArrayOrThrow(new JavaType[0], type),
-                            resolvedConstructor.getModifiers(),
-                            resolvedConstructor.getGenericSignature(),
-                            /* (GR-69096) resolvedConstructor.getRawAnnotations() */
-                            new byte[0],
-                            /* (GR-69096) resolvedConstructor.getRawParameterAnnotations() */
-                            new byte[0],
-                            resolvedConstructor.getAccessor(DynamicHub.toClass(declaringClass), parameterTypes),
-                            /* (GR-69096) resolvedConstructor.getRawParameters() */
-                            new byte[0],
-                            /* (GR-69096) resolvedConstructor.getRawTypeAnnotations() */
-                            new byte[0]);
-        }
-
-        @Override
-        public RecordComponent[] getRecordComponents(DynamicHub declaringClass, @SuppressWarnings("unused") int layerNum) {
-            CremaResolvedJavaRecordComponent[] recordComponents = type.getRecordComponents();
-            RecordComponent[] result = new RecordComponent[recordComponents.length];
-            Class<?> clazz = DynamicHub.toClass(declaringClass);
-
-            for (int i = 0; i < recordComponents.length; i++) {
-                CremaResolvedJavaRecordComponent recordComponent = recordComponents[i];
-                result[i] = ReflectionObjectFactory.newRecordComponent(
-                                clazz,
-                                recordComponent.getName(),
-                                toClassOrThrow(recordComponent.getType(), type),
-                                recordComponent.getSignature(),
-                                recordComponent.getRawAnnotations(),
-                                recordComponent.getRawTypeAnnotations());
-            }
-            return result;
-        }
-
-        private static Class<?> toClassOrThrow(JavaType javaType, ResolvedJavaType accessingType) {
-            if (javaType instanceof UnresolvedJavaType unresolvedJavaType) {
-                return CremaSupport.singleton().resolveOrThrow(unresolvedJavaType, accessingType);
-            } else /* resolved type */ {
-                return CremaSupport.singleton().toClass((ResolvedJavaType) javaType);
-            }
-        }
-
-        private static Class<?>[] toClassArrayOrThrow(JavaType[] resolvedJavaTypes, ResolvedJavaType declaringClass) {
-            Class<?>[] result = new Class<?>[resolvedJavaTypes.length];
-            for (int i = 0; i < resolvedJavaTypes.length; i++) {
-                result[i] = toClassOrThrow(resolvedJavaTypes[i], declaringClass);
-            }
-            return result;
         }
     }
 
