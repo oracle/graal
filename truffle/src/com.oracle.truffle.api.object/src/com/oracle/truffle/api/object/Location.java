@@ -288,7 +288,7 @@ public abstract sealed class Location permits LocationImpl {
      */
     @SuppressWarnings("deprecation")
     public boolean isPrimitive() {
-        return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation || this instanceof BooleanLocation;
+        return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation;
     }
 
     /**
