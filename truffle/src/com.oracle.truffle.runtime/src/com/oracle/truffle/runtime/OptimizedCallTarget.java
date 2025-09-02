@@ -829,7 +829,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return false;
     }
 
-    private final Object executeRootNode(VirtualFrame frame, CompilationState tier) {
+    private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
         try {
             Object toRet = rootNode.execute(frame);
             TruffleSafepoint.poll(rootNode);

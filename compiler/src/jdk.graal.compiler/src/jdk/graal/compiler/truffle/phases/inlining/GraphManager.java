@@ -26,10 +26,12 @@ package jdk.graal.compiler.truffle.phases.inlining;
 
 import java.util.List;
 
-import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.Indent;
@@ -49,9 +51,7 @@ import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-
+import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class GraphManager {

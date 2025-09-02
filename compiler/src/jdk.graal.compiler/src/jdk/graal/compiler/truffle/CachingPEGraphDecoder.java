@@ -187,7 +187,11 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
     @Override
     protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         if (intrinsicBytecodeProvider != null) {
-            // intrinsicBytecodeProvider is read from InlineInvokePlugin.InlineInfo#getIntrinsicBytecodeProvider which is always null because the only source is PartialEvaluator#asInlineInfo
+            /*
+             * intrinsicBytecodeProvider is read from
+             * InlineInvokePlugin.InlineInfo#getIntrinsicBytecodeProvider which is always null
+             * because the only source is PartialEvaluator#asInlineInfo
+             */
             throw GraalError.shouldNotReachHere("dead path"); // ExcludeFromJacocoGeneratedReport
         }
 
