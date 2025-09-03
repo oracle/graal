@@ -211,8 +211,11 @@ public final class Support {
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
             JNIObjectHandle clazzName = callObjectMethod(env, clazz, JvmtiAgentBase.singleton().handles().javaLangClassGetName);
+            if (clearException(env)) {
+                return forNullNameOrException;
+            }
             String result = Support.fromJniString(env, clazzName);
-            if (result == null || clearException(env)) {
+            if (result == null) {
                 result = forNullNameOrException;
             }
             return result;
