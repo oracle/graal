@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package jdk.graal.compiler.replacements.test;
 
 import static jdk.graal.compiler.nodes.GraphState.StageFlag.SAFEPOINTS_INSERTION;
 
-import java.util.HashMap;
-
 import org.junit.Test;
 
 import jdk.graal.compiler.nodes.IfNode;
@@ -41,6 +39,7 @@ import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -53,6 +52,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     public void testMathSubstitutions() {
         assertInGraph(assertNotInGraph(testGraph("mathAbs"), IfNode.class), AbsNode.class);     // Java
         double value = 34567.891D;
+
         testGraph("mathCos");
         testGraph("mathLog");
         testGraph("mathLog10");
@@ -60,13 +60,26 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSqrt");
         testGraph("mathTan");
         testGraph("mathAll");
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "sinh"), getInitialOptions())) {
+            testGraph("mathSinh");
+        }
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
+            testGraph("mathTanh");
+        }
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "cbrt"), getInitialOptions())) {
+            testGraph("mathCbrt");
+        }
+        testGraph("mathCbrt");
 
         test("mathCos", value);
         test("mathLog", value);
         test("mathLog10", value);
         test("mathSin", value);
+        test("mathSinh", value);
         test("mathSqrt", value);
         test("mathTan", value);
+        test("mathTanh", value);
+        test("mathCbrt", value);
         test("mathAll", value);
     }
 
@@ -124,12 +137,24 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Math.sin(value);
     }
 
+    public static double mathSinh(double value) {
+        return Math.sinh(value);
+    }
+
     public static double mathCos(double value) {
         return Math.cos(value);
     }
 
     public static double mathTan(double value) {
         return Math.tan(value);
+    }
+
+    public static double mathTanh(double value) {
+        return Math.tanh(value);
+    }
+
+    public static double mathCbrt(double value) {
+        return Math.cbrt(value);
     }
 
     public static double mathAll(double value) {
@@ -142,7 +167,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClasses);
         }
@@ -321,8 +346,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("isInstance2", false, null);
         test("isInstance2", true, "string");
         test("isInstance2", false, "string");
-        test("isInstance2", true, new HashMap<>());
-        test("isInstance2", false, new HashMap<>());
+        test("isInstance2", true, new EconomicHashSet<>());
+        test("isInstance2", false, new EconomicHashSet<>());
     }
 
     public static boolean constantIsAssignableFromConstantPrimary() {

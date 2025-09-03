@@ -394,6 +394,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
+    public boolean canInvokeFallback() {
+        return true;
+    }
+
+    @Override
     public Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
         assert isParsingInvocationPlugin();
         DeoptimizeNode deopt = getGraph().add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));

@@ -74,10 +74,10 @@ public final class ResourceURLConnection extends URLConnection {
         String resourceName = urlPath.substring(1);
 
         Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        Object entry = Resources.singleton().getAtRuntime(module, resourceName, true);
+        Object entry = Resources.getAtRuntime(module, resourceName, false);
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
-            List<byte[]> bytes = resourceStorageEntry.getData();
+            byte[][] bytes = resourceStorageEntry.getData();
             isDirectory = resourceStorageEntry.isDirectory();
             String urlRef = url.getRef();
             int index = 0;
@@ -88,12 +88,12 @@ public final class ResourceURLConnection extends URLConnection {
                     throw new IllegalArgumentException("URL anchor '#" + urlRef + "' not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
                 }
             }
-            if (index < bytes.size()) {
-                this.data = bytes.get(index);
+            if (index < bytes.length) {
+                this.data = bytes[index];
             } else {
                 // This will happen only in case that we are creating one URL with the second URL as
                 // a context.
-                this.data = bytes.get(0);
+                this.data = bytes[0];
             }
         } else {
             this.data = null;
@@ -174,7 +174,7 @@ public final class ResourceURLConnection extends URLConnection {
                     properties.add(CONTENT_LENGTH, String.valueOf(data.length));
                 }
 
-                long lastModified = Resources.singleton().getLastModifiedTime();
+                long lastModified = Resources.getLastModifiedTime();
                 Date date = new Date(lastModified);
                 SimpleDateFormat fo = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
                 fo.setTimeZone(TimeZone.getTimeZone("GMT"));

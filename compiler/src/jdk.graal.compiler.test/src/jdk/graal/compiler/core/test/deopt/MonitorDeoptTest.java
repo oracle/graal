@@ -39,6 +39,7 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MonitorDeoptTest extends GraalCompilerTest {
@@ -54,7 +55,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
 
     static final long TIMEOUT = 5000;
 
-    private static class Monitor {
+    private static final class Monitor {
         private volatile State state = State.INITIAL;
 
         public synchronized void setState(State newState) {
@@ -180,7 +181,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        loopBegin.disableSafepoint();
+        loopBegin.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
     }
 
     @Test

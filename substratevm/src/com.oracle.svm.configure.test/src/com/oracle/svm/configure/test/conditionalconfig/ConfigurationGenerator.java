@@ -24,21 +24,27 @@
  */
 package com.oracle.svm.configure.test.conditionalconfig;
 
+import static org.junit.Assume.assumeTrue;
+
 import java.lang.reflect.Proxy;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Test that generates configuration metadata when traced by the agent. This output is tested
+ * against the expected output in the config-dir directory by {@link ConfigurationVerifier}. This
+ * test is invoked manually from mx.
+ */
 public class ConfigurationGenerator {
 
     @Test
     public void createTestConfig() {
-        if (!Boolean.getBoolean(ConfigurationGenerator.class.getName() + ".enabled")) {
-            return;
-        }
+        assumeTrue("Test must be explicitly enabled because it is not designed for regular execution", Boolean.getBoolean(ConfigurationGenerator.class.getName() + ".enabled"));
         NoPropagationNecessary.runTest();
         PropagateToParent.runTest();
         PropagateButLeaveCommonConfiguration.runTest();
+        PropagateThroughRecursiveCall.runTest();
     }
 
 }
@@ -85,7 +91,7 @@ class NoPropagationNecessary {
     }
 
     @SuppressWarnings("unused")
-    private static class A {
+    private static final class A {
     }
 
     interface IA {
@@ -105,7 +111,7 @@ class PropagateToParent {
         ParentB.doWork();
     }
 
-    private static class ParentA {
+    private static final class ParentA {
         static void doWork() {
             Util.doWork("PropagateToParent$ParentA", "PropagateToParentA.txt", IA.class);
         }
@@ -114,7 +120,7 @@ class PropagateToParent {
     interface IA {
     }
 
-    private static class ParentB {
+    private static final class ParentB {
         static void doWork() {
             Util.doWork("PropagateToParent$ParentB", "PropagateToParentB.txt", IB.class);
         }
@@ -123,7 +129,7 @@ class PropagateToParent {
     interface IB {
     }
 
-    private static class Util {
+    private static final class Util {
         static void doWork(String clazz, String resource, Class<?>... interfaceList) {
             ClassUtil.forName(clazz);
             ClassUtil.getResource(resource);
@@ -148,20 +154,20 @@ class PropagateButLeaveCommonConfiguration {
         ParentB.doWork();
     }
 
-    private static class ParentA {
+    private static final class ParentA {
         static void doWork() {
             Util.doWork("PropagateButLeaveCommonConfiguration$ParentA", "PropagateToParentA.txt", IA.class);
         }
     }
 
-    private static class ParentB {
+    private static final class ParentB {
         static void doWork() {
             Util.doWork("PropagateButLeaveCommonConfiguration$ParentB", "PropagateToParentB.txt", IB.class);
         }
     }
 
     @SuppressWarnings("unused")
-    private static class C {
+    private static final class C {
     }
 
     interface IA {
@@ -173,15 +179,66 @@ class PropagateButLeaveCommonConfiguration {
     interface IC {
     }
 
-    private static class Util {
-        static void doWork(String clazz, String resource, Class<?>... intefaceList) {
+    private static final class Util {
+        static void doWork(String clazz, String resource, Class<?>... interfaceList) {
             ClassUtil.forName(clazz);
             ClassUtil.forName("PropagateButLeaveCommonConfiguration$C");
             ClassUtil.getResource(resource);
             ClassUtil.getResource("Common.txt");
-            ClassUtil.createProxy(intefaceList);
+            ClassUtil.createProxy(interfaceList);
             ClassUtil.createProxy(IC.class);
         }
     }
 
+}
+
+/**
+ * This is a regression test. It ensures that configuration propagated from a recursive call does
+ * not get lost (which can happen unless the configuration is propagated past any recursive
+ * callers).
+ */
+@SuppressWarnings("unused")
+class PropagateThroughRecursiveCall {
+
+    public static void runTest() {
+        ParentA.doWork();
+        ParentB.doWork();
+    }
+
+    private static final class ParentA {
+        static void doWork() {
+            Recursive.recur(true, "PropagateThroughRecursiveCall$A");
+        }
+    }
+
+    private static final class ParentB {
+        static void doWork() {
+            Recursive.recur(true, "PropagateThroughRecursiveCall$B");
+        }
+    }
+
+    private static final class A1 {
+    }
+
+    private static final class A2 {
+    }
+
+    private static final class B1 {
+    }
+
+    private static final class B2 {
+    }
+
+    private static final class Recursive {
+        static void recur(boolean recurse, String clazz) {
+            ClassUtil.forName("PropagateThroughRecursiveCall$Recursive");
+            if (recurse) {
+                ClassUtil.forName(clazz + "1");
+                recur(false, clazz);
+            } else {
+                ClassUtil.forName(clazz + "2");
+            }
+
+        }
+    }
 }

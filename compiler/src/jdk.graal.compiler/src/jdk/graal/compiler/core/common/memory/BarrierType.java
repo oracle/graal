@@ -61,6 +61,13 @@ public enum BarrierType {
     POST_INIT_WRITE,
 
     /**
+     * Clear {@link java.lang.ref.Reference}.referent. In the HotSpot world this corresponds to a
+     * write decorated with {@code AS_NO_KEEPALIVE}. Depending on the particular garbage collector
+     * this might do something different than {@link #FIELD}.
+     */
+    AS_NO_KEEPALIVE_WRITE,
+
+    /**
      * Read of {@link java.lang.ref.Reference}.referent. In the HotSpot world this corresponds to an
      * access decorated with {@code ON_WEAK_OOP_REF}. Depending on the particular garbage collector
      * this might do something different than {@link #READ}.

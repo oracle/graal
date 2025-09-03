@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,7 +29,7 @@
 #
 import sys
 import os
-import pipes
+import shlex
 import tempfile
 from os.path import join
 import shutil
@@ -40,6 +40,7 @@ import mx_gate
 import mx_sdk_vm_impl
 import mx_subst
 import mx_sdk_vm
+import mx_sdk_vm_ng
 import mx_benchmark
 import mx_sulong_benchmarks
 import mx_sulong_fuzz #pylint: disable=unused-import
@@ -47,6 +48,7 @@ import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_unittest #pylint: disable=unused-import
 import mx_sulong_llvm_config
+import mx_truffle
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -58,6 +60,7 @@ from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: di
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, NativeImageLibraryProject, NativeImageExecutableProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive, ToolchainToolDistribution  # pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -94,6 +97,44 @@ def _lib_versioned(arg):
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
+def sulong_prefix_path(name):
+    # name is a CMakeNinjaProject with `symlinkSource: True`
+    # return the path to the build directory, that also includes the sources
+    p = mx.project(name)
+    return p.out_dir
+
+mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_path)
+
+# Functions called from suite.py
+
+def has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+def sulong_standalone_deps():
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    deps = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+    if has_suite('sulong-managed'):
+        # SULONG_MANAGED does not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
+        # So we compromise here by including SULONG_MANAGED if sulong-managed is imported.
+        # We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
+        # See also the comments in suite.py, in SULONG_*_STANDALONE_RELEASE_ARCHIVE.
+        deps += [
+            'sulong-managed:SULONG_MANAGED',
+        ]
+    return deps
+
+def libllvmvm_build_args():
+    if mx_sdk_vm_ng.is_nativeimage_ee() and not mx.is_windows():
+        image_build_args = [
+            '-H:+AuxiliaryEngineCache',
+            '-H:ReservedAuxiliaryImageBytes=2145482548',
+        ]
+        # GR-64948: On GraalVM 21 some Native Image stable options are incorrectly detected as experimental
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+            image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
+        return image_build_args
+    else:
+        return []
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     mx_sulong_gate.testLLVMImage(image, imageArgs, testFilter, libPath, test, unittestArgs)
@@ -166,18 +207,20 @@ mx_subst.path_substitutions.register_no_arg('jacoco', get_jacoco_setting)
 def _subst_get_jvm_args(dep):
     java = mx.get_jdk().java
     main_class = mx.distribution(dep).mainClass
-    jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
+    jvm_args = [shlex.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
     cmd = [java] + jvm_args + [main_class]
     return " ".join(cmd)
 
 
 mx_subst.path_substitutions.register_with_arg('get_jvm_cmd_line', _subst_get_jvm_args)
 
-mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo', default='jacoco.exec')
+mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo. Deprecated: use --jacoco-dest-file', default=None)
 
 
 def mx_post_parse_cmd_line(opts):
-    mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
+    if opts.jacoco_exec_file is not None:
+        mx.warn("--jacoco-exec-file is deprecated, please use --jacoco-dest-file instead")
+        mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
 
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
@@ -272,7 +315,11 @@ def get_lli_path(fatalIfMissing=True):
             useJvm = False
         else:
             mx.abort(f"Unknown standalone type {standaloneMode}.")
-        path = mx_sdk_vm_impl.standalone_home("llvm", useJvm)
+        if has_suite('sulong-managed'):
+            dist = "SULONG_MANAGED_JVM_STANDALONE" if useJvm else "SULONG_MANAGED_NATIVE_STANDALONE"
+        else:
+            dist = "SULONG_JVM_STANDALONE" if useJvm else "SULONG_NATIVE_STANDALONE"
+        path = mx.distribution(dist).output
         return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<exe:lli>'))
 
 
@@ -351,9 +398,7 @@ if 'CPPFLAGS' in os.environ:
 
 
 # Legacy bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
-# Polybench bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 # LLVM unit tests suite
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 
@@ -378,13 +423,9 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
 
 def create_toolchain_root_provider(name, dist):
     def provider():
-        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
-        if bootstrap_graalvm:
-            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
-            if os.path.exists(ret): # jdk8 based graalvm
-                return ret
-            else: # jdk11+ based graalvm
-                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
+        bootstrap_standalone = mx.get_env('SULONG_BOOTSTRAP_STANDALONE')
+        if bootstrap_standalone:
+            return os.path.join(bootstrap_standalone, 'lib', 'sulong', name)
         return mx.distribution(dist).get_output()
     return provider
 
@@ -399,7 +440,8 @@ def _lib_sub(program):
     return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
-    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
+    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block)
+    # and NativeToolchainWrapper.
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
@@ -544,8 +586,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_distributions=[
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
-    installable=True,
-    standalone=False,
     has_relative_home=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=1,  # this component is part of the llvm installable but it's not the main one
@@ -565,8 +605,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
-    installable=True,
-    standalone=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
@@ -586,17 +624,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
-    installable=True,
-    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
-
-
-standalone_dependencies_common = {
-    'LLVM Runtime Core': ('lib/sulong', []),
-    'LLVM Runtime Native': ('lib/sulong', []),
-    'LLVM.org toolchain': ('lib/llvm-toolchain', []),
-}
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -604,23 +633,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Launcher',
     short_name='llrl',
     dir_name='llvm',
-    standalone_dir_name='llvm-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='llvm-<version>-<graalvm_os>-<arch>',
     license_files=[],
     third_party_license_files=[],
     dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'Truffle NFI LIBFFI', 'LLVM Runtime Core'],
-    standalone_dependencies={**standalone_dependencies_common, **{
-        'LLVM Runtime License Files': ('', []),
-    }},
-    standalone_dependencies_enterprise={**standalone_dependencies_common, **{
-        'LLVM Runtime Enterprise': ('lib/sulong', []),
-        'LLVM Runtime Native Enterprise': ('lib/sulong', []),
-        **({} if mx.is_windows() else {
-            'LLVM Runtime Managed': ('lib/sulong', []),
-        }),
-        'LLVM Runtime License Files EE': ('', []),
-        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
-    }},
     truffle_jars=[],
     support_distributions=[],
     library_configs=[
@@ -635,12 +650,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             ] if not mx.is_windows() else [],
             language='llvm',
             # When building a GraalVM, we do not need to set a default relative home path.
-            # When building a Standalone, it would be wrong to set it since the default
-            # value (`..`) is overridden by the standalone dependency (`./sulong`).
             set_default_relative_home_path=False,
         )
     ],
-    installable=True,
-    standalone=True,
     priority=0,  # this is the main component of the llvm installable and standalone
 ))

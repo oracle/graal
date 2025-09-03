@@ -38,6 +38,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -47,11 +49,13 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     private Map<ModuleReference, ModuleReader> moduleToReader;
 
     @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         throw new ClassNotFoundException(name);
     }
 
     @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         Target_java_lang_ClassLoader self = SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class);
         Class<?> clazz = self.findLoadedClass(name);

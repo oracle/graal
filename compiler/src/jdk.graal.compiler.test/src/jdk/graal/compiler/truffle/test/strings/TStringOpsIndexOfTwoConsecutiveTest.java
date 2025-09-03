@@ -86,7 +86,7 @@ public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayInd
     }
 
     final byte[] arrayA;
-    final int offsetA;
+    final long offsetA;
     final int lengthA;
     final int strideA;
     final int fromIndexA;
@@ -98,7 +98,7 @@ public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayInd
     public TStringOpsIndexOfTwoConsecutiveTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
         super(ArrayIndexOfNode.class);
         this.arrayA = arrayA;
-        this.offsetA = offsetA;
+        this.offsetA = offsetA + byteArrayBaseOffset();
         this.lengthA = lengthA;
         this.strideA = strideA;
         this.fromIndexA = fromIndexA;

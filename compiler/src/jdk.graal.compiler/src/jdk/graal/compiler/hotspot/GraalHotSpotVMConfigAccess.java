@@ -27,12 +27,9 @@ package jdk.graal.compiler.hotspot;
 import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -52,75 +49,29 @@ public class GraalHotSpotVMConfigAccess {
     private final Map<String, Long> vmConstants;
     private final Map<String, VMField> vmFields;
 
-    GraalHotSpotVMConfigAccess(HotSpotVMConfigStore store) {
-        this.access = new HotSpotVMConfigAccess(store);
+    GraalHotSpotVMConfigAccess(HotSpotVMConfigAccess access, Platform platform) {
+        this.access = access;
+        HotSpotVMConfigStore store = access.getStore();
         this.vmAddresses = store.getAddresses();
         this.vmConstants = store.getConstants();
         this.vmFields = store.getFields();
-
-        String value = getSavedProperty("os.name");
-        switch (value) {
-            case "Linux":
-                value = "linux";
-                break;
-            case "SunOS":
-                value = "solaris";
-                break;
-            case "Mac OS X":
-                value = "darwin";
-                break;
-            default:
-                // Of course Windows is different...
-                if (value.startsWith("Windows")) {
-                    value = "windows";
-                } else {
-                    throw new JVMCIError("Unexpected OS name: " + value);
-                }
-        }
-        assert KNOWN_OS_NAMES.contains(value);
-        this.osName = value;
-
-        String arch = getSavedProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-        }
-        osArch = arch;
-        assert KNOWN_ARCHITECTURES.contains(arch) : arch;
+        this.osName = platform.osName();
+        this.osArch = platform.archName();
     }
 
     public HotSpotVMConfigStore getStore() {
         return access.getStore();
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64", "riscv64"));
-    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
-
     /**
-     * Name for current OS. Will be a value in {@link #KNOWN_OS_NAMES}.
+     * Name for current OS. Will be a value in {@link Platform#KNOWN_OS_NAMES}.
      */
     public final String osName;
 
     /**
-     * Name for current CPU architecture. Will be a value in {@link #KNOWN_ARCHITECTURES}.
+     * Name for current CPU architecture. Will be a value in {@link Platform#KNOWN_ARCHITECTURES}.
      */
     public final String osArch;
-
-    public static boolean jvmciGE(JVMCIVersionCheck.Version v) {
-        return JVMCI && !JVMCI_VERSION.isLessThan(v);
-    }
-
-    public static final int JDK = Runtime.version().feature();
-    public static final JVMCIVersionCheck.Version JVMCI_VERSION;
-    public static final boolean JVMCI;
-    public static final boolean JDK_PRERELEASE;
-    static {
-        String vmVersion = getSavedProperty("java.vm.version");
-        JVMCI_VERSION = JVMCIVersionCheck.Version.parse(vmVersion);
-        JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
-        JVMCI = JVMCI_VERSION != null;
-    }
 
     private final List<String> missing = new ArrayList<>();
     private final List<String> unexpected = new ArrayList<>();
@@ -150,9 +101,6 @@ public class GraalHotSpotVMConfigAccess {
     private boolean deferErrors = this instanceof GraalHotSpotVMConfig;
 
     private void recordError(String name, List<String> list, String unexpectedValue) {
-        if (JDK_PRERELEASE) {
-            return;
-        }
         String message = name;
         if (deferErrors) {
             StackTraceElement[] trace = new Exception().getStackTrace();
@@ -180,9 +128,8 @@ public class GraalHotSpotVMConfigAccess {
     protected void reportErrors() {
         deferErrors = false;
         if (!missing.isEmpty() || !unexpected.isEmpty()) {
-            String jvmci = JVMCI_VERSION == null ? "" : " jvmci-" + JVMCI_VERSION;
-            String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
-                            JDK, jvmci, osName, osArch,
+            String runtime = String.format("JDK %s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
+                            getSavedProperty("java.specification.version"), osName, osArch,
                             getSavedProperty("java.home"),
                             getSavedProperty("java.vm.name"),
                             getSavedProperty("java.vm.version"));
@@ -209,7 +156,7 @@ public class GraalHotSpotVMConfigAccess {
         if ("ignore".equals(value)) {
             return;
         }
-        boolean warn = "warn".equals(value) || JDK_PRERELEASE;
+        boolean warn = "warn".equals(value);
         Formatter message = new Formatter().format(rawErrorMessage);
         String javaHome = getSavedProperty("java.home");
         String vmName = getSavedProperty("java.vm.name");
@@ -223,7 +170,7 @@ public class GraalHotSpotVMConfigAccess {
         message.format("Currently used Java home directory is %s.%n", javaHome);
         message.format("Currently used VM configuration is: %s%n", vmName);
         if (warn) {
-            System.err.println(message.toString());
+            System.err.println(message);
         } else {
             throw new JVMCIError(message.toString());
         }
@@ -391,13 +338,13 @@ public class GraalHotSpotVMConfigAccess {
             return type.cast(Boolean.FALSE);
         }
         if (type == Byte.class) {
-            return type.cast(Byte.valueOf((byte) 0));
+            return type.cast((byte) 0);
         }
         if (type == Integer.class) {
-            return type.cast(Integer.valueOf(0));
+            return type.cast(0);
         }
         if (type == Long.class) {
-            return type.cast(Long.valueOf(0));
+            return type.cast(0L);
         }
         if (type == String.class) {
             return type.cast(null);

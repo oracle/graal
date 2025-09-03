@@ -94,17 +94,17 @@ GraalWasm is also available as a standalone distribution.
 
 1. Download the distribution for your operating system:
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-windows-amd64.zip)
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.2.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.2.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.2.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.2.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.2.0-windows-amd64.zip)
    - JVM standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-windows-amd64.zip)
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.2.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.2.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.2.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.2.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.2.0-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -163,12 +163,6 @@ You can also use the WASI SDK toolchain to compile C programs into WebAssembly m
 ## License
 
 GraalWasm is licensed under the [Universal Permissive License](https://oss.oracle.com/licenses/upl/).
-
-## Related Documentation
-
-- [GraalWasm Options](../docs/reference-manual/wasm/Options.md)
-- [Interoperability with WebAssembly Modules](../docs/reference-manual/wasm/Interoperability.md)
-- [Embedding Languages documentation](../docs/reference-manual/embedding/embed-languages.md)
 
 ### Documentation for Contributors
 

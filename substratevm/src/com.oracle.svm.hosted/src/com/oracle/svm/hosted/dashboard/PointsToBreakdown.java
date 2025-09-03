@@ -233,7 +233,7 @@ class PointsToBreakdown {
         }
     }
 
-    private static class PointToStructure implements GraphStructure<PointsToBreakdown, AnalysisWrapper, WrapperClazz, Port> {
+    private static final class PointToStructure implements GraphStructure<PointsToBreakdown, AnalysisWrapper, WrapperClazz, Port> {
         enum EMPT {
             EDGE
         }
@@ -587,12 +587,12 @@ class PointsToBreakdown {
                 flowWrapper.calleeNames.add(callee.getQualifiedName());
             }
         } else if (flow instanceof NewInstanceTypeFlow || flow instanceof DynamicNewInstanceTypeFlow) {
-            flowWrapper.types = serializeTypeState(bb, flow.getState());
+            flowWrapper.types = serializeTypeState(bb, flow.getRawState());
         } else if (flow instanceof LoadFieldTypeFlow.LoadInstanceFieldTypeFlow || flow instanceof LoadFieldTypeFlow.LoadStaticFieldTypeFlow) {
             LoadFieldTypeFlow loadFlow = (LoadFieldTypeFlow) flow;
             flowWrapper.qualifiedName = fieldName(loadFlow.field());
         } else if (flow instanceof StoreFieldTypeFlow.StoreInstanceFieldTypeFlow || flow instanceof StoreFieldTypeFlow.StoreStaticFieldTypeFlow) {
-            TypeState typeState = flow.getState();
+            TypeState typeState = flow.getRawState();
             flowWrapper.types = serializeTypeState(bb, typeState);
             StoreFieldTypeFlow storeFlow = (StoreFieldTypeFlow) flow;
             flowWrapper.qualifiedName = fieldName(storeFlow.field());

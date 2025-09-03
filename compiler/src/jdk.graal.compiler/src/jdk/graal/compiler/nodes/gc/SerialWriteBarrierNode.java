@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,47 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 public class SerialWriteBarrierNode extends ObjectWriteBarrierNode {
     public static final NodeClass<SerialWriteBarrierNode> TYPE = NodeClass.create(SerialWriteBarrierNode.class);
 
-    protected boolean verifyOnly;
+    /**
+     * Denote the status of the object that is the destination of the write corresponding to a
+     * {@code SerialWriteBarrierNode}. During barrier expansion, we can take advantage of this
+     * information to elide or emit a more efficient sequence for a {@code SerialWriteBarrierNode}.
+     */
+    public enum BaseStatus {
+        /**
+         * There is no extra information for this base, the code should be emitted taking all
+         * possibilities into consideration.
+         */
+        DEFAULT,
+
+        /**
+         * The object is created inside this compilation unit and there is no loop or call between
+         * the allocation and the barrier. Therefore, the base object is likely young and the
+         * backend can outline the path in which the object is in the old generation for better code
+         * size and performance.
+         */
+        NO_LOOP_OR_CALL,
+
+        /**
+         * The object is created inside this compilation unit and there is no loop or safepoint
+         * between the allocation and the barrier. Therefore, if the backend can ensure that a newly
+         * allocated object is always young or the remember cards corresponding to it are all
+         * dirtied, the object still has that property at the write barrier and the barrier can be
+         * elided completely.
+         */
+        NO_LOOP_OR_SAFEPOINT;
+
+        /**
+         * Whether this base is likely young. This corresponds to NO_LOOP_OR_CALL or
+         * NO_LOOP_OR_SAFEPOINT above.
+         */
+        public boolean likelyYoung() {
+            return this != DEFAULT;
+        }
+    }
+
+    private boolean eliminated;
+
+    private BaseStatus baseStatus;
 
     public SerialWriteBarrierNode(AddressNode address, boolean precise) {
         this(TYPE, address, precise);
@@ -43,14 +83,23 @@ public class SerialWriteBarrierNode extends ObjectWriteBarrierNode {
 
     protected SerialWriteBarrierNode(NodeClass<? extends SerialWriteBarrierNode> c, AddressNode address, boolean precise) {
         super(c, address, null, precise);
+        this.baseStatus = BaseStatus.DEFAULT;
     }
 
-    public void setVerifyOnly(boolean value) {
-        this.verifyOnly = value;
+    public void setEliminated() {
+        eliminated = true;
     }
 
-    public boolean getVerifyOnly() {
-        return verifyOnly;
+    public boolean isEliminated() {
+        return eliminated;
+    }
+
+    public void setBaseStatus(BaseStatus status) {
+        baseStatus = status;
+    }
+
+    public BaseStatus getBaseStatus() {
+        return baseStatus;
     }
 
     @Override

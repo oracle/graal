@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.graph;
 
 import java.util.BitSet;
 
-import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 
 public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
 

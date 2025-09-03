@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.SimpleLanguageParser;
+import com.oracle.truffle.sl.parser.SLNodeParser;
+import com.oracle.truffle.sl.parser.SLBytecodeParser;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.
@@ -115,7 +116,11 @@ public final class SLFunctionRegistry {
     }
 
     public void register(Source newFunctions) {
-        register(SimpleLanguageParser.parseSL(language, newFunctions));
+        if (language.isUseBytecode()) {
+            register(SLBytecodeParser.parseSL(language, newFunctions));
+        } else {
+            register(SLNodeParser.parseSL(language, newFunctions));
+        }
     }
 
     public SLFunction getFunction(TruffleString name) {

@@ -74,7 +74,8 @@ public class Test {
         ChromeOptions options = new ChromeOptions();
         options.setBinary(chromeBin);
         options.setBrowserVersion(chromeVersion);
-        options.addArguments("--headless=new");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--headless");
         System.err.println("Creating driver using options: "+options);
         WebDriver driver;
         try {

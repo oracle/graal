@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.truffle;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
-
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.vm.ci.meta.JavaMethod;
 
 public final class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier implements TruffleCompilationIdentifier {
 
@@ -77,4 +79,13 @@ public final class SubstrateTruffleCompilationIdentifier extends SubstrateCompil
         return compilable;
     }
 
+    @Override
+    public long getTruffleCompilationId() {
+        return id;
+    }
+
+    @Override
+    public JavaMethod asJavaMethod() {
+        return new TruffleDebugJavaMethod(getTask(), getCompilable());
+    }
 }

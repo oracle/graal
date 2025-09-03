@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,6 +87,11 @@ public class GeneratedCompiler extends AbstractCompiler {
     @Override
     protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
         return false;
+    }
+
+    @Override
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
+        throw new UnsupportedOperationException("generated element");
     }
 
 }

@@ -66,18 +66,18 @@ public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<Cal
     }
 
     final byte[] array;
-    final int offset;
+    final long offset;
     final int length;
 
     public TStringOpsCalcStringAttributesLatin1Test(byte[] array, int offset, int length) {
         super(CalcStringAttributesNode.class);
         this.array = array;
-        this.offset = offset;
+        this.offset = offset + byteArrayBaseOffset();
         this.length = length;
     }
 
     @Test
     public void testLatin1() {
-        testWithNative(getTStringOpsMethod("calcStringAttributesLatin1", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesLatin1", byte[].class, long.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

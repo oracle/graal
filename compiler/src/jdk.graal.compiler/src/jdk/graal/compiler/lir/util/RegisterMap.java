@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.lir.util;
 
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 
 public class RegisterMap<T> {
     private final Object[] values;
@@ -68,7 +68,7 @@ public class RegisterMap<T> {
     }
 
     private static boolean checkArchitecture(Architecture arch) {
-        RegisterArray registers = arch.getRegisters();
+        List<Register> registers = arch.getRegisters();
         for (int i = 0; i < registers.size(); ++i) {
             assert registers.get(i).number == i : registers.get(i) + ": " + registers.get(i).number + "!=" + i;
         }

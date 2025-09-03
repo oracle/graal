@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,154 +40,53 @@
  */
 package com.oracle.truffle.object;
 
-import java.lang.invoke.VarHandle;
-import java.util.Map;
-import java.util.Objects;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/** @since 0.17 or earlier */
-@SuppressWarnings("deprecation")
-public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
-    private static final int INT_TO_DOUBLE_FLAG = 1;
-    private static final int INT_TO_LONG_FLAG = 2;
+/**
+ * Legacy class for compatibility with JDK 21 native image builds.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+abstract class LayoutImpl {
 
-    /** @since 0.17 or earlier */
-    protected final LayoutStrategy strategy;
-    /** @since 0.17 or earlier */
-    protected final Class<? extends DynamicObject> clazz;
-    private final int allowedImplicitCasts;
+    private static final Method initializeDynamicObjectLayout;
+    private static final Method resetNativeImageState;
 
-    /** @since 0.17 or earlier */
-    protected LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, int implicitCastFlags) {
-        this.strategy = strategy;
-        this.clazz = Objects.requireNonNull(clazz);
-
-        this.allowedImplicitCasts = implicitCastFlags;
-    }
-
-    protected abstract boolean isLegacyLayout();
-
-    /** @since 0.17 or earlier */
-    @Override
-    public Class<? extends DynamicObject> getType() {
-        return clazz;
-    }
-
-    @Override
-    protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
-        return newShape(dynamicType, sharedData, flags, null);
-    }
-
-    protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
-
-    /** @since 0.17 or earlier */
-    public boolean isAllowedIntToDouble() {
-        return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;
-    }
-
-    /** @since 0.17 or earlier */
-    public boolean isAllowedIntToLong() {
-        return (allowedImplicitCasts & INT_TO_LONG_FLAG) != 0;
-    }
-
-    /** @since 0.17 or earlier */
-    protected abstract boolean hasObjectExtensionArray();
-
-    /** @since 0.17 or earlier */
-    protected abstract boolean hasPrimitiveExtensionArray();
-
-    /** @since 0.17 or earlier */
-    protected abstract int getObjectFieldCount();
-
-    /** @since 0.17 or earlier */
-    protected abstract int getPrimitiveFieldCount();
-
-    /** @since 0.17 or earlier */
-    public abstract ShapeImpl.BaseAllocator createAllocator();
-
-    /** @since 0.17 or earlier */
-    public LayoutStrategy getStrategy() {
-        return strategy;
-    }
-
-    @Override
-    public String toString() {
-        return "Layout[" + clazz.getName() + "]";
-    }
-
-    /**
-     * Resets the state for native image generation.
-     *
-     * NOTE: this method is called reflectively by downstream projects.
-     */
-    static void resetNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        ((CoreLayoutFactory) getFactory()).resetNativeImageState();
+    static {
+        try {
+            Class<?> layoutImplClass = Class.forName("com.oracle.truffle.api.object.LayoutImpl");
+            initializeDynamicObjectLayout = layoutImplClass.getDeclaredMethod("initializeDynamicObjectLayout", Class.class, MethodHandles.Lookup.class);
+            initializeDynamicObjectLayout.setAccessible(true);
+            resetNativeImageState = layoutImplClass.getDeclaredMethod("resetNativeImageState");
+            resetNativeImageState.setAccessible(true);
+        } catch (NoSuchMethodException | ClassNotFoundException e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
 
     /**
      * Preinitializes DynamicObject layouts for native image generation.
      *
-     * NOTE: this method is called reflectively by downstream projects.
+     * @implNote this method is called reflectively by JDK 21 native image (TruffleBaseFeature).
      */
-    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class));
+    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) throws InvocationTargetException, IllegalAccessException {
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
+        initializeDynamicObjectLayout.invoke(null, dynamicObjectClass, null);
     }
 
-    @SuppressWarnings("static-method")
-    protected abstract static class Support extends Access {
-        protected Support() {
-        }
-
-        public final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
-            if (shape.isShared()) {
-                VarHandle.storeStoreFence();
-            }
-            super.setShape(object, shape);
-        }
-
-        public final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.grow(object, thisShape, otherShape);
-        }
-
-        public final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.resize(object, thisShape, otherShape);
-        }
-
-        public final void invalidateAllPropertyAssumptions(Shape shape) {
-            DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
-        }
-
-        public final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
-        }
-
-        public final Map<Object, Object> archive(DynamicObject object) {
-            return DynamicObjectSupport.archive(object);
-        }
-
-        public final boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
-            return DynamicObjectSupport.verifyValues(object, archive);
-        }
-
-        protected void arrayCopy(Object[] from, Object[] to, int length) {
-            System.arraycopy(from, 0, to, 0, length);
-        }
-
-        protected void arrayCopy(int[] from, int[] to, int length) {
-            System.arraycopy(from, 0, to, 0, length);
-        }
+    /**
+     * Resets the state for native image generation.
+     *
+     * @implNote this method is called reflectively by JDK 21 native image (TruffleBaseFeature).
+     */
+    static void resetNativeImageState() throws InvocationTargetException, IllegalAccessException {
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
+        resetNativeImageState.invoke(null);
     }
 
-    static final class CoreAccess extends Support {
-        private CoreAccess() {
-        }
-    }
-
-    static final CoreAccess ACCESS = new CoreAccess();
 }

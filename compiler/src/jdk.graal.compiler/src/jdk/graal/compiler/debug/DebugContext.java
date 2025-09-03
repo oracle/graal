@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -53,10 +52,10 @@ import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graphio.GraphOutput;
-import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -87,9 +86,10 @@ public final class DebugContext implements AutoCloseable {
      */
     public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
 
+    private static final Description DISABLED_DESCRIPTION = new Description(null, "DISABLED_DESCRIPTION");
     public static final Description NO_DESCRIPTION = new Description(null, "NO_DESCRIPTION");
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
-    public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
+    public static final Iterable<DebugDumpHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
 
     /**
      * Contains the immutable parts of a debug context. This separation allows the immutable parts
@@ -203,46 +203,39 @@ public final class DebugContext implements AutoCloseable {
         final boolean listMetrics;
 
         /**
-         * Names of unscoped counters. A counter is unscoped if this set is empty or contains the
-         * counter's name.
+         * Names of counters. A counter is active if this set is empty or contains the counter's
+         * name.
          */
-        final EconomicSet<String> unscopedCounters;
+        final EconomicSet<String> counters;
 
         /**
-         * Names of unscoped timers. A timer is unscoped if this set is empty or contains the
-         * timer's name.
+         * Names of timers. A timer is active if this set is empty or contains the timer's name.
          */
-        final EconomicSet<String> unscopedTimers;
+        final EconomicSet<String> timers;
 
         /**
-         * Names of unscoped memory usage trackers. A memory usage tracker is unscoped if this set
-         * is empty or contains the memory usage tracker's name.
+         * Names of memory usage trackers. A memory usage tracker is active if this set is empty or
+         * contains the memory usage tracker's name.
          */
-        final EconomicSet<String> unscopedMemUseTrackers;
+        final EconomicSet<String> memUseTrackers;
 
-        private static EconomicSet<String> parseUnscopedMetricSpec(String spec, boolean unconditional, boolean accumulatedKey) {
-            EconomicSet<String> res;
+        private static EconomicSet<String> parseMetricSpec(String spec, boolean accumulatedKey) {
             if (spec == null) {
-                if (!unconditional) {
-                    res = null;
-                } else {
-                    res = EconomicSet.create();
-                }
+                return null;
+            } else if (spec.isEmpty()) {
+                return EconomicSet.emptySet();
             } else {
-                res = EconomicSet.create();
-                if (!spec.isEmpty()) {
-                    if (!accumulatedKey) {
-                        res.addAll(Arrays.asList(spec.split(",")));
-                    } else {
-                        for (String n : spec.split(",")) {
-                            res.add(n + AccumulatedKey.ACCUMULATED_KEY_SUFFIX);
-                            res.add(n + AccumulatedKey.FLAT_KEY_SUFFIX);
-                        }
+                EconomicSet<String> res = EconomicSet.create();
+                if (!accumulatedKey) {
+                    res.addAll(Arrays.asList(spec.split(",")));
+                } else {
+                    for (String n : spec.split(",")) {
+                        res.add(n + AccumulatedKey.ACCUMULATED_KEY_SUFFIX);
+                        res.add(n + AccumulatedKey.FLAT_KEY_SUFFIX);
                     }
-
                 }
+                return res;
             }
-            return res;
         }
 
         static Immutable create(OptionValues options) {
@@ -264,19 +257,13 @@ public final class DebugContext implements AutoCloseable {
             return immutable;
         }
 
-        private static boolean isNotEmpty(OptionKey<String> option, OptionValues options) {
-            return option.getValue(options) != null && !option.getValue(options).isEmpty();
-        }
-
         private Immutable(OptionValues options) {
             this.options = options;
-            String timeValue = DebugOptions.Time.getValue(options);
-            String trackMemUseValue = DebugOptions.TrackMemUse.getValue(options);
-            this.unscopedCounters = parseUnscopedMetricSpec(DebugOptions.Counters.getValue(options), "".equals(DebugOptions.Count.getValue(options)), false);
-            this.unscopedTimers = parseUnscopedMetricSpec(DebugOptions.Timers.getValue(options), "".equals(timeValue), true);
-            this.unscopedMemUseTrackers = parseUnscopedMetricSpec(DebugOptions.MemUseTrackers.getValue(options), "".equals(trackMemUseValue), true);
+            this.counters = parseMetricSpec(DebugOptions.Counters.getValue(options), false);
+            this.timers = parseMetricSpec(DebugOptions.Timers.getValue(options), true);
+            this.memUseTrackers = parseMetricSpec(DebugOptions.MemUseTrackers.getValue(options), true);
 
-            if (unscopedMemUseTrackers != null || trackMemUseValue != null) {
+            if (memUseTrackers != null) {
                 if (!GraalServices.isThreadAllocatedMemorySupported()) {
                     TTY.println("WARNING: Missing VM support for MemUseTrackers and TrackMemUse options so all reported memory usage will be 0");
                 }
@@ -285,24 +272,21 @@ public final class DebugContext implements AutoCloseable {
             this.scopesEnabled = DebugOptions.DumpOnError.getValue(options) ||
                             DebugOptions.Dump.getValue(options) != null ||
                             DebugOptions.Log.getValue(options) != null ||
-                            isNotEmpty(DebugOptions.Count, options) ||
-                            isNotEmpty(DebugOptions.Time, options) ||
-                            isNotEmpty(DebugOptions.TrackMemUse, options) ||
                             DebugOptions.DumpOnPhaseChange.getValue(options) != null;
             this.listMetrics = DebugOptions.ListMetrics.getValue(options);
         }
 
         private Immutable() {
             this.options = new OptionValues(EconomicMap.create());
-            this.unscopedCounters = null;
-            this.unscopedTimers = null;
-            this.unscopedMemUseTrackers = null;
+            this.counters = null;
+            this.timers = null;
+            this.memUseTrackers = null;
             this.scopesEnabled = false;
             this.listMetrics = false;
         }
 
-        public boolean hasUnscopedMetrics() {
-            return unscopedCounters != null || unscopedTimers != null || unscopedMemUseTrackers != null;
+        public boolean hasMetrics() {
+            return counters != null || timers != null || memUseTrackers != null;
         }
     }
 
@@ -350,7 +334,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Singleton used to represent a disabled debug context.
      */
-    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
+    private static final DebugContext DISABLED = new DebugContext(DISABLED_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
 
     /**
      * Create a DebugContext with debugging disabled.
@@ -455,18 +439,18 @@ public final class DebugContext implements AutoCloseable {
      *         object whose {@link CompilerPhaseScope#close()} method must be called when the phase
      *         ends
      */
-    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
-        CompilationAlarm.current().enterPhase(phaseName.toString());
+    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName, StructuredGraph graph) {
+        CompilationAlarm.current().enterPhase(phaseName, graph);
         if (compilationListener != null) {
             return new DecoratingCompilerPhaseScope(() -> {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName, graph);
             }, enterCompilerPhase(() -> phaseName));
         }
         return new CompilerPhaseScope() {
 
             @Override
             public void close() {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName, graph);
             }
         };
     }
@@ -549,23 +533,23 @@ public final class DebugContext implements AutoCloseable {
         private CompilationListener compilationListener;
         private GlobalMetrics globalMetrics = NO_GLOBAL_METRIC_VALUES;
         private PrintStream logStream = getDefaultLogStream();
-        private final Iterable<DebugHandlersFactory> factories;
+        private final Iterable<DebugDumpHandlersFactory> factories;
         private boolean disabled = false;
 
         /**
          * Builder for a {@link DebugContext} based on {@code options} and
-         * {@link DebugHandlersFactory#LOADER}.
+         * {@link DebugDumpHandlersFactory#LOADER}.
          */
         public Builder(OptionValues options) {
             this.options = options;
-            this.factories = DebugHandlersFactory.LOADER;
+            this.factories = DebugDumpHandlersFactory.LOADER;
         }
 
         /**
          * Builder for a {@link DebugContext} based on {@code options} and {@code factories}. The
-         * {@link DebugHandlersFactory#LOADER} value can be used for the latter.
+         * {@link DebugDumpHandlersFactory#LOADER} value can be used for the latter.
          */
-        public Builder(OptionValues options, Iterable<DebugHandlersFactory> factories) {
+        public Builder(OptionValues options, Iterable<DebugDumpHandlersFactory> factories) {
             this.options = options;
             this.factories = factories;
         }
@@ -574,7 +558,7 @@ public final class DebugContext implements AutoCloseable {
          * Builder for a {@link DebugContext} based {@code options} and {@code factory}. The latter
          * can be null in which case {@link DebugContext#NO_CONFIG_CUSTOMIZERS} is used.
          */
-        public Builder(OptionValues options, DebugHandlersFactory factory) {
+        public Builder(OptionValues options, DebugDumpHandlersFactory factory) {
             this.options = options;
             this.factories = factory == null ? NO_CONFIG_CUSTOMIZERS : Collections.singletonList(factory);
         }
@@ -628,7 +612,7 @@ public final class DebugContext implements AutoCloseable {
                     GlobalMetrics globalMetrics,
                     PrintStream logStream,
                     Immutable immutable,
-                    Iterable<DebugHandlersFactory> factories) {
+                    Iterable<DebugDumpHandlersFactory> factories) {
         this(description, compilationListener, globalMetrics, logStream, immutable, factories, false);
     }
 
@@ -637,36 +621,29 @@ public final class DebugContext implements AutoCloseable {
                     GlobalMetrics globalMetrics,
                     PrintStream logStream,
                     Immutable immutable,
-                    Iterable<DebugHandlersFactory> factories, boolean disableConfig) {
+                    Iterable<DebugDumpHandlersFactory> factories, boolean disableConfig) {
         this.immutable = immutable;
+        this.invariants = Assertions.assertionsEnabled() && description != DISABLED_DESCRIPTION ? new Invariants() : null;
         this.description = description;
         this.globalMetrics = globalMetrics;
         this.compilationListener = compilationListener;
         if (immutable.scopesEnabled) {
             OptionValues options = immutable.options;
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
-            List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-            for (DebugHandlersFactory factory : factories) {
-                for (DebugHandler handler : factory.createHandlers(options)) {
-                    if (handler instanceof DebugDumpHandler) {
-                        dumpHandlers.add((DebugDumpHandler) handler);
-                    } else {
-                        assert handler instanceof DebugVerifyHandler : handler;
-                        verifyHandlers.add((DebugVerifyHandler) handler);
-                    }
+            for (DebugDumpHandlersFactory factory : factories) {
+                for (DebugDumpHandler handler : factory.createHandlers(options)) {
+                    dumpHandlers.add(handler);
                 }
             }
             if (disableConfig) {
-                currentConfig = new DebugConfigImpl(options, null, null, null, null, null, null, null, logStream, dumpHandlers, verifyHandlers);
+                currentConfig = new DebugConfigImpl(options, null, null, null, logStream, dumpHandlers);
             } else {
-                currentConfig = new DebugConfigImpl(options, logStream, dumpHandlers, verifyHandlers);
+                currentConfig = new DebugConfigImpl(options, logStream, dumpHandlers);
             }
             currentScope = new ScopeImpl(this, Thread.currentThread(), DebugOptions.DisableIntercept.getValue(options));
             currentScope.updateFlags(currentConfig);
-            metricsEnabled = true;
-        } else {
-            metricsEnabled = immutable.hasUnscopedMetrics() || immutable.listMetrics;
         }
+        metricsEnabled = !disableConfig && (immutable.hasMetrics() || immutable.listMetrics);
     }
 
     public String getDumpPath(String extension, boolean createMissingDirectory) {
@@ -752,21 +729,16 @@ public final class DebugContext implements AutoCloseable {
         return currentScope != null && currentScope.isDumpEnabled(dumpLevel);
     }
 
-    /**
-     * Determines if verification is enabled in the current scope.
-     *
-     * @see DebugContext#verify(Object, String)
-     */
-    public boolean isVerifyEnabled() {
-        return currentScope != null && currentScope.isVerifyEnabled();
+    public boolean areCountersEnabled() {
+        return immutable.counters != null;
     }
 
-    public boolean isCountEnabled() {
-        return currentScope != null && currentScope.isCountEnabled();
+    public boolean areTimersEnabled() {
+        return immutable.timers != null;
     }
 
-    public boolean isMemUseTrackingEnabled() {
-        return currentScope != null && currentScope.isMemUseTrackingEnabled();
+    public boolean areMemUseTrackersEnabled() {
+        return immutable.memUseTrackers != null;
     }
 
     public boolean isDumpEnabledForMethod() {
@@ -874,11 +846,7 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    /**
-     * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
-     * holds onto a thread and is only used for assertions.
-     */
-    @NativeImageReinitialize private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
+    private final Invariants invariants;
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         return thread.getStackTrace();
@@ -1419,11 +1387,9 @@ public final class DebugContext implements AutoCloseable {
         } else {
             OptionValues options = getOptions();
             dumpHandlers = new ArrayList<>();
-            for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
-                for (DebugHandler handler : factory.createHandlers(options)) {
-                    if (handler instanceof DebugDumpHandler) {
-                        dumpHandlers.add((DebugDumpHandler) handler);
-                    }
+            for (DebugDumpHandlersFactory factory : DebugDumpHandlersFactory.LOADER) {
+                for (DebugDumpHandler handler : factory.createHandlers(options)) {
+                    dumpHandlers.add(handler);
                 }
             }
             closeAfterDump = true;
@@ -1495,51 +1461,6 @@ public final class DebugContext implements AutoCloseable {
         assert false : "shouldn't use this";
         if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
             currentScope.dump(dumpLevel, object, format, args);
-        }
-    }
-
-    /**
-     * Calls all {@link DebugVerifyHandler}s in the current {@linkplain #getConfig() config} to
-     * perform verification on a given object.
-     *
-     * @param object object to verify
-     * @param message description of verification context
-     *
-     * @see DebugVerifyHandler#verify
-     */
-    public void verify(Object object, String message) {
-        if (currentScope != null && currentScope.isVerifyEnabled()) {
-            currentScope.verify(object, message);
-        }
-    }
-
-    /**
-     * Calls all {@link DebugVerifyHandler}s in the current {@linkplain #getConfig() config} to
-     * perform verification on a given object.
-     *
-     * @param object object to verify
-     * @param format a format string for the description of the verification context
-     * @param arg the argument referenced by the format specifiers in {@code format}
-     *
-     * @see DebugVerifyHandler#verify
-     */
-    public void verify(Object object, String format, Object arg) {
-        if (currentScope != null && currentScope.isVerifyEnabled()) {
-            currentScope.verify(object, format, arg);
-        }
-    }
-
-    /**
-     * This override exists to catch cases when {@link #verify(Object, String, Object)} is called
-     * with one argument bound to a varargs method parameter. It will bind to this method instead of
-     * the single arg variant and produce a deprecation warning instead of silently wrapping the
-     * Object[] inside of another Object[].
-     */
-    @Deprecated
-    public void verify(Object object, String format, Object[] args) {
-        assert false : "shouldn't use this";
-        if (currentScope != null && currentScope.isVerifyEnabled()) {
-            currentScope.verify(object, format, args);
         }
     }
 
@@ -1889,6 +1810,28 @@ public final class DebugContext implements AutoCloseable {
         return createCounter("%s", name, null);
     }
 
+    public static CountingTimerKey countingTimer(CharSequence name) {
+        return new CountingTimerKey(name);
+    }
+
+    /**
+     * Tracks both the number of times a timer was started and the elapsed time.
+     */
+    public static class CountingTimerKey {
+        CounterKey count;
+        TimerKey time;
+
+        CountingTimerKey(CharSequence name) {
+            count = DebugContext.counter(name + "Count");
+            time = DebugContext.timer(name + "Time");
+        }
+
+        public DebugCloseable start(DebugContext debug) {
+            count.add(debug, 1);
+            return time.start(debug);
+        }
+    }
+
     /**
      * Gets a tally of the metric values in this context and a given tally.
      *
@@ -2011,12 +1954,21 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@linkplain TimerKey timer}.
+     * Creates a {@linkplain CPUTimerKey} timer.
      * <p>
      * A disabled timer has virtually no overhead.
      */
     public static TimerKey timer(CharSequence name) {
         return createTimer("%s", name, null);
+    }
+
+    /**
+     * Creates a {@link WallClockTimerKey} timer.
+     * <p>
+     * A disabled timer has virtually no overhead.
+     */
+    public static TimerKey wallClockTimer(CharSequence name) {
+        return createWallClockTimer("%s", name, null);
     }
 
     /**
@@ -2115,7 +2067,11 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private static TimerKey createTimer(String format, Object arg1, Object arg2) {
-        return new TimerKeyImpl(format, arg1, arg2);
+        return new CPUTimerKey(format, arg1, arg2);
+    }
+
+    private static TimerKey createWallClockTimer(String format, Object arg1, Object arg2) {
+        return new WallClockTimerKey(format, arg1, arg2);
     }
 
     /**
@@ -2135,7 +2091,7 @@ public final class DebugContext implements AutoCloseable {
         void close();
     }
 
-    boolean isTimerEnabled(TimerKeyImpl key) {
+    boolean isTimerEnabled(BaseTimerKey key) {
         if (!metricsEnabled) {
             // Pulling this common case out of `isTimerEnabledSlow`
             // gives C1 a better chance to inline this method.
@@ -2145,15 +2101,12 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private boolean isTimerEnabledSlow(AbstractKey key) {
-        if (currentScope != null && currentScope.isTimeEnabled()) {
-            return true;
-        }
         if (immutable.listMetrics) {
             key.ensureInitialized();
         }
         assert checkNoConcurrentAccess();
-        EconomicSet<String> unscoped = immutable.unscopedTimers;
-        return unscoped != null && (unscoped.isEmpty() || unscoped.contains(key.getName()));
+        EconomicSet<String> timers = immutable.timers;
+        return timers != null && (timers.isEmpty() || timers.contains(key.getName()));
     }
 
     /**
@@ -2169,15 +2122,12 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private boolean isCounterEnabledSlow(AbstractKey key) {
-        if (currentScope != null && currentScope.isCountEnabled()) {
-            return true;
-        }
         if (immutable.listMetrics) {
             key.ensureInitialized();
         }
         assert checkNoConcurrentAccess();
-        EconomicSet<String> unscoped = immutable.unscopedCounters;
-        return unscoped != null && (unscoped.isEmpty() || unscoped.contains(key.getName()));
+        EconomicSet<String> counters = immutable.counters;
+        return counters != null && (counters.isEmpty() || counters.contains(key.getName()));
     }
 
     boolean isMemUseTrackerEnabled(MemUseTrackerKeyImpl key) {
@@ -2190,26 +2140,16 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private boolean isMemUseTrackerEnabledSlow(AbstractKey key) {
-        if (currentScope != null && currentScope.isMemUseTrackingEnabled()) {
-            return true;
-        }
         if (immutable.listMetrics) {
             key.ensureInitialized();
         }
         assert checkNoConcurrentAccess();
-        EconomicSet<String> unscoped = immutable.unscopedMemUseTrackers;
-        return unscoped != null && (unscoped.isEmpty() || unscoped.contains(key.getName()));
+        EconomicSet<String> memUseTrackers = immutable.memUseTrackers;
+        return memUseTrackers != null && (memUseTrackers.isEmpty() || memUseTrackers.contains(key.getName()));
     }
 
     public boolean areMetricsEnabled() {
         return metricsEnabled;
-    }
-
-    /**
-     * Returns {@code true} if any unscoped counters are enabled.
-     */
-    public boolean hasUnscopedCounters() {
-        return immutable.unscopedCounters != null && !immutable.unscopedCounters.isEmpty();
     }
 
     @Override
@@ -2305,7 +2245,7 @@ public final class DebugContext implements AutoCloseable {
             ByteArrayOutputStream baos = new ByteArrayOutputStream(metricsBufSize);
             PrintStream out = new PrintStream(baos);
             if (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV")) {
-                printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier);
+                printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier, DebugOptions.OmitZeroMetrics.getValue(getOptions()));
             } else {
                 printMetrics(out, compilable, identity, compilationNr, desc.identifier);
             }
@@ -2334,8 +2274,9 @@ public final class DebugContext implements AutoCloseable {
      * @param compilationNr where this compilation lies in the ordered sequence of all compilations
      *            identified by {@code identity}
      * @param compilationId the runtime issued identifier for the compilation
+     * @param skipZero
      */
-    private void printMetricsCSV(PrintStream out, Object compilable, Integer identity, int compilationNr, String compilationId) {
+    private void printMetricsCSV(PrintStream out, Object compilable, Integer identity, int compilationNr, String compilationId, boolean skipZero) {
         String compilableName = compilable instanceof JavaMethod ? ((JavaMethod) compilable).format("%H.%n(%p)%R") : String.valueOf(compilable);
         String csvFormat = CSVUtil.buildFormatString("%s", "%s", "%d", "%s");
         String format = String.format(csvFormat, CSVUtil.Escape.escapeArgsFormatString(compilableName, identity, compilationNr, compilationId));
@@ -2344,8 +2285,12 @@ public final class DebugContext implements AutoCloseable {
         for (MetricKey key : KeyRegistry.getKeys()) {
             int index = ((AbstractKey) key).getIndex();
             if (index < metricValues.length) {
-                Pair<String, String> valueAndUnit = key.toCSVFormat(metricValues[index]);
-                CSVUtil.Escape.println(out, format, CSVUtil.Escape.escape(key.getName()), valueAndUnit.getLeft(), valueAndUnit.getRight());
+                long metricValue = metricValues[index];
+                if (skipZero && metricValue == 0) {
+                    continue;
+                }
+                Pair<String, String> valueAndUnit = key.toCSVFormat(metricValue);
+                CSVUtil.Escape.println(out, format, key.getName(), valueAndUnit.getLeft(), valueAndUnit.getRight());
             }
         }
     }
@@ -2410,7 +2355,7 @@ public final class DebugContext implements AutoCloseable {
     }
 
     public Map<MetricKey, Long> getMetricsSnapshot() {
-        Map<MetricKey, Long> res = new HashMap<>();
+        Map<MetricKey, Long> res = new EconomicHashMap<>();
         for (MetricKey key : KeyRegistry.getKeys()) {
             int index = ((AbstractKey) key).getIndex();
             if (index < metricValues.length && metricValues[index] != 0) {

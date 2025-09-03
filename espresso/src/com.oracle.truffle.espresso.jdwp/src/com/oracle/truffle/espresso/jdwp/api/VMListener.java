@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2029, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.truffle.espresso.jdwp.api;
+
+import com.oracle.truffle.api.nodes.Node;
 
 public interface VMListener {
 
@@ -57,7 +59,7 @@ public interface VMListener {
      * @param value the new field value
      * @return true if a breakpoint should be hit due to the modification
      */
-    boolean onFieldModification(FieldRef field, Object receiver, Object value);
+    boolean onFieldModification(FieldRef field, Node node, Object receiver, Object value);
 
     /**
      * This method will be called when a field is about to be accessed. The method will determine if
@@ -67,7 +69,7 @@ public interface VMListener {
      * @param receiver owner of the field
      * @return true if a breakpoint should be hit due to the modification
      */
-    boolean onFieldAccess(FieldRef field, Object receiver);
+    boolean onFieldAccess(FieldRef field, Node node, Object receiver);
 
     /**
      * This method will be called when a method is entered iff there is an active
@@ -79,7 +81,7 @@ public interface VMListener {
      *            local variables in scope
      * @return true a breakpoint should be hit on method entry
      */
-    boolean onMethodEntry(MethodRef method, Object scope);
+    boolean onMethodEntry(MethodRef method, Node node, Object scope);
 
     /**
      * This method will be called when a method is about to return iff there is an active
@@ -90,13 +92,13 @@ public interface VMListener {
      * @param returnValue the return value
      * @return true if a breakpoint should be hit on method exit
      */
-    boolean onMethodReturn(MethodRef method, Object returnValue);
+    boolean onMethodReturn(MethodRef method, Node node, Object returnValue);
 
     /**
      * This method should be called when when the monitor wait(timeout) method is invoked in the
      * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
      * current thread.
-     * 
+     *
      * @param monitor the monitor object
      * @param timeout the timeout in ms before the wait will time out
      */

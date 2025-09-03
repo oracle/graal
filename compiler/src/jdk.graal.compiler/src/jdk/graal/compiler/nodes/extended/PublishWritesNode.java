@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -36,6 +37,8 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
@@ -66,7 +69,7 @@ import jdk.graal.compiler.nodes.spi.ValueProxy;
  * {@link PublishWritesNode}.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor, InputType.Value})
-public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, AnchoringNode {
+public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, ValueProxy, GuardingNode, AnchoringNode {
     public static final NodeClass<PublishWritesNode> TYPE = NodeClass.create(PublishWritesNode.class);
 
     @Input ValueNode allocation;
@@ -87,11 +90,11 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
 
     @Override
     public boolean verifyNode() {
-        // Check that the published allocation node is not used by reads directly.
+        // Check that the published allocation node is not used by init reads directly.
         for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
             var readUsages = address.usages().filter(n -> {
-                // n is a non-writing access (a.k.a. a read)
-                return n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n);
+                // n is a non-writing access (a.k.a. a read) to INIT_LOCATION
+                return n instanceof MemoryAccess access && access.getLocationIdentity().isInit() && !MemoryKill.isMemoryKill(n);
             });
             assertTrue(readUsages.isEmpty(), "%s has unpublished reads", allocation);
         }
@@ -109,6 +112,22 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
     @Override
     public ValueNode getOriginalNode() {
         return allocation;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (!tool.allUsagesAvailable()) {
+            return this;
+        }
+        /*
+         * Sometimes an AbstractNewObjectNode that was already wrapped by a PublishWritesNode is
+         * virtualized, and a second PublishWritesNode is created when the virtual object is
+         * lowered. If the two are adjacent, merge them into a single node.
+         */
+        if (allocation instanceof PublishWritesNode && predecessor() == allocation) {
+            return allocation;
+        }
+        return this;
     }
 
     @Override

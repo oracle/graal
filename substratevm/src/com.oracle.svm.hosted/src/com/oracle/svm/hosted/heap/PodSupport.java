@@ -24,21 +24,24 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PRIVATE;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_SUPER;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACONST_NULL;
-import static jdk.internal.org.objectweb.asm.Opcodes.ALOAD;
-import static jdk.internal.org.objectweb.asm.Opcodes.ARETURN;
-import static jdk.internal.org.objectweb.asm.Opcodes.INVOKESPECIAL;
-import static jdk.internal.org.objectweb.asm.Opcodes.PUTFIELD;
-import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
-import static jdk.internal.org.objectweb.asm.Opcodes.V11;
+import static java.lang.classfile.ClassFile.ACC_FINAL;
+import static java.lang.classfile.ClassFile.ACC_PRIVATE;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.classfile.ClassFile.ACC_SUPER;
+import static java.lang.classfile.ClassFile.ACC_SYNTHETIC;
+import static java.lang.classfile.ClassFile.JAVA_11_VERSION;
 
+import java.lang.classfile.Annotation;
+import java.lang.classfile.AnnotationElement;
+import java.lang.classfile.AnnotationValue;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDescs;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,14 +63,13 @@ import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodInfo;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.Type;
 import jdk.vm.ci.meta.JavaKind;
 
 /** Support for preparing the creation of {@link Pod} objects during the image build. */
@@ -119,6 +121,11 @@ final class PodFeature implements PodSupport, InternalFeature {
     private BeforeAnalysisAccess analysisAccess;
     private volatile boolean instantiated = false;
     private boolean sealed = false;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -193,6 +200,23 @@ final class PodFeature implements PodSupport, InternalFeature {
     }
 
     /**
+     * Returns the {@link ClassDesc} for the given {@link Class}. This method handles primitive
+     * types, array types, and reference types by generating the appropriate descriptor string.
+     *
+     * @param clazz the class to get the descriptor for
+     * @return the ClassDesc instance representing the class
+     */
+    private static ClassDesc classDesc(Class<?> clazz) {
+        if (clazz.isPrimitive()) {
+            return ClassDesc.ofDescriptor(String.valueOf(JavaKind.fromJavaClass(clazz).getTypeChar()));
+        } else if (clazz.isArray()) {
+            return ClassDesc.ofDescriptor("[" + classDesc(clazz.getComponentType()).descriptorString());
+        } else {
+            return ClassDesc.of(clazz.getName());
+        }
+    }
+
+    /**
      * For pods, we need a designated class that (1) is a {@link Hybrid} class and so must never be
      * allocated as an instance class because its {@link LayoutEncoding} describes it as an array
      * and (2) is not subclassed since fields in a subclass would overlap with the array part.
@@ -200,14 +224,19 @@ final class PodFeature implements PodSupport, InternalFeature {
     private static Class<?> generatePodClass(Class<?> superClass) {
         String className = Pod.class.getName() + "$$Generated" + GENERATED_COUNTER.incrementAndGet();
 
-        ClassWriter writer = new ClassWriter(0);
-        int access = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
-        writer.visit(V11, access, className.replace('.', '/'), null, Type.getInternalName(superClass), null);
-        var annotation = writer.visitAnnotation(Type.getDescriptor(Hybrid.class), true);
-        annotation.visit("componentType", Type.getType(byte.class));
-        annotation.visitEnd();
-        writer.visitEnd();
-        byte[] data = writer.toByteArray();
+        ClassDesc thisCD = ClassDesc.of(className);
+        ClassDesc superCD = classDesc(superClass);
+
+        byte[] data = ClassFile.of().build(thisCD, clb -> {
+            clb.withVersion(JAVA_11_VERSION, 0);
+            clb.withFlags(ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL);
+            clb.withSuperclass(superCD);
+
+            ClassDesc hybridCD = classDesc(Hybrid.class);
+            AnnotationValue byteClassValue = AnnotationValue.ofClass(classDesc(byte.class));
+            Annotation hybridAnno = Annotation.of(hybridCD, AnnotationElement.of("componentType", byteClassValue));
+            clb.with(RuntimeVisibleAnnotationsAttribute.of(hybridAnno));
+        });
 
         Class<?> podClass = NativeImageSystemClassLoader.singleton().predefineClass(className, data, 0, data.length);
         assert podClass.getSuperclass() == superClass;
@@ -221,44 +250,58 @@ final class PodFeature implements PodSupport, InternalFeature {
      */
     private static Constructor<?> generatePodFactory(Class<?> podClass, Class<?> factoryInterface) {
         String name = Pod.class.getName() + "$$GeneratedFactory" + GENERATED_COUNTER.incrementAndGet();
-        String internalName = name.replace('.', '/');
-        String podDescriptor = Type.getDescriptor(Pod.class);
 
-        ClassWriter writer = new ClassWriter(0);
-        int access = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
-        writer.visit(V11, access, internalName, null, Type.getInternalName(Object.class), new String[]{Type.getInternalName(factoryInterface)});
-        var annotation = writer.visitAnnotation(Type.getDescriptor(PodFactory.class), true);
-        annotation.visit("podClass", Type.getType(podClass));
-        annotation.visitEnd();
-        writer.visitField(ACC_PRIVATE | ACC_FINAL | ACC_SYNTHETIC, "pod", podDescriptor, null, null).visitEnd();
-        var init = writer.visitMethod(ACC_PUBLIC | ACC_SYNTHETIC, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(podDescriptor)), null, null);
-        init.visitCode();
-        init.visitVarInsn(ALOAD, 0);
-        init.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
-        init.visitVarInsn(ALOAD, 0);
-        init.visitVarInsn(ALOAD, 1);
-        init.visitFieldInsn(PUTFIELD, internalName, "pod", podDescriptor);
-        init.visitInsn(RETURN);
-        init.visitMaxs(2, 2);
-        init.visitEnd();
-        for (Method method : factoryInterface.getMethods()) {
-            int methodAccess = ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC;
-            var impl = writer.visitMethod(methodAccess, method.getName(), Type.getMethodDescriptor(method), null, null);
-            if (method.isAnnotationPresent(DeoptTest.class)) {
-                impl.visitAnnotation(Type.getDescriptor(DeoptTest.class), true).visitEnd();
+        ClassDesc thisCD = ClassDesc.of(name);
+        ClassDesc podCD = classDesc(Pod.class);
+        ClassDesc objectCD = ConstantDescs.CD_Object;
+        ClassDesc factoryIntfCD = classDesc(factoryInterface);
+
+        byte[] data = ClassFile.of().build(thisCD, clb -> {
+            clb.withVersion(JAVA_11_VERSION, 0);
+            clb.withFlags(ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL);
+            clb.withSuperclass(objectCD);
+            clb.withInterfaceSymbols(factoryIntfCD);
+
+            ClassDesc podFactoryCD = classDesc(PodFactory.class);
+            AnnotationValue podClassValue = AnnotationValue.ofClass(classDesc(podClass));
+            Annotation podFactoryAnno = Annotation.of(podFactoryCD, AnnotationElement.of("podClass", podClassValue));
+            clb.with(RuntimeVisibleAnnotationsAttribute.of(podFactoryAnno));
+
+            clb.withField("pod", podCD, fb -> fb.withFlags(ACC_PRIVATE | ACC_FINAL | ACC_SYNTHETIC));
+
+            MethodTypeDesc ctorMtd = MethodTypeDesc.of(ConstantDescs.CD_void, podCD);
+            clb.withMethod("<init>", ctorMtd, ACC_PUBLIC | ACC_SYNTHETIC, mb -> {
+                mb.withCode(cb -> {
+                    cb.aload(0);
+                    cb.invokespecial(objectCD, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void));
+                    cb.aload(0);
+                    cb.aload(1);
+                    cb.putfield(thisCD, "pod", podCD);
+                    cb.return_();
+                });
+            });
+
+            for (Method method : factoryInterface.getMethods()) {
+                Class<?> returnType = method.getReturnType();
+                Class<?>[] paramTypes = method.getParameterTypes();
+                ClassDesc returnCD = classDesc(returnType);
+                ClassDesc[] paramCDs = Arrays.stream(paramTypes).map(PodFeature::classDesc).toArray(ClassDesc[]::new);
+                MethodTypeDesc mtd = MethodTypeDesc.of(returnCD, paramCDs);
+
+                String mname = method.getName();
+                int flags = ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC;
+                clb.withMethod(mname, mtd, flags, mb -> {
+                    if (method.isAnnotationPresent(DeoptTest.class)) {
+                        ClassDesc deoptCD = classDesc(DeoptTest.class);
+                        mb.with(RuntimeVisibleAnnotationsAttribute.of(Annotation.of(deoptCD)));
+                    }
+                    mb.withCode(cb -> {
+                        cb.aconst_null();
+                        cb.areturn();
+                    });
+                });
             }
-            impl.visitCode(); // substituted with custom graph
-            impl.visitInsn(ACONST_NULL);
-            impl.visitInsn(ARETURN);
-            int localSlots = 1; // spare slot needed by generated graph
-            for (Class<?> clazz : method.getParameterTypes()) {
-                localSlots += JavaKind.fromJavaClass(clazz).getSlotCount();
-            }
-            impl.visitMaxs(1, localSlots);
-            impl.visitEnd();
-        }
-        writer.visitEnd();
-        byte[] data = writer.toByteArray();
+        });
 
         Class<?> factoryClass = NativeImageSystemClassLoader.singleton().predefineClass(name, data, 0, data.length);
         assert factoryInterface.isAssignableFrom(factoryClass);

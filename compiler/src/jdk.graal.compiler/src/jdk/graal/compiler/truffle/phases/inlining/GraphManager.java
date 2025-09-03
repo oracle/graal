@@ -26,10 +26,12 @@ package jdk.graal.compiler.truffle.phases.inlining;
 
 import java.util.List;
 
-import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.Indent;
@@ -49,9 +51,7 @@ import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-
+import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class GraphManager {
@@ -64,12 +64,16 @@ final class GraphManager {
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
     private final boolean useSize;
 
-    GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
-        this.partialEvaluator = partialEvaluator;
+    GraphManager(PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
+        this.partialEvaluator = rootContext.partialEvaluator;
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
         this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(rootContext.compilerOptions);
+    }
+
+    TruffleTierContext rootContext() {
+        return rootContext;
     }
 
     @SuppressWarnings("try")
@@ -78,16 +82,11 @@ final class GraphManager {
         if (entry == null) {
             // the guest scope represents the guest language method of truffle
             try (AutoCloseable guestScope = rootContext.debug.scope("Truffle", new TruffleDebugJavaMethod(rootContext.task, truffleAST))) {
-                final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-                final TruffleTierContext context = newContext(truffleAST, false);
+                final TruffleTierContext context = rootContext.createInlineContext(truffleAST);
                 try (Scope hostScope = context.debug.scope("CreateGraph", context.graph);
                                 Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
-                    partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
-                    context.graph.getAssumptions().record(new TruffleAssumption(context.getNodeRewritingAssumption(partialEvaluator.getProviders())));
-                    StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
-                    postPartialEvaluationSuite.apply(context.graph, context);
-                    entry = new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
-                    context.debug.dump(DebugContext.INFO_LEVEL, context.graph, "After PE Tier");
+                    TruffleAssumption nodeRewritingAssumption = new TruffleAssumption(context.getNodeRewritingAssumption(partialEvaluator.getProviders()));
+                    entry = pe(context, nodeRewritingAssumption, DebugContext.INFO_LEVEL);
                 } catch (Throwable e) {
                     throw context.debug.handle(e);
                 }
@@ -99,34 +98,20 @@ final class GraphManager {
         return entry;
     }
 
-    private TruffleTierContext newContext(TruffleCompilable truffleAST, boolean finalize) {
-        return new TruffleTierContext(
-                        partialEvaluator,
-                        rootContext.compilerOptions,
-                        rootContext.debug,
-                        truffleAST,
-                        finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootContext.compilationId,
-                        rootContext.log,
-                        rootContext.task,
-                        rootContext.handler);
-    }
-
-    private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(partialEvaluator);
-    }
-
-    TruffleTierContext rootContext() {
-        return rootContext;
-    }
-
     Entry peRoot() {
-        final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
-        StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
-        postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        rootContext.debug.dump(DebugContext.BASIC_LEVEL, rootContext.graph, "After PE Tier");
-        return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
+        return pe(rootContext, null, DebugContext.BASIC_LEVEL);
+    }
+
+    private Entry pe(TruffleTierContext context, TruffleAssumption nodeRewritingAssumption, int dumpLevel) {
+        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(partialEvaluator);
+        partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
+        if (nodeRewritingAssumption != null) {
+            context.graph.getAssumptions().record(nodeRewritingAssumption);
+        }
+        final StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
+        postPartialEvaluationSuite.apply(context.graph, context);
+        context.debug.dump(dumpLevel, context.graph, "After PE Tier");
+        return new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, TruffleCompilable truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -135,7 +120,7 @@ final class GraphManager {
     }
 
     void finalizeGraph(Invoke invoke, TruffleCompilable truffleAST) {
-        final TruffleTierContext context = newContext(truffleAST, true);
+        final TruffleTierContext context = rootContext.createFinalizationContext(truffleAST);
         partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {

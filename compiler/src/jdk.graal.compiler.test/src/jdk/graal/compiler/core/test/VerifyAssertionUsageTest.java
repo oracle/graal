@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public class VerifyAssertionUsageTest {
     /**
      * Valid call with an assertion message.
      */
-    private static class ValidAssertUsage1 extends TestPhase {
+    private static final class ValidAssertUsage1 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert graph.hasLoops() : "Must have loops";
@@ -98,7 +98,7 @@ public class VerifyAssertionUsageTest {
      * Valid call with a trivial condition. Null check is trivial in that if it fails the error is
      * "clear" to spot by inspecting the code.
      */
-    private static class ValidAssertUsage2 extends TestPhase {
+    private static final class ValidAssertUsage2 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert graph != null;
@@ -108,7 +108,7 @@ public class VerifyAssertionUsageTest {
     /**
      * Valid usage of known assertion methods that are always safe to call.
      */
-    private static class ValidAssertUsage3 extends TestPhase {
+    private static final class ValidAssertUsage3 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert GraphOrder.assertSchedulableGraph(graph);
@@ -119,7 +119,7 @@ public class VerifyAssertionUsageTest {
     /**
      * Invalid assertion call: missing assertion message.
      */
-    private static class InvalidAssertUsage extends TestPhase {
+    private static final class InvalidAssertUsage extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert graph.hasLoops();
@@ -131,7 +131,7 @@ public class VerifyAssertionUsageTest {
      * further but call further eventually calls a method with an assertion error message so the
      * assertion usage is correct several levels down the call graph.
      */
-    private static class ValidCallGraphUsage1 extends TestPhase {
+    private static final class ValidCallGraphUsage1 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert verifyGraph(graph);
@@ -160,7 +160,7 @@ public class VerifyAssertionUsageTest {
      * Invalid call: call further is missing the assertion message and run calls callFurther so this
      * is a missing assertion message 1 level down the call graph.
      */
-    private static class InvalidCallGraphUsage1 extends TestPhase {
+    private static final class InvalidCallGraphUsage1 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert callFurther(graph);
@@ -182,7 +182,7 @@ public class VerifyAssertionUsageTest {
      * Invalid call graph usage: multiple calls to methods without an error message a second level
      * down the call graph.
      */
-    private static class InvalidCallGraphUsage2 extends TestPhase {
+    private static final class InvalidCallGraphUsage2 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert callFurther(graph);
@@ -207,7 +207,7 @@ public class VerifyAssertionUsageTest {
      * superfluous: callFurther does assertion checking and will always return true - thus the error
      * message in run is never used.
      */
-    private static class InvalidCallGraphUsage3 extends TestPhase {
+    private static final class InvalidCallGraphUsage3 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert callFurther(graph) : "Invalid superfluous message";
@@ -235,7 +235,7 @@ public class VerifyAssertionUsageTest {
     /**
      * Same as {@link InvalidCallGraphUsage3} but without multiple levels.
      */
-    private static class InvalidCallGraphUsage31 extends TestPhase {
+    private static final class InvalidCallGraphUsage31 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert verifyGraph(graph) : "Invalid superfluous message";
@@ -254,7 +254,7 @@ public class VerifyAssertionUsageTest {
      * the caller. Specifically assertSth has a return false path that would fire the error in the
      * caller run without a message.
      */
-    private static class InvalidCallGraphUsage4 extends TestPhase {
+    private static final class InvalidCallGraphUsage4 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert assertSth(graph);
@@ -282,7 +282,7 @@ public class VerifyAssertionUsageTest {
     /**
      * Invalid assertion usage: the path doSth() does not assert anything.
      */
-    private static class InvalidCallGraphUsage5 extends TestPhase {
+    private static final class InvalidCallGraphUsage5 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert assertSth(graph);
@@ -304,7 +304,7 @@ public class VerifyAssertionUsageTest {
      * - the paths where they are missing them is loop iterations so those are fine. They still
      * return {@code true} on all paths.
      */
-    private static class ValidCallGraphUsage5 extends TestPhase {
+    private static final class ValidCallGraphUsage5 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert assertSth(graph);
@@ -339,7 +339,7 @@ public class VerifyAssertionUsageTest {
      * Correct assertion usage: calling another method not via an assert but regularly where that
      * method itself calls an assertion.
      */
-    private static class ValidCallGraphUsage6 extends TestPhase {
+    private static final class ValidCallGraphUsage6 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             assert assertSth(graph);
@@ -421,7 +421,6 @@ public class VerifyAssertionUsageTest {
         testDebugUsageClass(InvalidCallGraphUsage5.class);
     }
 
-    @SuppressWarnings("try")
     private static void testDebugUsageClass(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -439,7 +438,7 @@ public class VerifyAssertionUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugCloseable s = debug.disableIntercept()) {
+                try (DebugCloseable _ = debug.disableIntercept()) {
                     vaU.apply(graph, context);
                 }
             }

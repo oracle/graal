@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.phases;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TimerKey;
@@ -33,7 +34,6 @@ import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class BaseTier<C> extends PhaseSuite<C> {
 
@@ -50,10 +50,17 @@ public class BaseTier<C> extends PhaseSuite<C> {
     @Override
     protected void run(StructuredGraph graph, C context) {
         for (BasePhase<? super C> phase : getPhases()) {
-            // Notify the runtime that most objects allocated in previous HIR phase are dead and can
-            // be reclaimed. This will lower the chance of allocation failure in the next HIR phase.
-            try (DebugCloseable timer = HIRHintedGC.start(graph.getDebug())) {
-                GraalServices.notifyLowMemoryPoint();
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            if (libgraal != null) {
+                /*
+                 * Notify the libgraal runtime that most objects allocated in previous HIR phase are
+                 * dead and can be reclaimed. This will lower the chance of allocation failure in
+                 * the next HIR phase.
+                 */
+                try (DebugCloseable timer = HIRHintedGC.start(graph.getDebug())) {
+                    libgraal.notifyLowMemoryPoint(false);
+                    libgraal.processReferences();
+                }
             }
             phase.apply(graph, context);
         }

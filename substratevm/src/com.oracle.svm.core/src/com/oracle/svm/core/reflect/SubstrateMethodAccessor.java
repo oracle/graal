@@ -29,55 +29,51 @@ import java.lang.reflect.Executable;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
+import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-interface MethodAccessorJDK19 {
-    Object invoke(Object obj, Object[] args, Class<?> caller);
-}
-
 @InternalVMMethod
-public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor, MethodAccessorJDK19 {
+public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor {
 
-    public static final int STATICALLY_BOUND = -1;
-    public static final int OFFSET_NOT_YET_COMPUTED = 0xdead0001;
+    public static final int VTABLE_INDEX_STATICALLY_BOUND = -1;
+    public static final int VTABLE_INDEX_NOT_YET_COMPUTED = -2;
+
     public static final int INTERFACE_TYPEID_CLASS_TABLE = -1;
+    public static final int INTERFACE_TYPEID_NOT_YET_COMPUTED = 0xdead0001;
+    public static final int INTERFACE_TYPEID_UNNEEDED = -3;
 
     /**
-     * The expected receiver type, which is checked before invoking the {@link #expandSignature}
-     * method, or null for static methods.
+     * The expected receiver type, which is checked before invoking the address from
+     * {@link #getExpandSignature()}, or {@code null} for static methods.
      */
     private final Class<?> receiverType;
     /** The actual value is computed after static analysis using a field value transformer. */
-    private int vtableOffset;
+    private int vtableIndex;
     private int interfaceTypeID;
     private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, ResolvedJavaMethod targetMethod, int vtableOffset,
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, MethodRef expandSignature, MethodRef directTarget, ResolvedJavaMethod targetMethod, int vtableIndex,
                     DynamicHub initializeBeforeInvoke, boolean callerSensitiveAdapter) {
         super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
         this.receiverType = receiverType;
-        this.vtableOffset = vtableOffset;
-        this.interfaceTypeID = OFFSET_NOT_YET_COMPUTED;
+        this.vtableIndex = vtableIndex;
+        this.interfaceTypeID = INTERFACE_TYPEID_NOT_YET_COMPUTED;
         this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
-    public int getVTableOffset() {
-        return vtableOffset;
+    public int getVTableIndex() {
+        return vtableIndex;
     }
 
     public int getInterfaceTypeID() {
@@ -103,36 +99,14 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
 
     private CFunctionPointer invokeTarget(Object obj) {
         /*
-         * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
+         * In case we have both a vtableIndex and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
-                target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
-            } else {
-                target = directTarget;
-            }
-            return target;
+        VMError.guarantee(vtableIndex != VTABLE_INDEX_NOT_YET_COMPUTED && interfaceTypeID != INTERFACE_TYPEID_NOT_YET_COMPUTED, "Missed recomputation at image build time");
+        if (vtableIndex == VTABLE_INDEX_STATICALLY_BOUND) {
+            return getDirectTarget();
         } else {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
-                long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(obj.getClass(), interfaceTypeID);
-
-                /*
-                 * Must also add in the vtable base offset as well as the offset within the table.
-                 */
-                long methodOffset = tableStartingOffset + vtableOffset;
-
-                target = BarrieredAccess.readWord(obj.getClass(), WordFactory.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
-            } else {
-                target = directTarget;
-            }
-            return target;
+            return (CFunctionPointer) LoadMethodByIndexNode.loadMethodByIndex(obj.getClass(), vtableIndex, interfaceTypeID);
         }
     }
 
@@ -142,14 +116,14 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
             throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
         }
         preInvoke(obj);
-        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, invokeTarget(obj));
+        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override
     public Object invoke(Object obj, Object[] args, Class<?> caller) {
         if (callerSensitiveAdapter) {
             preInvoke(obj);
-            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) expandSignature).invoke(obj, args, invokeTarget(obj), caller);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) getExpandSignature()).invoke(obj, args, invokeTarget(obj), caller);
         } else {
             /* Not a @CallerSensitiveAdapter method, so we can ignore the caller argument. */
             return invoke(obj, args);

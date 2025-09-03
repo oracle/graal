@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -88,9 +89,10 @@ public class ServiceCatalogSupport {
                 var omittedProviders = omittedServiceProviders.get(service);
                 providers = providers.stream()
                                 .filter(p -> !omittedProviders.contains(p))
-                                .collect(Collectors.toList());
+                                .toList();
             }
-            return providers;
+            SymbolEncoder encoder = SymbolEncoder.singleton();
+            return providers.stream().map(encoder::encodeClass).toList();
         });
     }
 }

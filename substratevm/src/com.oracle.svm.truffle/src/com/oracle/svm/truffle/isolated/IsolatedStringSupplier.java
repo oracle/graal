@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.truffle.isolated;
 
+import java.util.function.Supplier;
+
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-
-import java.util.function.Supplier;
 
 final class IsolatedStringSupplier implements Supplier<String> {
 
@@ -47,7 +49,8 @@ final class IsolatedStringSupplier implements Supplier<String> {
         return IsolatedCompileClient.get().unhand(resultHandle);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileContext.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileContext.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<String> getReasonAndStackTrace0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<Supplier<String>> reasonAndStackTraceHandle) {
         Supplier<String> supplier = IsolatedCompileContext.get().unhand(reasonAndStackTraceHandle);
         return IsolatedCompileContext.get().createStringInClient(supplier.get());

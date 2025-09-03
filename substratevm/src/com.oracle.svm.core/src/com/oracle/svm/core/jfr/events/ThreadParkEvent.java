@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -37,10 +36,13 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer;
+
+import jdk.graal.compiler.word.Word;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, boolean isAbsolute, long time) {
-        if (HasJfrSupport.get()) {
+        if (HasJfrSupport.get() && !isInternalPark(obj)) {
             emit0(startTicks, obj, isAbsolute, time);
         }
     }
@@ -68,12 +70,30 @@ public class ThreadParkEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark));
             JfrNativeEventWriter.putClass(data, parkedClass);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putLong(data, until);
             JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
+    }
+
+    /**
+     * Skip emission if this is an internal park ({@link JavaMonitorWaitEvent} or
+     * {@link JavaMonitorEnterEvent} will be emitted instead).
+     */
+    private static boolean isInternalPark(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        Class<?> parkedClass = obj.getClass();
+        if (JavaMonitorQueuedSynchronizer.class.isAssignableFrom(parkedClass)) {
+            return true;
+        }
+
+        Class<?> enclosingClass = parkedClass.getEnclosingClass();
+        return enclosingClass != null && JavaMonitorQueuedSynchronizer.class.isAssignableFrom(enclosingClass);
     }
 }

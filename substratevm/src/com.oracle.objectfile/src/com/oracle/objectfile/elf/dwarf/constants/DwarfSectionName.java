@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,13 +33,14 @@ package com.oracle.objectfile.elf.dwarf.constants;
 public enum DwarfSectionName {
     TEXT_SECTION(".text"),
     DW_STR_SECTION(".debug_str"),
+    DW_LINE_STR_SECTION(".debug_line_str"),
     DW_LINE_SECTION(".debug_line"),
     DW_FRAME_SECTION(".debug_frame"),
     DW_ABBREV_SECTION(".debug_abbrev"),
     DW_INFO_SECTION(".debug_info"),
-    DW_LOC_SECTION(".debug_loc"),
+    DW_LOCLISTS_SECTION(".debug_loclists"),
     DW_ARANGES_SECTION(".debug_aranges"),
-    DW_RANGES_SECTION(".debug_ranges");
+    DW_RNGLISTS_SECTION(".debug_rnglists");
 
     private final String value;
 

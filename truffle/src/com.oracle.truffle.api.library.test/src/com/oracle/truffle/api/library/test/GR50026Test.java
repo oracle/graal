@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 /*
@@ -119,7 +119,7 @@ public class GR50026Test extends AbstractLibraryTest {
     public static final class TestBindNode {
 
         @ExportMessage
-        String m0(@Bind("$node") Node node) {
+        String m0(@Bind Node node) {
             Assert.assertTrue(node.isAdoptable());
             return "m0";
         }
@@ -147,7 +147,7 @@ public class GR50026Test extends AbstractLibraryTest {
          * version if inlined nodes are used.
          */
         @SuppressWarnings("truffle")
-        String m0(@Cached InlinedBranchProfile node) {
+        String m0(@Cached BranchProfile node) {
             return "m0";
         }
     }

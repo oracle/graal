@@ -33,6 +33,11 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/**
+ * With layered images, this is a section that each layer has and that is present at runtime. It
+ * contains the addresses of various important locations and information about values to patch at
+ * runtime. See {@code ImageLayerSectionFeature} for details.
+ */
 public abstract class ImageLayerSection implements LayeredImageSingleton {
 
     protected final CGlobalData<Pointer> initialSectionStart;
@@ -53,10 +58,14 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
         HEAP_END,
         HEAP_RELOCATABLE_BEGIN,
         HEAP_RELOCATABLE_END,
-        HEAP_ANY_RELOCATABLE_POINTER,
         HEAP_WRITEABLE_BEGIN,
         HEAP_WRITEABLE_END,
-        NEXT_SECTION
+        HEAP_WRITEABLE_PATCHED_BEGIN,
+        HEAP_WRITEABLE_PATCHED_END,
+        CODE_START,
+        NEXT_SECTION,
+        VARIABLY_SIZED_DATA,
+        FIRST_SINGLETON,
     }
 
     private static ImageLayerSection singleton() {

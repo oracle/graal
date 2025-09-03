@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class Field_get04 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         public final byte byteField = 11;
         public final short shortField = 12;
         public final char charField = 13;

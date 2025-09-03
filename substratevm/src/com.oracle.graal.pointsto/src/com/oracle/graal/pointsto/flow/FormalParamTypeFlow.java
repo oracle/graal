@@ -52,8 +52,11 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
         return new FormalParamTypeFlow(this, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the parameter's
          * declared type.
@@ -69,7 +72,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     public String format(boolean withState, boolean withSource) {
         return "Parameter " + position + " of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,10 +48,10 @@ public class BC_instanceof01 extends JTTTest {
 
     }
 
-    private static class TestClass extends BaseClass implements IObject {
+    private static final class TestClass extends BaseClass implements IObject {
     }
 
-    private static class DerivedTestClass extends BaseClass implements IDerivedObject {
+    private static final class DerivedTestClass extends BaseClass implements IDerivedObject {
 
     }
 
@@ -89,7 +89,6 @@ public class BC_instanceof01 extends JTTTest {
     }
 
     @Override
-    @SuppressWarnings("try")
     protected Suites createSuites(OptionValues options) {
         return super.createSuites(new OptionValues(options, HighTier.Options.Inline, false));
     }

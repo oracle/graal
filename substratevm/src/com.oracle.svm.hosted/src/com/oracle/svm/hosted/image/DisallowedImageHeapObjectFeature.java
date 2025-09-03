@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,9 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.image.DisallowedImageHeapObjects.CANCELLABLE_CLASS;
-import static com.oracle.svm.core.image.DisallowedImageHeapObjects.LEGACY_CLEANER_CLASS;
+import static com.oracle.svm.core.image.DisallowedImageHeapObjects.MEMORY_SEGMENT_CLASS;
+import static com.oracle.svm.core.image.DisallowedImageHeapObjects.NIO_CLEANER_CLASS;
+import static com.oracle.svm.core.image.DisallowedImageHeapObjects.SCOPE_CLASS;
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -47,6 +49,7 @@ import javax.management.MBeanServerConnection;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -82,10 +85,16 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         access.registerObjectReachableCallback(FileDescriptor.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onFileDescriptorReachable(obj, this::error));
         access.registerObjectReachableCallback(Buffer.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onBufferReachable(obj, this::error));
         access.registerObjectReachableCallback(Cleaner.Cleanable.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
-        access.registerObjectReachableCallback(LEGACY_CLEANER_CLASS, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
+        access.registerObjectReachableCallback(NIO_CLEANER_CLASS, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
         access.registerObjectReachableCallback(Cleaner.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanerReachable(obj, this::error));
         access.registerObjectReachableCallback(ZipFile.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onZipFileReachable(obj, this::error));
         access.registerObjectReachableCallback(CANCELLABLE_CLASS, (a1, obj, reason) -> DisallowedImageHeapObjects.onCancellableReachable(obj, this::error));
+
+        if (ForeignSupport.isAvailable()) {
+            ForeignSupport foreignSupport = ForeignSupport.singleton();
+            access.registerObjectReachableCallback(MEMORY_SEGMENT_CLASS, (a1, obj, reason) -> foreignSupport.onMemorySegmentReachable(obj, this::error));
+            access.registerObjectReachableCallback(SCOPE_CLASS, (a1, obj, reason) -> foreignSupport.onScopeReachable(obj, this::error));
+        }
 
         if (SubstrateOptions.DetectUserDirectoriesInImageHeap.getValue()) {
             access.registerObjectReachableCallback(String.class, this::onStringReachable);

@@ -33,7 +33,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.genscavenge.RuntimeCodeCacheReachabilityAnalyzer.UnreachableObjectsException;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.word.Word;
@@ -49,19 +49,19 @@ import jdk.graal.compiler.word.Word;
  */
 final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     private final RuntimeCodeCacheReachabilityAnalyzer checkForUnreachableObjectsVisitor;
-    private final ObjectReferenceVisitor greyToBlackObjectVisitor;
+    private final GreyToBlackObjRefVisitor greyToBlackObjectVisitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeCodeCacheWalker(ObjectReferenceVisitor greyToBlackObjectVisitor) {
+    RuntimeCodeCacheWalker(GreyToBlackObjRefVisitor greyToBlackObjectVisitor) {
         this.checkForUnreachableObjectsVisitor = new RuntimeCodeCacheReachabilityAnalyzer();
         this.greyToBlackObjectVisitor = greyToBlackObjectVisitor;
     }
 
     @Override
     @DuplicatedInNativeCode
-    public boolean visitCode(CodeInfo codeInfo) {
+    public void visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
-            return true;
+            return;
         }
 
         /*
@@ -76,27 +76,29 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);
         if (tether != null && !isReachable(tether)) {
             int state = CodeInfoAccess.getState(codeInfo);
-            if (state == CodeInfo.STATE_INVALIDATED) {
+            if (state == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE) {
                 /*
-                 * The tether object is not reachable and the CodeInfo was already invalidated, so
-                 * we only need to visit references that will be accessed before the unmanaged
-                 * memory is freed during this garbage collection.
+                 * The tether object is not reachable and the CodeInfo was already removed from the
+                 * code cache, so we only need to visit references that will be accessed before the
+                 * unmanaged memory is freed during this garbage collection.
                  */
                 RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
-                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_UNREACHABLE);
-                return true;
+                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_PENDING_FREE);
+                return;
             }
 
             /*
-             * We don't want to keep heap objects unnecessarily alive, so invalidate and free the
-             * CodeInfo if it has weak references to otherwise unreachable objects. However, we need
-             * to make sure that all the objects that are accessed during the invalidation remain
-             * reachable. Those objects can only be collected in a subsequent garbage collection.
+             * We don't want to keep heap objects unnecessarily alive. So, we check if the CodeInfo
+             * has weak references to otherwise unreachable objects. If so, we remove the CodeInfo
+             * from the code cache and free the CodeInfo during the current safepoint (see
+             * RuntimeCodeCacheCleaner). However, we need to make sure that all the objects that are
+             * accessed while doing so remain reachable. Those objects can only be collected in a
+             * subsequent garbage collection.
              */
             if (state == CodeInfo.STATE_NON_ENTRANT || invalidateCodeThatReferencesUnreachableObjects && state == CodeInfo.STATE_CODE_CONSTANTS_LIVE && hasWeakReferenceToUnreachableObject(codeInfo)) {
                 RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
-                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_READY_FOR_INVALIDATION);
-                return true;
+                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE);
+                return;
             }
         }
 
@@ -110,7 +112,6 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
          */
         RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjectVisitor);
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjectVisitor);
-        return true;
     }
 
     private static boolean isReachable(Object possiblyForwardedObject) {
@@ -118,8 +119,11 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     }
 
     private boolean hasWeakReferenceToUnreachableObject(CodeInfo codeInfo) {
-        checkForUnreachableObjectsVisitor.initialize();
-        RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, checkForUnreachableObjectsVisitor);
-        return checkForUnreachableObjectsVisitor.hasUnreachableObjects();
+        try {
+            RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, checkForUnreachableObjectsVisitor);
+            return false;
+        } catch (UnreachableObjectsException e) {
+            return true;
+        }
     }
 }

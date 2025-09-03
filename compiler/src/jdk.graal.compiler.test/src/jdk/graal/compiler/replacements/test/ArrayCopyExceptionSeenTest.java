@@ -26,19 +26,26 @@ package jdk.graal.compiler.replacements.test;
 
 import static jdk.graal.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Test;
-
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ArrayCopyExceptionSeenTest extends GraalCompilerTest {
 
     @Override
     protected ProfileProvider getProfileProvider(ResolvedJavaMethod method) {
-        return NO_PROFILE_PROVIDER;
+        if (method == getResolvedJavaMethod("copyWithHandler")) {
+            return super.getProfileProvider(method);
+        } else {
+            return NO_PROFILE_PROVIDER;
+        }
     }
 
     static class A {
@@ -59,9 +66,36 @@ public class ArrayCopyExceptionSeenTest extends GraalCompilerTest {
         }
     }
 
+    public static boolean copyWithHandler(Object src, int srcPos, Object dst, int destPos, int length) {
+        try {
+            System.arraycopy(src, srcPos, dst, destPos, length);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     @Test
     public void testCopy() {
         getFinalGraph(getResolvedJavaMethod("copy"), new OptionValues(getInitialOptions(), StressInvokeWithExceptionNode, true));
     }
 
+    /**
+     * Tests that calls to {@link System#arraycopy} which result in an exception will be compiled
+     * with explicit exception handlers when recompiled.
+     */
+    @Test
+    public void testFailingCopy() throws InvalidInstalledCodeException {
+        var method = getResolvedJavaMethod("copyWithHandler");
+        Assert.assertEquals("No recorded deopt expected before first invocation.", 0, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
+        test(method, null, new Object[3], -1, new Object[3], 0, 1);
+        Assert.assertEquals("Single deopt expected after first invocation.", 1, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
+        /*
+         * Force a recompile which should create an explicit exception edge for the System.arraycopy
+         * call because an exception has been recorded at that position.
+         */
+        var code = getCode(method, null, true, true, getInitialOptions());
+        code.executeVarargs(new Object[3], -1, new Object[3], 0, 1);
+        Assert.assertEquals("No more deopts expected after recompile with explicit exception edge.", 1, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
+    }
 }

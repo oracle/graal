@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLan
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -75,6 +74,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class InnerAndOuterContextCancellationTest {
 
@@ -89,7 +90,15 @@ public class InnerAndOuterContextCancellationTest {
     private void setupSingleRun(boolean multiEngine, boolean multiThreading) {
         if (!multiEngine) {
             if (engine == null) {
-                engine = Engine.create();
+                Engine.Builder builder = Engine.newBuilder();
+                if (TruffleTestAssumptions.isOptimizingRuntime()) {
+                    // TODO GR-65179
+                    builder.option("engine.MaximumCompilations", "-1");
+                    if (TruffleTestAssumptions.isDeoptLoopDetectionAvailable()) {
+                        builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+                    }
+                }
+                engine = builder.build();
                 instrumentEnv = engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
             }
             Context.Builder builder = Context.newBuilder(ID).engine(engine);
@@ -101,6 +110,13 @@ public class InnerAndOuterContextCancellationTest {
             Context.Builder builder = Context.newBuilder(ID);
             if (multiThreading) {
                 builder.allowCreateThread(true);
+            }
+            if (TruffleTestAssumptions.isOptimizingRuntime()) {
+                // TODO GR-65179
+                builder.option("engine.MaximumCompilations", "-1");
+                if (TruffleTestAssumptions.isDeoptLoopDetectionAvailable()) {
+                    builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+                }
             }
             context = builder.build();
             instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
@@ -194,8 +210,8 @@ public class InnerAndOuterContextCancellationTest {
             context.initialize(ID);
             Source source = Source.newBuilder(ID, "CONTEXT(LOOP(infinity,STATEMENT))", this.getClass().getSimpleName()).build();
             CountDownLatch cancelLatch = new CountDownLatch(1);
-            AtomicReference<TruffleContext> innerTruffleContext = new AtomicReference<>();
-            captureInnerContext(cancelLatch, innerTruffleContext);
+            AtomicReference<Context> innerContext = new AtomicReference<>();
+            captureInnerContext(cancelLatch, innerContext);
             ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
             List<Future<?>> futures = new ArrayList<>();
             if (inner) {
@@ -204,7 +220,7 @@ public class InnerAndOuterContextCancellationTest {
                         cancelLatch.await();
                     } catch (InterruptedException ie) {
                     }
-                    Context innerCreatorApi = truffleContextToCreatorApi(innerTruffleContext.get());
+                    Context innerCreatorApi = innerContext.get();
                     innerCreatorApi.close(true);
                 }));
             }
@@ -236,7 +252,7 @@ public class InnerAndOuterContextCancellationTest {
         }
     }
 
-    private void captureInnerContext(CountDownLatch cancelLatch, AtomicReference<TruffleContext> innerTruffleContext) {
+    private void captureInnerContext(CountDownLatch cancelLatch, AtomicReference<Context> innerContext) {
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
             @Override
             public void onEnter(EventContext c, VirtualFrame frame) {
@@ -245,7 +261,8 @@ public class InnerAndOuterContextCancellationTest {
 
             @CompilerDirectives.TruffleBoundary
             private void onEnterBoundary() {
-                innerTruffleContext.set(InstrumentContext.get(null).env.getContext());
+                TruffleContext truffleContext = InstrumentContext.get(null).env.getContext();
+                innerContext.set(truffleContextToCreatorApi(truffleContext));
                 cancelLatch.countDown();
             }
 
@@ -261,16 +278,8 @@ public class InnerAndOuterContextCancellationTest {
     }
 
     private static Context truffleContextToCreatorApi(TruffleContext tc) {
-        try {
-            Field polyglotContextField = tc.getClass().getDeclaredField("polyglotContext");
-            polyglotContextField.setAccessible(true);
-            Object polyglotContext = polyglotContextField.get(tc);
-            Field creatorApiField = polyglotContext.getClass().getDeclaredField("api");
-            creatorApiField.setAccessible(true);
-            return (Context) creatorApiField.get(polyglotContext);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        Object polyglotContext = ReflectionUtils.getField(tc, "polyglotContext");
+        return (Context) ReflectionUtils.invoke(polyglotContext, "getContextAPI");
     }
 
     static class CancelInfiniteJob implements Callable<Void> {
@@ -294,10 +303,12 @@ public class InnerAndOuterContextCancellationTest {
     static class InfiniteJob implements Callable<Void> {
         private final Engine engine;
         private final ExecutorService cancelExecutorService;
+        private final List<CancelInfiniteJob> cancelInfiniteJobList;
 
-        InfiniteJob(Engine engine, ExecutorService cancelExecutorService) {
+        InfiniteJob(Engine engine, ExecutorService cancelExecutorService, List<CancelInfiniteJob> cancelInfiniteJobList) {
             this.engine = engine;
             this.cancelExecutorService = cancelExecutorService;
+            this.cancelInfiniteJobList = cancelInfiniteJobList;
         }
 
         @Override
@@ -307,27 +318,9 @@ public class InnerAndOuterContextCancellationTest {
             try (Context context = builder.build()) {
                 context.initialize(InstrumentationTestLanguage.ID);
                 CancelInfiniteJob cancelInfiniteJob = new CancelInfiniteJob(context, Thread.currentThread());
+                cancelInfiniteJobList.add(cancelInfiniteJob);
                 cancelExecutorService.submit(cancelInfiniteJob);
                 try {
-                    TruffleInstrument.Env instrEnv = engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
-                    instrEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
-                        @Override
-                        public void onEnter(EventContext c, VirtualFrame frame) {
-                            if (cancelInfiniteJob.thread == Thread.currentThread()) {
-                                cancelInfiniteJob.startLatch.countDown();
-                            }
-                        }
-
-                        @Override
-                        public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
-
-                        }
-
-                        @Override
-                        public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
-
-                        }
-                    });
                     context.eval(statements(Integer.MAX_VALUE));
                     fail();
                 } catch (PolyglotException e) {
@@ -359,8 +352,30 @@ public class InnerAndOuterContextCancellationTest {
         ExecutorService cancelExecutorService = Executors.newFixedThreadPool(jobs);
         List<Future<?>> futures = new ArrayList<>();
         try (Engine engine = Engine.create()) {
+            TruffleInstrument.Env instrEnv = engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            List<CancelInfiniteJob> cancelInfiniteJobList = new CopyOnWriteArrayList<>();
+            instrEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext c, VirtualFrame frame) {
+                    for (CancelInfiniteJob cancelInfiniteJob : cancelInfiniteJobList) {
+                        if (cancelInfiniteJob.thread == Thread.currentThread()) {
+                            cancelInfiniteJob.startLatch.countDown();
+                        }
+                    }
+                }
+
+                @Override
+                public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+                }
+            });
             for (int i = 0; i < jobs; i++) {
-                futures.add(executorService.submit(new InfiniteJob(engine, cancelExecutorService)));
+                futures.add(executorService.submit(new InfiniteJob(engine, cancelExecutorService, cancelInfiniteJobList)));
             }
 
             for (Future<?> future : futures) {

@@ -25,12 +25,12 @@ package com.oracle.truffle.espresso.preinit;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -143,15 +143,15 @@ public final class EspressoLanguageCache {
         });
     }
 
-    public ParserKlass getOrCreateParserKlass(ClassLoadingEnv env, StaticObject classLoader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
+    public ParserKlass getOrCreateParserKlass(ClassLoadingEnv env, StaticObject classLoader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         ensureFrozen();
         return parserKlassProvider.getParserKlass(env, classLoader, typeOrNull, bytes, info);
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
+    public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, EspressoLanguage language, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
                     LinkedKlass[] linkedInterfaces,
                     ClassRegistry.ClassDefinitionInfo info) {
         ensureFrozen();
-        return linkedKlassProvider.getLinkedKlass(env, description, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+        return linkedKlassProvider.getLinkedKlass(env, language, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
     }
 }

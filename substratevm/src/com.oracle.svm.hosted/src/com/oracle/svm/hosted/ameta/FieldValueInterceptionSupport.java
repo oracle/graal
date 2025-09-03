@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,6 +57,7 @@ import com.oracle.svm.hosted.analysis.FieldValueComputer;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -209,10 +211,8 @@ public final class FieldValueInterceptionSupport {
     public boolean isValueAvailable(AnalysisField field) {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
-            if (transformation.getFieldValueTransformer() instanceof FieldValueTransformerWithAvailability transformerWithAvailability) {
-                if (!transformerWithAvailability.isAvailable()) {
-                    return false;
-                }
+            if (!transformation.getFieldValueTransformer().isAvailable()) {
+                return false;
             }
         } else if (interceptor instanceof FieldValueComputer computer) {
             if (!computer.isAvailable()) {
@@ -220,6 +220,20 @@ public final class FieldValueInterceptionSupport {
             }
         }
         return true;
+    }
+
+    /**
+     * Returns true if a field value interceptor ({@link FieldValueTransformation} or
+     * {@link FieldValueComputer}) has been registered for this field. Unlike
+     * {@link #hasFieldValueTransformer(AnalysisField)}, calling this method is side effect free.
+     */
+    public static boolean hasFieldValueInterceptor(AnalysisField field) {
+        var interceptor = field.getFieldValueInterceptor();
+        if (interceptor != null && interceptor != INTERCEPTOR_ACCESSED_MARKER) {
+            VMError.guarantee(interceptor instanceof FieldValueTransformation || interceptor instanceof FieldValueComputer);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -364,6 +378,7 @@ public final class FieldValueInterceptionSupport {
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         if (unknownObjectField != null) {
+            checkMisplacedAnnotation(field.getStorageKind().isObject(), field);
             return new FieldValueComputer(
                             ReflectionUtil.newInstance(unknownObjectField.availability()),
                             extractAnnotationTypes(field, unknownObjectField.types(), unknownObjectField.fullyQualifiedTypes()),
@@ -371,12 +386,38 @@ public final class FieldValueInterceptionSupport {
         }
         UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
         if (unknownPrimitiveField != null) {
+            checkMisplacedAnnotation(field.getStorageKind().isPrimitive(), field);
             return new FieldValueComputer(
                             ReflectionUtil.newInstance(unknownPrimitiveField.availability()),
                             List.of(field.getType().getJavaClass()),
                             false);
         }
         return null;
+    }
+
+    /**
+     * For compatibility reasons, we cannot unify {@link UnknownObjectField} and
+     * {@link UnknownPrimitiveField} into a single annotation, but we can at least notify the
+     * developers if the annotation is misplaced, e.g. {@link UnknownObjectField} is used on a
+     * primitive field and vice versa.
+     */
+    private static void checkMisplacedAnnotation(boolean condition, AnalysisField field) {
+        if (!condition) {
+            String fieldType;
+            Class<? extends Annotation> expectedAnnotationType;
+            Class<? extends Annotation> usedAnnotationType;
+            if (field.getStorageKind().isObject()) {
+                fieldType = "object";
+                expectedAnnotationType = UnknownObjectField.class;
+                usedAnnotationType = UnknownPrimitiveField.class;
+            } else {
+                fieldType = "primitive";
+                expectedAnnotationType = UnknownPrimitiveField.class;
+                usedAnnotationType = UnknownObjectField.class;
+            }
+            throw UserError.abort("@%s should not be used on %s fields, use @%s on %s instead.", ClassUtil.getUnqualifiedName(usedAnnotationType),
+                            fieldType, ClassUtil.getUnqualifiedName(expectedAnnotationType), field.format("%H.%n"));
+        }
     }
 
     private static List<Class<?>> extractAnnotationTypes(AnalysisField field, Class<?>[] types, String[] fullyQualifiedTypes) {

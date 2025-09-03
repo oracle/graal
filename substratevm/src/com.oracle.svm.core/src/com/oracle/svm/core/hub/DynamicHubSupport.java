@@ -24,44 +24,54 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.EnumSet;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
-@AutomaticallyRegisteredImageSingleton
 public final class DynamicHubSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxTypeId;
     @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static DynamicHubSupport singleton() {
-        return ImageSingletons.lookup(DynamicHubSupport.class);
+    public static DynamicHubSupport currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(DynamicHubSupport.class, false, true);
     }
 
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static DynamicHubSupport forLayer(int layerIndex) {
-        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
-            return ImageSingletons.lookup(DynamicHubSupport.class);
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
+        if (Platform.includedIn(NATIVE_ONLY.class)) {
+            return InstanceReferenceMapDecoder.getReferenceMap(hub.getReferenceMapCompressedOffset());
+        } else {
+            /* Remove once a heap base is supported, see GR-68847. */
+            byte[] referenceMapEncoding = MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, 0).referenceMapEncoding;
+            return InstanceReferenceMapDecoder.getReferenceMap(NonmovableArrays.fromImageHeap(referenceMapEncoding), hub.getReferenceMapCompressedOffset());
         }
-        DynamicHubSupport[] supports = MultiLayeredImageSingleton.getAllLayers(DynamicHubSupport.class);
-        return supports[layerIndex];
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasEmptyReferenceMap(DynamicHub hub) {
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(hub);
+        return InstanceReferenceMapDecoder.isEmpty(referenceMap);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -83,9 +93,9 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
         this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public NonmovableArray<Byte> getReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public byte[] getReferenceMapEncoding() {
+        return referenceMapEncoding;
     }
 
     @Override

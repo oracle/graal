@@ -63,9 +63,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+        final TruffleTierContext context = TruffleTierContext.createInitialContext(
+                        partialEvaluator,
                         compiler.getOrCreateCompilerOptions(callTarget),
-                        getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+                        getDebugContext(), callTarget,
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilationTask() {
 
@@ -84,7 +85,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                                 return false;
                             }
                         }, null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator,
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(
                         new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);
         return context.graph;

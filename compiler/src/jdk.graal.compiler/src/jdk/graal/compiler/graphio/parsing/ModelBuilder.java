@@ -40,8 +40,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -137,7 +137,7 @@ public class ModelBuilder implements Builder {
         }
     }
 
-    private static class ErrorMessages {
+    private static final class ErrorMessages {
         public static String edgeStartNodeNotExists(String label, int node) {
             return String.format("Start node for edge %s does not exist: %d", label, node);
         }
@@ -181,7 +181,7 @@ public class ModelBuilder implements Builder {
     /**
      * Content digests for individual graph types.
      */
-    private Map<String, byte[]> lastDigests = new HashMap<>();
+    private Map<String, byte[]> lastDigests = new LinkedHashMap<>();
 
     private final Deque<Object> stack = new ArrayDeque<>();
 
@@ -332,7 +332,7 @@ public class ModelBuilder implements Builder {
         pushContext();
         if (currentNode != null) {
             // nested graph -> no duplicates should be recorded or checked.
-            lastDigests = new HashMap<>();
+            lastDigests = new LinkedHashMap<>();
         }
         currentGraph = g;
         entity = g;
@@ -518,7 +518,7 @@ public class ModelBuilder implements Builder {
         entity = group;
         this.folder = group;
         if (startNew) {
-            lastDigests = new HashMap<>();
+            lastDigests = new LinkedHashMap<>();
         }
         return group;
     }
@@ -655,12 +655,12 @@ public class ModelBuilder implements Builder {
         popContext();
     }
 
-    static final Set<String> SYSTEM_PROPERTIES = new HashSet<>(Arrays.asList(
+    static final Set<String> SYSTEM_PROPERTIES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
                     PROPNAME_HAS_PREDECESSOR,
                     PROPNAME_NAME,
                     PROPNAME_CLASS,
                     PROPNAME_ID,
-                    PROPNAME_IDX, PROPNAME_BLOCK));
+                    PROPNAME_IDX, PROPNAME_BLOCK)));
 
     @Override
     public void setGroupName(String name, String shortName) {
@@ -821,7 +821,7 @@ public class ModelBuilder implements Builder {
         InputGraph graph = currentGraph;
         assert (inputEdges != null && successorEdges != null) || (graph.getNodes().isEmpty());
 
-        Set<InputNode> nodesWithSuccessor = new HashSet<>();
+        Set<InputNode> nodesWithSuccessor = new LinkedHashSet<>();
         for (EdgeInfo e : successorEdges) {
             assert !e.input;
             char fromIndex = e.num;

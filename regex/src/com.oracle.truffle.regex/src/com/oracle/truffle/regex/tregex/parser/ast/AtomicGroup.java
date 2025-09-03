@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,14 +83,14 @@ public final class AtomicGroup extends RegexASTSubtreeRootNode {
      * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsLow() {
-        return getGroup().getEnclosedCaptureGroupsLow();
+        return getGroup().getEnclosedCaptureGroupsLo();
     }
 
     /**
      * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsHigh() {
-        return getGroup().getEnclosedCaptureGroupsHigh();
+        return getGroup().getEnclosedCaptureGroupsHi();
     }
 
     @Override

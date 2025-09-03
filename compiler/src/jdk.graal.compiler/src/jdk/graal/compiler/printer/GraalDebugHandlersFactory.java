@@ -31,8 +31,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.Verbosity;
@@ -43,8 +42,8 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
-@ServiceProvider(DebugHandlersFactory.class)
-public class GraalDebugHandlersFactory implements DebugHandlersFactory {
+@ServiceProvider(DebugDumpHandlersFactory.class)
+public class GraalDebugHandlersFactory implements DebugDumpHandlersFactory {
 
     private final SnippetReflectionProvider snippetReflection;
 
@@ -57,22 +56,21 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     }
 
     @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
-        List<DebugHandler> handlers = new ArrayList<>();
+    public List<DebugDumpHandler> createHandlers(OptionValues options) {
+        List<DebugDumpHandler> handlers = new ArrayList<>();
         handlers.add(new GraphPrinterDumpHandler((debug, graph) -> new BinaryGraphPrinter(debug, snippetReflection)));
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
             handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createStringPrinter(snippetReflection)));
         }
         handlers.add(new NodeDumper());
         handlers.add(new CFGPrinterObserver());
-        handlers.add(new NoDeadCodeVerifyHandler());
         if (DebugOptions.PrintBlockMapping.getValue(options)) {
             handlers.add(new BciBlockMappingDumpHandler());
         }
         return handlers;
     }
 
-    private static class NodeDumper implements DebugDumpHandler {
+    private static final class NodeDumper implements DebugDumpHandler {
         @Override
         public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
             if (debug.isLogEnabled()) {

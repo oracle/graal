@@ -26,7 +26,7 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.staticobject.StaticShape;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.staticobject.ExtensionFieldObjectFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -43,7 +43,7 @@ public class RedefineAddedField extends Field {
         super(holder, linkedField, pool);
         if (!isDelegation) {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(holder.getKlass().getLanguage());
-            shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), linkedField.getParserField().isFinal());
+            shapeBuilder.property(linkedField, LinkedField.getPropertyType(linkedField.getParserField()), linkedField.getParserField().isFinal());
             this.extensionShape = shapeBuilder.build(FieldStorageObject.class, ExtensionFieldObjectFactory.class);
         }
         if (linkedField.getParserField().isStatic() && !isDelegation) {

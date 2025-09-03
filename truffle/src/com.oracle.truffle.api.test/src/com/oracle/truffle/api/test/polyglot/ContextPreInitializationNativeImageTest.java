@@ -42,9 +42,13 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.Id;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
@@ -66,7 +70,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Note this test class currently depends on being executed in its own SVM image as it uses the
@@ -127,6 +135,20 @@ public class ContextPreInitializationNativeImageTest {
         TruffleTestAssumptions.assumeAOT();
         StaticObjectModelTest somTest = Language.CONTEXT_REF.get(null).staticObjectModelTest;
         somTest.testShapeAllocatedOnContextPreInit();
+    }
+
+    @Test
+    public void testInternalResourceFilesFromBuildTimeValidInRuntime() throws IOException {
+        // only supported in AOT
+        TruffleTestAssumptions.assumeAOT();
+        TestContext testContext = Language.CONTEXT_REF.get(null);
+        assertTrue(testContext.home.isAbsolute());
+        assertTrue(testContext.home.isDirectory());
+        assertTrue(testContext.lib.isAbsolute());
+        assertTrue(testContext.lib.isDirectory());
+        assertTrue(testContext.boot.isAbsolute());
+        assertTrue(testContext.boot.isRegularFile());
+        assertEquals("boot library", new String(testContext.boot.readAllBytes(), StandardCharsets.UTF_8));
     }
 
     /**
@@ -324,12 +346,33 @@ public class ContextPreInitializationNativeImageTest {
         final StaticObjectModelTest staticObjectModelTest;
         boolean patched;
         int threadLocalActions;
+        TruffleFile home;
+        TruffleFile lib;
+        TruffleFile boot;
 
         TestContext(Env env, Language language) {
             this.env = env;
             staticObjectModelTest = new StaticObjectModelTest(env, language);
         }
 
+    }
+
+    @Id(value = LanguageHome.ID, componentId = LANGUAGE, optional = true)
+    static final class LanguageHome implements InternalResource {
+        static final String ID = "home";
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+            Path lib = targetDirectory.resolve("lib");
+            Files.createDirectories(lib);
+            Path coreLib = lib.resolve("boot.txt");
+            Files.writeString(coreLib, "boot library");
+        }
+
+        @Override
+        public String versionHash(Env env) {
+            return "42";
+        }
     }
 
     @TruffleLanguage.Registration(id = LANGUAGE, name = LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
@@ -395,6 +438,20 @@ public class ContextPreInitializationNativeImageTest {
             // No need to call `testShapeAllocatedOnContextPreInit()` here.
             // During context pre-init, it is equivalent to `testObjectAllocatedOnContextPreInit()`.
             context.staticObjectModelTest.testObjectAllocatedOnContextPreInit();
+
+            /*
+             * Query the internal resource in the context pre-initialization time and keep files
+             * referring to lib folder bootstrap library file.
+             */
+            TruffleFile homeRoot = context.env.getInternalResource(LanguageHome.ID);
+            assertNotNull(homeRoot);
+            TruffleFile libFolder = homeRoot.resolve("lib");
+            assertTrue(libFolder.isDirectory());
+            TruffleFile bootFile = libFolder.resolve("boot.txt");
+            assertTrue(bootFile.isRegularFile());
+            context.home = homeRoot;
+            context.lib = libFolder;
+            context.boot = bootFile;
         }
 
         @Override

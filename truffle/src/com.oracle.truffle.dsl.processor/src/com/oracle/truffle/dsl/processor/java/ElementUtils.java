@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.java;
 
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PROTECTED;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.annotation.Repeatable;
@@ -57,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -68,10 +74,10 @@ import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -84,10 +90,13 @@ import javax.lang.model.util.Types;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames.NameImpl;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 
@@ -104,13 +113,57 @@ public class ElementUtils {
 
     public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
-        TypeElement typeElement = context.getTypeElement(type);
+        return findMethod(context.getTypeElement(type), methodName);
+    }
+
+    public static ExecutableElement findMethod(TypeElement typeElement, String methodName) {
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
             if (method.getSimpleName().contentEquals(methodName)) {
                 return method;
             }
         }
         return null;
+    }
+
+    /**
+     * Finds the method named {@code methodName} defined by {@code typeElement}. Returns
+     * {@code null} if no method exists. Throws an error if more than one method exists.
+     * <p>
+     * Overloads are disambiguated using the arity and types of {@code parameters}. These elements
+     * can be null, in which case the parameter type is not checked.
+     */
+    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName, TypeMirror[] parameterTypes) {
+        List<ExecutableElement> matches = ElementFilter.methodsIn(typeElement.getEnclosedElements()).stream() //
+                        .filter(method -> method.getSimpleName().toString().equals(methodName)) //
+                        .filter(method -> !method.getModifiers().contains(STATIC)) //
+                        .filter(method -> parametersMatch(parameterTypes, method)) //
+                        .collect(Collectors.toList());
+        if (matches.isEmpty()) {
+            return null;
+        }
+        if (matches.size() > 1) {
+            throw new AssertionError(String.format("Type %s defines more than one method named %s (parameter types: %s)", typeElement.getSimpleName(), methodName, parameterTypes));
+        }
+        return matches.getFirst();
+    }
+
+    private static boolean parametersMatch(TypeMirror[] parameterTypes, ExecutableElement method) {
+        if (parameterTypes == null) {
+            return true;
+        }
+        List<? extends VariableElement> params = method.getParameters();
+        if (parameterTypes.length != params.size()) {
+            return false;
+        }
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (parameterTypes[i] == null) {
+                continue;
+            }
+            if (!ElementUtils.typeEquals(parameterTypes[i], params.get(i).asType())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static List<ExecutableElement> findAllPublicMethods(DeclaredType type, String methodName) {
@@ -189,8 +242,25 @@ public class ElementUtils {
         return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
+    public static TypeElement getTypeElement(DeclaredType type) {
+        return (TypeElement) type.asElement();
+    }
+
+    public static TypeElement findTypeElement(CodeTypeElement typeElement, String name) {
+        for (TypeElement nestedType : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
+            if (nestedType.getSimpleName().toString().equals(name)) {
+                return nestedType;
+            }
+        }
+        return null;
+    }
+
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
+        return findExecutableElement(type.asElement(), name);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name) {
+        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(element.getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
             if (executableElement.getSimpleName().contentEquals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
@@ -200,8 +270,11 @@ public class ElementUtils {
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name, int argumentCount) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
-        for (ExecutableElement executableElement : elements) {
+        return findExecutableElement(type.asElement(), name, argumentCount);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name, int argumentCount) {
+        for (ExecutableElement executableElement : ElementFilter.methodsIn(element.getEnclosedElements())) {
             if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().contentEquals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
@@ -239,6 +312,11 @@ public class ElementUtils {
     public static String createReferenceName(ExecutableElement method) {
         StringBuilder b = new StringBuilder();
 
+        // if (method.getEnclosingElement() != null) {
+        // b.append(method.getEnclosingElement().getSimpleName());
+        // b.append('#');
+        // }
+
         b.append(method.getSimpleName().toString());
         b.append("(");
 
@@ -251,6 +329,10 @@ public class ElementUtils {
 
         b.append(")");
         return b.toString();
+    }
+
+    public static TypeMirror boxType(TypeMirror type) {
+        return boxType(ProcessorContext.getInstance(), type);
     }
 
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
@@ -266,6 +348,38 @@ public class ElementUtils {
 
     public static DeclaredType getDeclaredType(TypeElement typeElem, TypeMirror... typeArgs) {
         return new DeclaredCodeTypeMirror(typeElem, Arrays.asList(typeArgs));
+    }
+
+    /**
+     * This method converts a raw type to a generic type with wildcard arguments.
+     *
+     * For example, {@code List} becomes {@code List<?>}.
+     */
+    public static TypeMirror rawTypeToWildcardedType(ProcessorContext context, TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return type;
+        }
+        DeclaredType declaredType = (DeclaredType) type;
+        TypeElement typeElement = (TypeElement) declaredType.asElement();
+        List<? extends TypeParameterElement> typeParameters = typeElement.getTypeParameters();
+        if (typeParameters.isEmpty()) {
+            return type;
+        }
+        if (declaredType instanceof DeclaredCodeTypeMirror) {
+            // Special case: generated types
+            List<TypeMirror> typeArguments = new ArrayList<>(typeParameters.size());
+            for (int i = 0; i < typeArguments.size(); i++) {
+                typeArguments.add(new WildcardTypeMirror(null, null));
+            }
+            return new DeclaredCodeTypeMirror(typeElement, typeArguments);
+        }
+
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        TypeMirror[] typeArguments = new TypeMirror[typeParameters.size()];
+        for (int i = 0; i < typeArguments.length; i++) {
+            typeArguments[i] = typeUtils.getWildcardType(null, null);
+        }
+        return typeUtils.getDeclaredType(typeElement, typeArguments);
     }
 
     public static List<AnnotationMirror> collectAnnotations(AnnotationMirror markerAnnotation, String elementName, Element element, DeclaredType annotationClass) {
@@ -645,11 +759,11 @@ public class ElementUtils {
     }
 
     private static String getWildcardName(WildcardType type) {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b = new StringBuilder("?");
         if (type.getExtendsBound() != null) {
-            b.append("? extends ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" extends ").append(getSimpleName(type.getExtendsBound()));
         } else if (type.getSuperBound() != null) {
-            b.append("? super ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" super ").append(getSimpleName(type.getSuperBound()));
         }
         return b.toString();
     }
@@ -725,6 +839,47 @@ public class ElementUtils {
         return qualifiedName;
     }
 
+    public static TypeMirror fromQualifiedName(String name) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeKind primitiveType;
+        switch (name) {
+            case "boolean":
+                primitiveType = TypeKind.BOOLEAN;
+                break;
+            case "byte":
+                primitiveType = TypeKind.BYTE;
+                break;
+            case "char":
+                primitiveType = TypeKind.CHAR;
+                break;
+            case "double":
+                primitiveType = TypeKind.DOUBLE;
+                break;
+            case "short":
+                primitiveType = TypeKind.SHORT;
+                break;
+            case "float":
+                primitiveType = TypeKind.FLOAT;
+                break;
+            case "int":
+                primitiveType = TypeKind.INT;
+                break;
+            case "long":
+                primitiveType = TypeKind.LONG;
+                break;
+            case "void":
+                primitiveType = TypeKind.VOID;
+                break;
+            case "null":
+                primitiveType = TypeKind.NULL;
+                break;
+            default:
+                return context.getDeclaredType(name);
+        }
+        return context.getEnvironment().getTypeUtils().getPrimitiveType(primitiveType);
+
+    }
+
     public static String getQualifiedName(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
@@ -756,7 +911,7 @@ public class ElementUtils {
             case ERROR:
                 throw new CompileErrorException("Type error " + mirror);
             case EXECUTABLE:
-                return ((ExecutableType) mirror).toString();
+                return mirror.toString();
             case NONE:
                 return "$none";
             default:
@@ -1018,10 +1173,21 @@ public class ElementUtils {
 
     public static String createConstantName(String simpleName) {
         StringBuilder b = new StringBuilder(simpleName);
+
         int i = 0;
         while (i < b.length()) {
             char c = b.charAt(i);
-            if (Character.isUpperCase(c) && i != 0) {
+            if (Character.isUpperCase(c) && i != 0 &&
+                            Character.isUpperCase(b.charAt(i - 1))) {
+                b.setCharAt(i, Character.toLowerCase(c));
+            }
+            i++;
+        }
+
+        i = 0;
+        while (i < b.length()) {
+            char c = b.charAt(i);
+            if (i > 0 && Character.isUpperCase(b.charAt(i - 1)) && Character.isUpperCase(c)) {
                 b.insert(i, '_');
                 i++;
             } else if (Character.isLowerCase(c)) {
@@ -1136,7 +1302,7 @@ public class ElementUtils {
         return value.accept(new AnnotationValueVisitorImpl(), null);
     }
 
-    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
+    private static final class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
 
         @Override
         public Object visitBoolean(boolean b, Void p) {
@@ -1258,7 +1424,7 @@ public class ElementUtils {
         return Character.toLowerCase(name.charAt(0)) + name.substring(1, name.length());
     }
 
-    private static ExecutableElement getDeclaredMethod(TypeElement element, String name, TypeMirror[] params) {
+    public static ExecutableElement getDeclaredMethod(TypeElement element, String name, TypeMirror[] params) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(element.getEnclosedElements());
         method: for (ExecutableElement method : methods) {
             if (!method.getSimpleName().toString().equals(name)) {
@@ -1380,6 +1546,24 @@ public class ElementUtils {
                 return false;
             }
         }
+    }
+
+    public static boolean typeEqualsAny(TypeMirror type1, TypeMirror... types) {
+        for (TypeMirror type2 : types) {
+            if (typeEquals(type1, type2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean typeEqualsAny(TypeMirror type1, List<? extends TypeMirror> types) {
+        for (TypeMirror type2 : types) {
+            if (typeEquals(type1, type2)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean areTypesCompatible(TypeMirror type1, TypeMirror type2) {
@@ -1611,6 +1795,52 @@ public class ElementUtils {
             return false;
         }
         return true;
+    }
+
+    public static boolean isOverridable(ExecutableElement ex) {
+        Set<Modifier> mods = ex.getModifiers();
+        return !mods.contains(FINAL) && !mods.contains(STATIC) && (mods.contains(PUBLIC) || mods.contains(PROTECTED));
+    }
+
+    public static List<ExecutableElement> getOverridableMethods(TypeElement t) {
+        return ElementFilter.methodsIn(t.getEnclosedElements()).stream() //
+                        .filter(ElementUtils::isOverridable).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns true if e1 is an override of e2.
+     */
+    public static boolean isOverride(ExecutableElement e1, ExecutableElement e2) {
+        if (!isOverridable(e2)) {
+            return false;
+        }
+
+        Set<Modifier> mods1 = e1.getModifiers();
+        Set<Modifier> mods2 = e2.getModifiers();
+        if (mods2.contains(PUBLIC)) {
+            if (!mods1.contains(PUBLIC)) {
+                return false;
+            }
+        } else { // e2 is protected
+            if (!mods1.contains(PUBLIC) && !mods1.contains(PROTECTED)) {
+                return false;
+            }
+        }
+        if (mods1.contains(STATIC)) {
+            return false;
+        }
+
+        // NB: we don't check covariance of return type or contravariance of parameters.
+        return signatureEquals(e1, e2);
+    }
+
+    public static ExecutableElement findOverride(TypeElement subclass, ExecutableElement method) {
+        for (ExecutableElement subclassMethod : ElementFilter.methodsIn(subclass.getEnclosedElements())) {
+            if (ElementUtils.isOverride(subclassMethod, method)) {
+                return subclassMethod;
+            }
+        }
+        return null;
     }
 
     public static boolean elementEquals(Element element1, Element element2) {
@@ -1946,6 +2176,56 @@ public class ElementUtils {
         }
 
         return Idempotence.UNKNOWN;
+    }
+
+    /**
+     * Loads all members in declaration order but filters members of truffle Node and Object. Useful
+     * to load all members of template types.
+     */
+    public static List<Element> loadFilteredMembers(TypeElement templateType) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        List<Element> elements = loadAllMembers(templateType);
+        Iterator<Element> elementIterator = elements.iterator();
+        while (elementIterator.hasNext()) {
+            Element element = elementIterator.next();
+            // not interested in methods of Node
+            if (typeEquals(element.getEnclosingElement().asType(), context.getTypes().Node)) {
+                elementIterator.remove();
+            }
+            // not interested in methods of Object
+            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
+                elementIterator.remove();
+            }
+        }
+        return elements;
+    }
+
+    /**
+     * Loads all members in declaration order. This returns members of the entire type hierarcy.
+     */
+    public static List<Element> loadAllMembers(TypeElement templateType) {
+        return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(ProcessorContext.getInstance().getEnvironment(), templateType));
+    }
+
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
+     */
+    @SuppressWarnings("unused")
+    public static List<Element> newElementList(List<? extends Element> src) {
+        List<Element> workaround = new ArrayList<Element>(src);
+        return workaround;
+    }
+
+    public static ExecutableElement findOverride(ExecutableElement method, TypeElement type) {
+        TypeElement searchType = type;
+        while (searchType != null && !elementEquals(method.getEnclosingElement(), searchType)) {
+            ExecutableElement override = findInstanceMethod(searchType, method.getSimpleName().toString(), method.getParameters().stream().map(VariableElement::asType).toArray(TypeMirror[]::new));
+            if (override != null) {
+                return override;
+            }
+            searchType = castTypeElement(searchType.getSuperclass());
+        }
+        return null;
     }
 
 }

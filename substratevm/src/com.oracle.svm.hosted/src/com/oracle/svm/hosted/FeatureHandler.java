@@ -48,8 +48,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -182,12 +182,19 @@ public class FeatureHandler {
             registerFeature(featureClass, specificClassProvider, access);
         }
 
+        List<ClassLoader> featureClassLoaders = loader.classLoaderSupport.getClassLoaders();
         for (String featureName : Options.userEnabledFeatures()) {
-            Class<?> featureClass;
-            try {
-                featureClass = Class.forName(featureName, true, loader.getClassLoader());
-            } catch (ClassNotFoundException e) {
-                throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
+            Class<?> featureClass = null;
+            for (ClassLoader featureClassLoader : featureClassLoaders) {
+                try {
+                    featureClass = Class.forName(featureName, true, featureClassLoader);
+                    break;
+                } catch (ClassNotFoundException e) {
+                    /* Ignore */
+                }
+            }
+            if (featureClass == null) {
+                throw UserError.abort("User-enabled Feature %s class not found. Ensure that the name is correct and that the class is on the class- or module-path.", featureName);
             }
             registerFeature(featureClass, specificClassProvider, access);
         }

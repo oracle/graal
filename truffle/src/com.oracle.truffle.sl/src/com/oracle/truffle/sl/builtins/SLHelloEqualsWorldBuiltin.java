@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,13 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
@@ -60,11 +60,14 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
     @TruffleBoundary
     public TruffleString change() {
         return Truffle.getRuntime().iterateFrames((f) -> {
-            Frame frame = f.getFrame(FrameAccess.READ_WRITE);
-            int count = frame.getFrameDescriptor().getNumberOfSlots();
-            for (int i = 0; i < count; i++) {
-                if (SLStrings.HELLO.equalsUncached((TruffleString) frame.getFrameDescriptor().getSlotName(i), SLLanguage.STRING_ENCODING)) {
-                    frame.setObject(i, SLStrings.WORLD);
+            SLRootNode root = (SLRootNode) ((RootCallTarget) f.getCallTarget()).getRootNode();
+            Object[] names = root.getLocalNames(f);
+            for (int i = 0; i < names.length; i++) {
+                Object slotName = names[i];
+                if (slotName != null && SLStrings.HELLO.equalsUncached((TruffleString) slotName, SLLanguage.STRING_ENCODING)) {
+                    Object[] values = root.getLocalValues(f);
+                    values[i] = SLStrings.WORLD;
+                    root.setLocalValues(f, values);
                     break;
                 }
             }

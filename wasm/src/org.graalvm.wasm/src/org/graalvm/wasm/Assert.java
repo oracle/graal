@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,43 +40,52 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Locale;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Assert {
 
     public static void assertByteEqual(byte b1, byte b2, Failure failure) throws WasmException {
         if (b1 != b2) {
-            fail(failure, format("%s: 0x%02X should = 0x%02X", failure.name, b1, b2));
+            fail(failure, "%s: 0x%02X should = 0x%02X", failure.name, b1, b2);
         }
     }
 
     public static void assertByteEqual(byte b1, byte b2, String message, Failure failure) throws WasmException {
         if (b1 != b2) {
-            fail(failure, format("%s: 0x%02X should = 0x%02X", message, b1, b2));
+            fail(failure, "%s: 0x%02X should = 0x%02X", message, b1, b2);
         }
     }
 
     public static void assertIntEqual(int actual, int expected, Failure failure) throws WasmException {
-        assertIntEqual(actual, expected, failure.name, failure);
+        assertIntEqual(actual, expected, failure, failure.name);
     }
 
-    public static void assertIntEqual(int actual, int expected, String message, Failure failure) throws WasmException {
+    public static void assertIntEqual(int actual, int expected, Failure failure, String message) throws WasmException {
         if (actual != expected) {
-            fail(failure, format("%s: %d should = %d", message, actual, expected));
+            fail(failure, "%s: %d should = %d", message, actual, expected);
+        }
+    }
+
+    public static void assertIntEqual(int actual, int expected, Failure failure, String format, int arg) throws WasmException {
+        if (actual != expected) {
+            fail(failure, "%s: %d should = %d", format(format, arg), actual, expected);
         }
     }
 
     public static void assertIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
         if (n1 < n2) {
-            fail(failure, format("%s: %d should be >= %d", failure.name, n1, n2));
+            fail(failure, "%s: %d should be >= %d", failure.name, n1, n2);
         }
     }
 
     public static void assertIntGreater(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 <= n2) {
-            fail(failure, format("%s: %d should be > %d", message, n1, n2));
+            fail(failure, "%s: %d should be > %d", message, n1, n2);
         }
     }
 
@@ -86,7 +95,7 @@ public class Assert {
 
     public static void assertIntLess(int n1, int n2, Failure failure) throws WasmException {
         if (n1 >= n2) {
-            fail(failure, format("%s: %d should be < %d", failure.name, n1, n2));
+            fail(failure, "%s: %d should be < %d", failure.name, n1, n2);
         }
     }
 
@@ -96,13 +105,25 @@ public class Assert {
 
     public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String message) throws WasmException {
         if (Integer.compareUnsigned(n1, n2) >= 0) {
-            fail(failure, format("%s: %s should be < %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be < %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2));
+        }
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String format, Object arg) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) >= 0) {
+            fail(failure, "%s: %s should be < %s", format(format, arg), Integer.toUnsignedString(n1), Integer.toUnsignedString(n2));
+        }
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String format, Object arg1, Object arg2) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) >= 0) {
+            fail(failure, "%s: %s should be < %s", format(format, arg1, arg2), Integer.toUnsignedString(n1), Integer.toUnsignedString(n2));
         }
     }
 
     public static void assertIntLessOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(failure, format("%s: %d should be <= %d", message, n1, n2));
+            fail(failure, "%s: %d should be <= %d", message, n1, n2);
         }
     }
 
@@ -112,7 +133,7 @@ public class Assert {
 
     public static void assertUnsignedIntLessOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
         if (Integer.compareUnsigned(n1, n2) > 0) {
-            fail(failure, format("%s: %s should be <= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be <= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2));
         }
     }
 
@@ -122,7 +143,7 @@ public class Assert {
 
     public static void assertUnsignedLongLess(long n1, long n2, Failure failure, String message) throws WasmException {
         if (Long.compareUnsigned(n1, n2) >= 0) {
-            fail(failure, format("%s: %s should be < %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be < %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2));
         }
     }
 
@@ -132,7 +153,7 @@ public class Assert {
 
     public static void assertUnsignedLongLessOrEqual(long n1, long n2, Failure failure, String message) throws WasmException {
         if (Long.compareUnsigned(n1, n2) > 0) {
-            fail(failure, format("%s: %s should be <= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be <= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2));
         }
     }
 
@@ -142,7 +163,7 @@ public class Assert {
 
     public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
         if (Integer.compareUnsigned(n1, n2) < 0) {
-            fail(failure, format("%s: %s should be >= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be >= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2));
         }
     }
 
@@ -152,19 +173,19 @@ public class Assert {
 
     public static void assertUnsignedLongGreaterOrEqual(long n1, long n2, Failure failure, String message) throws WasmException {
         if (Long.compareUnsigned(n1, n2) < 0) {
-            fail(failure, format("%s: %s should be >= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
+            fail(failure, "%s: %s should be >= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2));
         }
     }
 
     public static void assertLongLessOrEqual(long n1, long n2, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
+            fail(failure, "%s: %d should be <= %d", failure.name, n1, n2);
         }
     }
 
     public static void assertNotNull(Object object, String message, Failure failure) throws WasmException {
         if (object == null) {
-            fail(failure, format("%s: expected a non-null value", message));
+            fail(failure, "%s: expected a non-null value", message);
         }
     }
 
@@ -179,13 +200,28 @@ public class Assert {
     }
 
     @TruffleBoundary
-    public static RuntimeException fail(Failure failure, String message, Object... args) throws WasmException {
-        throw WasmException.format(failure, message, args);
+    public static RuntimeException fail(Failure failure, String format, Object... args) throws WasmException {
+        throw WasmException.format(failure, format, args);
+    }
+
+    @TruffleBoundary
+    public static RuntimeException fail(Failure failure, String format, Object arg) throws WasmException {
+        throw WasmException.format(failure, format, arg);
+    }
+
+    @TruffleBoundary
+    public static RuntimeException fail(Failure failure, String format, int arg) throws WasmException {
+        throw WasmException.format(failure, format, arg);
+    }
+
+    @TruffleBoundary
+    public static RuntimeException fail(Failure failure, String message) throws WasmException {
+        throw WasmException.create(failure, message);
     }
 
     @TruffleBoundary
     private static String format(String format, Object... args) {
-        return String.format(format, args);
+        return String.format(Locale.ROOT, format, args);
     }
 
 }

@@ -35,11 +35,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 /**
  * Pure delegate implementation to ForkJoinPool.commonPool().
  */
@@ -86,13 +81,7 @@ public final class DeferredCommonPool extends ForkJoinPool {
 
     @SuppressWarnings({"unchecked", "static-method", "all"})
     public <T> List<Future<T>> invokeAllUninterruptibly(Collection<? extends Callable<T>> tasks) {
-        VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "invokeAllUninterruptibly only exists in JDK 22+");
-        var m = ReflectionUtil.lookupMethod(ForkJoinPool.class, "invokeAllUninterruptibly", Collection.class);
-        try {
-            return (List<Future<T>>) m.invoke(ForkJoinPool.commonPool(), tasks);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return ForkJoinPool.commonPool().invokeAllUninterruptibly(tasks);
     }
 
     @Override

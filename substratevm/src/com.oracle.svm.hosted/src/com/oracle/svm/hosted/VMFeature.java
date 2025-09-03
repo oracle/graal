@@ -30,8 +30,8 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
@@ -41,9 +41,12 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredFeature
 public class VMFeature implements InternalFeature {
@@ -113,9 +116,18 @@ public class VMFeature implements InternalFeature {
             });
         }
 
-        if (!Platform.includedIn(Platform.WINDOWS.class)) {
-            CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
-            CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+        if (!Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
+            CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(Word.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                /*
+                 * GR-55032: currently in layered images we must register this symbol as global so
+                 * that it is visible from JvmFuncs.c linked in any layer. In the future we will
+                 * ensure JvmFunc.c is linked in the initial layer.
+                 */
+                CGlobalDataFeature.singleton().registerWithGlobalSymbol(isStaticBinaryMarker);
+            } else {
+                CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+            }
         }
     }
 

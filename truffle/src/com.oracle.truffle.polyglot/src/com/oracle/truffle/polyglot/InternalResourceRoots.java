@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.ProcessProperties;
-
-import java.io.PrintStream;
+import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,17 +48,24 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ProcessProperties;
+
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.polyglot.InternalResourceRoots.Root.Kind;
 
 final class InternalResourceRoots {
 
     private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
     private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
     private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
+    private static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
 
     static String overriddenComponentRootProperty(String componentId) {
         StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
@@ -87,7 +87,7 @@ final class InternalResourceRoots {
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
      * native image heap. The value is recomputed when the pre-initialized engine is patched.
      */
-    private volatile Set<Root> roots;
+    private volatile List<Root> roots;
 
     private InternalResourceRoots() {
     }
@@ -107,8 +107,34 @@ final class InternalResourceRoots {
         return instance;
     }
 
-    void patch() {
+    boolean patch(PolyglotEngineImpl engine) {
         ensureInitialized();
+        /*
+         * Unpack all resources that are included in the native-image binary and were queried during
+         * context pre-initialization.
+         */
+        boolean[] result = {true};
+        InternalResourceCache.walkAllResources((componentId, resources) -> {
+            for (InternalResourceCache resource : resources) {
+                if (resource.requiresEagerUnpack()) {
+                    if (InternalResourceCache.usesInternalResources()) {
+                        try {
+                            resource.getPath(engine);
+                        } catch (IOException ioe) {
+                            throw new IllegalStateException(ioe);
+                        }
+                    } else {
+                        /*
+                         * Internal resources were utilized during the image build but are disabled
+                         * at runtime. Return false to indicate that the pre-initialized engine
+                         * should not be used.
+                         */
+                        result[0] = false;
+                    }
+                }
+            }
+        });
+        return result[0];
     }
 
     private synchronized void ensureInitialized() {
@@ -116,7 +142,7 @@ final class InternalResourceRoots {
             if (InternalResourceCache.usesInternalResources()) {
                 roots = computeRoots(findDefaultRoot());
             } else {
-                roots = Set.of();
+                roots = List.of();
             }
         }
     }
@@ -133,7 +159,7 @@ final class InternalResourceRoots {
     InternalResourceCache findInternalResource(Path hostPath) {
         Root root = findRoot(hostPath);
         if (root != null) {
-            for (InternalResourceCache cache : root.caches) {
+            for (InternalResourceCache cache : root.resources) {
                 Path resourceRoot = cache.getPathOrNull();
                 // Used InternalResourceCache instances always have non-null root.
                 if (resourceRoot != null && hostPath.startsWith(resourceRoot)) {
@@ -175,7 +201,7 @@ final class InternalResourceRoots {
         InternalResourceRoots resourceRoots = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
         if (resourceRoots.roots != null) {
             for (Root root : resourceRoots.roots) {
-                for (InternalResourceCache cache : root.caches()) {
+                for (InternalResourceCache cache : root.resources()) {
                     cache.clearCache();
                 }
             }
@@ -193,36 +219,23 @@ final class InternalResourceRoots {
     /**
      * Computes the internal resource roots.
      */
-    private static Set<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
+    private static List<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
         Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector = new HashMap<>();
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            Collection<InternalResourceCache> resources = language.getResources();
-            if (!resources.isEmpty()) {
-                collectRoots(language.getId(), defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
-            }
-        }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            Collection<InternalResourceCache> resources = instrument.getResources();
-            if (!resources.isEmpty()) {
-                collectRoots(instrument.getId(), defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
-            }
-        }
-        Collection<InternalResourceCache> engineResources = InternalResourceCache.getEngineResources();
-        if (!engineResources.isEmpty()) {
-            collectRoots(PolyglotEngineImpl.ENGINE_ID, defaultRoot.getLeft(), defaultRoot.getRight(), engineResources, collector);
-        }
+        InternalResourceCache.walkAllResources((componentId, resources) -> {
+            collectRoots(componentId, defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
+        });
         // Build a set of immutable Roots.
-        Set<Root> result = new HashSet<>();
+        List<Root> result = new ArrayList<>();
         for (var entry : collector.entrySet()) {
-            var key = entry.getKey();
-            var resources = entry.getValue();
+            Pair<Path, Kind> key = entry.getKey();
+            List<InternalResourceCache> resources = entry.getValue();
             Root internalResourceRoot = new Root(key.getLeft(), key.getRight(), resources);
             for (InternalResourceCache resource : resources) {
                 resource.initializeOwningRoot(internalResourceRoot);
             }
             result.add(internalResourceRoot);
         }
-        return Collections.unmodifiableSet(result);
+        return Collections.unmodifiableList(result);
     }
 
     private static Pair<Path, Root.Kind> findDefaultRoot() {
@@ -233,20 +246,22 @@ final class InternalResourceRoots {
             Path overriddenRootPath = Path.of(overriddenRoot).toAbsolutePath();
             root = new ResolvedCacheFolder(overriddenRootPath, PROPERTY_RESOURCE_PATH + " system property", overriddenRootPath);
             kind = Root.Kind.UNVERSIONED;
-        } else if (ImageInfo.inImageRuntimeCode()) {
+        } else if (ImageInfo.inImageRuntimeCode() && InternalResourceCache.usesResourceDirectoryOnNativeImage()) {
             root = findCacheRootOnNativeImage();
             kind = Root.Kind.UNVERSIONED;
         } else {
-            root = findCacheRootOnHotSpot();
+            root = findCacheRootDefault();
             kind = Root.Kind.VERSIONED;
         }
-        logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
-                        root.path(), root.hint(), root.hintValue());
+        if (isTraceInternalResourceEvents()) {
+            logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
+                            root.path(), root.hint(), root.hintValue());
+        }
         return Pair.create(root.path(), kind);
     }
 
     private static void collectRoots(String componentId, Path componentRoot, Root.Kind componentKind, Collection<InternalResourceCache> resources,
-                    Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector) {
+                    Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> resourcesCollector) {
         Path useRoot = componentRoot;
         Root.Kind useKind = componentKind;
         String overriddenRoot = System.getProperty(overriddenComponentRootProperty(componentId));
@@ -262,28 +277,34 @@ final class InternalResourceRoots {
                 resourceRoot = Path.of(overriddenRoot).toAbsolutePath();
                 resourceKind = Root.Kind.RESOURCE;
             }
-            collector.computeIfAbsent(Pair.create(resourceRoot, resourceKind), (k) -> new ArrayList<>()).add(resource);
+            resourcesCollector.computeIfAbsent(Pair.create(resourceRoot, resourceKind), (k) -> new ArrayList<>()).add(resource);
         }
     }
 
     private static ResolvedCacheFolder findCacheRootOnNativeImage() {
         assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
         Path executable = getExecutablePath();
+        if (executable == null) {
+            // fall back to default if executable or library path is not available
+            return findCacheRootDefault();
+        }
         return new ResolvedCacheFolder(executable.resolveSibling("resources"), "executable location", executable);
     }
 
     private static Path getExecutablePath() {
         assert ImageInfo.inImageRuntimeCode();
+        String path;
         if (ImageInfo.isExecutable()) {
-            return Path.of(ProcessProperties.getExecutableName());
+            path = ProcessProperties.getExecutableName();
         } else if (ImageInfo.isSharedLibrary()) {
-            return Path.of(ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL));
+            path = ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL);
         } else {
-            throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
+            throw new AssertionError("Should only be invoked within native image runtime code.");
         }
+        return path == null ? null : Path.of(path);
     }
 
-    private static ResolvedCacheFolder findCacheRootOnHotSpot() {
+    private static ResolvedCacheFolder findCacheRootDefault() {
         String enforcedCacheFolder = System.getProperty(PROPERTY_USER_RESOURCE_CACHE);
         if (enforcedCacheFolder != null) {
             Path enforcedCacheFolderPath = Path.of(enforcedCacheFolder);
@@ -291,7 +312,7 @@ final class InternalResourceRoots {
         }
         String userHomeValue = System.getProperty("user.home");
         if (userHomeValue == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
+            throw new AssertionError("The 'user.home' system property is not set.");
         }
         Path userHome = Paths.get(userHomeValue);
         ResolvedCacheFolder container = switch (InternalResource.OS.getCurrent()) {
@@ -319,31 +340,31 @@ final class InternalResourceRoots {
                 yield userCacheDir;
             }
             case WINDOWS -> new ResolvedCacheFolder(userHome.resolve(Path.of("AppData", "Local")), "user home", userHome);
+            case UNSUPPORTED -> throw new IllegalStateException(String.format("Truffle is running on an unsupported platform. " +
+                            "On unsupported platforms, you must explicitly set the default cache directory using the system property " +
+                            "'-D%s=<path_to_cache_folder>'.", PROPERTY_USER_RESOURCE_CACHE));
         };
         return container.resolve("org.graalvm.polyglot");
     }
 
     static boolean isTraceInternalResourceEvents() {
         /*
-         * Internal resources are utilized before the Engine is created; hence, we cannot leverage
-         * engine options and engine logger.
+         * In AOT we want to enable tracing if its enabled in the built image or using the option at
+         * runtime.
          */
-        return Boolean.getBoolean("polyglotimpl.TraceInternalResources");
+        return TRACE_INTERNAL_RESOURCE_EVENTS || (TruffleOptions.AOT && Boolean.getBoolean("polyglotimpl.TraceInternalResources"));
     }
 
     static void logInternalResourceEvent(String message, Object... args) {
-        if (isTraceInternalResourceEvents()) {
-            PrintStream out = System.err;
-            out.printf("[engine][resource] " + message + "%n", args);
-        }
+        assert isTraceInternalResourceEvents() : "need to check for TRACE_INTERNAL_RESOURCE_EVENTS before use";
+        PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
     }
 
     private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
+        PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 
-    record Root(Path path, Kind kind, List<InternalResourceCache> caches) {
+    record Root(Path path, Kind kind, List<InternalResourceCache> resources) {
 
         enum Kind {
             COMPONENT,
@@ -351,6 +372,7 @@ final class InternalResourceRoots {
             UNVERSIONED,
             VERSIONED,
         }
+
     }
 
     private record ResolvedCacheFolder(Path path, String hint, Path hintValue) {

@@ -51,6 +51,16 @@ env.submitThreadLocal(null, new ThreadLocalAction(true /*side-effecting*/, true 
      protected void perform(Access access) {
          assert access.getThread() == Thread.currentThread();
      }
+
+    @Override
+    protected void notifyBlocked(Access access) {
+        assert access.getThread() == Thread.currentThread();
+    }
+
+    @Override
+    protected void notifyUnblocked(Access access) {
+        assert access.getThread() == Thread.currentThread();
+    }
 });
 
 ```
@@ -71,7 +81,7 @@ Currently the action will be performed on the next safepoint location when the n
 
 There are several debug options available:
 
-### Excercise safepoints with SafepointALot
+### Exercise safepoints with SafepointALot
 
 SafepointALot is a tool to exercise every safepoint of an application and collect statistics.
 
@@ -86,20 +96,23 @@ graalvm/bin/js --engine.SafepointALot js-benchmarks/harness.js -- octane-deltabl
 Prints the following output to the log on context close:
 
 ```
-DeltaBlue: 540
-[engine] Safepoint Statistics
-  --------------------------------------------------------------------------------------
-   Thread Name         Safepoints | Interval     Avg              Min              Max
-  --------------------------------------------------------------------------------------
-   main                  48384054 |            0.425 us           0.1 us       44281.1 us
-  -------------------------------------------------------------------------------------
-   All threads           48384054 |            0.425 us           0.1 us       42281.1 us
+DeltaBlue: 3037
+[engine] Safepoint Statistics 
+  ------------------------------------------------------------------------------------------------------------------------------------------------------- 
+   Thread Name         Safepoints | Interval     Avg              Min              Max      | Blocked Intervals   Avg              Min              Max
+  ------------------------------------------------------------------------------------------------------------------------------------------------------- 
+   main                  83187332 |            0,452 us           0,2 us      104938,8 us   |      18            6,536 us           0,9 us          36,8 us
+  ------------------------------------------------------------------------------------------------------------------------------------------------------- 
+   All threads           83187332 |            0,452 us           0,2 us      104938,8 us   |      18            6,536 us           0,9 us          36,8 us
 ```
 
 It is recommended for guest language implementations to try to stay below 1ms on average.
 Note that precise timing can depend on CPU and interruptions by the GC.
 Since GC times are included in the safepoint interval times, it is expected that the maximum is close to the maximum GC interruption time.
 Future versions of this tool will be able to exclude GC interruption times from this statistic.
+
+The SafepointALot tool also does not interrupt blocking operations that typically wait for some resource to be available (e.g. IO, thread start).
+These blocked intervals are shown separately in the statistics. Ordinary thread local actions do interrupt blocking operations, and so the blocked intervals do not apply to them.
 
 ### Find missing safepoint polls
 

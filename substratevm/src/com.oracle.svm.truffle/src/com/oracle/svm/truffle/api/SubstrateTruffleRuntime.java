@@ -128,8 +128,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
         super(new SubstrateTruffleCompilationSupport(), List.of());
-        /* Ensure the factory class gets initialized. */
-        super.getLoopNodeFactory();
     }
 
     @Override
@@ -463,7 +461,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         boolean referenceInstanceClass = dh.isReferenceInstanceClass();
         int monitorOffset = dh.getMonitorOffset();
         InteriorObjRefWalker.walkInstanceReferenceOffsets(dh, (offset) -> {
-            if (offset == monitorOffset) {
+            if (monitorOffset != 0 && offset == monitorOffset) {
                 // Object monitor is not a proper field.
             } else if (referenceInstanceClass && ReferenceInternals.isAnyReferenceFieldOffset(offset)) {
                 // Reference class field offsets must not be exposed.

@@ -29,7 +29,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 import java.util.EnumMap;
 import java.util.function.Supplier;
@@ -48,8 +47,7 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
-import jdk.graal.compiler.nodes.InvokeNode;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
@@ -112,8 +110,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * types of the objects. The snippet needs to perform all required type and store checks. Lowering
  * is delayed {@link GuardsStage#AFTER_FSA after framestate assignment} via
  * {@link #delayedGenericArraycopySnippet}.</li>
+ * <li>{@link #failingArraycopySnippet}: this snippet is used as part of other snippets on paths
+ * where run-time checks have proven that the particular array copy call will fail. It resorts to a
+ * direct call to {@link System#arraycopy} with an explicit exception edge. Lowering is delayed
+ * {@link GuardsStage#AFTER_FSA after framestate assignment} via
+ * {@link ArrayCopyWithDelayedLoweringNode}.</li>
  * </ul>
- *
+ * <p>
  * See {@link Templates#lower(ArrayCopyNode, boolean, LoweringTool)} for the implementation details
  * of the lowering strategies.
  *
@@ -131,6 +134,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
                 ValueNode nonNullSrc = b.nullCheckedValue(src);
                 ValueNode nonNullDst = b.nullCheckedValue(dst);
+
                 b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length, forceAnyLocation));
                 return true;
             }
@@ -148,7 +152,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK
     }
 
-    /** Marker value for the {@link InjectedParameter} injected parameter. */
+    /**
+     * Marker value for the {@link InjectedParameter} injected parameter.
+     */
     protected static final MetaAccessProvider INJECTED_META_ACCESS = null;
 
     /**
@@ -188,9 +194,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     public void delayedExactArraycopyWithExpandedLoopSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length,
                     @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
-                    @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
-        checkArrayTypes(src, dest, arrayTypeCheck);
-        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+                    @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters, @ConstantParameter boolean exceptionSeen) {
+        int[] checked = checkTypesAndLimits(src, srcPos, dest, destPos, length, elementKind, arrayTypeCheck, counters, exceptionSeen);
         int checkedSrcPos = checked[SRC_IDX];
         int checkedDestPos = checked[DEST_IDX];
         int checkedLength = checked[LENGTH_IDX];
@@ -211,9 +216,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     @Snippet
     public void arraycopyExactStubCallSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
-                    @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
-        checkArrayTypes(src, dest, arrayTypeCheck);
-        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+                    @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters, @ConstantParameter boolean exceptionSeen) {
+        int[] checked = checkTypesAndLimits(src, srcPos, dest, destPos, length, elementKind, arrayTypeCheck, counters, exceptionSeen);
         int checkedSrcPos = checked[SRC_IDX];
         int checkedDestPos = checked[DEST_IDX];
         int checkedLength = checked[LENGTH_IDX];
@@ -240,9 +244,8 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @Snippet
     public void delayedCheckcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
-                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
-        checkArrayTypes(src, dest, arrayTypeCheck);
-        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind, @ConstantParameter boolean exceptionSeen) {
+        int[] checked = checkTypesAndLimits(src, srcPos, dest, destPos, length, elementKind, arrayTypeCheck, counters, exceptionSeen);
         int checkedSrcPos = checked[SRC_IDX];
         int checkedDestPos = checked[DEST_IDX];
         int checkedLength = checked[LENGTH_IDX];
@@ -261,9 +264,8 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @Snippet
     public void delayedGenericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
-                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
-        checkArrayTypes(src, dest, arrayTypeCheck);
-        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind, @ConstantParameter boolean exceptionSeen) {
+        int[] checked = checkTypesAndLimits(src, srcPos, dest, destPos, length, elementKind, arrayTypeCheck, counters, exceptionSeen);
         int checkedSrcPos = checked[SRC_IDX];
         int checkedDestPos = checked[DEST_IDX];
         int checkedLength = checked[LENGTH_IDX];
@@ -278,15 +280,16 @@ public abstract class ArrayCopySnippets implements Snippets {
      * only used in cases where we already know that the operation will throw an exception.
      */
     @Snippet
-    public static void arraycopyNativeExceptionSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter Counters counters) {
+    public void arraycopyNativeExceptionSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter Counters counters,
+                    @SuppressWarnings("unused") @ConstantParameter boolean exceptionSeen) {
         // all checks are done in the native method, so no need to emit additional checks here
         incrementLengthCounter(length, counters);
         counters.systemArraycopyCounter.inc();
         counters.systemArraycopyCopiedCounter.add(length);
 
-        System.arraycopy(src, srcPos, dest, destPos, length);
+        doFailingArraycopySnippet(src, srcPos, dest, destPos, length, JavaKind.Illegal, counters);
         // the call will never return
-        UnreachableNode.unreachable();
+        throw UnreachableNode.unreachable();
     }
 
     /**
@@ -297,7 +300,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void exactArraycopyWithExpandedLoopSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
-                    @ConstantParameter LocationIdentity arrayLocation, @ConstantParameter Counters counters) {
+                    @ConstantParameter LocationIdentity arrayLocation, @ConstantParameter Counters counters, @ConstantParameter boolean exceptionSeen) {
         doExactArraycopyWithExpandedLoopSnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation);
     }
 
@@ -307,15 +310,16 @@ public abstract class ArrayCopySnippets implements Snippets {
         long sourceOffset = arrayBaseOffset + srcPos * scale;
         long destOffset = arrayBaseOffset + destPos * scale;
 
-        GuardingNode anchor = SnippetAnchorNode.anchor();
         if (probability(FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
             for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
+                GuardingNode anchor = SnippetAnchorNode.anchor();
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         } else {
             for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
+                GuardingNode anchor = SnippetAnchorNode.anchor();
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
@@ -328,7 +332,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void checkcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
-                    @ConstantParameter Counters counters) {
+                    @ConstantParameter Counters counters, @SuppressWarnings("unused") @ConstantParameter boolean exceptionSeen) {
         doCheckcastArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
 
@@ -347,19 +351,40 @@ public abstract class ArrayCopySnippets implements Snippets {
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void genericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
-                    @ConstantParameter Counters counters) {
-        doGenericArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
+                    @ConstantParameter Counters counters, @ConstantParameter boolean exceptionSeen) {
+        doGenericArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters, exceptionSeen);
     }
 
     /**
      * @see #genericArraycopySnippet
      */
-    protected abstract void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
+    protected abstract void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
+                    boolean exceptionSeen);
+
+    /**
+     * Performs a generic array copy which will guaranteed fail.
+     *
+     * @see #delayedGenericArraycopySnippet
+     * @see #doFailingArraycopySnippet
+     */
+    @SuppressWarnings("unused")
+    @Snippet(allowPartialIntrinsicArgumentMismatch = true)
+    public void failingArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+                    @ConstantParameter LocationIdentity arrayLocation,
+                    @ConstantParameter Counters counters, @ConstantParameter boolean exceptionSeen) {
+        doFailingArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, counters);
+    }
+
+    /**
+     * Generic call used in cases which are known to fail. Includes an exception edge to avoid
+     * deopts.
+     *
+     * @see #failingArraycopySnippet
+     */
+    protected abstract void doFailingArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, Counters counters);
 
     private static void incrementLengthCounter(int length, Counters counters) {
-        if (!IS_BUILDING_NATIVE_IMAGE) {
-            counters.lengthHistogram.inc(length);
-        }
+        counters.lengthHistogram.inc(length);
     }
 
     private static final int SRC_IDX = 0;
@@ -368,7 +393,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     private static final int LIMITS_SIZE = 3;
 
     /**
-     * Creates the return value for {@link #checkLimits}.
+     * Creates the return value for {@link #checkTypesAndLimits}.
      */
     protected static int[] createCheckLimitsResult(int srcPos, int destPos, int length) {
         int[] values = new int[LIMITS_SIZE];
@@ -381,57 +406,81 @@ public abstract class ArrayCopySnippets implements Snippets {
     /**
      * Checks the limits of {@code srcPost}, {@code destPos}, and {@code length} and return those
      * values with better stamps.
-     *
+     * <p>
      * Writing this as individual if statements to avoid a merge without a frame state.
      *
-     * @see #createCheckLimitsResult
      * @return An integer array holding the {@code srcPos} (at offset {@link #SRC_IDX}),
      *         {@code destPos} (at offset {@link #DEST_IDX}), and {@code length} parameters (at
      *         offset {@link #LENGTH_IDX}), but annotated with {@link PiNode#piCastPositive}. This
      *         an array rather than a dedicated class with proper members to avoid storing
      *         information about the class in encoded snippets.
+     * @see #createCheckLimitsResult
      */
-    protected int[] checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
-        if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
-            counters.checkAIOOBECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
-        int newSrcPos = PiNode.piCastPositive(srcPos, SnippetAnchorNode.anchor());
-        if (probability(DEOPT_PROBABILITY, destPos < 0)) {
-            counters.checkAIOOBECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
-        int newDestPos = PiNode.piCastPositive(destPos, SnippetAnchorNode.anchor());
-        if (probability(DEOPT_PROBABILITY, length < 0)) {
-            counters.checkAIOOBECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
-        int newLength = PiNode.piCastPositive(length, SnippetAnchorNode.anchor());
-        if (probability(DEOPT_PROBABILITY, newSrcPos > ArrayLengthNode.arrayLength(src) - newLength)) {
-            counters.checkAIOOBECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
-        if (probability(DEOPT_PROBABILITY, newDestPos > ArrayLengthNode.arrayLength(dest) - newLength)) {
-            counters.checkAIOOBECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
-        counters.checkSuccessCounter.inc();
-        return createCheckLimitsResult(newSrcPos, newDestPos, newLength);
+    protected int[] checkTypesAndLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, ArrayCopyTypeCheck arrayTypeCheck,
+                    Counters counters, boolean exceptionSeen) {
+        do {
+            // using do-while(false) construct to make it PEA friendly
+            // type checks
+            if (arrayTypeCheck == ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK) {
+                // nothing to do
+            } else if (arrayTypeCheck == ArrayCopyTypeCheck.HUB_BASED_ARRAY_TYPE_CHECK) {
+                if (probability(DEOPT_PROBABILITY, !hubsEqual(src, dest))) {
+                    maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.RuntimeConstraint);
+                    break;
+                }
+            } else if (arrayTypeCheck == ArrayCopyTypeCheck.LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK) {
+                if (probability(DEOPT_PROBABILITY, !layoutHelpersEqual(src, dest))) {
+                    maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.RuntimeConstraint);
+                    break;
+                }
+            } else {
+                ReplacementsUtil.staticAssert(false, "unknown array type check ", arrayTypeCheck);
+            }
+
+            // limit checks
+            if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
+                counters.checkAIOOBECounter.inc();
+                maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.BoundsCheckException);
+                break;
+            }
+            int newSrcPos = PiNode.piCastPositive(srcPos, SnippetAnchorNode.anchor());
+            if (probability(DEOPT_PROBABILITY, destPos < 0)) {
+                counters.checkAIOOBECounter.inc();
+                maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.BoundsCheckException);
+                break;
+            }
+            int newDestPos = PiNode.piCastPositive(destPos, SnippetAnchorNode.anchor());
+            if (probability(DEOPT_PROBABILITY, length < 0)) {
+                counters.checkAIOOBECounter.inc();
+                maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.BoundsCheckException);
+                break;
+            }
+            int newLength = PiNode.piCastPositive(length, SnippetAnchorNode.anchor());
+            if (probability(DEOPT_PROBABILITY, newSrcPos > ArrayLengthNode.arrayLength(src) - newLength)) {
+                counters.checkAIOOBECounter.inc();
+                maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.BoundsCheckException);
+                break;
+            }
+            if (probability(DEOPT_PROBABILITY, newDestPos > ArrayLengthNode.arrayLength(dest) - newLength)) {
+                counters.checkAIOOBECounter.inc();
+                maybeDeopt(exceptionSeen, DeoptimizationAction.RecompileIfTooManyDeopts, DeoptimizationReason.BoundsCheckException);
+                break;
+            }
+            counters.checkSuccessCounter.inc();
+            return createCheckLimitsResult(newSrcPos, newDestPos, newLength);
+        } while (false);
+        /*
+         * If we got here, one of the checks failed and we did not deoptimize because this is not
+         * the first time this arraycopy fails. Fall back to a failing foreign call with an
+         * exception edge.
+         */
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, srcPos, dest, destPos, length, WorkSnippetID.failingArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        throw UnreachableNode.unreachable();
     }
 
-    protected void checkArrayTypes(Object nonNullSrc, Object nonNullDest, ArrayCopyTypeCheck arrayTypeCheck) {
-        if (arrayTypeCheck == ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK) {
-            // nothing to do
-        } else if (arrayTypeCheck == ArrayCopyTypeCheck.HUB_BASED_ARRAY_TYPE_CHECK) {
-            if (probability(DEOPT_PROBABILITY, !hubsEqual(nonNullSrc, nonNullDest))) {
-                DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
-            }
-        } else if (arrayTypeCheck == ArrayCopyTypeCheck.LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK) {
-            if (probability(DEOPT_PROBABILITY, !layoutHelpersEqual(nonNullSrc, nonNullDest))) {
-                DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
-            }
-        } else {
-            ReplacementsUtil.staticAssert(false, "unknown array type check ", arrayTypeCheck);
+    private static void maybeDeopt(boolean exceptionSeen, DeoptimizationAction deoptimizationAction, DeoptimizationReason deoptimizationReason) {
+        if (!exceptionSeen) {
+            DeoptimizeNode.deopt(deoptimizationAction, deoptimizationReason);
         }
     }
 
@@ -526,7 +575,11 @@ public abstract class ArrayCopySnippets implements Snippets {
         /**
          * @see ArrayCopySnippets#genericArraycopySnippet
          */
-        genericArraycopySnippet;
+        genericArraycopySnippet,
+        /**
+         * @see ArrayCopySnippets#failingArraycopySnippet
+         */
+        failingArraycopySnippet;
     }
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
@@ -537,6 +590,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         private final SnippetTemplate.SnippetInfo arraycopyNativeExceptionSnippet;
         private final SnippetTemplate.SnippetInfo checkcastArraycopySnippet;
         private final SnippetTemplate.SnippetInfo genericArraycopySnippet;
+        private final SnippetTemplate.SnippetInfo failingArraycopySnippet;
         private final SnippetTemplate.SnippetInfo exactArraycopyWithExpandedLoopSnippet;
 
         private final boolean useOriginalArraycopy;
@@ -554,9 +608,10 @@ public abstract class ArrayCopySnippets implements Snippets {
             delayedExactArraycopyWithExpandedLoopSnippet = snippet(providers, receiver, "delayedExactArraycopyWithExpandedLoopSnippet");
             arraycopyExactStubCallSnippet = snippet(providers, receiver, "arraycopyExactStubCallSnippet");
             delayedCheckcastArraycopySnippet = snippet(providers, receiver, "delayedCheckcastArraycopySnippet");
-            arraycopyNativeExceptionSnippet = snippet(providers, null, "arraycopyNativeExceptionSnippet");
+            arraycopyNativeExceptionSnippet = snippet(providers, receiver, "arraycopyNativeExceptionSnippet");
             checkcastArraycopySnippet = snippet(providers, receiver, "checkcastArraycopySnippet");
             genericArraycopySnippet = snippet(providers, receiver, "genericArraycopySnippet");
+            failingArraycopySnippet = snippet(providers, receiver, "failingArraycopySnippet");
             exactArraycopyWithExpandedLoopSnippet = snippet(providers, receiver, "exactArraycopyWithExpandedLoopSnippet");
             midTierPreLoweringPhaseFactory = receiver.midTierPreLoweringPhaseFactory();
         }
@@ -569,6 +624,8 @@ public abstract class ArrayCopySnippets implements Snippets {
                     return checkcastArraycopySnippet;
                 case genericArraycopySnippet:
                     return genericArraycopySnippet;
+                case failingArraycopySnippet:
+                    return failingArraycopySnippet;
             }
             throw GraalError.shouldNotReachHere(workSnippetID.toString()); // ExcludeFromJacocoGeneratedReport
         }
@@ -593,13 +650,15 @@ public abstract class ArrayCopySnippets implements Snippets {
          *
          * @param mayExpandThisArraycopy {@code true} if the array copy might be expanded to a copy
          *            loop.
-         *
          * @see ArrayCopySnippets
          */
         public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
             JavaKind elementKind = BasicArrayCopyNode.selectComponentKind(arraycopy);
             SnippetTemplate.SnippetInfo snippetInfo;
             final ArrayCopyTypeCheck arrayTypeCheck;
+
+            final var profilingInfo = arraycopy.graph().getProfilingInfo(arraycopy.stateAfter().getMethod());
+            final boolean exceptionSeen = profilingInfo != null && profilingInfo.getExceptionSeen(arraycopy.bci()).isTrue();
 
             ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
             ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
@@ -656,7 +715,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             }
 
             // create the snippet
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippetInfo, arraycopy.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippetInfo, arraycopy.graph(), tool.getLoweringStage());
             args.add("src", arraycopy.getSource());
             args.add("srcPos", arraycopy.getSourcePosition());
             args.add("dest", arraycopy.getDestination());
@@ -664,23 +723,25 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("length", arraycopy.getLength());
             if (snippetInfo != arraycopyNativeExceptionSnippet) {
                 assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK : "Must not be arrayTypeCheck " + Assertions.errorMessageContext("arrayCopy", arraycopy);
-                args.addConst("arrayTypeCheck", arrayTypeCheck);
+                args.add("arrayTypeCheck", arrayTypeCheck);
             }
             Object locationIdentity = arraycopy.killsAnyLocation() ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(elementKind);
             if (snippetInfo == arraycopyExactStubCallSnippet || snippetInfo == delayedExactArraycopyWithExpandedLoopSnippet) {
                 assert elementKind != null;
-                args.addConst("elementKind", elementKind);
-                args.addConst("locationIdentity", locationIdentity);
-                args.addConst("elementKindCounter", counters.arraycopyCallCounters.get(elementKind));
-                args.addConst("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
+                args.add("elementKind", elementKind);
+                args.add("locationIdentity", locationIdentity);
+                args.add("elementKindCounter", counters.arraycopyCallCounters.get(elementKind));
+                args.add("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
             }
-            args.addConst("counters", counters);
+            args.add("counters", counters);
             if (snippetInfo == delayedCheckcastArraycopySnippet) {
-                args.addConst("elementKind", JavaKind.Illegal);
+                args.add("elementKind", JavaKind.Illegal);
             }
             if (snippetInfo == delayedGenericArraycopySnippet) {
-                args.addConst("elementKind", JavaKind.Illegal);
+                args.add("elementKind", JavaKind.Illegal);
             }
+
+            args.add("exceptionSeen", exceptionSeen);
 
             instantiate(tool, args, arraycopy);
         }
@@ -690,7 +751,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 return;
             }
 
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(getSnippet(arraycopy.getSnippet()), arraycopy.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(getSnippet(arraycopy.getSnippet()), arraycopy.graph(), tool.getLoweringStage());
             args.add("src", arraycopy.getSource());
             args.add("srcPos", arraycopy.getSourcePosition());
             args.add("dest", arraycopy.getDestination());
@@ -698,11 +759,16 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("length", arraycopy.getLength());
 
             JavaKind elementKind = arraycopy.getElementKind();
-            args.addConst("elementKind", (elementKind == null) ? JavaKind.Illegal : elementKind);
+            args.add("elementKind", (elementKind == null) ? JavaKind.Illegal : elementKind);
 
             Object locationIdentity = (elementKind == null) ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arraycopy.getElementKind());
-            args.addConst("arrayLocation", locationIdentity);
-            args.addConst("counters", counters);
+            args.add("arrayLocation", locationIdentity);
+            args.add("counters", counters);
+
+            final var profilingInfo = arraycopy.graph().getProfilingInfo((arraycopy.stateDuring() == null ? arraycopy.stateAfter() : arraycopy.stateDuring()).getMethod());
+            final boolean exceptionSeen = profilingInfo != null && profilingInfo.getExceptionSeen(arraycopy.bci()).isTrue();
+            args.add("exceptionSeen", exceptionSeen);
+
             instantiate(tool, args, arraycopy);
         }
 
@@ -719,8 +785,8 @@ public abstract class ArrayCopySnippets implements Snippets {
             SnippetTemplate template = template(tool, arraycopy, args);
             UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
             for (Node originalNode : duplicates.getKeys()) {
-                if (originalNode instanceof InvokeNode) {
-                    InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
+                if (originalNode instanceof Invoke) {
+                    Invoke invoke = (Invoke) duplicates.get(originalNode);
                     assert invoke.asNode().graph() == graph : "Graphs must match " + Assertions.errorMessageContext("invoke", invoke, "invoke.graph", invoke.asNode().graph(), "graph", graph);
                     CallTargetNode call = invoke.callTarget();
 
@@ -733,8 +799,6 @@ public abstract class ArrayCopySnippets implements Snippets {
                     assert assertEquals(arraycopy.stateDuring(), invoke.stateDuring());
                     assert arraycopy.stateDuring() != null || arraycopy.stateAfter() != null : arraycopy;
                     assert assertEquals(arraycopy.stateAfter(), invoke.stateAfter());
-                } else if (originalNode instanceof InvokeWithExceptionNode) {
-                    throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 }
             }
             GraphUtil.killCFG(arraycopy);

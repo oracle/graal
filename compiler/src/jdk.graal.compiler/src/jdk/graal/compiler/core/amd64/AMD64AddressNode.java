@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,22 +56,26 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
 
     public static final NodeClass<AMD64AddressNode> TYPE = NodeClass.create(AMD64AddressNode.class);
 
-    @OptionalInput private ValueNode base;
+    @OptionalInput protected ValueNode base;
 
-    @OptionalInput private ValueNode index;
-    private Stride stride;
+    @OptionalInput protected ValueNode index;
+    protected Stride stride;
 
-    private int displacement;
+    protected int displacement;
 
     public AMD64AddressNode(ValueNode base) {
         this(base, null);
     }
 
-    public AMD64AddressNode(ValueNode base, ValueNode index) {
-        super(TYPE);
+    public AMD64AddressNode(NodeClass<? extends AMD64AddressNode> c, ValueNode base, ValueNode index, Stride stride) {
+        super(c);
         this.base = base;
         this.index = index;
-        this.stride = Stride.S1;
+        this.stride = stride;
+    }
+
+    public AMD64AddressNode(ValueNode base, ValueNode index) {
+        this(TYPE, base, index, Stride.S1);
     }
 
     public void canonicalizeIndex(SimplifierTool tool) {

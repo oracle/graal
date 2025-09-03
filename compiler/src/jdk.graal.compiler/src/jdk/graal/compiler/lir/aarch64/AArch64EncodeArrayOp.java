@@ -51,8 +51,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/59ac7039d3ace0ec481742c3a10c81f1675e12da/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6085-L6198",
-          sha1 = "80e6323172af5e8a33625b4eb14629cdad500a0f")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6422-L6539",
+          sha1 = "7ec995886d9acb20550c9ed4a7fdbe9051043589")
 // @formatter:on
 @Opcode("AArch64_ENCODE_ARRAY")
 public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {

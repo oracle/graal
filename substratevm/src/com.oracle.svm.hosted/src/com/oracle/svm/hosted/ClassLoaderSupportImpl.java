@@ -57,6 +57,10 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -64,6 +68,7 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
@@ -116,7 +121,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
-            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) || classLoaderSupport.includeAllFromClassPath();
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) ||
+                            classLoaderSupport.getClassPathEntriesToPreserve().contains(classpathFile);
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector, includeCurrent);
@@ -132,7 +138,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
+            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name()) ||
+                            classLoaderSupport.getJavaModuleNamesToPreserve().contains(info.resolvedModule().name());
             List<ConditionalResource> resourcesFound = new ArrayList<>();
             moduleReader.list().forEach(resourceName -> {
                 var conditionsWithOrigins = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeCurrent);
@@ -264,7 +271,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             } else {
                 Modules.addOpensToAllUnnamed(module, packageName);
             }
-            resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            try {
+                resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            } catch (InternalError e) {
+                // ignore, nothing we can do
+            }
         }
         return resourceBundles;
     }

@@ -39,8 +39,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
-import com.oracle.truffle.espresso.meta.JavaKind;
 
 @ExportLibrary(InteropLibrary.class)
 public final class TruffleByteBuffer implements TruffleObject {

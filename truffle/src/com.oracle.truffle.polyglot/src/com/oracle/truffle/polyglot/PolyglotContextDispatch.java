@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.ref.Reference;
 import java.time.Duration;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 
 final class PolyglotContextDispatch extends AbstractContextDispatch {
@@ -111,8 +113,12 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void setAPI(Object receiver, Object context) {
-        ((PolyglotContextImpl) receiver).api = context;
+    public void setContextAPIReference(Object receiver, Reference<Context> contextReference) {
+        ((PolyglotContextImpl) receiver).setContextAPIReference(contextReference);
     }
 
+    @Override
+    public void onContextCollected(Object receiver) {
+        ((PolyglotContextImpl) receiver).onContextCollected();
+    }
 }

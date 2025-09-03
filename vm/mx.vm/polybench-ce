@@ -1,6 +1,0 @@
-DYNAMIC_IMPORTS=/compiler,/espresso,/graal-js,/regex,/sdk,/substratevm,/sulong,/truffle,/wasm,graalpython,truffleruby
-COMPONENTS=antlr4,cmp,ejvm,gwa,icu4j,java,js,jsl,jss,lg,llp,llrc,llrl,llrn,nfi-libffi,ni,nil,pbm,pmh,pbi,pyn,pynl,rby,rbyl,rgx,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm
-NATIVE_IMAGES=lib:jvmcicompiler,polybench
-DISABLE_INSTALLABLES=False
-EXTRA_IMAGE_BUILDER_ARGUMENTS=polybench:-J-Xms20G
-GENERATE_DEBUGINFO=false

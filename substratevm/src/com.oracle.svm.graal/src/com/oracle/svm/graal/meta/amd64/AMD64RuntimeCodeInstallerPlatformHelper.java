@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
-import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 @AutomaticallyRegisteredImageSingleton(RuntimeCodeInstallerPlatformHelper.class)
@@ -36,6 +35,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 public class AMD64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
 
     @Override
-    public void performCodeSynchronization(CodeInfo codeInfo) {
+    public boolean needsInstructionCacheSynchronization() {
+        return false;
+    }
+
+    @Override
+    public void performCodeSynchronization(long codeStart, long codeSize) {
     }
 }

@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.impl.JDKAccessor;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 
 import com.oracle.truffle.api.CallTarget;
@@ -92,12 +95,31 @@ final class PolyglotThreadTask implements Runnable {
 
     @Override
     public void run() {
+
+        /*
+         * Holds a creator {@code Context}, ensuring that the garbage collector does not collect the
+         * creator {@code Context} while the polyglot thread is still alive.
+         */
+        Context creatorContext;
+        Thread currentThread = Thread.currentThread();
+        if (JDKAccessor.isVirtualThread(currentThread)) {
+            /*
+             * For virtual threads we cannot override Thread#start() method to capture the polyglot
+             * API Context. There is a race window where the Context can be closed or garbage
+             * collected and the creatorContext may be null.
+             */
+            creatorContext = languageContext.context.getContextAPIOrNull();
+        } else {
+            creatorContext = ((PolyglotThread) currentThread).getAndClearContextAPI();
+        }
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
         try {
             callTarget.call(null, languageContext, this, userRunnable);
         } catch (Throwable t) {
             throw PolyglotImpl.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -143,6 +165,34 @@ final class PolyglotThreadTask implements Runnable {
                 target = languageInstance.installCallTarget(new ThreadSpawnRootNode(languageInstance));
             }
             return target;
+        }
+    }
+
+    static final class PolyglotThread extends Thread {
+
+        private final PolyglotContextImpl polyglotContext;
+        private volatile Context creatorContext;
+
+        PolyglotThread(ThreadGroup group, Runnable task, String name, long stackSize, PolyglotContextImpl polyglotContext) {
+            super(group, task, name, stackSize);
+            this.polyglotContext = polyglotContext;
+        }
+
+        @Override
+        public void start() {
+            /*
+             * Eagerly capture polyglot Context to prevent race when Context is collected before the
+             * thread is started.
+             */
+            creatorContext = polyglotContext.getContextAPI();
+            polyglotContext.engine.polyglotHostService.notifyPolyglotThreadStart(polyglotContext, this);
+            super.start();
+        }
+
+        private Context getAndClearContextAPI() {
+            Context result = creatorContext;
+            creatorContext = null;
+            return result;
         }
     }
 

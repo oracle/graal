@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.reflect;
 
+import java.lang.reflect.Executable;
+
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -52,13 +54,15 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
     private final Class<?>[] argTypes;
     private final JavaKind returnKind;
     private final boolean callerSensitiveAdapter;
+    private final Executable member;
 
-    public ReflectionExpandSignatureMethod(String name, ResolvedJavaMethod prototype, boolean isStatic, Class<?>[] argTypes, JavaKind returnKind, boolean callerSensitiveAdapter) {
+    public ReflectionExpandSignatureMethod(String name, ResolvedJavaMethod prototype, boolean isStatic, Class<?>[] argTypes, JavaKind returnKind, boolean callerSensitiveAdapter, Executable member) {
         super(name, true, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
         this.isStatic = isStatic;
         this.argTypes = argTypes;
         this.returnKind = returnKind;
         this.callerSensitiveAdapter = callerSensitiveAdapter;
+        this.member = member;
     }
 
     /**
@@ -135,5 +139,9 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
         kit.emitInvocationTargetException();
 
         return kit.finalizeGraph();
+    }
+
+    public Executable getMember() {
+        return member;
     }
 }

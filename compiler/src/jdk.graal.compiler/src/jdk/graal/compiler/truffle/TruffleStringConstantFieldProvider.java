@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package jdk.graal.compiler.truffle;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -109,5 +109,10 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
                         types.AbstractTruffleString_codeRange.equals(field) ||
                         types.AbstractTruffleString_codePointLength.equals(field) ||
                         graalConstantFieldProvider.maybeFinal(field);
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return graalConstantFieldProvider.isTrustedFinal(tool, field);
     }
 }

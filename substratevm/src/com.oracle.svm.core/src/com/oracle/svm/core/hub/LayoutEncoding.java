@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -119,19 +118,28 @@ public class LayoutEncoding {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int forPureInstance(ResolvedJavaType type, int size) {
         guaranteeEncoding(type, true, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
-        int encoding = size;
+        int encoding = forPureInstance(size);
         guaranteeEncoding(type, true, isPureInstance(encoding), "Instance type encoding denotes an instance");
         guaranteeEncoding(type, false, isArray(encoding) || isArrayLike(encoding), "Instance type encoding denotes an array-like object");
         guaranteeEncoding(type, false, isHybrid(encoding), "Instance type encoding denotes a hybrid");
         guaranteeEncoding(type, false, isObjectArray(encoding) || isArrayLikeWithObjectElements(encoding), "Instance type encoding denotes an object array");
         guaranteeEncoding(type, false, isPrimitiveArray(encoding) || isArrayLikeWithPrimitiveElements(encoding), "Instance type encoding denotes a primitive array");
-        guaranteeEncoding(type, true, getPureInstanceAllocationSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size matches type size");
+        guaranteeEncoding(type, true, getPureInstanceAllocationSize(encoding).equal(Word.unsigned(size)), "Instance type encoding size matches type size");
         return encoding;
+    }
+
+    public static int forPureInstance(int size) {
+        assert size > LAST_SPECIAL_VALUE;
+        return size;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int forArray(ResolvedJavaType type, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
         return forArrayLike(type, false, objectElements, arrayBaseOffset, arrayIndexShift);
+    }
+
+    public static int forArray(boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        return forArrayLike(false, objectElements, arrayBaseOffset, arrayIndexShift);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -147,9 +155,7 @@ public class LayoutEncoding {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static int forArrayLike(ResolvedJavaType type, boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
         assert isHybrid != type.isArray();
-        int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)
-                        : (objectElements ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE);
-        int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
+        int encoding = forArrayLike(isHybrid, objectElements, arrayBaseOffset, arrayIndexShift);
 
         guaranteeEncoding(type, true, isArrayLike(encoding), "Array-like object encoding denotes an array-like object");
         guaranteeEncoding(type, !isHybrid, isArray(encoding), "Encoding denotes an array");
@@ -159,11 +165,17 @@ public class LayoutEncoding {
         guaranteeEncoding(type, !objectElements, isArrayLikeWithPrimitiveElements(encoding), "Encoding denotes an array-like object with primitive elements");
         guaranteeEncoding(type, !isHybrid && objectElements, isObjectArray(encoding), "Encoding denotes an object array");
         guaranteeEncoding(type, !isHybrid && !objectElements, isPrimitiveArray(encoding), "Encoding denotes a primitive array");
-        guaranteeEncoding(type, true, getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset)),
+        guaranteeEncoding(type, true, getArrayBaseOffset(encoding).equal(Word.unsigned(arrayBaseOffset)),
                         "Encoding denotes a base offset of " + arrayBaseOffset + " (actual value: " + getArrayBaseOffset(encoding) + ')');
         guaranteeEncoding(type, true, getArrayIndexShift(encoding) == arrayIndexShift,
                         "Encoding denotes an index shift of " + arrayIndexShift + " (actual value: " + getArrayIndexShift(encoding) + ')');
         return encoding;
+    }
+
+    private static int forArrayLike(boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)
+                        : (objectElements ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE);
+        return (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
     }
 
     public static boolean isPrimitive(int encoding) {
@@ -195,7 +207,7 @@ public class LayoutEncoding {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getPureInstanceAllocationSize(int encoding) {
-        return WordFactory.unsigned(encoding);
+        return Word.unsigned(encoding);
     }
 
     /**
@@ -210,7 +222,7 @@ public class LayoutEncoding {
             int afterIdHashField = hub.getIdentityHashOffset() + Integer.BYTES;
             if (size.belowThan(afterIdHashField)) {
                 /* Identity hash is at the end of the object and does not fit in a gap. */
-                size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
+                size = Word.unsigned(ol.alignUp(afterIdHashField));
             }
         }
         return size;
@@ -262,7 +274,7 @@ public class LayoutEncoding {
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayBaseOffset(int encoding) {
-        return WordFactory.unsigned(getArrayBaseOffsetAsInt(encoding));
+        return Word.unsigned(getArrayBaseOffsetAsInt(encoding));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -277,7 +289,7 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayElementOffset(int encoding, int index) {
-        return getArrayBaseOffset(encoding).add(WordFactory.unsigned(index).shiftLeft(getArrayIndexShift(encoding)));
+        return getArrayBaseOffset(encoding).add(Word.unsigned(index).shiftLeft(getArrayIndexShift(encoding)));
     }
 
     /**
@@ -297,7 +309,7 @@ public class LayoutEncoding {
     public static UnsignedWord getArraySize(int encoding, int length, boolean withOptionalIdHashField) {
         long unalignedSize = getArrayElementOffset(encoding, length).rawValue();
         long totalSize = ConfigurationValues.getObjectLayout().computeArrayTotalSize(unalignedSize, withOptionalIdHashField);
-        return WordFactory.unsigned(totalSize);
+        return Word.unsigned(totalSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -376,7 +388,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean hasOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word header = ObjectHeader.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);
     }
 

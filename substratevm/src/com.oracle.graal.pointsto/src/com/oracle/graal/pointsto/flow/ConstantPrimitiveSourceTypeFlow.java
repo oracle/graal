@@ -32,12 +32,12 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public class ConstantPrimitiveSourceTypeFlow extends TypeFlow<BytecodePosition> implements PrimitiveFlow {
 
-    public ConstantPrimitiveSourceTypeFlow(BytecodePosition source, AnalysisType type, long value) {
-        super(source, type, TypeState.forPrimitiveConstant(value));
+    public ConstantPrimitiveSourceTypeFlow(BytecodePosition source, AnalysisType type, TypeState state) {
+        super(source, type, state);
     }
 
     public ConstantPrimitiveSourceTypeFlow(ConstantPrimitiveSourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows, original.getState());
+        super(original, methodFlows, original.getRawState());
     }
 
     @Override

@@ -59,9 +59,17 @@ public abstract class AbstractWasmSuite {
 
     protected static Predicate<String> filterTestName() {
         if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
-            return name -> name.matches(WasmTestOptions.TEST_FILTER);
+            if (WasmTestOptions.DISABLED_TESTS != null) {
+                return name -> name.matches(WasmTestOptions.TEST_FILTER) && !WasmTestOptions.DISABLED_TESTS.contains(name);
+            } else {
+                return name -> name.matches(WasmTestOptions.TEST_FILTER);
+            }
         } else {
-            return name -> true;
+            if (WasmTestOptions.DISABLED_TESTS != null) {
+                return name -> !WasmTestOptions.DISABLED_TESTS.contains(name);
+            } else {
+                return name -> true;
+            }
         }
     }
 

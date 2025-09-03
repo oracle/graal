@@ -41,6 +41,11 @@
 
 package com.oracle.truffle.api.strings.test;
 
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
+
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import org.junit.Assert;
@@ -61,52 +66,52 @@ public class TStringUTF16Tests extends TStringTestBase {
     @Test
     public void testBrokenUTF16() {
         String input = new StringBuilder().append('[').append(Character.toChars(0x10ffff)).append(Character.toChars(0xdc80)).append(']').toString();
-        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
-        Assert.assertFalse(utf16.isValidUncached(TruffleString.Encoding.UTF_16));
+        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, UTF_16);
+        Assert.assertFalse(utf16.isValidUncached(UTF_16));
         Assert.assertTrue(utf16.codeRangeEqualsUncached(TruffleString.CodeRange.BROKEN));
 
-        Assert.assertEquals(4, utf16.codePointLengthUncached(TruffleString.Encoding.UTF_16));
-        if (TruffleString.Encoding.UTF_16 == TruffleString.Encoding.UTF_16LE) {
+        Assert.assertEquals(4, utf16.codePointLengthUncached(UTF_16));
+        if (UTF_16 == TruffleString.Encoding.UTF_16LE) {
             Assert.assertArrayEquals(new byte[]{91, 0, -1, -37, -1, -33, -128, -36, 93, 0}, utf16.copyToByteArrayUncached(TruffleString.Encoding.UTF_16LE));
         }
-        Assert.assertEquals('[', utf16.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16));
-        Assert.assertEquals(0x10ffff, utf16.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_16));
-        Assert.assertEquals(0xdc80, utf16.codePointAtIndexUncached(2, TruffleString.Encoding.UTF_16));
-        Assert.assertEquals(']', utf16.codePointAtIndexUncached(3, TruffleString.Encoding.UTF_16));
+        Assert.assertEquals('[', utf16.codePointAtIndexUncached(0, UTF_16));
+        Assert.assertEquals(0x10ffff, utf16.codePointAtIndexUncached(1, UTF_16));
+        Assert.assertEquals(0xdc80, utf16.codePointAtIndexUncached(2, UTF_16));
+        Assert.assertEquals(']', utf16.codePointAtIndexUncached(3, UTF_16));
 
-        TruffleStringIterator it = utf16.createCodePointIteratorUncached(TruffleString.Encoding.UTF_16);
-        Assert.assertEquals('[', it.nextUncached());
-        Assert.assertEquals(0x10ffff, it.nextUncached());
-        Assert.assertEquals(0xdc80, it.nextUncached());
-        Assert.assertEquals(']', it.nextUncached());
+        TruffleStringIterator it = utf16.createCodePointIteratorUncached(UTF_16);
+        Assert.assertEquals('[', it.nextUncached(UTF_16));
+        Assert.assertEquals(0x10ffff, it.nextUncached(UTF_16));
+        Assert.assertEquals(0xdc80, it.nextUncached(UTF_16));
+        Assert.assertEquals(']', it.nextUncached(UTF_16));
         Assert.assertFalse(it.hasNext());
 
-        TruffleString utf32 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_32);
-        Assert.assertEquals(4, utf32.codePointLengthUncached(TruffleString.Encoding.UTF_32));
-        Assert.assertEquals('[', utf32.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_32));
-        Assert.assertEquals(0x10ffff, utf32.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_32));
-        Assert.assertEquals(0xdc80, utf32.codePointAtIndexUncached(2, TruffleString.Encoding.UTF_32));
-        Assert.assertEquals(']', utf32.codePointAtIndexUncached(3, TruffleString.Encoding.UTF_32));
+        TruffleString utf32 = TruffleString.fromJavaStringUncached(input, UTF_32);
+        Assert.assertEquals(4, utf32.codePointLengthUncached(UTF_32));
+        Assert.assertEquals('[', utf32.codePointAtIndexUncached(0, UTF_32));
+        Assert.assertEquals(0x10ffff, utf32.codePointAtIndexUncached(1, UTF_32));
+        Assert.assertEquals(0xdc80, utf32.codePointAtIndexUncached(2, UTF_32));
+        Assert.assertEquals(']', utf32.codePointAtIndexUncached(3, UTF_32));
 
-        it = utf32.createCodePointIteratorUncached(TruffleString.Encoding.UTF_32);
-        Assert.assertEquals('[', it.nextUncached());
-        Assert.assertEquals(0x10ffff, it.nextUncached());
-        Assert.assertEquals(0xdc80, it.nextUncached());
-        Assert.assertEquals(']', it.nextUncached());
+        it = utf32.createCodePointIteratorUncached(UTF_32);
+        Assert.assertEquals('[', it.nextUncached(UTF_32));
+        Assert.assertEquals(0x10ffff, it.nextUncached(UTF_32));
+        Assert.assertEquals(0xdc80, it.nextUncached(UTF_32));
+        Assert.assertEquals(']', it.nextUncached(UTF_32));
         Assert.assertFalse(it.hasNext());
 
-        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8);
-        Assert.assertEquals(4, utf8.codePointLengthUncached(TruffleString.Encoding.UTF_8));
-        Assert.assertEquals('[', utf8.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_8));
-        Assert.assertEquals(0x10ffff, utf8.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_8));
-        Assert.assertEquals(UNICODE_REPLACEMENT_CHARACTER, utf8.codePointAtIndexUncached(2, TruffleString.Encoding.UTF_8));
-        Assert.assertEquals(']', utf8.codePointAtIndexUncached(3, TruffleString.Encoding.UTF_8));
+        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, UTF_8);
+        Assert.assertEquals(4, utf8.codePointLengthUncached(UTF_8));
+        Assert.assertEquals('[', utf8.codePointAtIndexUncached(0, UTF_8));
+        Assert.assertEquals(0x10ffff, utf8.codePointAtIndexUncached(1, UTF_8));
+        Assert.assertEquals(UNICODE_REPLACEMENT_CHARACTER, utf8.codePointAtIndexUncached(2, UTF_8));
+        Assert.assertEquals(']', utf8.codePointAtIndexUncached(3, UTF_8));
 
-        it = utf8.createCodePointIteratorUncached(TruffleString.Encoding.UTF_8);
-        Assert.assertEquals('[', it.nextUncached());
-        Assert.assertEquals(0x10ffff, it.nextUncached());
-        Assert.assertEquals(UNICODE_REPLACEMENT_CHARACTER, it.nextUncached());
-        Assert.assertEquals(']', it.nextUncached());
+        it = utf8.createCodePointIteratorUncached(UTF_8);
+        Assert.assertEquals('[', it.nextUncached(UTF_8));
+        Assert.assertEquals(0x10ffff, it.nextUncached(UTF_8));
+        Assert.assertEquals(UNICODE_REPLACEMENT_CHARACTER, it.nextUncached(UTF_8));
+        Assert.assertEquals(']', it.nextUncached(UTF_8));
         Assert.assertFalse(it.hasNext());
     }
 
@@ -116,22 +121,22 @@ public class TStringUTF16Tests extends TStringTestBase {
     @Test
     public void testBrokenUTF16ToUTF8() {
         String input = "http://example.com/\uD800\uD801\uDFFE\uDFFF\uFDD0\uFDCF\uFDEF\uFDF0\uFFFE\uFFFF?\uD800\uD801\uDFFE\uDFFF\uFDD0\uFDCF\uFDEF\uFDF0\uFFFE\uFFFF";
-        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
-        Assert.assertFalse(utf16.isValidUncached(TruffleString.Encoding.UTF_16));
+        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, UTF_16);
+        Assert.assertFalse(utf16.isValidUncached(UTF_16));
         Assert.assertTrue(utf16.codeRangeEqualsUncached(TruffleString.CodeRange.BROKEN));
 
-        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8);
-        Assert.assertEquals(38, utf16.codePointLengthUncached(TruffleString.Encoding.UTF_16));
-        Assert.assertEquals(80, utf16.byteLength(TruffleString.Encoding.UTF_16));
+        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, UTF_8);
+        Assert.assertEquals(38, utf16.codePointLengthUncached(UTF_16));
+        Assert.assertEquals(80, utf16.byteLength(UTF_16));
 
-        Assert.assertEquals(38, utf8.codePointLengthUncached(TruffleString.Encoding.UTF_8));
-        Assert.assertEquals(76, utf8.byteLength(TruffleString.Encoding.UTF_8));
+        Assert.assertEquals(38, utf8.codePointLengthUncached(UTF_8));
+        Assert.assertEquals(76, utf8.byteLength(UTF_8));
         byte[] expectedUTF8Bytes = new byte[]{
                         104, 116, 116, 112, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, -17,
                         -65, -67, -16, -112, -97, -66, -17, -65, -67, -17, -73, -112, -17, -73, -113, -17, -73, -81, -17, -73,
                         -80, -17, -65, -66, -17, -65, -65, 63, -17, -65, -67, -16, -112, -97, -66, -17, -65, -67, -17, -73,
                         -112, -17, -73, -113, -17, -73, -81, -17, -73, -80, -17, -65, -66, -17, -65, -65};
-        byte[] actualUTF8Bytes = utf8.copyToByteArrayUncached(TruffleString.Encoding.UTF_8);
+        byte[] actualUTF8Bytes = utf8.copyToByteArrayUncached(UTF_8);
         Assert.assertArrayEquals(Arrays.toString(actualUTF8Bytes), expectedUTF8Bytes, actualUTF8Bytes);
     }
 
@@ -145,5 +150,29 @@ public class TStringUTF16Tests extends TStringTestBase {
     public void testToJavaString() {
         TruffleString a = TruffleString.fromCharArrayUTF16Uncached(new char[]{'a', 'b', 'c'});
         Assert.assertEquals("abc", a.toJavaStringUncached());
+    }
+
+    private static TruffleString.Encoding getForeignEndian() {
+        return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? TruffleString.Encoding.UTF_16BE : TruffleString.Encoding.UTF_16LE;
+    }
+
+    private static byte[] getByteSwappedArray(String s) {
+        byte[] array = new byte[s.length() << 1];
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                c = Character.reverseBytes(c);
+            }
+            array[i << 1] = (byte) (c >> 8);
+            array[(i << 1) + 1] = (byte) c;
+        }
+        return array;
+    }
+
+    @Test
+    public void testForeignEndian() {
+        TruffleString a = TruffleString.fromByteArrayUncached(getByteSwappedArray("a\udc00"), getForeignEndian());
+        Assert.assertEquals(2, a.codePointLengthUncached(getForeignEndian()));
+        Assert.assertEquals("a\udc00", a.toJavaStringUncached());
     }
 }

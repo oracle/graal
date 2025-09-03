@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,42 +25,37 @@
 package com.oracle.graal.reachability;
 
 import java.lang.reflect.Modifier;
-import java.util.Optional;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.CallTargetNode;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.extended.ForeignCall;
-import jdk.graal.compiler.nodes.java.InstanceOfNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.NewArrayNode;
-import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValueNodeInterface;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
+import jdk.graal.compiler.nodes.extended.GetClassNode;
+import jdk.graal.compiler.nodes.extended.RawLoadNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
-import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
-import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
-import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.nodes.java.UnsafeCompareAndExchangeNode;
+import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This handler walks the structured graphs of methods and directly calls back into the
@@ -80,6 +75,10 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
     }
 
     private static void analyzeStructuredGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, StructuredGraph graph) {
+        /* First, reuse all the registrations done before the type flow graph creation. */
+        MethodTypeFlowBuilder.registerUsedElements(bb, graph, true);
+
+        /* Then, perform extra registrations that happen in PTA during the analysis. */
         if (method != null) {
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
@@ -93,124 +92,62 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
         }
 
         for (Node n : graph.getNodes()) {
-            if (n instanceof NewInstanceNode) {
-                NewInstanceNode node = (NewInstanceNode) n;
-                ((ReachabilityAnalysisType) node.instanceClass()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof NewInstanceWithExceptionNode) {
-                NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
-                ((ReachabilityAnalysisType) node.instanceClass()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof NewArrayNode) {
-                NewArrayNode node = (NewArrayNode) n;
-                ((ReachabilityAnalysisType) node.elementType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof NewArrayWithExceptionNode) {
-                NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
-                ((ReachabilityAnalysisType) node.elementType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof NewMultiArrayNode) {
-                NewMultiArrayNode node = (NewMultiArrayNode) n;
-                ResolvedJavaType type = node.type();
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    ((ReachabilityAnalysisType) type).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
+            if (n instanceof NewInstanceNode node) {
+                ((AnalysisType) node.instanceClass()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+            } else if (n instanceof VirtualInstanceNode node) {
+                ((AnalysisType) node.type()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+            } else if (n instanceof VirtualArrayNode node) {
+                ((AnalysisType) node.componentType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+            } else if (n instanceof CommitAllocationNode node) {
+                for (AllocatedObjectNode allocatedObjectNode : node.usages().filter(AllocatedObjectNode.class)) {
+                    var type = ((AnalysisType) allocatedObjectNode.getVirtualObject().type());
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(allocatedObjectNode));
                 }
-            } else if (n instanceof NewMultiArrayWithExceptionNode) {
-                NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
-                ResolvedJavaType type = node.type();
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    ((ReachabilityAnalysisType) type).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
-            } else if (n instanceof VirtualInstanceNode) {
-                VirtualInstanceNode node = (VirtualInstanceNode) n;
-                ((ReachabilityAnalysisType) node.type()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof VirtualArrayNode) {
-                VirtualArrayNode node = (VirtualArrayNode) n;
-                ((ReachabilityAnalysisType) node.componentType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof ConstantNode) {
-                ConstantNode node = (ConstantNode) n;
-                if (!(node.getValue() instanceof JavaConstant)) {
-                    /*
-                     * The bytecode parser sometimes embeds low-level VM constants for types into
-                     * the high-level graph. Since these constants are the result of type lookups,
-                     * these types are already marked as reachable. Eventually, the bytecode parser
-                     * should be changed to only use JavaConstant.
-                     */
-                    continue;
-                }
-                JavaConstant constant = (JavaConstant) node.getValue();
-                bb.handleEmbeddedConstant(method, constant, AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof InstanceOfNode) {
-                InstanceOfNode node = (InstanceOfNode) n;
-                ((ReachabilityAnalysisType) node.type().getType()).registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof LoadFieldNode) {
-                LoadFieldNode node = (LoadFieldNode) n;
-                ((ReachabilityAnalysisField) node.field()).registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof StoreFieldNode) {
-                StoreFieldNode node = (StoreFieldNode) n;
-                ((ReachabilityAnalysisField) node.field()).registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof Invoke) {
-                Invoke node = (Invoke) n;
-                CallTargetNode.InvokeKind kind = node.getInvokeKind();
-                ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
-                if (targetMethod == null || AnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
-                    continue;
-                }
-                BytecodePosition reason = AbstractAnalysisEngine.sourcePosition(node.asNode());
-                if (method != null) {
-                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, reason, kind.isDirect()));
-                }
-                if (kind == CallTargetNode.InvokeKind.Static) {
-                    bb.markMethodImplementationInvoked(targetMethod, reason);
-                } else if (kind == CallTargetNode.InvokeKind.Special) {
-                    bb.markMethodSpecialInvoked(targetMethod, reason);
-                } else {
-                    bb.markMethodInvoked(targetMethod, reason);
-                }
-            } else if (n instanceof FrameState) {
-                FrameState node = (FrameState) n;
-                ResolvedJavaMethod frameMethod = node.getMethod();
-                if (frameMethod != null) {
-                    /*
-                     * All types referenced in (possibly inlined) frame states must be reachable,
-                     * because these classes will be reachable from stack walking metadata. This
-                     * metadata is only constructed after AOT compilation, so the image heap
-                     * scanning during static analysis does not see these classes.
-                     */
-                    ReachabilityAnalysisMethod analysisMethod = (ReachabilityAnalysisMethod) frameMethod;
-                    analysisMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
-                }
-            } else if (n instanceof MacroInvokable) {
-                MacroInvokable node = (MacroInvokable) n;
-                ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
-                BytecodePosition reason = AbstractAnalysisEngine.syntheticSourcePosition(node.asNode(), method);
-                CallTargetNode.InvokeKind kind = node.getInvokeKind();
-                if (kind == CallTargetNode.InvokeKind.Static) {
-                    bb.markMethodImplementationInvoked(targetMethod, reason);
-                } else if (kind == CallTargetNode.InvokeKind.Special) {
-                    bb.markMethodSpecialInvoked(targetMethod, reason);
-                } else {
-                    bb.markMethodInvoked(targetMethod, reason);
-                }
-            } else if (n instanceof ForeignCall) {
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
-                ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, ((ForeignCall) n).getDescriptor(), foreignCallsProvider, graph.method());
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                ForeignCallSignature signature = ((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
-                ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                ForeignCallSignature signature = ((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
-                ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
-
+            } else if (n instanceof DynamicNewInstanceNode node && node.getInstanceType() instanceof GetClassNode getClassNode) {
+                var receiverType = (AnalysisType) StampTool.typeOrNull(getClassNode.getObject(), bb.getMetaAccess());
+                receiverType.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+            } else if (n instanceof RawLoadNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof RawStoreNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof UnsafeCompareAndSwapNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof UnsafeCompareAndExchangeNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof AtomicReadAndWriteNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof AtomicReadAndAddNode node) {
+                processUnsafeField(node, node.offset());
+            } else if (n instanceof Invoke node) {
+                processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
+            } else if (n instanceof MacroInvokable node) {
+                processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
             }
         }
     }
 
-    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider, ResolvedJavaMethod from) {
-        Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(descriptor, foreignCallsProvider);
-        targetMethod.ifPresent(method -> bb.addRootMethod(method, false, from));
+    private static void processInvoke(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, ReachabilityAnalysisMethod targetMethod, CallTargetNode.InvokeKind kind,
+                    ValueNodeInterface node) {
+        if (targetMethod == null || AnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
+            return;
+        }
+        BytecodePosition reason = AbstractAnalysisEngine.sourcePosition(node.asNode());
+        if (method != null) {
+            method.addInvoke(new ReachabilityInvokeInfo(targetMethod, reason, kind.isDirect()));
+        }
+        if (kind == CallTargetNode.InvokeKind.Static) {
+            bb.markMethodImplementationInvoked(targetMethod, reason);
+        } else if (kind == CallTargetNode.InvokeKind.Special) {
+            bb.markMethodSpecialInvoked(targetMethod, reason);
+        } else {
+            bb.markMethodInvoked(targetMethod, reason);
+        }
+    }
+
+    private static void processUnsafeField(ValueNode node, ValueNode offset) {
+        if (offset instanceof FieldOffsetProvider provider) {
+            var field = ((AnalysisField) provider.getField());
+            field.registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node));
+        }
     }
 }

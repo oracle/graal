@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle.phases.inlining;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +36,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.GraalBailoutException;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -56,6 +55,7 @@ import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -278,6 +278,17 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public void expand() {
+        if (state == State.Expanded) {
+            /*
+             * The CallNode may be already expanded for trivial call nodes which are expanded in the
+             * afterExpand method.
+             */
+            return;
+        }
+        if (getDirectCallTarget() != null && !getDirectCallTarget().canBeInlined()) {
+            state = State.BailedOut;
+            return;
+        }
         assert state == State.Cutoff : "Cannot expand a non-cutoff node. Node is " + state;
         assert getParent() != null;
         state = State.Expanded;
@@ -288,7 +299,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         GraphManager manager = getCallTree().getGraphManager();
         try {
             entry = manager.pe(directCallTarget);
-        } catch (PermanentBailoutException e) {
+        } catch (GraalBailoutException e) {
             state = State.BailedOut;
             return;
         }
@@ -410,10 +421,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return debugProperties;
     }
 
-    HashMap<String, Object> getStringProperties() {
-        HashMap<Object, Object> properties = new HashMap<>();
+    Map<String, Object> getStringProperties() {
+        Map<Object, Object> properties = new EconomicHashMap<>();
         putProperties(properties);
-        HashMap<String, Object> stringProperties = new HashMap<>();
+        Map<String, Object> stringProperties = new EconomicHashMap<>();
         for (Object key : properties.keySet()) {
             stringProperties.put(key.toString(), properties.get(key));
         }
@@ -466,17 +477,25 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public void finalizeGraph() {
-        if (state == State.Inlined) {
-            for (CallNode child : children) {
-                child.finalizeGraph();
-            }
-        }
-        if (state == State.Cutoff || state == State.Expanded || state == State.BailedOut) {
-            if (invoke.isAlive()) {
-                getCallTree().getGraphManager().finalizeGraph(invoke, directCallTarget);
-            } else {
-                state = State.Removed;
-            }
+        switch (state) {
+            case Inlined:
+                for (CallNode child : children) {
+                    child.finalizeGraph();
+                }
+                break;
+            case Cutoff:
+            case Expanded:
+            case BailedOut:
+                if (invoke.isAlive()) {
+                    getCallTree().getGraphManager().finalizeGraph(invoke, directCallTarget);
+                } else {
+                    state = State.Removed;
+                }
+                break;
+            case Indirect:
+            case Removed:
+                // nothing to finalize
+                break;
         }
     }
 

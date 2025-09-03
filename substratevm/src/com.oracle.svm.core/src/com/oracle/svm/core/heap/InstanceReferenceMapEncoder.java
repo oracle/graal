@@ -28,7 +28,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 
 /**
  * Encodes the reference map of Java instances. Features such as derived pointers and mixing
@@ -40,14 +50,42 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * <li>entryCount entries with the following format:
  * <ul>
  * <li>int offset - the offset where a reference is located</li>
- * <li>uint referenceCount - the number of adjacent references that are located at the offset</li>
+ * <li>int referenceCount - the number of adjacent references that are located at the offset</li>
  * </ul>
  * </li>
  * </ul>
  */
 public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
+    public static final int REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT = 2;
+
     public static final int MAP_HEADER_SIZE = 4;
     public static final int MAP_ENTRY_SIZE = 8;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int computeReferenceMapCompressedOffset(long currentLayerRefMapDataStart, int referenceMapIndex) {
+        long uncompressedOffset = currentLayerRefMapDataStart + referenceMapIndex;
+        return computeReferenceMapCompressedOffset(uncompressedOffset);
+    }
+
+    public static int computeReferenceMapCompressedOffset(InstanceReferenceMap refMap) {
+        long uncompressedOffset = ((Pointer) refMap).subtract(KnownIntrinsics.heapBase()).rawValue();
+        return computeReferenceMapCompressedOffset(uncompressedOffset);
+    }
+
+    /**
+     * Computes a compressed, heap-base relative offset that points to the start of an
+     * {@link InstanceReferenceMap}. Due to the compression, all {@link InstanceReferenceMap}s must
+     * be within the first 16 GB of the heap base.
+     *
+     * @param uncompressedOffset heap-base relative offset of an {@link InstanceReferenceMap}.
+     */
+    private static int computeReferenceMapCompressedOffset(long uncompressedOffset) {
+        long compressedOffset = uncompressedOffset >>> REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
+        assert uncompressedOffset == (compressedOffset << REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT) : "wrong alignment";
+
+        VMError.guarantee(NumUtil.isUInt(compressedOffset), "Compressed reference map offset is not within unsigned integer range");
+        return (int) compressedOffset;
+    }
 
     @Override
     protected void encodeAll(List<Entry<Input, Long>> sortedEntries) {
@@ -60,11 +98,11 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
 
         for (Map.Entry<ReferenceMapEncoder.Input, Long> entry : sortedEntries) {
             ReferenceMapEncoder.Input map = entry.getKey();
-            encodings.put(map, encode(map.getOffsets()));
+            encodings.put(map, encode(writeBuffer, map.getOffsets()));
         }
     }
 
-    private long encode(ReferenceMapEncoder.OffsetIterator offsets) {
+    public static long encode(UnsafeArrayTypeWriter writeBuffer, ReferenceMapEncoder.OffsetIterator offsets) {
         long startIndex = writeBuffer.getBytesWritten();
         // make room for the number of entries that we need to patch at the end
         writeBuffer.putS4(-1);
@@ -88,7 +126,7 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
                     assert nextOffset >= nextAdjacentOffset : "values must be strictly increasing";
                     if (adjacentReferences > 0) {
                         // The end of a run. Encode the *previous* run.
-                        encodeRun(offset, adjacentReferences);
+                        encodeRun(writeBuffer, offset, adjacentReferences);
                         entries++;
                     }
                     // Beginning of the next gap+run pair.
@@ -100,7 +138,7 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
             } while (offsets.hasNext());
 
             if (adjacentReferences > 0) {
-                encodeRun(offset, adjacentReferences);
+                encodeRun(writeBuffer, offset, adjacentReferences);
                 entries++;
             }
         }
@@ -109,9 +147,9 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
         return startIndex;
     }
 
-    private void encodeRun(int offset, int refsCount) {
+    private static void encodeRun(UnsafeArrayTypeWriter writeBuffer, int offset, int refsCount) {
         assert offset >= 0 && refsCount >= 0;
         writeBuffer.putS4(offset);
-        writeBuffer.putU4(refsCount);
+        writeBuffer.putS4(refsCount);
     }
 }

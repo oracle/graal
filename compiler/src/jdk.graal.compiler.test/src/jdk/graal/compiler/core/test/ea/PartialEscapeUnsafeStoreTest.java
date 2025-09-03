@@ -24,8 +24,9 @@
  */
 package jdk.graal.compiler.core.test.ea;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 
 /**
  * Exercise a mix of unsafe and normal reads ands writes in situations where EA might attempt to
@@ -557,7 +558,7 @@ public class PartialEscapeUnsafeStoreTest extends GraalCompilerTest {
     }
 
     public static byte testByteArrayWithLongStoreAndReadSnippet(long v) {
-        byte[] b = new byte[4];
+        byte[] b = new byte[8];
         UNSAFE.putLong(b, byteArrayBaseOffset, v);
         return b[(byteSize / longSize) + 1];
     }
@@ -579,7 +580,7 @@ public class PartialEscapeUnsafeStoreTest extends GraalCompilerTest {
     }
 
     public static byte testByteArrayWithDoubleStoreAndReadSnippet(double v) {
-        byte[] b = new byte[4];
+        byte[] b = new byte[8];
         UNSAFE.putDouble(b, byteArrayBaseOffset, v);
         return b[(byteSize / doubleSize) + 1];
     }

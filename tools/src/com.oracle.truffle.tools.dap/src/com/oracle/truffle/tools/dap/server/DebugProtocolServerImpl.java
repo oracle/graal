@@ -706,7 +706,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         return session;
     }
 
-    private class SuspendedCallbackImpl implements SuspendedCallback {
+    private final class SuspendedCallbackImpl implements SuspendedCallback {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
@@ -756,7 +756,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         }
     }
 
-    private static class AllContextsCancel implements ContextsListener {
+    private static final class AllContextsCancel implements ContextsListener {
 
         private final Phaser allClosed = new Phaser(1);
 

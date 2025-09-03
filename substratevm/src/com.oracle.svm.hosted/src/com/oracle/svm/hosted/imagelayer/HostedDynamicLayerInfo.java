@@ -27,10 +27,8 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.hosted.image.NativeImage.localSymbolNameForMethod;
 
 import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +44,9 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
@@ -55,78 +54,115 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedMethodNameFactory.MethodNameInfo;
 
-import jdk.graal.compiler.debug.Assertions;
-
+@AutomaticallyRegisteredImageSingleton(value = DynamicImageLayerInfo.class, onlyWith = BuildingImageLayerPredicate.class)
 public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements LayeredImageSingleton {
-    private final Map<Integer, Integer> methodIdToOffsetMap;
-    private final ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap;
     private final CGlobalData<PointerBase> cGlobalData;
     private final Set<String> priorLayerMethodSymbols = new HashSet<>();
     private final List<String> libNames;
-    private boolean persisted = false;
+    private final Map<AnalysisMethod, Integer> priorInstalledOffsetCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
+    /**
+     * The symbols of methods that are fully delayed to the application layer and are invoked in a
+     * shared layer. All those symbols need to be linked in the application layer to avoid any
+     * undefined reference, so the corresponding methods will be registered as root in the
+     * application layer. A single {@link CGlobalData} has to be created for each symbol, so it is
+     * cached in a map.
+     */
+    private final Map<String, CGlobalData<?>> delayedMethodSymbols = ImageLayerBuildingSupport.buildingSharedLayer() ? new ConcurrentHashMap<>() : null;
+    /**
+     * The id of the methods corresponding to the symbols of
+     * {@link HostedDynamicLayerInfo#delayedMethodSymbols}.
+     */
+    private final Set<Integer> delayedMethodIds = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
+    /**
+     * The symbols of methods delayed to the application layer from previous shared layers.
+     */
+    private final Set<String> previousLayerDelayedMethodSymbols;
+    /**
+     * The ids of methods delayed to the application layer from previous shared layers.
+     */
+    private final Set<Integer> previousLayerDelayedMethodIds;
+    /**
+     * The symbols of delayed methods that are properly compiled in the application layer.
+     */
+    private final Set<String> compiledDelayedMethodSymbols = ImageLayerBuildingSupport.buildingApplicationLayer() ? ConcurrentHashMap.newKeySet() : null;
 
     HostedDynamicLayerInfo() {
-        this(0, null, new HashMap<>(), new ConcurrentHashMap<>(), new ArrayList<>());
+        this(0, null, new ArrayList<>(), Set.of(), Set.of());
     }
 
     public static HostedDynamicLayerInfo singleton() {
         return (HostedDynamicLayerInfo) ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
-    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, Map<Integer, Integer> methodIdToOffsetMap, ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap,
-                    List<String> libNames) {
+    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, List<String> libNames,
+                    Set<String> previousLayerDelayedMethodSymbols, Set<Integer> previousLayerDelayedMethodIds) {
         super(layerNumber);
-        this.methodIdToOffsetMap = methodIdToOffsetMap;
-        this.methodIdToNameInfoMap = methodIdToNameInfoMap;
-        this.libNames = libNames;
-        cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
+        this.libNames = new ArrayList<>(libNames);
+        this.cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
+        this.previousLayerDelayedMethodSymbols = previousLayerDelayedMethodSymbols;
+        this.previousLayerDelayedMethodIds = previousLayerDelayedMethodIds;
+    }
+
+    @Override
+    public boolean isMethodCompilationDelayed(SharedMethod sMethod) {
+        return ((HostedMethod) sMethod).wrapped.isDelayed();
     }
 
     @Override
     public PriorLayerMethodLocation getPriorLayerMethodLocation(SharedMethod sMethod) {
         assert ImageLayerBuildingSupport.buildingExtensionLayer() : "This should only be called within extension images. Within the initial layer the direct calls can be performed";
-        HostedMethod method = (HostedMethod) sMethod;
-        assert method.wrapped.isInBaseLayer() && methodIdToOffsetMap.containsKey(method.getWrapped().getId()) : method;
+        HostedMethod hMethod = (HostedMethod) sMethod;
+        int compiledOffset = getPriorInstalledOffset(hMethod.getWrapped());
+        assert hMethod.wrapped.isInBaseLayer() && compiledOffset != HostedMethod.INVALID_CODE_ADDRESS_OFFSET;
 
         var basePointer = CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalData);
-        var offset = methodIdToOffsetMap.get(method.getWrapped().getId());
-        return new PriorLayerMethodLocation(basePointer, offset);
+        return new PriorLayerMethodLocation(basePointer, compiledOffset);
     }
 
     public boolean compiledInPriorLayer(AnalysisMethod aMethod) {
         assert !BuildPhaseProvider.isCompileQueueFinished();
-        return methodIdToOffsetMap.containsKey(aMethod.getId());
+        return getPriorInstalledOffset(aMethod) != HostedMethod.INVALID_CODE_ADDRESS_OFFSET;
     }
 
-    public MethodNameInfo loadMethodNameInfo(AnalysisMethod method) {
-        return methodIdToNameInfoMap.get(method.getId());
+    private int getPriorInstalledOffset(AnalysisMethod aMethod) {
+        if (aMethod.isInBaseLayer()) {
+            return priorInstalledOffsetCache.computeIfAbsent(aMethod, method -> {
+                var methodData = HostedImageLayerBuildingSupport.singleton().getLoader();
+                return methodData.getHostedMethodData(aMethod).getInstalledOffset();
+            });
+        } else {
+            return HostedMethod.INVALID_CODE_ADDRESS_OFFSET;
+        }
     }
 
-    public void recordPersistedMethod(HostedMethod hMethod) {
-        assert !persisted : "Too late to record this information";
-        MethodNameInfo info = new MethodNameInfo(hMethod.getName(), hMethod.getUniqueShortName());
-        var prev = methodIdToNameInfoMap.put(hMethod.getWrapped().getId(), info);
-        // will have to change for multiple layers
-        assert prev == null : prev;
+    public static MethodNameInfo loadMethodNameInfo(AnalysisMethod aMethod) {
+        if (aMethod.isInBaseLayer()) {
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            var methodData = loader.getHostedMethodData(aMethod);
+            return new MethodNameInfo(methodData.getHostedMethodName().toString(), methodData.getHostedMethodUniqueName().toString());
+        } else {
+            return null;
+        }
     }
 
     public Set<String> getReservedNames() {
-        return methodIdToNameInfoMap.values().stream().map(MethodNameInfo::uniqueShortName).collect(Collectors.toUnmodifiableSet());
-    }
-
-    void registerCompilation(HostedMethod method) {
-        assert BuildPhaseProvider.isCompileQueueFinished();
-        int offset = method.getCodeAddressOffset();
-        int methodID = method.getWrapped().getId();
-
-        assert !methodIdToOffsetMap.containsKey(methodID) : Assertions.errorMessage("Duplicate entry", methodID, offset);
-        methodIdToOffsetMap.put(methodID, offset);
+        /*
+         * Note we only need to ensure method names for persisted analysis methods are reserved.
+         */
+        Set<String> reservedNames = new HashSet<>();
+        var methods = HostedImageLayerBuildingSupport.singleton().getLoader().getHostedMethods();
+        for (var methodData : methods) {
+            if (methodData.getMethodId() != LayeredDispatchTableFeature.PriorDispatchMethod.UNPERSISTED_METHOD_ID) {
+                reservedNames.add(methodData.getHostedMethodUniqueName().toString());
+            }
+        }
+        return Collections.unmodifiableSet(reservedNames);
     }
 
     public void registerHostedMethod(HostedMethod hMethod) {
@@ -136,12 +172,39 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
             assert aMethod.isInBaseLayer() : hMethod;
             priorLayerMethodSymbols.add(localSymbolNameForMethod(hMethod));
             hMethod.setCompiledInPriorLayer();
+            hMethod.setCodeAddressOffset(getPriorInstalledOffset(aMethod));
         }
+    }
+
+    @Override
+    public CGlobalDataInfo getSymbolForDelayedMethod(SharedMethod targetMethod) {
+        String symbolName = localSymbolNameForMethod(targetMethod);
+        var symbol = delayedMethodSymbols.computeIfAbsent(symbolName, key -> CGlobalDataFactory.forSymbol(symbolName));
+        delayedMethodIds.add(((HostedMethod) targetMethod).wrapped.getId());
+        return CGlobalDataFeature.singleton().registerAsAccessedOrGet(symbol);
+    }
+
+    public boolean forceGlobalMethodSymbol(String symbol) {
+        boolean isDelayedInPreviousLayer = previousLayerDelayedMethodSymbols.contains(symbol);
+        if (isDelayedInPreviousLayer) {
+            compiledDelayedMethodSymbols.add(symbol);
+        }
+        return isDelayedInPreviousLayer;
+    }
+
+    public void checkMissingDelayedMethods() {
+        VMError.guarantee(compiledDelayedMethodSymbols.equals(previousLayerDelayedMethodSymbols), "All delayed method symbols should be assigned to a compilation unit in the application layer");
     }
 
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
-        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
+        /*
+         * In vtables, we can typically reference methods from the initial layer via their known
+         * offsets from the code base, without using symbols. Only in some cases, such as
+         * CFunctionPointer/MethodPointer, we still use symbols. Therefore, not all these symbol
+         * entries are needed, but the command-line linker should remove any unnecessary ones.
+         */
+        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, true));
     }
 
     public void registerLibName(String lib) {
@@ -152,31 +215,17 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         return libNames.contains(lib);
     }
 
+    public Set<Integer> getPreviousLayerDelayedMethodIds() {
+        return previousLayerDelayedMethodIds;
+    }
+
     @Override
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
         return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
     }
 
-    /**
-     * Verifies each method has been mapped to a unique offset.
-     */
-    boolean verifyUniqueOffsets(Collection<? extends SharedMethod> methods) {
-        BitSet seenOffsets = new BitSet();
-        for (var entry : methodIdToOffsetMap.entrySet()) {
-            if (seenOffsets.get(entry.getValue())) {
-                var method = methods.stream().filter(m -> ((HostedMethod) m).getWrapped().getId() == entry.getKey()).findAny();
-                assert false : Assertions.errorMessage("Value has already been found", method, entry.getKey(), entry.getValue());
-            }
-
-            seenOffsets.set(entry.getValue());
-        }
-
-        return true;
-    }
-
     @Override
     public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        persisted = true;
         /*
          * When there are multiple shared layers we will need to store the starting code offset of
          * each layer.
@@ -186,119 +235,52 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         /*
          * First write out next layer number.
          */
-        writer.writeInt("nextLayerNumber", nextLayerNumber);
+        var snapshotBuilder = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getSnapshotBuilder();
+        snapshotBuilder.setNextLayerNumber(nextLayerNumber);
 
         /*
          * Next write the start of the code section
          */
         writer.writeString("codeSectionStartSymbol", NativeImage.getTextSectionStartSymbol());
 
-        /*
-         * Write out all method offsets.
-         */
-        List<Integer> offsets = new ArrayList<>(methodIdToOffsetMap.size());
-        List<Integer> methodOffsetIds = new ArrayList<>(methodIdToOffsetMap.size());
-        methodIdToOffsetMap.forEach((key, value) -> {
-            methodOffsetIds.add(key);
-            offsets.add(value);
-        });
-        writer.writeIntList("methodOffsetIDs", methodOffsetIds);
-        writer.writeIntList("offsets", offsets);
-
-        /*
-         * Write out all persisted method names
-         */
-        List<Integer> methodNameIds = new ArrayList<>(methodIdToNameInfoMap.size());
-        List<String> names = new ArrayList<>(methodIdToNameInfoMap.size() * 2);
-        methodIdToNameInfoMap.forEach((key, value) -> {
-            methodNameIds.add(key);
-            names.add(value.name());
-            names.add(value.uniqueShortName());
-        });
-        writer.writeIntList("methodNameIDs", methodNameIds);
-        writer.writeStringList("names", names);
-
         writer.writeStringList("libNames", libNames);
+
+        Set<String> nextLayerDelayedMethodSymbols = new HashSet<>(previousLayerDelayedMethodSymbols);
+        nextLayerDelayedMethodSymbols.addAll(delayedMethodSymbols.keySet());
+        writer.writeStringList("delayedMethodSymbols", nextLayerDelayedMethodSymbols.stream().toList());
+
+        Set<Integer> nextLayerDelayedMethodIds = new HashSet<>(previousLayerDelayedMethodIds);
+        nextLayerDelayedMethodIds.addAll(delayedMethodIds);
+        writer.writeIntList("delayedMethodIds", nextLayerDelayedMethodIds.stream().toList());
 
         return PersistFlags.CREATE;
     }
 
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
-        assert loader.readIntList("offsets").size() == loader.readIntList("methodOffsetIDs").size() : Assertions.errorMessage("Offsets and methodIDs are incompatible", loader.readIntList("offsets"),
-                        loader.readIntList("methodIDs"));
 
-        int layerNumber = loader.readInt("nextLayerNumber");
+        var snapshotReader = ((SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader).getSnapshotReader();
+        int layerNumber = snapshotReader.getNextLayerNumber();
 
         String codeSectionStartSymbol = loader.readString("codeSectionStartSymbol");
 
-        /*
-         * Load the offsets of all methods in the prior layers.
-         */
-        var offsets = loader.readIntList("offsets").iterator();
-        var methodOffsetIds = loader.readIntList("methodOffsetIDs").iterator();
-        Map<Integer, Integer> initialMethodIdToOffsetMap = new HashMap<>();
-
-        while (offsets.hasNext()) {
-            int methodId = methodOffsetIds.next();
-            int offset = offsets.next();
-            var prev = initialMethodIdToOffsetMap.put(methodId, offset);
-            assert prev == null;
-        }
-
-        /*
-         * Load the names of all methods in the prior layers.
-         */
-        var names = loader.readStringList("names").iterator();
-        var methodNameIds = loader.readIntList("methodNameIDs").iterator();
-        ConcurrentHashMap<Integer, MethodNameInfo> initialMethodIdToMethodNameMap = new ConcurrentHashMap<>();
-
-        while (methodNameIds.hasNext()) {
-            int methodId = methodNameIds.next();
-            String name = names.next();
-            String uniqueShortName = names.next();
-            var prev = initialMethodIdToMethodNameMap.put(methodId, new MethodNameInfo(name, uniqueShortName));
-            assert prev == null;
-        }
-
         var libNames = loader.readStringList("libNames");
 
-        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, initialMethodIdToOffsetMap, initialMethodIdToMethodNameMap, libNames);
-    }
-}
+        var previousLayerDelayedMethodSymbols = loader.readStringList("delayedMethodSymbols").stream().collect(Collectors.toUnmodifiableSet());
+        var previousLayerDelayedMethodIds = loader.readIntList("delayedMethodIds").stream().collect(Collectors.toUnmodifiableSet());
 
-@AutomaticallyRegisteredFeature
-class HostedDynamicLayerInfoFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.buildingImageLayer();
+        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, libNames, previousLayerDelayedMethodSymbols, previousLayerDelayedMethodIds);
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            ImageSingletons.add(DynamicImageLayerInfo.class, new HostedDynamicLayerInfo());
-        }
+    public int getPreviousMaxTypeId() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getMaxTypeId();
     }
 
     @Override
-    public void afterCompilation(AfterCompilationAccess access) {
-        /*
-         * Store all compiled method offsets into the singleton.
-         */
-
-        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-            // This is the last layer; no need to store anything
-            return;
-        }
-
-        var config = (FeatureImpl.AfterCompilationAccessImpl) access;
-
-        assert HostedDynamicLayerInfo.singleton().verifyUniqueOffsets(config.getMethods());
-
-        for (var entry : config.getCodeCache().getOrderedCompilations()) {
-            HostedDynamicLayerInfo.singleton().registerCompilation(entry.getLeft());
-        }
+    public long getPreviousImageHeapEndOffset() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getImageHeapEndOffset();
     }
 }

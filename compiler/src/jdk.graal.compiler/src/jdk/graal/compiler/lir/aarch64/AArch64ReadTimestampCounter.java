@@ -33,6 +33,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Reads the CNTVCT_EL0 generic timer register. Note that two reads to this system register from the
@@ -48,8 +49,13 @@ public class AArch64ReadTimestampCounter extends AArch64LIRInstruction {
         this.result = result;
     }
 
+    public Value getResult() {
+        return result;
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        masm.isb();
         masm.mrs(asRegister(result), AArch64Assembler.SystemRegister.CNTVCT_EL0);
     }
 }

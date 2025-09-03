@@ -66,4 +66,6 @@ public interface CompilationEvent extends RootFunctionEvent {
     void setPartialEvaluationNodeCount(int count);
 
     void setPartialEvaluationTime(long time);
+
+    void setCompilationId(String id);
 }

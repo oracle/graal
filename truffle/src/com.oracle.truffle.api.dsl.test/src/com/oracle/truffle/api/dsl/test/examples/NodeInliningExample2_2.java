@@ -121,7 +121,7 @@ public class NodeInliningExample2_2 {
 
         @Specialization(guards = {"cachedClass != null", "cachedClass == array.getClass()"}, limit = "2")
         static int doCached(Object array,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("getCachedClass(array)") Class<?> cachedClass,
                         @Cached GetStoreNode getStore) {
             Object castStore = cachedClass.cast(array);

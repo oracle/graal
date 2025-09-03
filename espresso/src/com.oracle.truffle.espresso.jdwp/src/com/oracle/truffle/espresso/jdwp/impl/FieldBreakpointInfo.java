@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements FieldBreakpoint {
@@ -62,5 +62,10 @@ public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements
 
     public boolean isAccessBreakpoint() {
         return accessBreakpoint;
+    }
+
+    @Override
+    public void dispose() {
+        field.removeFieldBreakpointInfo(getRequestId());
     }
 }

@@ -27,6 +27,9 @@ package com.oracle.svm.hosted.imagelayer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Registry to manage cross-layer constant references.
@@ -45,10 +48,10 @@ public interface CrossLayerConstantRegistry {
      * Retrieves the constant associated with {@code keyName}. If a constant does not exist then an
      * error is thrown.
      */
-    ImageHeapConstant getConstant(String keyName);
+    JavaConstant getConstant(String keyName);
 
     /**
-     * Checks whether a constant for {@code keyName} was stored in a prior layer.
+     * Checks whether a constant for {@code keyName} was registered in a prior layer.
      */
     boolean constantExists(String keyName);
 
@@ -64,4 +67,16 @@ public interface CrossLayerConstantRegistry {
      * {@link #getConstant}.
      */
     void registerHeapConstant(String keyName, Object obj);
+
+    /**
+     * Registers a key to a constant which will be registered in a later layer via
+     * {@link #finalizeFutureHeapConstant}. The constant can be retrieved via {@link #getConstant}
+     * in all layers except the layer which calls {@link #finalizeFutureHeapConstant}.
+     */
+    ImageHeapConstant registerFutureHeapConstant(String keyName, AnalysisType futureType);
+
+    /**
+     * Registers a value to associate with a prior {@link #registerFutureHeapConstant} registration.
+     */
+    void finalizeFutureHeapConstant(String keyName, Object obj);
 }

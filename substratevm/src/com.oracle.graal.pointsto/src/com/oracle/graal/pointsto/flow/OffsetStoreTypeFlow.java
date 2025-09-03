@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import java.util.Collection;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -49,7 +47,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
     /*
      * The type of the receiver object of the offset store operation. Can be approximated by Object
-     * or Object[] when it cannot be infered from stamps.
+     * or Object[] when it cannot be inferred from stamps.
      */
     protected final AnalysisType objectType;
 
@@ -146,10 +144,14 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             /*
+             * Nothing needs to change for open world analysis: we want to link all indexed store
+             * flows when the receiver saturates.
+             */
+            /*
              * When receiver flow saturates swap in the saturated indexed store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
              * unlinks them, but it still observes the receiver state to notify no-yet-reachable
-             * field flows of saturation.
+             * indexed store flows of saturation.
              */
 
             /* Deregister the store as an observer of the receiver. */
@@ -169,26 +171,29 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "StoreIndexedTypeFlow<" + getState() + ">";
+            return "StoreIndexedTypeFlow<" + getStateDescription() + ">";
         }
     }
 
-    public abstract static class AbstractUnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
+    public static class UnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
 
-        AbstractUnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+        public UnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
             super(storeLocation, objectType, filterUncheckedInterface(componentType), objectFlow, valueFlow);
         }
 
-        AbstractUnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
+        public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public final AbstractUnsafeStoreTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return makeCopy(bb, methodFlows);
+        public final UnsafeStoreTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+            return new UnsafeStoreTypeFlow(bb, methodFlows, this);
         }
 
-        protected abstract AbstractUnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
+        @Override
+        public boolean needsInitialization() {
+            return true;
+        }
 
         @Override
         public void initFlow(PointsToAnalysis bb) {
@@ -201,11 +206,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             forceUpdate(bb);
         }
 
-        @Override
-        public boolean needsInitialization() {
-            return true;
-        }
-
         public void forceUpdate(PointsToAnalysis bb) {
             /*
              * Unsafe store type flow models unsafe writes to both instance and static fields. From
@@ -215,32 +215,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
                 addUse(bb, field.getStaticFieldFlow().filterFlow(bb));
             }
-        }
-
-        void handleUnsafeAccessedFields(PointsToAnalysis bb, Collection<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
-            for (AnalysisField field : unsafeAccessedFields) {
-                /* Write through the field filter flow. */
-                addUse(bb, object.getInstanceFieldFilterFlow(bb, objectFlow, source, field));
-            }
-        }
-    }
-
-    /**
-     * Implements an unsafe store operation type flow.
-     */
-    public static class UnsafeStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        public UnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
-        }
-
-        public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public UnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new UnsafeStoreTypeFlow(bb, methodFlows, this);
         }
 
         @Override
@@ -263,13 +237,20 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
                     TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, true);
                     this.addUse(bb, elementsFlow);
                 } else {
-                    handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(), object);
+                    for (AnalysisField field : type.unsafeAccessedFields()) {
+                        /* Write through the field filter flow. */
+                        this.addUse(bb, object.getInstanceFieldFilterFlow(bb, objectFlow, source, field));
+                    }
                 }
             }
         }
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            /*
+             * Nothing needs to change for open world analysis: we want to link all unsafe store
+             * flows when the receiver saturates.
+             */
             /*
              * When receiver flow saturates swap in the saturated unsafe store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
@@ -284,7 +265,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             valueFlow.removeUse(this);
 
             /* Link the saturated store. */
-            AbstractUnsafeStoreTypeFlow contextInsensitiveStore = ((PointsToAnalysisType) objectType).initAndGetContextInsensitiveUnsafeStore(bb, source);
+            UnsafeStoreTypeFlow contextInsensitiveStore = ((PointsToAnalysisType) objectType).initAndGetContextInsensitiveUnsafeStore(bb, source);
             /*
              * Link the value flow to the saturated store. The receiver is already set in the
              * saturated store.
@@ -294,7 +275,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "UnsafeStoreTypeFlow<" + getState() + ">";
+            return "UnsafeStoreTypeFlow<" + getStateDescription() + ">";
         }
     }
 }

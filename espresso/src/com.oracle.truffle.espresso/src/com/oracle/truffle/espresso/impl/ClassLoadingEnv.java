@@ -23,13 +23,25 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.ParsingContext;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class ClassLoadingEnv implements LanguageAccess {
@@ -83,14 +95,36 @@ public class ClassLoadingEnv implements LanguageAccess {
                         (loaderIsBootOrPlatform(loader) || loaderIsAppLoader(loader));
     }
 
+    public boolean isReflectPackage(Symbol<Name> pkg) {
+        /*
+         * Note: This class is created too early in the init process to make this variable a final
+         * field.
+         */
+        Symbol<Name> reflectPackage = getLanguage().getJavaVersion().java8OrEarlier()
+                        ? EspressoSymbols.Names.sun_reflect
+                        : EspressoSymbols.Names.jdk_internal_reflect;
+        return pkg == reflectPackage;
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean loaderIsBoot(StaticObject loader) {
+        return StaticObject.isNull(loader);
+    }
+
     public boolean loaderIsBootOrPlatform(StaticObject loader) {
-        return StaticObject.isNull(loader) ||
+        return loaderIsBoot(loader) ||
                         (language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     public boolean loaderIsAppLoader(StaticObject loader) {
-        return !StaticObject.isNull(loader) &&
+        return !loaderIsBoot(loader) &&
                         (meta.jdk_internal_loader_ClassLoaders$AppClassLoader.isAssignableFrom(loader.getKlass()));
+    }
+
+    public boolean loaderIsReflection(StaticObject loader) {
+        return meta.sun_reflect_DelegatingClassLoader != null &&
+                        !loaderIsBoot(loader) &&
+                        meta.sun_reflect_DelegatingClassLoader.isAssignableFrom(loader.getKlass());
     }
 
     public long getNewKlassId() {
@@ -107,5 +141,67 @@ public class ClassLoadingEnv implements LanguageAccess {
             throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
         }
         return id;
+    }
+
+    public static ParsingContext createParsingContext(ClassLoadingEnv env, boolean ensureStrongReferences) {
+        return new ParsingContext() {
+
+            final Logger truffleEnvLogger = new Logger() {
+                @Override
+                public void log(String message) {
+                    env.getLogger().warning(message);
+                }
+
+                @Override
+                public void log(Supplier<String> messageSupplier) {
+                    env.getLogger().warning(messageSupplier);
+                }
+
+                @Override
+                public void log(String message, Throwable throwable) {
+                    env.getLogger().log(Level.SEVERE, message, throwable);
+                }
+            };
+
+            @Override
+            public JavaVersion getJavaVersion() {
+                return env.getJavaVersion();
+            }
+
+            @Override
+            public boolean isStrictJavaCompliance() {
+                return env.getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT;
+            }
+
+            @Override
+            public TimerCollection getTimers() {
+                return env.getTimers();
+            }
+
+            @Override
+            public boolean isPreviewEnabled() {
+                return env.isPreviewEnabled();
+            }
+
+            @Override
+            public Logger getLogger() {
+                return truffleEnvLogger;
+            }
+
+            @Override
+            public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
+                return env.getNames().getOrCreate(byteSequence, ensureStrongReferences);
+            }
+
+            @Override
+            public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
+                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence), ensureStrongReferences);
+            }
+
+            @Override
+            public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
+                return env.getLanguage().getUtf8Symbols().getOrCreateValidUtf8(byteSequence, ensureStrongReferences);
+            }
+        };
     }
 }

@@ -41,11 +41,21 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Engine;
@@ -74,7 +84,72 @@ public class SeparatedClassLoadersTest {
     }
 
     @Test
-    public void sdkAndTruffleAPIInSeparateClassLoaders() throws Exception {
+    public void sdkAndTruffleAPIInSeparateClassLoaders() {
+        ClassLoaders classLoaders = createContextClassLoaders();
+        Object contextClassLoaderEngine = createEngineInContextClassLoader(classLoaders);
+        try {
+            assertNotNull("Engine has been created", contextClassLoaderEngine);
+        } finally {
+            close(contextClassLoaderEngine);
+        }
+    }
+
+    /**
+     * Verifies that TruffleLogger does not cache language IDs.
+     */
+    @Test
+    @SuppressWarnings("try")
+    public void testLoggers() throws Exception {
+        /*
+         * This test is specific to HotSpot, as native-image has a fixed set of languages determined
+         * at build time.
+         */
+        Assume.assumeFalse(ImageInfo.inImageCode());
+        SubprocessTestUtils.newBuilder(SeparatedClassLoadersTest.class, () -> {
+            /*
+             * The test uses an engine with a custom classloader that does not contain TestLanguage.
+             * Therefore, getLogger is expected to fail.
+             */
+            ClassLoaders classLoaders = createContextClassLoaders();
+            Object contextClassLoaderEngine = createEngineInContextClassLoader(classLoaders);
+            try {
+                AbstractPolyglotTest.assertFails(() -> getLoggerReflective(classLoaders.truffleLoader, TestUtils.getDefaultLanguageId(TestLanguage.class)),
+                                IllegalArgumentException.class,
+                                (e) -> assertTrue(e.getMessage().startsWith("Unknown language or instrument")));
+            } finally {
+                close(contextClassLoaderEngine);
+            }
+
+            Thread.currentThread().setContextClassLoader(null);
+            try (Engine systemClassLoaderEngine = Engine.create()) {
+                // Engine using a system classloader must contain TestLanguage
+                assertNotNull(TruffleLogger.getLogger(TestUtils.getDefaultLanguageId(TestLanguage.class)));
+            }
+        }).run();
+    }
+
+    private static Object getLoggerReflective(ClassLoader loader, String loggerId) {
+        try {
+            Class<?> truffleLogger = Class.forName(TruffleLogger.class.getName(), false, loader);
+            Method m = truffleLogger.getDeclaredMethod("getLogger", String.class);
+            ReflectionUtils.setAccessible(m, true);
+            return m.invoke(null, loggerId);
+        } catch (InvocationTargetException invocationException) {
+            throw sthrow(invocationException.getCause());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends RuntimeException> T sthrow(Throwable t) throws T {
+        throw (T) t;
+    }
+
+    private record ClassLoaders(ClassLoader sdkLoader, ClassLoader truffleLoader) {
+    }
+
+    private static ClassLoaders createContextClassLoaders() {
         final ProtectionDomain polyglotDomain = Engine.class.getProtectionDomain();
         Assume.assumeNotNull(polyglotDomain);
         Assume.assumeNotNull(polyglotDomain.getCodeSource());
@@ -97,16 +172,34 @@ public class SeparatedClassLoadersTest {
 
         URLClassLoader sdkLoader = new URLClassLoader(new URL[]{collectionsURL, wordURL, nativeURL, polyglotURL}, parent);
         URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
-        Thread.currentThread().setContextClassLoader(truffleLoader);
+        return new ClassLoaders(sdkLoader, truffleLoader);
+    }
 
-        Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
-        Object engine = engineClass.getMethod("create").invoke(null);
+    private static Object createEngineInContextClassLoader(ClassLoaders classLoaders) {
+        Thread.currentThread().setContextClassLoader(classLoaders.truffleLoader);
+        try {
+            Class<?> engineClass = classLoaders.sdkLoader.loadClass(Engine.class.getName());
+            return engineClass.getMethod("create").invoke(null);
+        } catch (ReflectiveOperationException roe) {
+            throw new AssertionError(roe);
+        }
+    }
 
-        assertNotNull("Engine has been created", engine);
+    private static void close(Object engine) {
+        ReflectionUtils.invoke(engine, "close");
     }
 
     @After
     public void resetLoader() {
         Thread.currentThread().setContextClassLoader(loader);
+    }
+
+    @Registration
+    public static final class TestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return true;
+        }
     }
 }

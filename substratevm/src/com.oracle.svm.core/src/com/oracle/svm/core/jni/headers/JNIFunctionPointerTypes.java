@@ -262,6 +262,11 @@ public final class JNIFunctionPointerTypes {
         boolean invoke(JNIEnvironment env, JNIObjectHandle obj1, JNIObjectHandle obj2);
     }
 
+    public interface MonitorEnterExitFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIEnvironment env, JNIObjectHandle obj);
+    }
+
     private JNIFunctionPointerTypes() {
     }
 }

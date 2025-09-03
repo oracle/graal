@@ -25,8 +25,8 @@
 package jdk.graal.compiler.hotspot;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jdk.graal.compiler.core.CompilationWatchDog;
@@ -36,8 +36,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.CompilationRequest;
 
 /**
@@ -136,38 +136,38 @@ final class BootstrapWatchDog extends Thread {
         if (DEBUG) {
             TTY.printf("%nStarted %s%n", this);
         }
-        long start = System.currentTimeMillis();
+        long startNS = System.nanoTime();
         Map<Thread, Watch> requestsAtTimeout = null;
         Map<Thread, StackTraceElement[]> stacksAtTimeout = null;
         try {
             Thread.sleep(INITIAL_DELAY * 1000);
             while (true) { // TERMINATION ARGUMENT: busy wait loop
                 int currentCompilations = compilations.get();
-                long elapsed = System.currentTimeMillis() - start;
-                double rate = currentCompilations / seconds(elapsed);
+                long elapsedNS = System.nanoTime() - startNS;
+                double rate = currentCompilations / seconds(elapsedNS);
                 if (DEBUG) {
-                    TTY.printf("%.2f: compilation rate is %.2f/sec%n", seconds(elapsed), rate);
+                    TTY.printf("%.2f: compilation rate is %.2f/sec%n", seconds(elapsedNS), rate);
                 }
                 if (rate > maxRate) {
                     maxRate = rate;
                 } else if (rate < (maxRate * maxRateDecrease)) {
                     TTY.printf("%nAfter %.2f seconds bootstrapping, compilation rate is %.2f compilations per second " +
-                                    "which is below %.2f times the max compilation rate of %.2f%n", seconds(elapsed), rate, maxRateDecrease, maxRate);
+                                    "which is below %.2f times the max compilation rate of %.2f%n", seconds(elapsedNS), rate, maxRateDecrease, maxRate);
                     TTY.printf("To enable monitoring of long running individual compilations, re-run with -D%s%s=%.2f%n",
                                     HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, CompilationWatchDog.Options.CompilationWatchDogStartDelay.getName(),
-                                    seconds(elapsed) - 5);
+                                    seconds(elapsedNS) - 5);
                     hitCriticalRateOrTimeout = true;
                     return;
                 }
-                if (elapsed > timeout * 1000) {
+                if (elapsedNS > TimeUnit.SECONDS.toNanos(timeout)) {
                     if (requestsAtTimeout == null) {
                         requestsAtTimeout = snapshotRequests();
-                        stacksAtTimeout = new HashMap<>();
+                        stacksAtTimeout = new EconomicHashMap<>();
                         for (Thread t : requestsAtTimeout.keySet()) {
                             stacksAtTimeout.put(t, t.getStackTrace());
                         }
                     } else {
-                        TTY.printf("%nHit bootstrapping timeout after %.2f seconds%n", seconds(elapsed));
+                        TTY.printf("%nHit bootstrapping timeout after %.2f seconds%n", seconds(elapsedNS));
                         Map<Thread, Watch> requestsNow = snapshotRequests();
                         for (Map.Entry<Thread, Watch> e : requestsAtTimeout.entrySet()) {
                             Thread t = e.getKey();
@@ -208,12 +208,12 @@ final class BootstrapWatchDog extends Thread {
 
     private Map<Thread, Watch> snapshotRequests() {
         synchronized (requests) {
-            return new HashMap<>(requests);
+            return new EconomicHashMap<>(requests);
         }
     }
 
-    private static double seconds(long ms) {
-        return (double) ms / 1000;
+    private static double seconds(long ns) {
+        return (double) ns / TimeUnit.SECONDS.toNanos(1);
     }
 
     /**
@@ -223,7 +223,7 @@ final class BootstrapWatchDog extends Thread {
         return hitCriticalRateOrTimeout;
     }
 
-    private final Map<Thread, Watch> requests = new HashMap<>();
+    private final Map<Thread, Watch> requests = new EconomicHashMap<>();
     private final ThreadLocal<Watch> requestForThread = new ThreadLocal<>();
 
     /**

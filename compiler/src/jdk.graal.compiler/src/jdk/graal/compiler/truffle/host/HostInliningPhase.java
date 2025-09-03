@@ -179,6 +179,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected final void runInlining(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
         TruffleHostEnvironment env = TruffleHostEnvironment.get(method);
@@ -511,7 +512,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(context.env, invoke.getTargetMethod());
 
-                double frequency = context.isFrequencyCutoffEnabled() ? block.getRelativeFrequency() : 1.0d;
+                double frequency = (!forceShallowInline && context.isFrequencyCutoffEnabled()) ? block.getRelativeFrequency() : 1.0d;
                 CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline, frequency);
                 children.add(callee);
 
@@ -600,6 +601,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
      */
     private BackPropagation peekPropagatesDeoptOrUnwind(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
+            return BackPropagation.NOTHING;
+        }
+
+        if (!method.hasBytecodes() || method.isNative()) {
             return BackPropagation.NOTHING;
         }
 
@@ -948,10 +953,6 @@ public class HostInliningPhase extends AbstractInliningPhase {
             /*
              * Always force inline bytecode switches into bytecode switches.
              */
-            if (call.frequency <= context.minimumFrequency) {
-                call.reason = "frequency < minimumFrequency";
-                return false;
-            }
             return true;
         }
 
@@ -1079,9 +1080,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
         }
 
         if (targetMethod.isNative() && !(Intrinsify.getValue(context.options) &&
-                        context.highTierContext.getReplacements().getInlineSubstitution(targetMethod, call.invoke.bci(), call.invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
-                                        context.graph.allowAssumptions(),
-                                        context.options) != null)) {
+                        context.highTierContext.getReplacements().getInlineSubstitution(targetMethod, call.invoke.bci(), false, call.invoke.getInlineControl(), context.graph.trackNodeSourcePosition(),
+                                        null, context.graph.allowAssumptions(), context.options) != null)) {
             call.reason = "target method is a non-intrinsic native method";
             return false;
         }
@@ -1245,7 +1245,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * copy the intrinsic graph if it is frozen.
          */
         StructuredGraph graph = context.highTierContext.getReplacements().getInlineSubstitution(method,
-                        invoke.bci(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
+                        invoke.bci(), invoke.isInOOMETry(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
                         invoke.asNode().graph().allowAssumptions(), invoke.asNode().getOptions());
         if (graph == null) {
             graph = context.graphCache.get(method);
@@ -1351,6 +1351,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                         info.isTruffleBoundary() ||
                         types.isInInterpreter(callee) ||
                         types.isInInterpreterFastPath(callee) ||
+                        types.isHasNextTier(callee) ||
                         types.isTransferToInterpreterMethod(callee));
     }
 

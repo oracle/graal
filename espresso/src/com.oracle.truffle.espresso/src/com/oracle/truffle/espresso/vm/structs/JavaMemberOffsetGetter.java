@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.structs;
 
 import java.util.Collections;
@@ -30,7 +29,7 @@ import java.util.Map;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
-import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 
 /**
  * Uses the obtained offsets regarding the structure that stores offset information to build the
@@ -42,17 +41,17 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 public class JavaMemberOffsetGetter implements MemberOffsetGetter {
     private final Map<String, Long> memberInfos;
 
-    public JavaMemberOffsetGetter(JniEnv jni, TruffleObject memberInfo, Structs structs) {
-        this.memberInfos = buildInfos(jni, structs, memberInfo);
+    public JavaMemberOffsetGetter(JNIHandles handles, TruffleObject memberInfo, Structs structs) {
+        this.memberInfos = buildInfos(handles, structs, memberInfo);
     }
 
-    private static Map<String, Long> buildInfos(JniEnv jni, Structs structs, TruffleObject info) {
+    private static Map<String, Long> buildInfos(JNIHandles handles, Structs structs, TruffleObject info) {
         Map<String, Long> map = new HashMap<>();
         InteropLibrary library = InteropLibrary.getUncached();
         assert !library.isNull(info);
         TruffleObject current = NativeUtils.dereferencePointerPointer(library, info);
         while (!library.isNull(current)) {
-            MemberInfo.MemberInfoWrapper wrapper = structs.memberInfo.wrap(jni, current);
+            MemberInfo.MemberInfoWrapper wrapper = structs.memberInfo.wrap(handles, current);
             long offset = wrapper.offset();
             String str = NativeUtils.interopPointerToString(wrapper.id());
             map.put(str, offset);

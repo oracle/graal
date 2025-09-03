@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,6 +33,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -50,7 +51,7 @@ public interface BarrierSet {
         return original;
     }
 
-    void addBarriers(FixedAccessNode n);
+    void addBarriers(FixedAccessNode n, CoreProviders context);
 
     BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind);
 

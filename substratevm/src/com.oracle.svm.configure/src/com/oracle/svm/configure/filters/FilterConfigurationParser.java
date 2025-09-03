@@ -26,12 +26,14 @@ package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -40,7 +42,7 @@ public class FilterConfigurationParser extends ConfigurationParser {
     private final ConfigurationFilter filter;
 
     public FilterConfigurationParser(ConfigurationFilter filter) {
-        super(true);
+        super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         assert filter != null;
         this.filter = filter;
     }

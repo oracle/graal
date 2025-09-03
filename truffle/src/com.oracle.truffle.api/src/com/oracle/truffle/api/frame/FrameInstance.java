@@ -165,6 +165,28 @@ public interface FrameInstance {
     Node getCallNode();
 
     /**
+     * Returns an instrumentable call node from a frame instance. This method should be preferred
+     * over {@link #getCallNode()} by tools to find the instrumentable node associated with this
+     * call node. In case of bytecode interpreters the instrumentable node needs to be resolved by
+     * the language and is not directly accessible from the {@link Node#getParent() parent} chain of
+     * the regular {@link FrameInstance#getCallNode() call node}. Just like {@link #getCallNode()}
+     * this method may not directly return an instrumentable node. To find the eventual
+     * instrumentable node the {@link Node#getParent() parent} chain must be searched. There is no
+     * guarantee that an instrumentable node can be found, e.g. if the language does not support
+     * instrumentation.
+     *
+     * @see RootNode#findInstrumentableCallNode
+     * @since 24.2
+     */
+    default Node getInstrumentableCallNode() {
+        RootNode root = ((RootCallTarget) getCallTarget()).getRootNode();
+        Frame frame = captureFrame(root);
+        Node callNode = getCallNode();
+        int bytecodeIndex = FrameAccessor.NODES.findBytecodeIndex(root, callNode, frame);
+        return FrameAccessor.ACCESSOR.nodeSupport().findInstrumentableCallNode(root, callNode, frame, bytecodeIndex);
+    }
+
+    /**
      * The {@link CallTarget} being invoked in this frame.
      * <p>
      * See {@link #getCallNode()} for the relation between call node and CallTarget.

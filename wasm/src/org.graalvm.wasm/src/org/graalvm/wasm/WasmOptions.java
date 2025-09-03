@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,46 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.Option;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.predefined.BuiltinModule;
+
+import com.oracle.truffle.api.Option;
 
 @Option.Group(WasmLanguage.ID)
 public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<linkingName>:]<builtinModuleName>,[<linkingName>:]<builtinModuleName>,...")//
-    public static final OptionKey<String> Builtins = new OptionKey<>("");
+    public static final OptionKey<Map<String, BuiltinModule>> Builtins = new OptionKey<>(Map.of(), new OptionType<>("Builtins", optionValue -> {
+        if (optionValue.isEmpty()) {
+            return Map.of();
+        }
+        final String[] moduleSpecs = optionValue.split(",");
+        final Map<String, BuiltinModule> builtinModules = new HashMap<>(moduleSpecs.length);
+        for (String moduleSpec : moduleSpecs) {
+            final String[] parts = moduleSpec.split(":");
+            if (parts.length > 2) {
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Module specification '" + moduleSpec + "' is not valid.");
+            }
+            final String linkingName = parts[0];
+            final String predefinedModuleName = parts.length == 2 ? parts[1] : parts[0];
+            builtinModules.put(linkingName, BuiltinModule.requireBuiltinModule(predefinedModuleName));
+        }
+        return Map.copyOf(builtinModules);
+    }));
 
-    @Option(help = "The minimal binary size for which to use async parsing. If threads are not supported, async parsing will not be used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
+    @Option(help = "The minimal binary size for which to use async parsing. If threads are not supported, async parsing will not be used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)", //
+                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted.")//
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
 
-    @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
+    @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)", //
+                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted.")//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
 
     @Option(help = "A comma-separated list of pre-opened Wasi directories.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<virtualDir>::]<hostDir>,[<virtualDir>::]<hostDir>,...")//
@@ -107,12 +132,22 @@ public class WasmOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> SIMD = new OptionKey<>(true);
 
+    @Option(help = "Enable support for the relaxed vector instructions", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> RelaxedSIMD = new OptionKey<>(false);
+
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
 
     @Option(help = "Make WASI random_get always return the same random numbers. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WasiConstantRandomGet = new OptionKey<>(false);
 
-    @Option(help = "Test dir used for testing the debugger.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "<dir>") //
-    public static final OptionKey<String> DebugCompDirectory = new OptionKey<>("");
+    @Option(help = "Allows the embedder to access memories as direct byte buffers.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> DirectByteBufferMemoryAccess = new OptionKey<>(false);
+
+    @Option(help = "Support instrumentation for functions that do not have their source available. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> DebugTestMode = new OptionKey<>(false);
+
+    @Option(help = "Makes Context#eval return a wasm instance (runtime representation) instead of a wasm module (symbolic representation).", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EvalReturnsInstance = new OptionKey<>(false);
 }

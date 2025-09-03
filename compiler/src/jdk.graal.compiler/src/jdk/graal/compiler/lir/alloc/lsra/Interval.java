@@ -39,11 +39,9 @@ import jdk.graal.compiler.core.common.util.IntList;
 import jdk.graal.compiler.core.common.util.Util;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
-
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -437,8 +435,6 @@ public final class Interval {
 
     protected static final int END_MARKER_OPERAND_NUMBER = Integer.MIN_VALUE;
 
-    private final LIR lir;
-
     /**
      * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval
      * prior to register allocation.
@@ -707,15 +703,22 @@ public final class Interval {
     }
 
     boolean currentIntersects(Interval it) {
+        if (current.from > it.to()) {
+            // these two can never intersect
+            return false;
+        }
         return current.intersects(it.current);
     }
 
     int currentIntersectsAt(Interval it) {
+        if (current.from > it.to()) {
+            // these two can never intersect
+            return -1;
+        }
         return current.intersectsAt(it.current);
     }
 
-    Interval(LIR lir, AllocatableValue operand, int operandNumber, Interval intervalEndMarker, Range rangeEndMarker) {
-        this.lir = lir;
+    Interval(AllocatableValue operand, int operandNumber, Interval intervalEndMarker, Range rangeEndMarker) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
@@ -1044,7 +1047,7 @@ public final class Interval {
             first.to = Math.max(to, first().to);
         } else {
             // insert new range
-            first = new Range(from, to, first(), lir);
+            first = new Range(from, to, first());
         }
     }
 
@@ -1100,7 +1103,7 @@ public final class Interval {
         assert !cur.isEndMarker() : "split interval after end of last range";
 
         if (cur.from < splitPos) {
-            result.first = new Range(splitPos, cur.to, cur.next, lir);
+            result.first = new Range(splitPos, cur.to, cur.next);
             cur.to = splitPos;
             cur.next = allocator.rangeEndMarker;
 

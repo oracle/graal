@@ -50,8 +50,8 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
                     byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
         constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
+                        arrayA, this.offsetA, lengthA, strideA, fromIndexA,
+                        arrayB, this.offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
     }
 
     @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")

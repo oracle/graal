@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.jvmti;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.locks.VMMutex;
@@ -62,7 +62,7 @@ public final class JvmtiEnvs {
     public JvmtiExternalEnv create() {
         JvmtiEnv env = JvmtiEnvUtil.allocate();
         if (env.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         mutex.lock();
@@ -117,7 +117,7 @@ public final class JvmtiEnvs {
         assert hasDisposedEnvs;
 
         JvmtiEnv cur = headEnv;
-        JvmtiEnv prev = WordFactory.nullPointer();
+        JvmtiEnv prev = Word.nullPointer();
         while (cur.isNonNull()) {
             if (JvmtiEnvUtil.isDead(cur)) {
                 remove(cur, prev);
@@ -153,7 +153,7 @@ public final class JvmtiEnvs {
             cur = next;
         }
 
-        headEnv = WordFactory.nullPointer();
-        tailEnv = WordFactory.nullPointer();
+        headEnv = Word.nullPointer();
+        tailEnv = Word.nullPointer();
     }
 }

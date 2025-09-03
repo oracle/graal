@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.common;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
@@ -39,7 +40,8 @@ public final class LIRKindWithCast extends LIRKind {
     private final ValueKind<LIRKind> actualKind;
 
     private LIRKindWithCast(LIRKind toKind, LIRKind actualKind) {
-        super(toKind.getPlatformKind(), toKind.getReferenceCount(), toKind.getReferenceCount(), toKind.getDerivedReferenceBase());
+        super(toKind.getPlatformKind(), toKind.getReferenceMask(), toKind.getReferenceCompressionMask(), toKind.getDerivedReferenceBase());
+        assert actualKind.isUnknownReference() == toKind.isUnknownReference() : "Reference kind mismatch: " + Assertions.errorMessageContext("toKind", toKind, "actualKind", actualKind);
         this.actualKind = actualKind;
         assert actualKind.getClass() == LIRKind.class : "must exactly LIRKind";
     }

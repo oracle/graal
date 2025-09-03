@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.wasi.WasiClockTimeGetNode;
 import org.graalvm.wasm.predefined.wasi.types.Dirent;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -306,7 +307,7 @@ class DirectoryFd extends Fd {
         if (isSet(childOflags, Oflags.Directory)) {
             if (hostChildFile.isDirectory()) {
                 final int fd = fdManager.put(new DirectoryFd(fdManager, virtualChildFile, preopenedRoot, childFsRightsBase, childFsRightsInheriting, childFdFlags));
-                memory.store_i32(node, fdAddress, fd);
+                WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
             } else {
                 return Errno.Notdir;
@@ -314,7 +315,7 @@ class DirectoryFd extends Fd {
         } else {
             try {
                 final int fd = fdManager.put(new FileFd(hostChildFile, childOflags, childFsRightsBase, childFsRightsInheriting, childFdFlags));
-                memory.store_i32(node, fdAddress, fd);
+                WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
             } catch (FileAlreadyExistsException e) {
                 return Errno.Exist;
@@ -344,6 +345,8 @@ class DirectoryFd extends Fd {
             int bufEnd = bufAddress + bufLength;
             long currentEntry = 0;
 
+            WasmMemoryLibrary memories = WasmMemoryLibrary.getUncached();
+
             for (TruffleFile file : entries) {
                 // Only write entries whose index is past the received "cookie"
                 if (currentEntry >= cookie) {
@@ -356,7 +359,7 @@ class DirectoryFd extends Fd {
                         byte[] dirent = FdUtils.writeDirentToByteArray(file, name.length, currentEntry + 1);
                         for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
                             assert i < dirent.length;
-                            memory.store_i32_8(node, bufPointer, dirent[i]);
+                            memories.store_i32_8(memory, node, bufPointer, dirent[i]);
                         }
                         assert bufPointer == bufEnd;
                         break;
@@ -368,7 +371,7 @@ class DirectoryFd extends Fd {
                         // Truncate file name
                         for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
                             assert i < name.length;
-                            memory.store_i32_8(node, bufPointer, name[i]);
+                            memories.store_i32_8(memory, node, bufPointer, name[i]);
                         }
                         assert bufPointer == bufEnd;
                         break;
@@ -376,7 +379,7 @@ class DirectoryFd extends Fd {
                 }
                 currentEntry++;
             }
-            memory.store_i32(node, sizeAddress, bufPointer - bufAddress);
+            memories.store_i32(memory, node, sizeAddress, bufPointer - bufAddress);
         } catch (IOException e) {
             return Errno.Io;
         }
@@ -400,7 +403,7 @@ class DirectoryFd extends Fd {
             }
             final String content = virtualLink.getPath();
             int bytesWritten = memory.writeString(node, content, buf, bufLen);
-            memory.store_i32(node, sizeAddress, bytesWritten);
+            WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, bytesWritten);
             return Errno.Success.ordinal();
         } catch (NotLinkException e) {
             return Errno.Nolink.ordinal();

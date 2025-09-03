@@ -45,6 +45,7 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -76,6 +77,14 @@ public abstract class BaseOSRRootNode extends RootNode {
             Reference.reachabilityFence(frame);
             Reference.reachabilityFence(this);
         }
+    }
+
+    @Override
+    protected final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        Node node = (Node) loopNode; // safe to cast, always a Node
+        RootNode root = node.getRootNode();
+        assert root != null : "Loop and OSR nodes must be adopted";
+        return OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
     }
 
     /**

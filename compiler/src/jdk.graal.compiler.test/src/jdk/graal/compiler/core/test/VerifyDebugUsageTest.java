@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyDebugUsageTest {
 
-    private static class InvalidLogUsagePhase extends TestPhase {
+    private static final class InvalidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -65,12 +65,11 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidLogAndIndentUsagePhase extends TestPhase {
+    private static final class InvalidLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("%s", graph.toString())) {
+            try (Indent _ = debug.logAndIndent("%s", graph.toString())) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -107,16 +106,7 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static class InvalidVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "%s", graph.toString());
-        }
-
-    }
-
-    private static class InvalidConcatLogUsagePhase extends TestPhase {
+    private static final class InvalidConcatLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -127,12 +117,11 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
+    private static final class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("error " + graph)) {
+            try (Indent _ = debug.logAndIndent("error " + graph)) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -150,15 +139,6 @@ public class VerifyDebugUsageTest {
 
     }
 
-    static class InvalidConcatVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "error " + graph);
-        }
-
-    }
-
     static class ValidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
@@ -172,10 +152,9 @@ public class VerifyDebugUsageTest {
 
     static class ValidLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("%s", graph)) {
+            try (Indent _ = debug.logAndIndent("%s", graph)) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -189,15 +168,6 @@ public class VerifyDebugUsageTest {
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
             debug.dump(DebugContext.BASIC_LEVEL, graph, "%s", graph);
-        }
-
-    }
-
-    static class ValidVerifyUsagePhase extends TestPhase {
-        @Override
-        protected void run(StructuredGraph graph) {
-            DebugContext debug = graph.getDebug();
-            debug.verify(graph, "%s", graph);
         }
 
     }
@@ -218,14 +188,14 @@ public class VerifyDebugUsageTest {
 
     public static Object sideEffect;
 
-    private static class InvalidGraalErrorCtorPhase extends TestPhase {
+    private static final class InvalidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("No Error %s", graph.toString());
         }
     }
 
-    private static class ValidGraalErrorCtorPhase extends TestPhase {
+    private static final class ValidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("Error %s", graph);
@@ -240,11 +210,6 @@ public class VerifyDebugUsageTest {
     @Test(expected = VerificationError.class)
     public void testLogAndIndentInvalid() {
         testDebugUsageClass(InvalidLogAndIndentUsagePhase.class);
-    }
-
-    @Test(expected = VerificationError.class)
-    public void testVerifyInvalid() {
-        testDebugUsageClass(InvalidVerifyUsagePhase.class);
     }
 
     @Test(expected = VerificationError.class)
@@ -273,11 +238,6 @@ public class VerifyDebugUsageTest {
     }
 
     @Test(expected = VerificationError.class)
-    public void testVerifyInvalidConcat() {
-        testDebugUsageClass(InvalidConcatVerifyUsagePhase.class);
-    }
-
-    @Test(expected = VerificationError.class)
     public void testDumpInvalidConcat() {
         testDebugUsageClass(InvalidConcatDumpUsagePhase.class);
     }
@@ -290,11 +250,6 @@ public class VerifyDebugUsageTest {
     @Test()
     public void testLogAndIndentValid() {
         testDebugUsageClass(ValidLogAndIndentUsagePhase.class);
-    }
-
-    @Test
-    public void testVerifyValid() {
-        testDebugUsageClass(ValidVerifyUsagePhase.class);
     }
 
     @Test
@@ -322,7 +277,6 @@ public class VerifyDebugUsageTest {
         testDebugUsageClass(ValidGraalErrorCtorPhase.class);
     }
 
-    @SuppressWarnings("try")
     private static void testDebugUsageClass(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -339,7 +293,7 @@ public class VerifyDebugUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugCloseable s = debug.disableIntercept()) {
+                try (DebugCloseable _ = debug.disableIntercept()) {
                     new VerifyDebugUsage().apply(graph, context);
                 }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package org.graalvm.nativebridge;
 
-import org.graalvm.nativebridge.JNIConfig.Builder;
+import org.graalvm.nativebridge.MarshallerConfig.Builder;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -253,6 +253,23 @@ public abstract class BinaryOutput {
             }
         }
         write(tempDecodingBuffer, 0, (int) (headerSize + utfLen));
+    }
+
+    /**
+     * Writes a string using a modified UTF-8 encoding in a machine-independent manner, supporting
+     * {@code null} values.
+     *
+     * @throws IllegalArgumentException if the {@code string} cannot be encoded using modified
+     *             UTF-8.
+     * @since 25.0
+     */
+    public final void writeString(String string) throws IllegalArgumentException {
+        if (string != null) {
+            writeBoolean(true);
+            writeUTF(string);
+        } else {
+            writeBoolean(false);
+        }
     }
 
     /**
@@ -480,6 +497,23 @@ public abstract class BinaryOutput {
      */
     public static CCharPointerBinaryOutput create(CCharPointer address, int length, boolean dynamicallyAllocated) {
         return new CCharPointerBinaryOutput(address, length, dynamicallyAllocated);
+    }
+
+    /**
+     * Creates a {@link BinaryOutput} by consuming the internal storage of {@code binaryInput}.
+     * After this call, {@code binaryInput} is in a moved-from state and must not be used further.
+     * The returned {@link BinaryOutput} type corresponds to the type of {@code binaryInput}. If
+     * {@code binaryInput} is byte array-based, a {@link ByteArrayBinaryOutput} will be created. If
+     * {@code binaryInput} is raw memory-based, a {@link CCharPointerBinaryOutput} will be created.
+     */
+    public static BinaryOutput claimBuffer(BinaryInput binaryInput) {
+        if (binaryInput instanceof BinaryInput.ByteArrayBinaryInput arrayInput) {
+            return create(arrayInput.getArray());
+        } else if (binaryInput instanceof BinaryInput.CCharPointerInput pointerInput) {
+            return create(pointerInput.getAddress(), pointerInput.length, false);
+        } else {
+            throw new IllegalArgumentException("Unsupported binaryInput " + binaryInput);
+        }
     }
 
     static int bufferSize(int headerSize, int dataSize) {

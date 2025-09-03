@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,9 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
+import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
@@ -50,17 +53,6 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public AMD64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         super(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
-    }
-
-    /**
-     * We include all flags that enable AMD64 CPU instructions as we want best possible performance
-     * for the code.
-     *
-     * @return All the flags that enable AMD64 CPU instructions.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static EnumSet<AMD64.Flag> allAMD64Flags() {
-        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction);
     }
 
     @Override
@@ -114,7 +106,7 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
     }
 
     @Override
-    public void enableFeatures(Architecture runtimeArchitecture) {
+    public void enableFeatures(Architecture runtimeArchitecture, LoweringProvider runtimeLowerer) {
         if (!canUpdateCPUFeatures()) {
             return;
         }
@@ -124,7 +116,13 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
         architecture.getFeatures().addAll(features);
 
         // update largest storable kind
-        AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
+        AMD64Kind largestStorableKind = new AMD64(features).getLargestStorableKind(AMD64.XMM);
         JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
+        AMD64Kind largestStorableMaskKind = new AMD64(features).getLargestStorableKind(AMD64.MASK);
+        JVMCISubstitutions.updateLargestStorableMaskKind(architecture, largestStorableMaskKind);
+
+        // update vector architecture
+        VectorAMD64 initialVectorArch = (VectorAMD64) ((VectorLoweringProvider) runtimeLowerer).getVectorArchitecture();
+        initialVectorArch.updateForRuntimeArchitecture((AMD64) runtimeArchitecture);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,29 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Random;
 
-import com.oracle.truffle.api.strings.TruffleString;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.analysis.InputStringGenerator;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class InputStringGeneratorTests extends RegexTestBase {
 
-    private final RegexLanguage language = new RegexLanguage();
     private final Random rng = new Random(1234);
 
     @Override
-    String getEngineOptions() {
-        return "";
+    Map<String, String> getEngineOptions() {
+        return Collections.emptyMap();
     }
 
     @Override
@@ -83,31 +80,34 @@ public class InputStringGeneratorTests extends RegexTestBase {
         testInputStringGenerator(
                         "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?)+");
         testInputStringGenerator("(\\S+) (\\S+) (\\S+) \\[([A-Za-z0-9_:/]+\\s[-+]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?");
-    }
-
-    private TruffleString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding) {
-        String sourceString = createSourceString(pattern, flags, options, encoding);
-        Source source = Source.newBuilder("regex", sourceString, "regexSource").build();
-        RegexSource regexSource = RegexLanguage.createRegexSource(source);
-        RegexAST ast = regexSource.getOptions().getFlavor().createParser(language, regexSource, new CompilationBuffer(regexSource.getEncoding())).parse();
-        return InputStringGenerator.generate(ast, rng.nextLong());
+        testInputStringGenerator("(?<=(a))\\1");
     }
 
     void testInputStringGenerator(String pattern) {
-        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding());
+        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong());
     }
 
-    void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding) {
+    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, long rngSeed) {
         Value compiledRegex = compileRegex(pattern, flags);
-        testInputStringGenerator(pattern, flags, options, encoding, compiledRegex);
+        Value generator = getGenerator(pattern, flags, options, encoding);
+        for (int i = 0; i < 20; i++) {
+            Value input = generator.execute(rngSeed + i);
+            Assert.assertFalse(input.isNull());
+            String inputStr = input.getMember("input").asString();
+            int fromIndex = input.getMember("fromIndex").asInt();
+            Value result = execRegex(compiledRegex, encoding, inputStr, fromIndex);
+            if (!result.getMember("isMatch").asBoolean()) {
+                Assert.assertTrue(execRegex(compiledRegex, encoding, inputStr, input.getMember("matchStart").asInt()).getMember("isMatch").asBoolean());
+            }
+        }
     }
 
-    private void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, Value compiledRegex) {
-        for (int i = 0; i < 20; i++) {
-            TruffleString input = generateInputString(pattern, flags, options, encoding);
-            Assert.assertNotNull(input);
-            Value result = execRegex(compiledRegex, encoding, input, 0);
-            Assert.assertTrue(result.getMember("isMatch").asBoolean());
+    private Value getGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+        Source.Builder builder = sourceBuilder(pattern, flags, options(options), encoding).option("regexDummyLang.GenerateInput", "true");
+        try {
+            return context.parse(builder.build());
+        } catch (IOException e) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 }

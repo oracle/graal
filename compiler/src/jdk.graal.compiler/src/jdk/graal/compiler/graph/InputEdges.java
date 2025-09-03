@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.graph;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import jdk.graal.compiler.graph.NodeClass.InputInfo;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -34,7 +34,7 @@ public final class InputEdges extends Edges {
     private final InputType[] inputTypes;
     private final boolean[] isOptional;
 
-    public InputEdges(int directCount, ArrayList<InputInfo> edges) {
+    public InputEdges(int directCount, List<InputInfo> edges) {
         super(Type.Inputs, directCount, edges);
 
         this.inputTypes = new InputType[edges.size()];
@@ -42,12 +42,6 @@ public final class InputEdges extends Edges {
         for (int i = 0; i < edges.size(); i++) {
             this.inputTypes[i] = edges.get(i).inputType;
             this.isOptional[i] = edges.get(i).optional;
-        }
-    }
-
-    public static void translateInto(InputEdges inputs, ArrayList<InputInfo> infos) {
-        for (int index = 0; index < inputs.getCount(); index++) {
-            infos.add(new InputInfo(inputs.offsets[index], inputs.getName(index), inputs.getType(index), inputs.getDeclaringClass(index), inputs.inputTypes[index], inputs.isOptional(index)));
         }
     }
 

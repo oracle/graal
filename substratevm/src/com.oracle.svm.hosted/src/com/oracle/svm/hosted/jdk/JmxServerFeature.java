@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -83,7 +83,7 @@ public class JmxServerFeature implements InternalFeature {
                         "jdk.internal.agent.resources.agent");
 
         resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(),
-                        "sun.security.util.Resources"); // required for password auth
+                        "sun.security.util.resources.security"); // required for password auth
     }
 
     private static void configureProxy(BeforeAnalysisAccess access) {

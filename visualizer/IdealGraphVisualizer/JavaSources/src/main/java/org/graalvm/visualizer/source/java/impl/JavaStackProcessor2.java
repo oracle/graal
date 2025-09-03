@@ -271,7 +271,7 @@ public class JavaStackProcessor2 implements StackProcessor {
             }
 
             FileKey fk = ctx.file(filename, source);
-            Location newLoc = new Location(spec, fk, lineno, lastloc, depth, -1);
+            Location newLoc = new Location(spec, fk, lineno, -1, -1, lastloc, depth, -1);
             ctx.attachInfo(newLoc, javaInfo);
             javaInfo.withLocation(newLoc);
             result.add(newLoc);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -665,6 +665,20 @@ public class Bytecodes {
      */
     public static boolean isInvoke(int opcode) {
         return (flagsArray[opcode & 0xff] & INVOKE) != 0;
+    }
+
+    /**
+     * Determines if a given opcode loads from a local slot.
+     */
+    public static boolean isLoad(int opcode) {
+        return (flagsArray[opcode & 0xff] & LOAD) != 0;
+    }
+
+    /**
+     * Determines if a given opcode stores from a local slot.
+     */
+    public static boolean isStore(int opcode) {
+        return (flagsArray[opcode & 0xff] & STORE) != 0;
     }
 
     /**

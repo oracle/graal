@@ -40,27 +40,39 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.NearestSectionFilter;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import org.junit.Test;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 
@@ -216,6 +228,75 @@ public final class NearestSectionFilterTest extends SourceSectionListenerTest {
         context.eval(sections("ROOT(CALL(function1))")[0].getSource());
         context.eval(splitSections[0].getSource());
         assertEquals(executedEvents.toString(), 0, executedEvents.size());
+    }
+
+    @Test
+    public void testUnavailableSection() {
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                return new RootNode(languageInstance) {
+                    @Node.Child private NearestStatementTestNode child = new NearestStatementTestNode(source.createSection(1), StandardTags.RootTag.class);
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return child.execute(frame);
+                    }
+
+                    @Override
+                    public com.oracle.truffle.api.source.SourceSection getSourceSection() {
+                        return source.createUnavailableSection();
+                    }
+                }.getCallTarget();
+            }
+        });
+        Source source = Source.create(ProxyLanguage.ID, "a");
+        context.eval(source);
+        checkLoadEvents(NearestSectionFilter.newBuilder(1, 0).build(), SourceSectionFilter.ANY, createSection(source, -1, -1));
+        SourceSection textSection = createSection(source, 0, 1);
+        checkLoadEvents(NearestSectionFilter.newBuilder(1, 0).tagIs(ExpressionTag.class).build(), SourceSectionFilter.ANY, textSection);
+        checkLoadEvents(NearestSectionFilter.newBuilder(1, 1).tagIs(ExpressionTag.class).build(), SourceSectionFilter.ANY, textSection);
+        checkLoadEvents(NearestSectionFilter.newBuilder(2, 0).tagIs(ExpressionTag.class).build(), SourceSectionFilter.ANY, textSection);
+    }
+
+    @GenerateWrapper
+    static class NearestStatementTestNode extends Node implements InstrumentableNode {
+
+        private final com.oracle.truffle.api.source.SourceSection sourceSection;
+        private final Class<?> tag;
+        @Node.Child private NearestStatementTestNode child;
+
+        NearestStatementTestNode(com.oracle.truffle.api.source.SourceSection sourceSection, Class<?> tag) {
+            this.sourceSection = StandardTags.RootTag.class.equals(tag) ? sourceSection.getSource().createUnavailableSection() : sourceSection;
+            this.tag = tag;
+            this.child = StandardTags.RootTag.class.equals(tag) ? new NearestStatementTestNode(sourceSection, StandardTags.ExpressionTag.class) : null;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new NearestStatementTestNodeWrapper(sourceSection, tag, this, probe);
+        }
+
+        public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            return child != null ? child.execute(frame) : true;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> t) {
+            return this.tag.equals(t);
+        }
+
+        @Override
+        public com.oracle.truffle.api.source.SourceSection getSourceSection() {
+            return sourceSection;
+        }
     }
 
     private void checkLoadEvents(NearestSectionFilter nearestFilter, SourceSectionFilter baseFilter, SourceSection... expectedSections) {

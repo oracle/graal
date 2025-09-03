@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -87,8 +89,10 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final String name;
     private final int hashCode;
     private SubstrateType declaringClass;
+    private LocalVariableTable localVariableTable;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) private int encodedGraphStartOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int vTableIndex;
+    @UnknownObjectField(availability = AfterCompilation.class) private SubstrateMethod indirectCallTarget;
 
     /**
      * A metadata object describing the image code that contains the compiled code of this method.
@@ -134,12 +138,12 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         hashCode = original.hashCode();
         encodedGraphStartOffset = -1;
 
-        SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isEntryPoint());
+        SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isNativeEntryPoint());
         flags = makeFlag(original.isBridge(), FLAG_BIT_BRIDGE) |
                         makeFlag(original.hasNeverInlineDirective(), FLAG_BIT_NEVER_INLINE) |
                         makeFlag(Uninterruptible.Utils.isUninterruptible(original), FLAG_BIT_UNINTERRUPTIBLE) |
                         makeFlag(SubstrateSafepointInsertionPhase.needSafepointCheck(original), FLAG_BIT_NEEDS_SAFEPOINT_CHECK) |
-                        makeFlag(original.isEntryPoint(), FLAG_BIT_ENTRY_POINT) |
+                        makeFlag(original.isNativeEntryPoint(), FLAG_BIT_ENTRY_POINT) |
                         makeFlag(original.isAnnotationPresent(Snippet.class), FLAG_BIT_SNIPPET) |
                         makeFlag(original.isAnnotationPresent(SubstrateForeignCallTarget.class), FLAG_BIT_FOREIGN_CALL_TARGET) |
                         makeFlag(callingConventionKind.ordinal(), FLAG_BIT_CALLING_CONVENTION_KIND, NUM_BITS_CALLING_CONVENTION_KIND) |
@@ -175,9 +179,10 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         return hashCode;
     }
 
-    public void setLinks(SubstrateSignature signature, SubstrateType declaringClass) {
+    public void setLinks(SubstrateSignature signature, SubstrateType declaringClass, LocalVariableTable localVariableTable) {
         this.signature = signature;
         this.declaringClass = declaringClass;
+        this.localVariableTable = localVariableTable;
     }
 
     public void setImplementations(SubstrateMethod[] rawImplementations) {
@@ -195,8 +200,12 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         return implementations;
     }
 
-    public void setSubstrateData(int vTableIndex, int imageCodeOffset, int imageCodeDeoptOffset) {
+    public void setSubstrateDataAfterCompilation(SubstrateMethod indirectCallTarget, int vTableIndex) {
+        this.indirectCallTarget = indirectCallTarget;
         this.vTableIndex = vTableIndex;
+    }
+
+    public void setSubstrateDataAfterHeapLayout(int imageCodeOffset, int imageCodeDeoptOffset) {
         this.imageCodeOffset = imageCodeOffset;
         this.imageCodeDeoptOffset = imageCodeDeoptOffset;
     }
@@ -303,6 +312,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    public SharedMethod getIndirectCallTarget() {
+        return indirectCallTarget;
+    }
+
+    @Override
     public Deoptimizer.StubType getDeoptStubType() {
         return Deoptimizer.StubType.NoDeoptStub;
     }
@@ -346,6 +360,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @Override
     public int getModifiers() {
         return modifiers;
+    }
+
+    @Override
+    public boolean isDeclared() {
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -445,7 +464,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
 
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        return null;
+        return localVariableTable;
     }
 
     @Override

@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -63,15 +63,16 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final Method loadClass;
     private final Method addClass;
 
-    public GuestClassRegistry(ClassLoadingEnv env, @JavaType(ClassLoader.class) StaticObject classLoader) {
-        super(env.getNewLoaderId());
+    public GuestClassRegistry(ClassLoadingEnv env, @JavaType(ClassLoader.class) StaticObject classLoader, ArchivedRegistryData archivedRegistryData) {
+        super(env.getNewLoaderId(), archivedRegistryData);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
-        this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
+        this.loadClass = classLoader.getKlass().lookupMethod(Names.loadClass, Signatures.Class_String);
+        this.addClass = classLoader.getKlass().lookupMethod(Names.addClass, Signatures._void_Class);
         if (env.getJavaVersion().modulesEnabled()) {
             StaticObject unnamedModule = env.getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
-            initUnnamedModule(unnamedModule);
+            assert StaticObject.notNull(unnamedModule);
+            initUnnamedModule(unnamedModule, archivedRegistryData);
             env.getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
         }
     }
@@ -80,7 +81,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, env.getMeta().toGuestString(Types.binaryName(type)));
+        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, env.getMeta().toGuestString(TypeSymbols.binaryName(type)));
         Klass klass = guestClass.getMirrorKlass();
         context.getRegistries().recordConstraint(type, klass, getClassLoader());
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
@@ -96,8 +97,8 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("sync-override")
     @Override
-    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
-        ObjectKlass klass = super.defineKlass(context, typeOrNull, bytes, info);
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] initialBytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+        ObjectKlass klass = super.defineKlass(context, typeOrNull, initialBytes, info);
         // Register class in guest CL. Mimics HotSpot behavior.
         if (info.addedToRegistry()) {
             addClass.invokeDirect(classLoader, klass.mirror());

@@ -30,7 +30,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -44,6 +46,187 @@ import org.graalvm.collections.Pair;
 public final class CollectionsUtil {
 
     private CollectionsUtil() {
+    }
+
+    /**
+     * Creates a new unmodifiable hash map containing the given entries. The map preservers the
+     * insertion order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param entries the entries to place in the map
+     * @return a new hash map with the given entries
+     */
+    @SafeVarargs
+    public static <K, V> Map<K, V> mapOfEntries(Map.Entry<K, V>... entries) {
+        Objects.requireNonNull(entries);
+        Map<K, V> newMap = new EconomicHashMap<>(entries.length);
+        for (Map.Entry<K, V> entry : entries) {
+            newMap.put(entry.getKey(), entry.getValue());
+        }
+        return Collections.unmodifiableMap(newMap);
+    }
+
+    /**
+     * Creates an unmodifiable map with a single entry.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @return an unmodifiable map with the given entry
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1) {
+        Map<K, V> map = new EconomicHashMap<>(1);
+        map.put(k1, v1);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable map with the given entries. The map preserves the order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @param k2 the second key
+     * @param v2 the second value
+     * @return an unmodifiable map with the given entries
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2) {
+        Map<K, V> map = new EconomicHashMap<>(2);
+        map.put(k1, v1);
+        map.put(k2, v2);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable map with the given entries. The map preserves the order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @param k2 the second key
+     * @param v2 the second value
+     * @param k3 the third key
+     * @param v3 the third value
+     * @return an unmodifiable map with the given entries
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3) {
+        Map<K, V> map = new EconomicHashMap<>(3);
+        map.put(k1, v1);
+        map.put(k2, v2);
+        map.put(k3, v3);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable map with the given entries. The map preserves the order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @param k2 the second key
+     * @param v2 the second value
+     * @param k3 the third key
+     * @param v3 the third value
+     * @param k4 the fourth key
+     * @param v4 the fourth value
+     * @return an unmodifiable map with the given entries
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4) {
+        Map<K, V> map = new EconomicHashMap<>(4);
+        map.put(k1, v1);
+        map.put(k2, v2);
+        map.put(k3, v3);
+        map.put(k4, v4);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable map with the given entries. The map preserves the order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @param k2 the second key
+     * @param v2 the second value
+     * @param k3 the third key
+     * @param v3 the third value
+     * @param k4 the fourth key
+     * @param v4 the fourth value
+     * @param k5 the fifth key
+     * @param v5 the fifth value
+     * @return an unmodifiable map with the given entries
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5) {
+        Map<K, V> map = new EconomicHashMap<>(5);
+        map.put(k1, v1);
+        map.put(k2, v2);
+        map.put(k3, v3);
+        map.put(k4, v4);
+        map.put(k5, v5);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable map with the given entries. The map preserves the order of entries.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param k1 the first key
+     * @param v1 the first value
+     * @param k2 the second key
+     * @param v2 the second value
+     * @param k3 the third key
+     * @param v3 the third value
+     * @param k4 the fourth key
+     * @param v4 the fourth value
+     * @param k5 the fifth key
+     * @param v5 the fifth value
+     * @param k6 the sixth key
+     * @param v6 the sixth value
+     * @return an unmodifiable map with the given entries
+     */
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6) {
+        Map<K, V> map = new EconomicHashMap<>(6);
+        map.put(k1, v1);
+        map.put(k2, v2);
+        map.put(k3, v3);
+        map.put(k4, v4);
+        map.put(k5, v5);
+        map.put(k6, v6);
+        return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Creates an unmodifiable set with the given elements. The set preserves the order of elements.
+     *
+     * @param <E> the element type
+     * @param elements the elements of the set
+     * @return a set with the given elements
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <E> Set<E> setOf(E... elements) {
+        if (elements.length == 0) {
+            return Collections.emptySet();
+        }
+        return Collections.unmodifiableSet(new EconomicHashSet<>(Arrays.asList(elements)));
+    }
+
+    /**
+     * Creates an unmodifiable set with the given elements. The set preserves the order of elements.
+     *
+     * @param <E> the element type
+     * @param collection the elements to be placed in the hash set
+     * @return a set with the given elements
+     */
+    public static <E> Set<E> setCopyOf(Collection<? extends E> collection) {
+        return Collections.unmodifiableSet(new EconomicHashSet<>(collection));
     }
 
     /**
@@ -325,7 +508,7 @@ public final class CollectionsUtil {
 
     /**
      * Returns an iterable over all pairs of elements.
-     *
+     * <p>
      * Suppose that the first iterable returns the elements {@code a1, a2, ..., an} and the second
      * iterable returns the elements {@code b1, b2, ..., bm}. Then, the method returns the pairs
      * {@code (a1, b1), (a1, b2), ..., (a1, bm), (a2, b1), (a2, b2), ... (an, bm)}.

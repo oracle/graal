@@ -103,7 +103,7 @@ public class InstrumentFeature implements InternalFeature {
     }
 
     /** Find the premain method from the given class. */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.instrument/share/classes/sun/instrument/InstrumentationImpl.java#L498-L565")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.instrument/share/classes/sun/instrument/InstrumentationImpl.java#L481-L548")
     private static Method findPremainMethod(String premainClass, Class<?> javaAgentClass) {
         try {
             return javaAgentClass.getDeclaredMethod("premain", String.class, Instrumentation.class);

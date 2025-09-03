@@ -37,7 +37,6 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
@@ -72,8 +71,6 @@ public final class KnownOffsetsFeature implements InternalFeature, FeatureSingle
         int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
         int typeIDSlotsOffset = SubstrateOptions.useClosedTypeWorldHubLayout() ? dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset() : -1;
 
-        int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
-
         int javaFrameAnchorLastSPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaIP");
 
@@ -81,7 +78,7 @@ public final class KnownOffsetsFeature implements InternalFeature, FeatureSingle
 
         int imageCodeInfoCodeStartOffset = findFieldOffset(access, ImageCodeInfo.class, "codeStart");
 
-        KnownOffsets.singleton().setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset, componentHubOffset,
+        KnownOffsets.singleton().setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset,
                         javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
     }
 

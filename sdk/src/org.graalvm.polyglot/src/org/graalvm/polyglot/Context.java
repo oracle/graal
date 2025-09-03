@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -57,6 +58,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -102,9 +104,10 @@ import org.graalvm.polyglot.proxy.Proxy;
  * {@link #initialize(String) initialized}.
  * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
  * .
- * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
- * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
- * {@code try-with-resources} statement.
+ * <li>Finally, when a context is no longer needed, it is recommended to explicitly close it to
+ * ensure timely release of resources. While contexts are automatically closed when no longer
+ * strongly reachable, explicit closure is still preferred. Contexts are also {@link AutoCloseable},
+ * allowing them to be used with the Java {@code try-with-resources} statement.
  * </ul>
  *
  * <h3>Configuration</h3>
@@ -337,15 +340,22 @@ public final class Context implements AutoCloseable {
     final AbstractContextDispatch dispatch;
     final Object receiver;
     final Context currentAPI;
+    final Context parent;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while API {@link Context} is still reachable.
+     */
+    final Context creatorContext;
     final Engine engine;
 
     @SuppressWarnings("unchecked")
-    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Context parentContext, Engine engine) {
         this.dispatch = dispatch;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);
-        dispatch.setAPI(receiver, this);
+        this.parent = parentContext;
+        this.creatorContext = this;
     }
 
     private Context() {
@@ -353,6 +363,8 @@ public final class Context implements AutoCloseable {
         this.receiver = null;
         this.engine = null;
         this.currentAPI = null;
+        this.parent = null;
+        this.creatorContext = null;
     }
 
     private <T> Context(Context creatorAPI) {
@@ -360,6 +372,8 @@ public final class Context implements AutoCloseable {
         this.receiver = creatorAPI.receiver;
         this.engine = creatorAPI.engine.currentAPI;
         this.currentAPI = null;
+        this.parent = creatorAPI.parent != null ? creatorAPI.parent.currentAPI : null;
+        this.creatorContext = creatorAPI;
     }
 
     /**
@@ -393,13 +407,19 @@ public final class Context implements AutoCloseable {
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it.
      * @throws IllegalArgumentException if the language of the given source is not installed or the
-     *             {@link Source#getMimeType() MIME type} is not supported with the language.
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @return the evaluation result. The returned instance is never <code>null</code>, but the
      *         result might represent a {@link Value#isNull() null} value.
      * @since 19.0
      */
     public Value eval(Source source) {
-        return (Value) dispatch.eval(receiver, source.getLanguage(), source);
+        try {
+            return (Value) dispatch.eval(receiver, source.getLanguage(), source);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -425,7 +445,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(String languageId, CharSequence source) {
-        return eval(Source.create(languageId, source));
+        try {
+            return eval(Source.create(languageId, source));
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -474,13 +498,20 @@ public final class Context implements AutoCloseable {
      *
      * @param source a source object to parse
      * @throws PolyglotException in case the guest language code parsing or validation failed.
-     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalArgumentException if the language of the given source is not installed or the
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it, or if the given language is not installed.
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return (Value) dispatch.parse(receiver, source.getLanguage(), source);
+        try {
+            return (Value) dispatch.parse(receiver, source.getLanguage(), source);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -523,7 +554,11 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(String languageId, CharSequence source) {
-        return parse(Source.create(languageId, source));
+        try {
+            return parse(Source.create(languageId, source));
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -543,7 +578,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return (Value) dispatch.getPolyglotBindings(receiver);
+        try {
+            return (Value) dispatch.getPolyglotBindings(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -560,7 +599,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return (Value) dispatch.getBindings(receiver, languageId);
+        try {
+            return (Value) dispatch.getBindings(receiver, languageId);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -576,7 +619,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public boolean initialize(String languageId) {
-        return dispatch.initializeLanguage(receiver, languageId);
+        try {
+            return dispatch.initializeLanguage(receiver, languageId);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -586,6 +633,7 @@ public final class Context implements AutoCloseable {
      */
     public void resetLimits() {
         dispatch.resetLimits(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -735,7 +783,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return (Value) dispatch.asValue(receiver, hostValue);
+        try {
+            return (Value) dispatch.asValue(receiver, hostValue);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -754,6 +806,7 @@ public final class Context implements AutoCloseable {
     public void enter() {
         checkCreatorAccess("entered");
         dispatch.explicitEnter(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -832,6 +885,7 @@ public final class Context implements AutoCloseable {
     public void close(boolean cancelIfExecuting) {
         checkCreatorAccess("closed");
         dispatch.close(receiver, cancelIfExecuting);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -883,6 +937,7 @@ public final class Context implements AutoCloseable {
         if (!dispatch.interrupt(receiver, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -929,6 +984,7 @@ public final class Context implements AutoCloseable {
      */
     public void safepoint() {
         dispatch.safepoint(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -1070,6 +1126,38 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Applies the provided Consumer to this Builder instance.
+         * <p>
+         * This method allows encapsulating complex Builder configuration logic into separate
+         * methods while maintaining the fluent API of {@link Context.Builder}.
+         * <p>
+         * Example
+         *
+         * <pre>
+         * private void configureEnv(Builder builder) {
+         *     return builder.environment("DEBUG", appConfiguration.isDebugMode())
+         *                   .environment("APP_NAME", appConfiguration.getApplicationName())
+         *                   .environment("JAVA_VER", System.getProperty("java.version"))&#64;
+         * }
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder()
+         *                   .apply(this::configureEnv)
+         *                   .allowNativeAccess(true)
+         *                   .build();
+         * }
+         * </pre>
+         *
+         * @param action The Consumer that configures this Builder instance; it is not supposed to
+         *            finalize the Builder using {@link #build()}.
+         * @since 25.0
+         */
+        public Builder apply(Consumer<Builder> action) {
+            action.accept(this);
+            return this;
+        }
+
+        /**
          * Explicitly sets the underlying engine to use. By default, every context has its own
          * isolated engine. If multiple contexts are created from one engine, then they may
          * share/cache certain system resources like ASTs or optimized code by specifying a single
@@ -1141,18 +1229,88 @@ public final class Context implements AutoCloseable {
          * by guest applications. By default if {@link #allowAllAccess(boolean)} is
          * <code>false</code> the {@link HostAccess#EXPLICIT} policy will be used, otherwise
          * {@link HostAccess#ALL}.
+         * <p>
+         * Repeated calls of this method on the same {@link Context.Builder} instance override the
+         * previously set {@link HostAccess} configuration. Use
+         * {@link #extendHostAccess(HostAccess, Consumer)} for composable {@link HostAccess}
+         * configuration.
          *
          * @see HostAccess#EXPLICIT EXPLICIT - to allow explicitly annotated constructors, methods
          *      or fields.
          * @see HostAccess#ALL ALL - to allow unrestricted access (use only for trusted guest
-         *      applications)
-         * @see HostAccess#NONE NONE - to not allow any access
+         *      applications).
+         * @see HostAccess#NONE NONE - to not allow any access.
          * @see HostAccess#newBuilder() newBuilder() - to create a custom configuration.
+         * @see #extendHostAccess(HostAccess, Consumer) - for composable {@code HostAccess}
+         *      configuration.
          *
          * @since 19.0
          */
         public Builder allowHostAccess(HostAccess config) {
             this.hostAccess = config;
+            return this;
+        }
+
+        /**
+         * Extends the existing host access configuration that determines, which public
+         * constructors, methods or fields of public classes are accessible by guest applications.
+         * <p>
+         * This method allows composing code that configures {@link HostAccess}.
+         * <p>
+         * The provided {@code setup} is applied to a {@link HostAccess.Builder} instance, which is
+         * initialized with the current {@link HostAccess} configuration. If no {@link HostAccess}
+         * configuration exists, the {@code defaultInitialValue} is used to initialize the builder.
+         * <p>
+         * Example usage
+         *
+         * <pre>
+         * public static final class MyArrayWrapper {
+         *     private final Value v;
+         *
+         *     private MyArrayWrapper(Value v) {
+         *         this.v = v;
+         *     }
+         *
+         *     // ...
+         *
+         *     public static void addMapping(Context.Builder builder) {
+         *         builder.extendHostAccess(HostAccess.NONE,
+         *                         b -> b.targetTypeMapping(Value.class, MyArrayWrapper.class,
+         *                                         Value::hasArrayElements,
+         *                                         MyArrayWrapper::new));
+         *     }
+         * }
+         *
+         * // ...
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder().
+         *                   .allowHostAccess(HostAccess.ALL)
+         *                   .apply(MyArrayWrapper::addMapping)
+         *                     // ...
+         *                   .build();
+         * }
+         * </pre>
+         *
+         * In this example the call to {@code extendHostAccess} in
+         * {@code MyArrayWrapper::addMapping} does not override the {@link HostAccess#ALL}
+         * configured before. Using {@link #allowHostAccess(HostAccess)} in this situation would
+         * override the previous configuration.
+         *
+         * @see #allowHostAccess - to set or override existing {@code HostAccess} configuration.
+         * @see #extendIO(IOAccess, Consumer) - to extend existing {@code IOAccess} configuration.
+         * @param defaultInitialValue - the initial value to use if no {@code HostAccess} is
+         *            configured.
+         * @param setup - Consumer that receives a {@link HostAccess.Builder} preconfigured with the
+         *            current {@link HostAccess} configuration.
+         * @return the {@link Builder}
+         * @since 25.0
+         */
+        public Builder extendHostAccess(HostAccess defaultInitialValue, Consumer<HostAccess.Builder> setup) {
+            HostAccess prototype = hostAccess != null ? hostAccess : defaultInitialValue;
+            HostAccess.Builder builder = HostAccess.newBuilder(prototype);
+            setup.accept(builder);
+            allowHostAccess(builder.build());
             return this;
         }
 
@@ -1499,10 +1657,15 @@ public final class Context implements AutoCloseable {
          * {@link IOAccess#ALL} is used unless explicitly set. This method can be used to virtualize
          * file system access in the guest language by using an {@link IOAccess} with a custom
          * filesystem.
+         * <p>
+         * Repeated calls of this method on the same {@link Context.Builder} instance override the
+         * previously set {@link IOAccess} configuration. Use {@link #extendIO(IOAccess, Consumer)}
+         * for composable {@link IOAccess} configuration.
          *
-         * @see IOAccess#ALL - to allow full host IO access
-         * @see IOAccess#NONE - to disable host IO access
+         * @see IOAccess#ALL - to allow full host IO access.
+         * @see IOAccess#NONE - to disable host IO access.
          * @see IOAccess#newBuilder() - to create a custom configuration.
+         * @see #extendIO(IOAccess, Consumer) - for composable IOAccess configuration.
          *
          * @param ioAccess the IO configuration
          * @return the {@link Builder}
@@ -1510,6 +1673,52 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowIO(IOAccess ioAccess) {
             this.ioAccess = ioAccess;
+            return this;
+        }
+
+        /**
+         * Extends the existing guest language access to host IO configuration. This method allows
+         * composing code that configures {@link IOAccess}.
+         * <p>
+         * The provided {@code setup} is applied to a {@link IOAccess.Builder} instance, which is
+         * initialized with the current {@link IOAccess} configuration. If no {@link IOAccess}
+         * configuration exists, the {@code defaultInitialValue} is used to initialize the builder.
+         * <p>
+         * Example usage
+         *
+         * <pre>
+         * private void addFileSystem(IOAccess.Builder builder) {
+         *     builder.fileSystem(new MyCustomFileSystem());
+         * }
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder().extendIOAccess(IOAccess.NONE, this::addFileSystem)
+         *                     // ...
+         *                     .extendIOAccess(IOAccess.NONE, b -> b.allowHostSocketAccess(true))
+         *                     // ...
+         *                     .build();
+         * }
+         * </pre>
+         *
+         * In this example the call to {@code extendIOAccess} does not override the
+         * {@link FileSystem} configured in {@code addFileSystem}. Using {@link #allowIO(IOAccess)}
+         * in this situation would override the configured {@link FileSystem}.
+         *
+         * @see #allowIO(IOAccess) - to set or override existing {@code IOAccess}.
+         * @see #extendHostAccess(HostAccess, Consumer) - to extend existing {@code HostAccess}
+         *      configuration.
+         * @param defaultInitialValue - the initial value to use if no {@link IOAccess} is
+         *            configured.
+         * @param setup - Consumer that receives a {@link IOAccess.Builder} preconfigured with the
+         *            current {@link IOAccess} configuration.
+         * @return the {@link Builder}
+         * @since 25.0
+         */
+        public Builder extendIO(IOAccess defaultInitialValue, Consumer<IOAccess.Builder> setup) {
+            IOAccess prototype = ioAccess != null ? ioAccess : defaultInitialValue;
+            IOAccess.Builder builder = IOAccess.newBuilder(prototype);
+            setup.accept(builder);
+            allowIO(builder.build());
             return this;
         }
 
@@ -1811,10 +2020,12 @@ public final class Context implements AutoCloseable {
                 throw new IllegalArgumentException("The method Context.Builder.allowHostAccess(boolean) and the method Context.Builder.allowHostAccess(HostAccess) are mutually exclusive.");
             }
             if (ioAccess != null && allowIO != null) {
-                throw new IllegalArgumentException("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.");
+                throw new IllegalArgumentException(
+                                "The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) are mutually exclusive.");
             }
             if (ioAccess != null && customFileSystem != null) {
-                throw new IllegalArgumentException("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
+                throw new IllegalArgumentException(
+                                "The method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
             }
             SandboxPolicy useSandboxPolicy = resolveSandboxPolicy();
             validateSandbox(useSandboxPolicy);
@@ -1934,11 +2145,11 @@ public final class Context implements AutoCloseable {
             }
             Object logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
             String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
-            ctx = (Context) engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+            ctx = engine.dispatch.createContext(engine.receiver, engine, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit);
+                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, true);
             return ctx;
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,21 +25,22 @@
 package jdk.graal.compiler.nodes.spi;
 
 import java.util.BitSet;
+import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -57,6 +58,12 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
     /**
+     * Least recently used cache for snippet templates. When a new element is added to this map, it
+     * evicts the least recently used element in case of full capacity.
+     */
+    Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache();
+
+    /**
      * Gets the plugin type that intrinsifies calls to {@code method}.
      */
     Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
@@ -70,7 +77,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     /**
      * Gets the snippet graph derived from a given method.
      *
-     * @param recursiveEntry XXX always null now?.
+     * @param recursiveEntry original method for which {@code method} is a substitute
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @param nonNullParameters
      * @param trackNodeSourcePosition
@@ -96,29 +103,23 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);
 
     /**
-     * Marks a plugin as conditionally applied. In the contenxt of libgraal conditional plugins
-     * can't be used in during graph encoding for snippets and method substitutions and this is used
-     * to detect violations of this restriction.
-     */
-    void registerConditionalPlugin(InvocationPlugin plugin);
-
-    /**
      * Gets a graph that is a substitution for a given method.
      *
      * @param invokeBci the call site BCI for the substitution
-     * @param inlineControl
+     * @param isInOOMETry true if the call site is covered by an try/catch of OutOfMemoryError
+     * @param inlineControl controls whether intrinsics inlining is permitted
      * @param trackNodeSourcePosition
      * @param replaceePosition
      * @param allowAssumptions
      * @param options
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    AllowAssumptions allowAssumptions, OptionValues options);
+    StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions, OptionValues options);
 
     /**
      * Determines if there may be a
-     * {@linkplain #getInlineSubstitution(ResolvedJavaMethod, int, Invoke.InlineControl, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
+     * {@linkplain #getInlineSubstitution(ResolvedJavaMethod, int, boolean, Invoke.InlineControl, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
      * substitution graph} for a given method.
      *
      * A call to {@link #getInlineSubstitution} may still return {@code null} for {@code method} and

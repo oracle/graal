@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
@@ -34,9 +35,6 @@ import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.svm.hosted.meta.HostedMethod;
 
 /**
  * A holder for an {@link EncodedGraph} while doing the AOT compilation in {@link CompileQueue}.
@@ -93,10 +91,10 @@ public final class CompilationGraph {
 
     private final EncodedGraph encodedGraph;
     private final int nodeCount;
-    private final Set<InvokeInfo> invokeInfos;
-    private final Set<AllocationInfo> allocationInfos;
+    private final EconomicSet<InvokeInfo> invokeInfos;
+    private final EconomicSet<AllocationInfo> allocationInfos;
 
-    private CompilationGraph(EncodedGraph encodedGraph, int nodeCount, Set<InvokeInfo> invokeInfos, Set<AllocationInfo> allocationInfos) {
+    private CompilationGraph(EncodedGraph encodedGraph, int nodeCount, EconomicSet<InvokeInfo> invokeInfos, EconomicSet<AllocationInfo> allocationInfos) {
         this.encodedGraph = encodedGraph;
         this.nodeCount = nodeCount;
         this.invokeInfos = invokeInfos;
@@ -104,11 +102,10 @@ public final class CompilationGraph {
     }
 
     static CompilationGraph encode(StructuredGraph graph) {
-        Set<InvokeInfo> invokeInfos = new HashSet<>();
-        Set<AllocationInfo> allocationInfos = new HashSet<>();
+        var invokeInfos = EconomicSet.<InvokeInfo> create();
+        var allocationInfos = EconomicSet.<AllocationInfo> create();
         for (var n : graph.getNodes()) {
-            if (n instanceof MethodCallTargetNode) {
-                MethodCallTargetNode node = (MethodCallTargetNode) n;
+            if (n instanceof MethodCallTargetNode node) {
                 invokeInfos.add(new InvokeInfo(
                                 node.invokeKind(),
                                 (HostedMethod) node.targetMethod(),
@@ -123,8 +120,8 @@ public final class CompilationGraph {
         return new CompilationGraph(
                         GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE),
                         graph.getNodeCount(),
-                        invokeInfos.isEmpty() ? Collections.emptySet() : invokeInfos,
-                        allocationInfos.isEmpty() ? Collections.emptySet() : allocationInfos);
+                        invokeInfos.isEmpty() ? EconomicSet.emptySet() : invokeInfos,
+                        allocationInfos.isEmpty() ? EconomicSet.emptySet() : allocationInfos);
     }
 
     public EncodedGraph getEncodedGraph() {
@@ -135,11 +132,11 @@ public final class CompilationGraph {
         return nodeCount;
     }
 
-    public Set<InvokeInfo> getInvokeInfos() {
+    public EconomicSet<InvokeInfo> getInvokeInfos() {
         return invokeInfos;
     }
 
-    public Set<AllocationInfo> getAllocationInfos() {
+    public EconomicSet<AllocationInfo> getAllocationInfos() {
         return allocationInfos;
     }
 }

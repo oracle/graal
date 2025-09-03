@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** The contents of a $prestat when type is {@code preopentype::dir}. */
 public final class PrestatDir {
@@ -59,13 +60,13 @@ public final class PrestatDir {
     public static final int BYTES = 4;
 
     /** Reads the length of the directory name for use with {@code fd_prestat_dir_name}. */
-    public static int readPrNameLen(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 0);
+    public static int readPrNameLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 0);
     }
 
     /** Writes the length of the directory name for use with {@code fd_prestat_dir_name}. */
-    public static void writePrNameLen(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 0, value);
+    public static void writePrNameLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 0, value);
     }
 
 }

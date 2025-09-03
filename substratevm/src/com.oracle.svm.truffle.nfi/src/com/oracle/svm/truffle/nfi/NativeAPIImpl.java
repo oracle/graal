@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -155,7 +155,7 @@ final class NativeAPIImpl {
     static NativeTruffleEnv getTruffleEnv(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
-        return WordFactory.pointer(ctx.getNativeEnv());
+        return Word.pointer(ctx.getNativeEnv());
     }
 
     static class GetTruffleEnvPrologue implements CEntryPointOptions.Prologue {
@@ -171,9 +171,9 @@ final class NativeAPIImpl {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
         if (ctx.attachThread()) {
-            return WordFactory.pointer(ctx.getNativeEnv());
+            return Word.pointer(ctx.getNativeEnv());
         } else {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 

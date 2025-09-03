@@ -73,6 +73,7 @@ public @interface TruffleToLibGraal {
         GetNodeCount,
         GetNodeTypes,
         GetSuppliedString,
+        GetCompilationId,
         GetTargetCodeSize,
         GetTotalFrameSize,
         InitializeIsolate,

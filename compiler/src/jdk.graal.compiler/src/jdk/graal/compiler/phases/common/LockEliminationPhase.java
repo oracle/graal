@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,10 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
@@ -45,6 +44,9 @@ import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.Phase;
@@ -53,7 +55,7 @@ public class LockEliminationPhase extends Phase {
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.when(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
+        return NotApplicable.when(graphState.allowsFloatingReads(),
                         "This phase must not be applied while reads are floating");
     }
 
@@ -65,7 +67,7 @@ public class LockEliminationPhase extends Phase {
             if ((next instanceof MonitorEnterNode)) {
                 // should never happen, osr monitor enters are always direct successors of the graph
                 // start
-                assert !(next instanceof OSRMonitorEnterNode) : Assertions.errorMessageContext("next", next);
+                GraalError.guarantee(!(next instanceof OSRMonitorEnterNode), "OSRMonitorEnterNode can't be seen here: %s", next);
                 AccessMonitorNode monitorEnterNode = (AccessMonitorNode) next;
                 if (isCompatibleLock(monitorEnterNode, monitorExitNode, true, cfg)) {
                     /*
@@ -111,7 +113,7 @@ public class LockEliminationPhase extends Phase {
              * If the monitor operations operate on the same unproxified object, ensure any pi nodes
              * in the proxy chain are safe to re-order when moving monitor operations.
              */
-            HIRBlock lowestBlockA = lowestGuardedInputBlock(b, cfg);
+            HIRBlock lowestBlockA = cfg != null ? lowestGuardedInputBlock(b, cfg) : null;
             HIRBlock lowestBlockB = null;
             /*
              * If the object nodes are the same and there is no object or data guard for one of the
@@ -194,6 +196,36 @@ public class LockEliminationPhase extends Phase {
         } else {
             return null;
         }
+    }
+
+    public static void removeMonitorAccess(AccessMonitorNode access) {
+        GraalError.guarantee(!(access instanceof OSRMonitorEnterNode), "Must not remove OSR monitor enters");
+        if (access.usages().isNotEmpty()) {
+            boolean replaced = false;
+            for (FixedNode pred : GraphUtil.predecessorIterable((FixedNode) access.predecessor())) {
+                if (MemoryKill.isSingleMemoryKill(pred)) {
+                    SingleMemoryKill single = (SingleMemoryKill) pred;
+                    if (single.getKilledLocationIdentity().isAny()) {
+                        // We do not need a memory anchor in this case.
+                        access.replaceAtUsages(pred);
+                        replaced = true;
+                        break;
+                    } else {
+                        break;
+                    }
+                } else if (MemoryKill.isMultiMemoryKill(pred)) {
+                    break;
+                }
+            }
+            if (!replaced) {
+                MemoryAnchorNode anchor = access.graph().add(new MemoryAnchorNode());
+                anchor.setNodeSourcePosition(access.getNodeSourcePosition());
+                access.replaceAtUsages(anchor);
+                access.graph().addBeforeFixed(access, anchor);
+            }
+        }
+        GraalError.guarantee(access.hasNoUsages(), "Node must not have usages %s", access);
+        GraphUtil.removeFixedWithUnusedInputs(access);
     }
 
 }

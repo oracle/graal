@@ -80,7 +80,7 @@ public class LLVMObjectFileReader {
         Symbol apply(LLVMSymbolIteratorRef symbolIterator, LLVMSectionIteratorRef sectionIterator);
     }
 
-    private static class LLVMSectionInfo<Section, Symbol> {
+    private static final class LLVMSectionInfo<Section, Symbol> {
         private Section sectionInfo;
         private List<Symbol> symbolInfo = new ArrayList<>();
     }

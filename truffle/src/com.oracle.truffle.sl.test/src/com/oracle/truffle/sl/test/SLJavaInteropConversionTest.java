@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
 
-public class SLJavaInteropConversionTest {
+public class SLJavaInteropConversionTest extends AbstractSLTest {
     public static class Validator {
         @HostAccess.Export
         @SuppressWarnings("unchecked")
@@ -110,7 +110,7 @@ public class SLJavaInteropConversionTest {
                         "  obj.b = new();\n" +
                         "  return validator.validateObject(obj, obj);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());
@@ -126,7 +126,7 @@ public class SLJavaInteropConversionTest {
                         "  obj.b = new();\n" +
                         "  return validator.validateMap(obj, obj);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());
@@ -141,7 +141,7 @@ public class SLJavaInteropConversionTest {
                         "  array[1] = new();\n" +
                         "  return validator.validateList(array, array);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).allowHostAccess(HostAccess.ALL).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator(), new Object[2]);

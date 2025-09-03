@@ -155,6 +155,12 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
     static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print source cache statistics for an engine when the engine is closed.") //
+    public static final OptionKey<Boolean> SourceCacheStatistics = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print source cache statistics for an engine when the engine is closed. With the details enabled, statistics for all individual sources are printed.") //
+    public static final OptionKey<Boolean> SourceCacheStatisticDetails = new OptionKey<>(false);
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,
@@ -179,4 +185,19 @@ final class PolyglotEngineOptions {
                             }
                         }
                     }));
+
+    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "Ignore|Print|Throw", help = CloseOnGCExceptionAction.HELP)//
+    static final OptionKey<CloseOnGCExceptionAction> CloseOnGCFailureAction = new OptionKey<>(CloseOnGCExceptionAction.Print);
+
+    enum CloseOnGCExceptionAction {
+        Ignore,
+        Print,
+        Throw;
+
+        private static final String HELP = "Specifies the action to take when closing a garbage collected engine or context fails.%n" +
+                        "The accepted values are:%n" +
+                        "    Ignore:    Do not print this warning.%n" +
+                        "    Print:     Print this warning (default value).%n" +
+                        "    Throw:     Throw an exception instead of printing this warning.";
+    }
 }

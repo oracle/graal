@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,17 +28,32 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PRO
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.LocationIdentity;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
+
+    public static FieldLocationIdentity getClassComponentTypeLocation(MetaAccessProvider metaAccessProvider) {
+        ResolvedJavaField componentTypeField;
+
+        try {
+            componentTypeField = metaAccessProvider.lookupJavaField(Class.class.getDeclaredField("componentType"));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere("Class.componentType is not present");
+        }
+
+        return new FieldLocationIdentity(componentTypeField);
+    }
 
     protected static void verifyNotArray(Object object) {
         if (probability(LIKELY_PROBABILITY, object != null)) {
@@ -47,23 +62,23 @@ public abstract class WriteBarrierSnippets {
         }
     }
 
-    protected static Word getPointerToFirstArrayElement(Address address, long length, int elementStride) {
-        long result = Word.fromAddress(address).rawValue();
+    public static Word getPointerToFirstArrayElement(Word address, long length, int elementStride) {
+        long result = address.rawValue();
         if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element
             result = result + elementStride * length;
         }
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 
-    protected static Word getPointerToLastArrayElement(Address address, long length, int elementStride) {
-        long result = Word.fromAddress(address).rawValue();
+    public static Word getPointerToLastArrayElement(Word address, long length, int elementStride) {
+        long result = address.rawValue();
         if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element
             result = result + elementStride;
         } else {
             result = result + (length - 1) * elementStride;
         }
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 }

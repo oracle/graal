@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -88,6 +89,9 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             return;
         } else if (holderQualified.equals("jdk.graal.compiler.hotspot.HotSpotReplacementsImpl") && caller.getName().equals("registerSnippet")) {
             // We allow opening snippet registration in jargraal unit tests.
+            return;
+        } else if (holderQualified.equals(NativeImageSupport.class.getName())) {
+            // Called as part of initializing GraalServices
             return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {

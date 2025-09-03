@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Constant;
@@ -212,7 +213,6 @@ public abstract class SwitchStrategy {
     private EffortClosure effortClosure;
 
     public SwitchStrategy(double[] keyProbabilities) {
-        assert keyProbabilities.length >= 2 : Assertions.errorMessage(keyProbabilities);
         this.keyProbabilities = keyProbabilities;
     }
 
@@ -334,8 +334,9 @@ public abstract class SwitchStrategy {
 
         public RangesStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities, keyConstants);
-
             int keyCount = keyConstants.length;
+            GraalError.guarantee(keyCount > 1, "%s", Arrays.toString(keyConstants));
+
             indexes = new Integer[keyCount];
             for (int i = 0; i < keyCount; i++) {
                 indexes[i] = i;
@@ -398,6 +399,7 @@ public abstract class SwitchStrategy {
 
         public BinaryStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities, keyConstants);
+            GraalError.guarantee(keyProbabilities.length > 1, "%s", Arrays.toString(keyConstants));
             probabilitySums = new double[keyProbabilities.length + 1];
             double sum = 0;
             for (int i = 0; i < keyConstants.length; i++) {
@@ -501,8 +503,14 @@ public abstract class SwitchStrategy {
     public abstract void run(SwitchClosure closure);
 
     private static SwitchStrategy[] getStrategies(double[] keyProbabilities, JavaConstant[] keyConstants, LabelRef[] keyTargets) {
-        SwitchStrategy[] strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants),
-                        new BinaryStrategy(keyProbabilities, keyConstants)};
+        SwitchStrategy[] strategies;
+        if (keyProbabilities.length == 1) {
+            strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants)};
+        } else {
+            strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants),
+                            new BinaryStrategy(keyProbabilities, keyConstants)};
+        }
+
         for (SwitchStrategy strategy : strategies) {
             strategy.effortClosure = strategy.new EffortClosure(keyTargets);
             strategy.run(strategy.effortClosure);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,6 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
-import static jdk.vm.ci.aarch64.AArch64.rscratch1;
-import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
@@ -48,9 +46,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
-public class AArch64MacroAssembler extends AArch64Assembler {
-
-    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(rscratch1), new ScratchRegister(rscratch2)};
+public abstract class AArch64MacroAssembler extends AArch64Assembler {
 
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
@@ -73,6 +69,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         this.neon = new AArch64ASIMDMacroAssembler(this);
     }
 
+    protected abstract ScratchRegister[] getScratchRegisters();
+
     public class ScratchRegister implements AutoCloseable {
         private final Register register;
 
@@ -92,10 +90,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public ScratchRegister getScratchRegister() {
-        if (nextFreeScratchRegister == scratchRegister.length) {
-            throw new GraalError("Out of scratch registers");
+        if (nextFreeScratchRegister == getScratchRegisters().length) {
+            throw new GraalError("Out of scratch registers: " + nextFreeScratchRegister);
         }
-        return scratchRegister[nextFreeScratchRegister++];
+        return getScratchRegisters()[nextFreeScratchRegister++];
     }
 
     @Override
@@ -358,7 +356,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         // Alignment checking.
-        if (isFlagSet(AArch64.Flag.AvoidUnalignedAccesses)) {
+        if (avoidUnalignedAccesses()) {
             // AArch64 sp is 16-bytes aligned.
             if (curBase.equals(sp)) {
                 long pairMask = byteMemoryTransferSize * 2 - 1;
@@ -449,35 +447,33 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param needsImmAnnotation Flag denoting if annotation should be added.
      */
     private void mov32(Register dst, int imm, boolean needsImmAnnotation) {
-        MovAction[] includeSet = {MovAction.SKIPPED, MovAction.SKIPPED};
         int pos = position();
 
         // Split 32-bit imm into low16 and high16 parts.
         int low16 = imm & 0xFFFF;
         int high16 = (imm >>> 16) & 0xFFFF;
 
+        if (needsImmAnnotation) {
+            movz(32, dst, low16, 0);
+            movk(32, dst, high16, 16);
+            MovAction[] includeSet = {MovAction.USED, MovAction.USED};
+            annotateImmediateMovSequence(pos, includeSet);
+            return;
+        }
+
         // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
         if (high16 == 0) {
             movz(32, dst, low16, 0);
-            includeSet[0] = MovAction.USED;
         } else if (high16 == 0xFFFF) {
             movn(32, dst, low16 ^ 0xFFFF, 0);
-            includeSet[0] = MovAction.NEGATED;
         } else if (low16 == 0) {
             movz(32, dst, high16, 16);
-            includeSet[1] = MovAction.USED;
         } else if (low16 == 0xFFFF) {
             movn(32, dst, high16 ^ 0xFFFF, 16);
-            includeSet[1] = MovAction.NEGATED;
         } else {
             // Neither of the 2 parts is all-0s or all-1s. Generate 2 instructions.
             movz(32, dst, low16, 0);
             movk(32, dst, high16, 16);
-            includeSet[0] = MovAction.USED;
-            includeSet[1] = MovAction.USED;
-        }
-        if (needsImmAnnotation) {
-            annotateImmediateMovSequence(pos, includeSet);
         }
     }
 
@@ -496,7 +492,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param needsImmAnnotation Flag denoting if annotation should be added.
      */
     private void mov64(Register dst, long imm, boolean needsImmAnnotation) {
-        MovAction[] includeSet = {MovAction.SKIPPED, MovAction.SKIPPED, MovAction.SKIPPED, MovAction.SKIPPED};
         int pos = position();
         int[] chunks = new int[4];
         int zeroCount = 0;
@@ -513,21 +508,29 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             chunks[i] = chunk;
         }
 
+        if (needsImmAnnotation) {
+            // Generate one MOVZ and three MOVKs
+            movz(64, dst, chunks[0], 0);
+            movk(64, dst, chunks[1], 16);
+            movk(64, dst, chunks[2], 32);
+            movk(64, dst, chunks[3], 48);
+            MovAction[] includeSet = {MovAction.USED, MovAction.USED, MovAction.USED, MovAction.USED};
+            annotateImmediateMovSequence(pos, includeSet);
+            return;
+        }
+
         // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
         if (zeroCount == 4) {
             // Generate only one MOVZ.
             movz(64, dst, 0, 0);
-            includeSet[0] = MovAction.USED;
         } else if (negCount == 4) {
             // Generate only one MOVN.
             movn(64, dst, 0, 0);
-            includeSet[0] = MovAction.NEGATED;
         } else if (zeroCount == 3) {
             // Generate only one MOVZ.
             for (int i = 0; i < 4; i++) {
                 if (chunks[i] != 0) {
                     movz(64, dst, chunks[i], i * 16);
-                    includeSet[i] = MovAction.USED;
                     break;
                 }
             }
@@ -536,7 +539,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (int i = 0; i < 4; i++) {
                 if (chunks[i] != 0xFFFF) {
                     movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
-                    includeSet[i] = MovAction.NEGATED;
                     break;
                 }
             }
@@ -546,14 +548,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (i = 0; i < 4; i++) {
                 if (chunks[i] != 0) {
                     movz(64, dst, chunks[i], i * 16);
-                    includeSet[i] = MovAction.USED;
                     break;
                 }
             }
             for (int k = i + 1; k < 4; k++) {
                 if (chunks[k] != 0) {
                     movk(64, dst, chunks[k], k * 16);
-                    includeSet[k] = MovAction.USED;
                     break;
                 }
             }
@@ -563,14 +563,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (i = 0; i < 4; i++) {
                 if (chunks[i] != 0xFFFF) {
                     movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
-                    includeSet[i] = MovAction.NEGATED;
                     break;
                 }
             }
             for (int k = i + 1; k < 4; k++) {
                 if (chunks[k] != 0xFFFF) {
                     movk(64, dst, chunks[k], k * 16);
-                    includeSet[k] = MovAction.USED;
                     break;
                 }
             }
@@ -580,7 +578,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (i = 0; i < 4; i++) {
                 if (chunks[i] != 0) {
                     movz(64, dst, chunks[i], i * 16);
-                    includeSet[i] = MovAction.USED;
                     break;
                 }
             }
@@ -588,7 +585,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (int k = i + 1; k < 4; k++) {
                 if (chunks[k] != 0) {
                     movk(64, dst, chunks[k], k * 16);
-                    includeSet[k] = MovAction.USED;
                     numMovks++;
                 }
             }
@@ -599,7 +595,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (i = 0; i < 4; i++) {
                 if (chunks[i] != 0xFFFF) {
                     movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
-                    includeSet[i] = MovAction.NEGATED;
                     break;
                 }
             }
@@ -607,7 +602,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             for (int k = i + 1; k < 4; k++) {
                 if (chunks[k] != 0xFFFF) {
                     movk(64, dst, chunks[k], k * 16);
-                    includeSet[k] = MovAction.USED;
                     numMovks++;
                 }
             }
@@ -618,13 +612,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             movk(64, dst, chunks[1], 16);
             movk(64, dst, chunks[2], 32);
             movk(64, dst, chunks[3], 48);
-            includeSet[0] = MovAction.USED;
-            includeSet[1] = MovAction.USED;
-            includeSet[2] = MovAction.USED;
-            includeSet[3] = MovAction.USED;
-        }
-        if (needsImmAnnotation) {
-            annotateImmediateMovSequence(pos, includeSet);
         }
     }
 
@@ -1091,7 +1078,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void add(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate, scratch);
         } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
             add(size, dst, src, immediate);
@@ -1116,7 +1103,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1163,7 +1150,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             subs(size, dst, src, -immediate);
         } else {
             super.adds(size, dst, src, immediate);
@@ -1183,7 +1170,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate, scratch);
         }
         if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
@@ -1209,7 +1196,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1236,7 +1223,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             adds(size, dst, src, -immediate);
         } else {
             super.subs(size, dst, src, immediate);
@@ -2257,5 +2244,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 siteOffset += 4;
             }
         }
+    }
+
+    public boolean useLSE() {
+        return getFeatures().contains(AArch64.CPUFeature.LSE);
+    }
+
+    public boolean avoidUnalignedAccesses() {
+        return false;
     }
 }

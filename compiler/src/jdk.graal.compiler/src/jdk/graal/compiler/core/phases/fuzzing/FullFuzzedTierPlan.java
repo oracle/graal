@@ -26,7 +26,6 @@ package jdk.graal.compiler.core.phases.fuzzing;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -35,6 +34,7 @@ import java.util.Set;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * Tier plan that inserts optional phases in a {@link MinimalFuzzedTierPlan}.
@@ -216,7 +216,7 @@ public final class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
 
     @Override
     public FullFuzzedTierPlan<C> copy() {
-        return new FullFuzzedTierPlan<>(new ArrayList<>(getSingleApplyPhases()), new ArrayList<>(getMultiApplyPhases()), new HashSet<>(getIgnoredPhases()), getPhaseSuite().copy(),
-                        minimalFuzzedTierPlan.copy(), getRandomSeed(), phaseSkipOdds, getTierName());
+        return new FullFuzzedTierPlan<>(new ArrayList<>(getSingleApplyPhases()), new ArrayList<>(getMultiApplyPhases()), new EconomicHashSet<>(getIgnoredPhases()),
+                        getPhaseSuite().copy(), minimalFuzzedTierPlan.copy(), getRandomSeed(), phaseSkipOdds, getTierName());
     }
 }

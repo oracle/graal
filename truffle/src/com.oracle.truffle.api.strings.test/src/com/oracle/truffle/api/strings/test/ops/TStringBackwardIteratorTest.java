@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
@@ -74,7 +75,7 @@ public class TStringBackwardIteratorTest extends TStringTestBase {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             TruffleStringIterator iterator = createIteratorNode.execute(a, encoding, errorHandling);
             for (int i = codepoints.length - 1; i >= 0; i--) {
-                checkCodepoint(isValid, encoding, codepoints, i, prevNode.execute(iterator), errorHandling);
+                checkCodepoint(isValid, encoding, codepoints, i, prevNode.execute(iterator, encoding), errorHandling);
                 Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
             }
         });
@@ -84,6 +85,7 @@ public class TStringBackwardIteratorTest extends TStringTestBase {
     @Test
     public void testNull() throws Exception {
         checkNullSE((s1, e) -> createIteratorNode.execute(s1, e, errorHandling));
-        expectNullPointerException(() -> prevNode.execute(null));
+        expectNullPointerException(() -> prevNode.execute(null, UTF_8));
+        expectNullPointerException(() -> prevNode.execute(createIteratorNode.execute(S_UTF8, UTF_8, errorHandling), null));
     }
 }

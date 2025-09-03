@@ -94,23 +94,24 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<Calc
     }
 
     final byte[] array;
-    final int offset;
+    final long offset;
     final int length;
 
     public TStringOpsCalcStringAttributesUTF32Test(byte[] array, int offset, int length) {
         super(CalcStringAttributesNode.class);
         this.array = array;
-        this.offset = offset;
+        this.offset = offset + byteArrayBaseOffset();
         this.length = length;
     }
 
     @Test
     public void testUTF32() {
-        testWithNative(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF32", byte[].class, long.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 
     @Test
     public void testUTF32I() {
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset, length);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset - byteArrayBaseOffset() + intArrayBaseOffset(),
+                        length);
     }
 }

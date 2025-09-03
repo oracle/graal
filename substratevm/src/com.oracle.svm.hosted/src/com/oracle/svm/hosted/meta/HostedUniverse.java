@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 
+import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -57,12 +58,15 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
@@ -103,6 +107,40 @@ import jdk.vm.ci.meta.Signature;
  * <li>The "hosted universe": elements that the AOT compilation operates on.</li>
  * </ol>
  *
+ * Layered Model for Static Analysis Universes
+ * 
+ * <pre>
+ * +--------------------------------------------------------------+
+ * |                        Hosted Universe                       |
+ * |--------------------------------------------------------------|
+ * |        Elements that we need to create code or data for      |
+ * +------------------------------+-------------------------------+
+ *                                | wraps elements of
+ *                                V
+ * +--------------------------------------------------------------+
+ * |                        Analysis Universe                     |
+ * |--------------------------------------------------------------|
+ * |        Elements that the static analysis operates on         |
+ * +------+----------------------------+--------------------------+
+ *        | wraps elements of          | wraps elements of
+ *        |                            |
+ *        |                            V
+ *        |  +----------------------------------------------------+
+ *        |  |               Substitution Layer                   |
+ *        |  |----------------------------------------------------|
+ *        |  |  Allows modification of some elements coming from  |
+ *        |  | the layer below without modifying the layer below  |
+ *        |  +--------------------+-------------------------------+
+ *        |                       | wraps elements of
+ *        V                       V
+ * +--------------------------------------------------------------+
+ * |                         Host VM Universe                     |
+ * |--------------------------------------------------------------|
+ * |         Original source of elements, as parsed from          |
+ * |      class files found on image class and module path        |
+ * +--------------------------------------------------------------+
+ * </pre>
+ * 
  * Not covered in this documentation is the "substrate universe", i.e., elements that are used for
  * JIT compilation at image run time when a native image contains the GraalVM compiler itself. JIT
  * compilation is only used when a native image contains a Truffle language, e.g., the JavaScript
@@ -351,7 +389,7 @@ public class HostedUniverse implements Universe {
     }
 
     public HostedType[] optionalLookup(JavaType... javaTypes) {
-        HostedType[] result = new HostedType[javaTypes.length];
+        HostedType[] result = new HostedType[javaTypes.length]; // EMPTY_ARRAY failing here
         for (int i = 0; i < javaTypes.length; ++i) {
             result[i] = optionalLookup(javaTypes[i]);
             if (result[i] == null) {
@@ -417,7 +455,7 @@ public class HostedUniverse implements Universe {
     }
 
     public HostedMethod[] lookup(JavaMethod[] inputs) {
-        HostedMethod[] result = new HostedMethod[inputs.length];
+        HostedMethod[] result = new HostedMethod[inputs.length]; // EMPTY_ARRAY failing here
         for (int i = 0; i < result.length; i++) {
             result[i] = lookup(inputs[i]);
         }
@@ -463,6 +501,133 @@ public class HostedUniverse implements Universe {
         return types.get(bb.getUniverse().objectType());
     }
 
+    public void printTypes() {
+        String reportsPath = SubstrateOptions.reportsPath();
+        ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
+                        writer -> printTypes(writer));
+    }
+
+    private void printTypes(PrintWriter writer) {
+
+        for (HostedType type : getTypes()) {
+            writer.format("%8d %s  ", type.getTypeID(), type.toJavaName(true));
+            if (type.getSuperclass() != null) {
+                writer.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
+            }
+            if (type.getInterfaces().length > 0) {
+                writer.print("implements ");
+                String sep = "";
+                for (HostedInterface interf : type.getInterfaces()) {
+                    writer.format("%s%d %s", sep, interf.getTypeID(), interf.toJavaName(false));
+                    sep = ", ";
+                }
+                writer.print("  ");
+            }
+
+            if (type.getWrapped().isInstantiated()) {
+                writer.print("instantiated  ");
+            }
+            if (type.getWrapped().isReachable()) {
+                writer.print("reachable  ");
+            }
+
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
+                writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
+                writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
+            } else {
+                writer.format("type id %s depth %s num class types %s num interface types %s ", type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes());
+                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenTypeWorldTypeCheckSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
+            }
+            // if (type.findLeafConcreteSubtype() != null) {
+            // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
+            // type.findLeafConcreteSubtype().toJavaName(false));
+            // }
+
+            int le = type.getHub().getLayoutEncoding();
+            if (LayoutEncoding.isPrimitive(le)) {
+                writer.print("primitive  ");
+            } else if (LayoutEncoding.isInterface(le)) {
+                writer.print("interface  ");
+            } else if (LayoutEncoding.isAbstract(le)) {
+                writer.print("abstract  ");
+            } else if (LayoutEncoding.isPureInstance(le)) {
+                writer.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
+            } else if (LayoutEncoding.isArrayLike(le)) {
+                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
+                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
+                writer.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
+                                LayoutEncoding.getArrayIndexScale(le));
+
+            } else {
+                throw VMError.shouldNotReachHereUnexpectedInput(le); // ExcludeFromJacocoGeneratedReport
+            }
+
+            writer.println();
+
+            for (HostedType sub : type.getSubTypes()) {
+                writer.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
+            }
+            if (type.isInterface()) {
+                for (HostedMethod method : getMethods()) {
+                    if (method.getDeclaringClass().equals(type)) {
+                        printMethod(writer, method, -1);
+                    }
+                }
+
+            } else if (type.isInstanceClass()) {
+
+                HostedField[] instanceFields = type.getInstanceFields(false);
+                instanceFields = Arrays.copyOf(instanceFields, instanceFields.length);
+                Arrays.sort(instanceFields, Comparator.comparing(HostedField::toString));
+                for (HostedField field : instanceFields) {
+                    writer.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
+                }
+                HostedMethod[] vtable = type.getVTable();
+                for (int i = 0; i < vtable.length; i++) {
+                    if (vtable[i] != null) {
+                        printMethod(writer, vtable[i], i);
+                    }
+                }
+                for (HostedMethod method : getMethods()) {
+                    if (method.getDeclaringClass().equals(type) && !method.hasVTableIndex()) {
+                        printMethod(writer, method, -1);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void printMethod(PrintWriter writer, HostedMethod method, int vtableIndex) {
+        if (vtableIndex != -1) {
+            writer.print("               v " + vtableIndex + " ");
+        } else {
+            writer.print("               m ");
+        }
+        if (method.hasVTableIndex()) {
+            writer.print(method.getVTableIndex() + " ");
+        }
+        writer.print(method.format("%r %n(%p)") + ": " + method.getImplementations().length + " [");
+        if (method.getImplementations().length <= 10) {
+            String sep = "";
+            for (HostedMethod impl : method.getImplementations()) {
+                writer.print(sep + impl.getDeclaringClass().toJavaName(false));
+                sep = ", ";
+            }
+        }
+        writer.println("]");
+    }
+
+    private static String slotsToString(short[] slots) {
+        if (slots == null) {
+            return "null";
+        }
+        StringBuilder result = new StringBuilder();
+        for (short slot : slots) {
+            result.append(Short.toUnsignedInt(slot)).append(" ");
+        }
+        return result.toString();
+    }
+
     public static final Comparator<HostedType> TYPE_COMPARATOR = new TypeComparator();
 
     private static final class TypeComparator implements Comparator<HostedType> {
@@ -470,7 +635,7 @@ public class HostedUniverse implements Universe {
         private static Optional<HostedType[]> proxyType(HostedType type) {
             HostedType baseType = type.getBaseType();
             boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
-            assert isProxy == (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
+            assert !isProxy || (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
             if (isProxy) {
                 return Optional.of(baseType.getInterfaces());
             } else {
@@ -540,7 +705,7 @@ public class HostedUniverse implements Universe {
 
             ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
             ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
-            result = SubstrateUtil.classLoaderNameAndId(l1).compareTo(SubstrateUtil.classLoaderNameAndId(l2));
+            result = SubstrateUtil.runtimeClassLoaderNameAndId(l1).compareTo(SubstrateUtil.runtimeClassLoaderNameAndId(l2));
             VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: %s, %s", o1, o2);
             return result;
         }

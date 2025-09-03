@@ -29,7 +29,6 @@ import java.util.Optional;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.hotspot.lir.HotSpotZapRegistersPhase;
@@ -48,12 +47,9 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
-import jdk.graal.compiler.phases.common.BarrierSetVerificationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
-import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
-import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.SuitesCreator;
 import jdk.vm.ci.code.Architecture;
@@ -84,19 +80,6 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             assert position != null : "There should be an " + AddressLoweringPhase.class.getName() + " in low tier.";
             position.previous();
             position.add(new UseTrappingNullChecksPhase());
-        }
-
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
-            ListIterator<BasePhase<? super MidTierContext>> mid = suites.getMidTier().findPhase(WriteBarrierAdditionPhase.class);
-            // No write barriers required
-            mid.remove();
-
-            if (Assertions.assertionsEnabled()) {
-                // Perform some verification that the barrier type on all reads are properly set
-                ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(AddressLoweringPhase.class);
-                position.previous();
-                position.add(new BarrierSetVerificationPhase());
-            }
         }
         return suites;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -110,7 +110,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         EconomicMap<BasicBlock<?>, BlockData> blockData = EconomicMap.create(Equivalence.IDENTITY);
 
-        RegisterArray callerSaveRegs;
+        List<Register> callerSaveRegs;
 
         /**
          * Contains the register number for registers which can be optimized and -1 for the others.

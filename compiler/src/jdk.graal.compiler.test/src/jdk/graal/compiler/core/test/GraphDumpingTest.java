@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,18 +63,16 @@ public class GraphDumpingTest extends GraalCompilerTest {
         sideEffect = i;
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testDump() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
+        try (TTY.Filter _ = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
             compileWithDumping("snippet01", temp);
         }
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testInvalidNodeProperties() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
+        try (TTY.Filter _ = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
             StructuredGraph graph = compileWithDumping("snippet02", temp);
 
             // introduce an invalid node with broken properties

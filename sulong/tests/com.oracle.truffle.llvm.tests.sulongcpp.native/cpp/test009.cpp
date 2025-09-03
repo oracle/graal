@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,17 +35,17 @@ class someClass {
 
 class someOtherClass : public someClass {};
 
-bool instanceof (someClass * c) {
+bool instanceof(someClass *c) {
     someOtherClass *other = dynamic_cast<someOtherClass *>(c);
     return other != 0;
 }
 
 int main() {
     someClass c;
-    if (instanceof (&c) == true)
+    if (instanceof(&c) == true)
         return 1;
     someOtherClass c2;
-    if (instanceof (&c2) == false)
+    if (instanceof(&c2) == false)
         return 1;
     return 0;
 }

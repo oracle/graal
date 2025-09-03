@@ -26,8 +26,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.jimage.ImageLocation;
@@ -84,7 +85,7 @@ public class JavaJImageHelper implements JImageHelper {
             }
             return reader.findLocation(ByteSequence.from(module), name);
         } else {
-            Symbol<Symbol.Name> pkgSymbol = context.getNames().lookup(pkg);
+            Symbol<Name> pkgSymbol = context.getNames().lookup(pkg);
             if (pkgSymbol == null) {
                 return null;
             }
@@ -92,7 +93,7 @@ public class JavaJImageHelper implements JImageHelper {
             if (pkgEntry == null) {
                 return null;
             }
-            Symbol<Symbol.Name> moduleName = pkgEntry.module().getName();
+            Symbol<Name> moduleName = pkgEntry.module().getName();
             ByteSequence moduleNameAsString = moduleName == null ? ByteSequence.EMPTY : moduleName;
             return reader.findLocation(moduleNameAsString, name);
         }

@@ -93,14 +93,14 @@ public class AArch64MembarOpTest extends BackendTest {
         cases.add(Pair.create(MemoryBarriers.STORE_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.LOAD_LOAD, BarrierKind.ANY_ANY));
 
         for (Pair<Integer, BarrierKind> c : cases) {
-            assertArrayEquals(new MembarOpActual(c.getLeft()).emit(new AArch64MacroAssembler(providers.getTarget())),
-                            new MembarOpExpected(c.getRight()).emit(new AArch64MacroAssembler(providers.getTarget())));
+            assertArrayEquals(new MembarOpActual(c.getLeft()).emit(new AArch64TestMacroAssembler(providers.getTarget())),
+                            new MembarOpExpected(c.getRight()).emit(new AArch64TestMacroAssembler(providers.getTarget())));
         }
     }
 
     @Test(expected = AssertionError.class)
     public void runExceptionalTests() {
-        new MembarOpActual(16).emit(new AArch64MacroAssembler(providers.getTarget()));
+        new MembarOpActual(16).emit(new AArch64TestMacroAssembler(providers.getTarget()));
     }
 
     private class MembarOpActual {

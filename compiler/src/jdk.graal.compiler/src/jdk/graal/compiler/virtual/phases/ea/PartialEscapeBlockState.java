@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         return false;
     }
 
-    private static class RefCount {
+    private static final class RefCount {
         private int refCount = 1;
     }
 
@@ -172,6 +172,14 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         getObjectStateForModification(object).escape(materialized);
     }
 
+    public boolean isNonImmediateRecursiveLock(int object, MonitorIdNode monitorId) {
+        ObjectState state = getObjectStateForModification(object);
+        if (state.hasLocks()) {
+            return state.getLocks().monitorId.getLockDepth() < monitorId.getLockDepth() - 1;
+        }
+        return false;
+    }
+
     public void addLock(int object, MonitorIdNode monitorId) {
         getObjectStateForModification(object).addLock(monitorId);
     }
@@ -198,14 +206,14 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
      * entries.
      */
     @SuppressWarnings("try")
-    public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, GraphEffectList materializeEffects) {
+    public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, boolean requiresStrictLockOrder, ArrayList<VirtualObjectNode> virtualObjects, GraphEffectList materializeEffects) {
         PartialEscapeClosure.COUNTER_MATERIALIZATIONS.increment(fixed.getDebug());
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
         List<ValueNode> values = new ArrayList<>(8);
         List<List<MonitorIdNode>> locks = new ArrayList<>();
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         List<Boolean> ensureVirtual = new ArrayList<>(2);
-        materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations, materializeEffects);
+        materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations, requiresStrictLockOrder, virtualObjects, materializeEffects);
         /*
          * because all currently virtualized allocations will be materialized in 1 commit alloc node
          * with barriers, we ignore other allocations as we only process new instance and commit
@@ -282,7 +290,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<List<MonitorIdNode>> locks, List<ValueNode> values,
-                    List<Boolean> ensureVirtual, List<ValueNode> otherAllocations, GraphEffectList materializeEffects) {
+                    List<Boolean> ensureVirtual, List<ValueNode> otherAllocations, boolean requiresStrictLockOrder, ArrayList<VirtualObjectNode> virtualObjects, GraphEffectList materializeEffects) {
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
@@ -303,7 +311,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     VirtualObjectNode entryVirtual = (VirtualObjectNode) entries[i];
                     ObjectState entryObj = getObjectState(entryVirtual);
                     if (entryObj.isVirtual()) {
-                        materializeWithCommit(fixed, entryVirtual, objects, locks, values, ensureVirtual, otherAllocations, materializeEffects);
+                        materializeWithCommit(fixed, entryVirtual, objects, locks, values, ensureVirtual, otherAllocations, requiresStrictLockOrder, virtualObjects, materializeEffects);
                         entryObj = getObjectState(entryVirtual);
                     }
                     values.set(pos + i, entryObj.getMaterializedValue());
@@ -311,6 +319,19 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     values.set(pos + i, entries[i]);
                 }
             }
+
+            if (requiresStrictLockOrder && obj.hasLocks()) {
+                int lockDepth = obj.getMaximumLockDepth();
+                for (VirtualObjectNode other : virtualObjects) {
+                    if (other != virtual && hasObjectState(other.getObjectId())) {
+                        ObjectState otherState = getObjectState(other);
+                        if (otherState.isVirtual() && otherState.hasLocks() && otherState.getMinimumLockDepth() < lockDepth) {
+                            materializeWithCommit(fixed, other, objects, locks, values, ensureVirtual, otherAllocations, requiresStrictLockOrder, virtualObjects, materializeEffects);
+                        }
+                    }
+                }
+            }
+
             objectMaterialized(virtual, (AllocatedObjectNode) representation, values.subList(pos, pos + entries.length));
         } else {
             VirtualUtil.trace(options, debug, "materialized %s as %s", virtual, representation);

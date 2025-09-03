@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -82,9 +84,10 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
     private final Signature callWrapperSignature;
     private final CallVariant callVariant;
     private final boolean nonVirtual;
+    private final Executable member;
 
-    public JNIJavaCallVariantWrapperMethod(ResolvedSignature<ResolvedJavaType> callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess,
-                    WordTypes wordTypes) {
+    public JNIJavaCallVariantWrapperMethod(Executable member, ResolvedSignature<ResolvedJavaType> callWrapperSignature, CallVariant callVariant, boolean nonVirtual,
+                    MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
         super(createName(callWrapperSignature, callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
                         createSignature(callWrapperSignature, callVariant, nonVirtual, originalMetaAccess, wordTypes),
@@ -92,6 +95,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         this.callWrapperSignature = callWrapperSignature;
         this.callVariant = callVariant;
         this.nonVirtual = nonVirtual;
+        this.member = member;
     }
 
     private static String createName(ResolvedSignature<ResolvedJavaType> targetSignature, CallVariant callVariant, boolean nonVirtual) {
@@ -212,7 +216,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         // iOS CallVariant.VARARGS stores values as an array on the stack
         if (callVariant == CallVariant.ARRAY ||
                         (Platform.includedIn(Platform.DARWIN_AARCH64.class) && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) ||
-                        (Platform.includedIn(Platform.WINDOWS.class) && callVariant == CallVariant.VA_LIST)) {
+                        (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && callVariant == CallVariant.VA_LIST)) {
             ValueNode array;
             if (callVariant == CallVariant.VARARGS) {
                 array = kit.append(new ReadCallerStackPointerNode());
@@ -281,5 +285,9 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
             throw VMError.unsupportedFeature("Call variant: " + callVariant);
         }
         return args;
+    }
+
+    public Executable getMember() {
+        return member;
     }
 }

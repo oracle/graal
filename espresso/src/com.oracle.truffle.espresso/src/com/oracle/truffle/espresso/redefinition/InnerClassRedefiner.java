@@ -36,22 +36,22 @@ import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException.RedefinitionError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class InnerClassRedefiner {
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, InnerClassRedefiner.class);
 
     public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
@@ -68,7 +68,7 @@ public final class InnerClassRedefiner {
     private final Map<StaticObject, Map<Symbol<Name>, ImmutableClassInfo>> innerClassInfoMap = new WeakHashMap<>();
 
     // map from classloader to a map of Type to
-    private final Map<StaticObject, Map<Symbol<Symbol.Type>, Set<ObjectKlass>>> innerKlassCache = new WeakHashMap<>();
+    private final Map<StaticObject, Map<Symbol<Type>, Set<ObjectKlass>>> innerKlassCache = new WeakHashMap<>();
 
     // list of class info for all top-level classed about to be redefined
     private final Map<Symbol<Name>, HotSwapClassInfo> hotswapState = new HashMap<>();
@@ -77,7 +77,7 @@ public final class InnerClassRedefiner {
         this.context = context;
     }
 
-    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefinitionNotSupportedException {
+    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefinitionException {
         hotswapState.clear();
         ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos);
 
@@ -91,9 +91,9 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Name> klassName = ClassfileParser.getClassName(context.getClassLoadingEnv(), redefineInfo.getClassBytes());
+                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), ClassLoadingEnv.createParsingContext(context.getClassLoadingEnv(), false), redefineInfo.getClassBytes());
                 if (handled.containsKey(klassName)) {
-                    LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
+                    ClassRedefinition.LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
                     it.remove();
                     continue;
                 }
@@ -143,8 +143,8 @@ public final class InnerClassRedefiner {
                 if (rules != null && !rules.isEmpty()) {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
-                    } catch (ClassFormatError ex) {
-                        throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                    } catch (ParserException.ClassFormatError ex) {
+                        throw new RedefinitionException(RedefinitionError.InvalidClassFormat);
                     }
                 }
             }
@@ -161,14 +161,14 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefinitionNotSupportedException {
+    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefinitionException {
         StaticObject definingLoader = hotswapInfo.getClassLoader();
 
         Set<Symbol<Name>> innerNames = new HashSet<>(1);
         try {
             searchConstantPoolForDirectInnerAnonymousClassNames(hotswapInfo, innerNames);
-        } catch (ClassFormatError ex) {
-            throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+        } catch (ParserException.ClassFormatError ex) {
+            throw new RedefinitionException(RedefinitionError.InvalidClassFormat);
         }
 
         // poke the defining guest classloader for the resources
@@ -215,7 +215,7 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void searchConstantPoolForDirectInnerAnonymousClassNames(ClassInfo classInfo, Set<Symbol<Name>> innerNames) throws ClassFormatError {
+    private void searchConstantPoolForDirectInnerAnonymousClassNames(ClassInfo classInfo, Set<Symbol<Name>> innerNames) throws ParserException.ClassFormatError {
         byte[] bytes = classInfo.getBytes();
         assert bytes != null;
 
@@ -229,7 +229,7 @@ public final class InnerClassRedefiner {
     }
 
     private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Name>, Symbol<Name>>> renamingRules)
-                    throws RedefinitionNotSupportedException {
+                    throws RedefinitionException {
         Klass klass = hotSwapInfo.getKlass();
         // try to fetch all direct inner classes
         // based on the constant pool in the class bytes
@@ -297,7 +297,7 @@ public final class InnerClassRedefiner {
     private static void addRenamingRule(Map<StaticObject, Map<Symbol<Name>, Symbol<Name>>> renamingRules, StaticObject classLoader, Symbol<Name> originalName,
                     Symbol<Name> newName, EspressoContext context) {
         Map<Symbol<Name>, Symbol<Name>> classLoaderRules = renamingRules.computeIfAbsent(classLoader, k -> new HashMap<>(4));
-        context.getClassRedefinition().getController().fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
+        ClassRedefinition.LOGGER.fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
         assert classLoaderRules.getOrDefault(originalName, newName).equals(newName) : "rules already contain " + originalName + " -> " + classLoaderRules.get(originalName) + ", cannot map to " +
                         newName;
         // add simple class names
@@ -336,7 +336,7 @@ public final class InnerClassRedefiner {
 
     Set<ObjectKlass> findLoadedInnerClasses(Klass klass) {
         // we use a cache to store inner/outer class mappings
-        Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+        Map<Symbol<Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
         if (classLoaderMap == null) {
             classLoaderMap = new HashMap<>();
             // register a listener on the registry to fill in
@@ -351,15 +351,14 @@ public final class InnerClassRedefiner {
 
             // do a one-time look up of all currently loaded
             // classes for this loader and fill in the map
-            List<Klass> loadedKlasses = classRegistry.getLoadedKlasses();
+            Set<Klass> loadedKlasses = context.getRegistries().getLoadedClassesByLoader(klass.getDefiningClassLoader(), false);
             for (Klass loadedKlass : loadedKlasses) {
-                if (loadedKlass instanceof ObjectKlass) {
-                    ObjectKlass objectKlass = (ObjectKlass) loadedKlass;
+                if (loadedKlass instanceof ObjectKlass objectKlass) {
                     Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());
                     if (matcher.matches()) {
                         Symbol<Name> outerClassName = getOuterClassName(loadedKlass.getName());
                         if (outerClassName != null && outerClassName.length() > 0) {
-                            Symbol<Symbol.Type> outerType = context.getTypes().fromName(outerClassName);
+                            Symbol<Type> outerType = context.getTypes().fromClassNameEntry(outerClassName);
                             Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
                             if (innerKlasses == null) {
                                 innerKlasses = new HashSet<>(1);
@@ -381,10 +380,10 @@ public final class InnerClassRedefiner {
         Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
 
         if (matcher.matches()) {
-            Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+            Map<Symbol<Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
             // found inner class, now hunt down the outer
             Symbol<Name> outerName = getOuterClassName(klass.getName());
-            Symbol<Symbol.Type> outerType = context.getTypes().fromName(outerName);
+            Symbol<Type> outerType = context.getTypes().fromClassNameEntry(outerName);
 
             Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
             if (innerKlasses == null) {

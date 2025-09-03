@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,7 +166,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
 
         @Specialization
         static Object doLong(long arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedLongValueProfile p) {
             return p.profile(node, arg);
         }
@@ -227,7 +227,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
         @ExportMessage
         @SuppressWarnings("unused")
         static Object execute(UsageExport receiver, Object[] arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile p0,
                         @Cached InlinedConditionProfile p1,
                         @Cached InlinedCountingConditionProfile p2,

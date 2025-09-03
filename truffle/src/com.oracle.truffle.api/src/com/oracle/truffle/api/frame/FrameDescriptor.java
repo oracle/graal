@@ -76,6 +76,11 @@ public final class FrameDescriptor implements Cloneable {
      */
     @Deprecated static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
 
+    private static final boolean NULL_TAGS_SUPPORTED = Runtime.version().feature() >= 25;
+
+    // Do not rename or remove. This field is read by the compiler.
+    static final Object ILLEGAL_DEFAULT_VALUE = new Object();
+
     /**
      * Flag that defines the assignment strategy of initial {@link FrameSlotKind}s to slots in a
      * frame.
@@ -87,6 +92,7 @@ public final class FrameDescriptor implements Cloneable {
 
     private final Object defaultValue;
 
+    private final int indexedSlotCount;
     @CompilationFinal(dimensions = 1) private final byte[] indexedSlotTags;
     @CompilationFinal(dimensions = 1) private final Object[] indexedSlotNames;
     @CompilationFinal(dimensions = 1) private final Object[] indexedSlotInfos;
@@ -138,6 +144,7 @@ public final class FrameDescriptor implements Cloneable {
     public FrameDescriptor(Object defaultValue) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.indexedSlotTags = EMPTY_BYTE_ARRAY;
+        this.indexedSlotCount = 0;
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
         this.descriptorInfo = null;
@@ -145,14 +152,29 @@ public final class FrameDescriptor implements Cloneable {
         this.defaultValue = defaultValue;
     }
 
-    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info) {
+    private FrameDescriptor(Object defaultValue, int indexedSlotCount, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
-        this.indexedSlotTags = indexedSlotTags;
+        this.indexedSlotCount = indexedSlotCount;
+        this.indexedSlotTags = createCompatibilitySlots(indexedSlotCount, indexedSlotTags);
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
         this.descriptorInfo = info;
-
         this.defaultValue = defaultValue;
+    }
+
+    private static byte[] createCompatibilitySlots(int indexedSlotCount, byte[] indexedSlotTags) {
+        byte[] tags = indexedSlotTags;
+        if (!NULL_TAGS_SUPPORTED) {
+            if (tags == null) {
+                /*
+                 * Older JDK versions expect this byte[] to be available. To avoid crashes in older
+                 * compiler versions we fill it if we are not in the newest version.
+                 */
+                tags = new byte[indexedSlotCount];
+                Arrays.fill(tags, FrameSlotKind.Illegal.tag);
+            }
+        }
+        return tags;
     }
 
     /**
@@ -165,8 +187,10 @@ public final class FrameDescriptor implements Cloneable {
     public FrameDescriptor copy() {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
-            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, indexedSlotTags == null ? null : indexedSlotTags.clone(),
-                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo);
+            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, this.indexedSlotCount,
+                            indexedSlotTags == null ? null : indexedSlotTags.clone(),
+                            indexedSlotNames == null ? null : indexedSlotNames.clone(),
+                            indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo);
             clonedFrameDescriptor.auxiliarySlotCount = auxiliarySlotCount;
             clonedFrameDescriptor.activeAuxiliarySlotCount = activeAuxiliarySlotCount;
             if (auxiliarySlotMap != null) {
@@ -200,7 +224,7 @@ public final class FrameDescriptor implements Cloneable {
             sb.append("FrameDescriptor@").append(Integer.toHexString(hashCode()));
             sb.append("{");
             boolean comma = false;
-            for (int slot = 0; slot < indexedSlotTags.length; slot++) {
+            for (int slot = 0; slot < indexedSlotCount; slot++) {
                 if (comma) {
                     sb.append(", ");
                 } else {
@@ -234,7 +258,7 @@ public final class FrameDescriptor implements Cloneable {
      * @since 22.0
      */
     public int getNumberOfSlots() {
-        return indexedSlotTags.length;
+        return indexedSlotCount;
     }
 
     /**
@@ -245,7 +269,11 @@ public final class FrameDescriptor implements Cloneable {
      * @since 22.0
      */
     public FrameSlotKind getSlotKind(int slot) {
-        return FrameSlotKind.fromTag(indexedSlotTags[slot]);
+        if (indexedSlotTags == null) {
+            return FrameSlotKind.Illegal;
+        } else {
+            return FrameSlotKind.fromTag(indexedSlotTags[slot]);
+        }
     }
 
     /**
@@ -256,6 +284,10 @@ public final class FrameDescriptor implements Cloneable {
      * @since 22.0
      */
     public void setSlotKind(int slot, FrameSlotKind kind) {
+        if (indexedSlotTags == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnsupportedOperationException("Cannot set slot kind if frame slot tags are not initialized.");
+        }
         assert (indexedSlotTags[slot] == FrameSlotKind.Static.tag && kind == FrameSlotKind.Static) ||
                         (indexedSlotTags[slot] != FrameSlotKind.Static.tag && kind != FrameSlotKind.Static) : "Cannot switch between static and non-static slot kind";
         if (indexedSlotTags[slot] != kind.tag) {
@@ -436,6 +468,7 @@ public final class FrameDescriptor implements Cloneable {
         private Object[] infos;
         private int size;
         private Object descriptorInfo;
+        private boolean useSlotKinds = true;
 
         private Builder(int capacity) {
             this.tags = new byte[capacity];
@@ -466,6 +499,19 @@ public final class FrameDescriptor implements Cloneable {
         }
 
         /**
+         * Sets the default value to illegal, this means that an {@link FrameSlotTypeException} is
+         * thrown if a slot is read before it is written. A frame descriptor can either have a
+         * concrete {@link #defaultValue(Object) default value} or an {@link #defaultValueIllegal()
+         * illegal default value}, but not both.
+         *
+         * @since 24.2
+         */
+        public Builder defaultValueIllegal() {
+            this.defaultValue = ILLEGAL_DEFAULT_VALUE;
+            return this;
+        }
+
+        /**
          * Adds the given number of consecutive indexed slots to the {@link FrameDescriptor}, and
          * initializes them with the given kind.
          *
@@ -483,6 +529,32 @@ public final class FrameDescriptor implements Cloneable {
             int newIndex = size;
             size += count;
             return newIndex;
+        }
+
+        /**
+         * Enables the use of slot kinds like {@link FrameDescriptor#getSlotKind(int)}. By default
+         * slot kinds are enabled. If they are disabled then
+         * {@link FrameDescriptor#getSlotKind(int)} always returns {@link FrameSlotKind#Illegal} and
+         * no slot with a different slot kind than {@link FrameSlotKind#Illegal} must be added.
+         *
+         * @since 24.2
+         */
+        public Builder useSlotKinds(boolean b) {
+            this.useSlotKinds = b;
+            return this;
+        }
+
+        /**
+         * Adds the given number of consecutive indexed slots to the {@link FrameDescriptor}, and
+         * initializes them without a kind. If the kind is read anyway then Illegal will be returned
+         * and setting the kind will throw an {@link UnsupportedOperationException}.
+         *
+         * @param count the number of slots to add
+         * @see #useSlotKinds(boolean) to disable slot kinds all together.
+         * @since 24.2
+         */
+        public int addSlots(int count) {
+            return addSlots(count, FrameSlotKind.Illegal);
         }
 
         /**
@@ -539,7 +611,26 @@ public final class FrameDescriptor implements Cloneable {
          * @since 22.0
          */
         public FrameDescriptor build() {
-            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo);
+            byte[] useTags;
+            if (useSlotKinds) {
+                useTags = Arrays.copyOf(tags, size);
+            } else {
+                validateTags();
+                useTags = null;
+            }
+            Object[] useNames = names != null ? Arrays.copyOf(names, size) : null;
+            Object[] useInfos = infos != null ? Arrays.copyOf(infos, size) : null;
+            return new FrameDescriptor(defaultValue, size, useTags, useNames, useInfos, descriptorInfo);
+        }
+
+        private void validateTags() {
+            for (int i = 0; i < size; i++) {
+                if (tags[i] != FrameSlotKind.Illegal.tag) {
+                    throw new IllegalStateException(
+                                    "If frame slot kinds are disabled with useSlotKinds(false) then only FrameSlotKind.Illegal is allowed to be used as frame slot kind. " +
+                                                    "Change all added slots to FrameSlotKind.Illegal or enable slot kinds to resolve this.");
+                }
+            }
         }
     }
 }

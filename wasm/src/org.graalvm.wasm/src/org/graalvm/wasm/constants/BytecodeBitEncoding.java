@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,13 +106,11 @@ public class BytecodeBitEncoding {
     public static final int DATA_SEG_MEMORY_INDEX_VALUE = 0b0011_1111;
 
     // Runtime data sections
-    public static final int DATA_SEG_RUNTIME_HEADER_LENGTH = 1;
     public static final int DATA_SEG_RUNTIME_LENGTH_MASK = 0b1100_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_INLINE = 0b0000_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_U8 = 0b0100_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_U16 = 0b1000_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_I32 = 0b1100_0000;
-    public static final int DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH = 8;
 
     // Elem sections
 

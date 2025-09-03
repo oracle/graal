@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,9 @@ package jdk.graal.compiler.core.test;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -47,10 +50,6 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-
-import org.junit.Ignore;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -570,6 +569,22 @@ public class CountedLoopTest extends GraalCompilerTest {
     @Test
     public void decrementUnsigned10() {
         testCounted("decrementUnsignedSnippet", Integer.MAX_VALUE + 10, Integer.MAX_VALUE - 1, 2);
+    }
+
+    public static Result shiftLargeLongSnippet() {
+        Result ret = new Result();
+        for (long i = 1; GraalDirectives.injectIterationCount(11, i <= 10); i++) {
+            GraalDirectives.controlFlowAnchor();
+            long derived = i << 48;
+            ret.extremum = get(InductionVariable::extremumNode, InductionVariable::constantExtremum, InductionVariable::isConstantExtremum, derived);
+        }
+        ret.exitValue = 0;
+        return ret;
+    }
+
+    @Test
+    public void shiftLargeLong() {
+        testCounted("shiftLargeLongSnippet");
     }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)

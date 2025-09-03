@@ -29,9 +29,14 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.SubstrateOptions;
 
-public class VectorAPIEnabled implements BooleanSupplier {
+public final class VectorAPIEnabled implements BooleanSupplier {
+
+    public static boolean getValue() {
+        return SubstrateOptions.VectorAPISupport.getValue();
+    }
+
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.VectorAPISupport.getValue();
+        return getValue();
     }
 }

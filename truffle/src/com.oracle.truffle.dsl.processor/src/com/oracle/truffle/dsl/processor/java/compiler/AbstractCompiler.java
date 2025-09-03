@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,14 @@ public abstract class AbstractCompiler implements Compiler {
             return null;
         }
         return lookupField(o.getClass(), fieldName).get(o);
+    }
+
+    protected static Object construct(Class<?> clazz, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
+        return clazz.getConstructor(paramTypes).newInstance(values);
+    }
+
+    protected static Object construct(Class<?> clazz) throws ReflectiveOperationException {
+        return clazz.getConstructor().newInstance();
     }
 
     protected static Field lookupField(Class<?> clazz, String fieldName) {

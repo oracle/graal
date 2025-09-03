@@ -168,16 +168,15 @@ conflicts, and they are hidden from guest-world reflection.
 ### The stack
 
 Guest threads are run on host threads 1:1. That means guest stacks use host stacks, and for virtual threads to work the
-hosting JVM must support the combination of virtual threads and Truffle, which as of December 2023 HotSpot does not.
-Likewise guest exceptions are wrapped in `EspressoException` and then thrown, so the JVM running Espresso provides
-stack unwinding services and similar.
+hosting JVM must support the combination of virtual threads and Truffle. Guest exceptions are wrapped in
+`EspressoException` and then thrown, so the JVM running Espresso provides stack unwinding services and similar.
 
 Truffle provides stack frame management. A `nodes.BytecodeNode` receives a Truffle `VirtualFrame` object, which manages
 a series of slots stored on the host stack, or when _materialized_, the frame is stored on the heap. In dynamic Truffle
 languages these slots are strongly typed and correspond to the base Java type system with ints, booleans, longs and
 object references etc. Espresso however uses Truffle's _static slots_, which are (somewhat confusingly) both typed and
 untyped at the same time. The Truffle `Frame` interface has an API for reading and writing to static slots which
-distinguishes betwen primitive types (`get/setObjectStatic`, `get/setLongStatic` etc), but the actual primitive type of
+distinguishes between primitive types (`get/setObjectStatic`, `get/setLongStatic` etc), but the actual primitive type of
 a static slot is tracked only when assertions are enabled i.e. in debug mode. You can see some of this code in Truffle's
 `FrameWithoutBoxing` class. In normal execution the slot types are marked only as being "static". This is OK because
 Java bytecode implicitly types stack slots. The types aren't recorded in the bytecode itself, but can be recovered using
@@ -186,7 +185,32 @@ change) they are never being used inconsistently. Behind the scenes then we only
 separately from everything else so the GC can find them, and thus other types of stack slot are just stored in
 uninterpreted longs.
 
-## Substitutions and extension modules
+## Substitutions
+
+Espresso can replace or wrap any method in the JDK with code that runs in host space. Defining them is easy. Make a
+class in the `com.oracle.truffle.espresso.substitutions` package annotated with `@EspressoSubstitutions`. The name is a
+simple transform of the class containing the method to replace/wrap: for a class `a.b.Foo` the name of the substitution
+class should be `Target_a_b_Foo`.
+
+You can then define static methods annotated with `@Substitution`. The arguments should be of type `StaticObject` to
+refer to an object in the guest heap, annotated with `@Inject` if you want access to `Meta`, `EspressoLanguage` or other
+internal classes. You must annotate `StaticObject` usages with `@JavaType(Foo.class)` to ensure the prototype matches
+correctly.
+
+A substitution is a Truffle node and you can also define substitutions as `Node` subclasses directly instead of having
+them generated for you by the annotation processor. Therefore, you should carefully consider whether to apply
+`@TruffleBoundary` to your substitutions using the usual heuristics (should it be inlined into the caller?)
+
+If you need to wrap a method define two extra arguments:
+
+```
+@Bind("getMeta()") Meta meta,
+@Cached("create(meta.a_b_Foo.getCallTargetNoSubstitution())") DirectCallNode original
+```
+
+and then use `original.call(self);`. Obviously, add the relevant boilerplate to the `Meta` class for this to work.
+
+## Extension modules
 
 Espresso specific features may need guest-exposed APIs to control them. For example Espresso exposes a HotSwap control
 API that lets apps register for callbacks that run when the program code is mutated.

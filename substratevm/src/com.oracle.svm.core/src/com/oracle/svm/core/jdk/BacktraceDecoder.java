@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -37,11 +36,14 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
+
 /**
  * Decoder for backtraces computed by {@link BacktraceVisitor} and stored in
  * {@link Target_java_lang_Throwable#backtrace}.
  */
 public abstract class BacktraceDecoder {
+    private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
 
     /**
      * Visits the backtrace stored in {@code Throwable#backtrace}.
@@ -68,7 +70,7 @@ public abstract class BacktraceDecoder {
                     backtraceIndex += BacktraceVisitor.entriesPerSourceReference();
                 } else {
                     /* Entry is a raw code pointer. */
-                    CodePointer ip = WordFactory.pointer(entry);
+                    CodePointer ip = Word.pointer(entry);
                     /* Arbitrary number of Java frames for a single native frame (inlining). */
                     framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
                     backtraceIndex++;
@@ -110,11 +112,10 @@ public abstract class BacktraceDecoder {
         return framesDecoded;
     }
 
-    private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
-
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private int visitFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
+
         frameInfoCursor.initialize(tetheredCodeInfo, ip, true);
         while (frameInfoCursor.advance()) {
             FrameInfoQueryResult frameInfo = frameInfoCursor.get();

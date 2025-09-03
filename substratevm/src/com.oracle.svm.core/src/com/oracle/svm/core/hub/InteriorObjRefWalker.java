@@ -27,160 +27,156 @@ package com.oracle.svm.core.hub;
 import java.util.function.IntConsumer;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.Word;
 
-/**
- * The vanilla walkObject and walkOffsetsFromPointer methods are not inlined, but there are
- * walkObjectInline and walkOffsetsFromPointerInline methods available for performance critical
- * code.
- */
-
 public class InteriorObjRefWalker {
-
     /**
      * Walk a possibly-hybrid Object, consisting of both an array and some fixed fields.
      *
      * @param obj The Object to be walked.
      * @param visitor The visitor to be applied to each Object reference in the Object.
-     * @return True if the walk was successful, or false otherwise.
      */
     @NeverInline("Non-performance critical version")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
-    public static boolean walkObject(final Object obj, final ObjectReferenceVisitor visitor) {
-        return walkObjectInline(obj, visitor);
+    public static void walkObject(Object obj, ObjectReferenceVisitor visitor) {
+        walkObjectInline(obj, visitor);
     }
 
-    @AlwaysInline("Performance critical version")
+    /**
+     * Same as {@link #walkObject} but force-inlined. Performance-critical code should call this
+     * method instead of {@link #walkObject}. However, be aware that this increases code size.
+     */
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
-    public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
-        final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
-        final Pointer objPointer = Word.objectToUntrackedPointer(obj);
+    public static void walkObjectInline(Object obj, ObjectReferenceVisitor visitor) {
+        DynamicHub objHub = KnownIntrinsics.readHub(obj);
 
-        switch (objHub.getHubType()) {
-            case HubType.INSTANCE:
-                return walkInstance(obj, visitor, objHub, objPointer);
-            case HubType.REFERENCE_INSTANCE:
-                return walkReferenceInstance(obj, visitor, objHub, objPointer);
-            case HubType.POD_INSTANCE:
-                return walkPod(obj, visitor, objHub, objPointer);
-            case HubType.STORED_CONTINUATION_INSTANCE:
-                return walkStoredContinuation(obj, visitor);
-            case HubType.OTHER:
-                return walkOther();
-            case HubType.PRIMITIVE_ARRAY:
-                return true;
-            case HubType.OBJECT_ARRAY:
-                return walkObjectArray(obj, visitor, objHub, objPointer);
+        int hubType = objHub.getHubType();
+        if (HubType.isInstance(hubType)) {
+            /* Combine all instance cases to reduce the code size. */
+            walkInstanceInline(obj, visitor, objHub);
         }
 
-        throw VMError.shouldNotReachHere("Object with invalid hub type.");
+        switch (hubType) {
+            case HubType.INSTANCE:
+            case HubType.PRIMITIVE_ARRAY:
+                /* Nothing (more) to do. */
+                return;
+            case HubType.REFERENCE_INSTANCE:
+                walkReferenceSpecificFieldsInline(obj, visitor);
+                return;
+            case HubType.POD_INSTANCE:
+                walkPodArrayPartInline(obj, visitor, objHub);
+                return;
+            case HubType.STORED_CONTINUATION_INSTANCE:
+                walkStoredContinuationInline(obj, visitor);
+                return;
+            case HubType.OBJECT_ARRAY:
+                walkObjectArrayInline(obj, visitor, objHub);
+                return;
+            case HubType.OTHER:
+            default:
+                throw VMError.shouldNotReachHere("Object with invalid hub type.");
+        }
     }
 
-    public static boolean walkInstanceReferenceOffsets(DynamicHub objHub, IntConsumer offsetConsumer) {
+    public static void walkInstanceReferenceOffsets(DynamicHub objHub, IntConsumer offsetConsumer) {
         if (objHub.getHubType() != HubType.INSTANCE && objHub.getHubType() != HubType.REFERENCE_INSTANCE) {
             throw new IllegalArgumentException("Unsupported hub type: " + objHub.getHubType());
         }
 
-        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.forLayer(objHub.getLayerId()).getReferenceMapEncoding();
-        long referenceMapIndex = objHub.getReferenceMapIndex();
-
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), referenceMapEncoding, referenceMapIndex, new ObjectReferenceVisitor() {
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        InstanceReferenceMapDecoder.walkReferences(Word.zero(), referenceMap, new ObjectReferenceVisitor() {
             @Override
-            public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+            public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+                Pointer pos = firstObjRef;
+                Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+                while (pos.belowThan(end)) {
+                    visitObjectReference(pos);
+                    pos = pos.add(referenceSize);
+                }
+            }
+
+            private void visitObjectReference(Pointer objRef) {
                 offsetConsumer.accept((int) objRef.rawValue());
-                return true;
             }
         }, null);
     }
 
-    @AlwaysInline("Performance critical version")
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
-        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.forLayer(objHub.getLayerId()).getReferenceMapEncoding();
-        long referenceMapIndex = objHub.getReferenceMapIndex();
-
+    private static void walkInstanceInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
         // Visit Object reference in the fields of the Object.
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor, obj);
+        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        InstanceReferenceMapDecoder.walkReferencesInline(objPointer, referenceMap, visitor, obj);
     }
 
-    @AlwaysInline("Performance critical version")
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean walkReferenceInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
+    private static void walkReferenceSpecificFieldsInline(Object obj, ObjectReferenceVisitor visitor) {
+        Pointer objPointer = Word.objectToUntrackedPointer(obj);
         long discoveredOffset = ReferenceInternals.getNextDiscoveredFieldOffset();
-        Pointer objRef = objPointer.add(WordFactory.unsigned(discoveredOffset));
+        Pointer objRef = objPointer.add(Word.unsigned(discoveredOffset));
 
-        // The Object reference at the discovered offset needs to be visited separately as it is not
-        // part of the reference map.
-        // Visit Object reference in the fields of the Object.
-        return callVisitor(obj, visitor, ReferenceAccess.singleton().haveCompressedReferences(), objRef) && walkInstance(obj, visitor, objHub, objPointer);
+        /*
+         * The Object reference at the discovered offset needs to be visited separately as it is not
+         * part of the reference map.
+         */
+        callVisitorInline(obj, visitor, objRef, 1);
     }
 
-    @AlwaysInline("Performance critical version")
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean walkPod(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
+    private static void walkPodArrayPartInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
         if (!Pod.RuntimeSupport.isPresent()) {
             throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
         }
-        return walkInstance(obj, visitor, objHub, objPointer) && PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
+
+        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
     }
 
-    @AlwaysInline("Performance critical version")
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
-    private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
+    private static void walkStoredContinuationInline(Object obj, ObjectReferenceVisitor visitor) {
         if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         }
-        return StoredContinuationAccess.walkReferences((StoredContinuation) obj, visitor);
+        StoredContinuationAccess.walkReferences((StoredContinuation) obj, visitor);
     }
 
-    @AlwaysInline("Performance critical version")
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean walkOther() {
-        throw VMError.shouldNotReachHere("Unexpected object with hub type 'other' in the heap.");
-    }
-
-    @AlwaysInline("Performance critical version")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean walkObjectArray(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
+    private static void walkObjectArrayInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
+        Pointer objPointer = Word.objectToUntrackedPointer(obj);
         int length = ArrayLengthNode.arrayLength(obj);
-        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
-
-        Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
-        Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
-        while (pos.belowThan(end)) {
-            final boolean visitResult = callVisitor(obj, visitor, isCompressed, pos);
-            if (!visitResult) {
-                return false;
-            }
-            pos = pos.add(referenceSize);
-        }
-        return true;
+        Pointer firstObjRef = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
+        callVisitorInline(obj, visitor, firstObjRef, length);
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(Object obj, ObjectReferenceVisitor visitor, boolean isCompressed, Pointer pos) {
-        return visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
+    private static void callVisitorInline(Object obj, ObjectReferenceVisitor visitor, Pointer firstObjRef, int count) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        visitor.visitObjectReferences(firstObjRef, true, referenceSize, obj, count);
     }
 }

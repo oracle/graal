@@ -32,14 +32,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -68,7 +69,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
 
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
-        this.argCount = Signatures.parameterCount(method.getParsedSignature());
+        this.argCount = SignatureSymbols.parameterCount(method.getParsedSignature());
         this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET;
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
@@ -123,7 +124,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
             res[start++] = args[from];
         }
         for (int i = start; i < length; i++) {
-            Symbol<Type> t = Signatures.parameterType(targetSig, i - start);
+            Symbol<Type> t = SignatureSymbols.parameterType(targetSig, i - start);
             res[i] = InvokeDynamicCallSiteNode.unbasic(args[i + from], t);
         }
         return res;
@@ -163,7 +164,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     private Method.MethodVersion getTarget(Object[] args) {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
-        assert (memberName.getKlass().getType() == Symbol.Type.java_lang_invoke_MemberName);
+        assert (memberName.getKlass().getType() == Types.java_lang_invoke_MemberName);
         return ((Method) hiddenVmtarget.getHiddenObject(memberName)).getMethodVersion();
     }
 }

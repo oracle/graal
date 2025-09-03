@@ -67,7 +67,7 @@ public class Thread_isInterrupted02 extends JTTTest {
         return thread.interrupted;
     }
 
-    private static class Thread extends java.lang.Thread {
+    private static final class Thread extends java.lang.Thread {
 
         private boolean interrupted;
         private boolean sentInterrupt;

@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -36,6 +35,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A "first object table" to tell me the start of the first object that crosses onto a card
@@ -109,7 +110,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * <p>
  * Implementation note: Table entries are bytes but converted to and from ints with bounds checks.
  */
-final class FirstObjectTable {
+public final class FirstObjectTable {
     /**
      * The number of bytes of memory covered by an entry. Since the indexes into the CardTable are
      * used to index into the FirstObjectTable, these need to have the same value.
@@ -237,13 +238,13 @@ final class FirstObjectTable {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
+    static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         Pointer result;
         Pointer firstObject = getFirstObject(tableStart, objectsStart, index);
         Pointer indexedMemoryStart = objectsStart.add(indexToMemoryOffset(index));
         // If the object starts before the memory for this index, skip over it.
         if (firstObject.belowThan(indexedMemoryStart)) {
-            Object crossingObject = firstObject.toObject();
+            Object crossingObject = firstObject.toObjectNonNull();
             result = LayoutEncoding.getObjectEndInGC(crossingObject);
         } else {
             assert firstObject.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";
@@ -288,16 +289,16 @@ final class FirstObjectTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord entryToMemoryOffset(UnsignedWord index, int entry) {
         assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
-        UnsignedWord entryOffset = WordFactory.unsigned(-entry).multiply(memoryOffsetScale());
+        UnsignedWord entryOffset = Word.unsigned(-entry).multiply(memoryOffsetScale());
         assert entryOffset.belowThan(BYTES_COVERED_BY_ENTRY) : "Entry out of bounds.";
 
         UnsignedWord indexOffset = indexToMemoryOffset(index);
         return indexOffset.subtract(entryOffset);
     }
 
-    public static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
+    static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
         UnsignedWord indexLimit = getTableSizeForMemoryRange(objectsStart, objectsLimit);
-        for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
+        for (UnsignedWord index = Word.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             Pointer objStart = getFirstObject(tableStart, objectsStart, index);
             if (objStart.belowThan(objectsStart) || objectsLimit.belowOrEqual(objStart)) {
                 Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").zhex(objStart)
@@ -327,7 +328,7 @@ final class FirstObjectTable {
     private static UnsignedWord getTableSizeForMemoryRange(Pointer memoryStart, Pointer memoryLimit) {
         assert memoryStart.belowOrEqual(memoryLimit) : "Pointers out of order";
         UnsignedWord memorySize = memoryLimit.subtract(memoryStart);
-        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
+        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, Word.unsigned(BYTES_COVERED_BY_ENTRY));
         UnsignedWord index = FirstObjectTable.memoryOffsetToIndex(roundedMemory);
         return index.multiply(ENTRY_SIZE_BYTES);
     }
@@ -394,7 +395,7 @@ final class FirstObjectTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord exponentToOffset(int n) {
         assert 0 <= n && n <= 63 : "Exponent out of bounds.";
-        return WordFactory.unsigned(1L << n);
+        return Word.unsigned(1L << n);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

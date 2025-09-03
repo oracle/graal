@@ -71,6 +71,9 @@ public class DeoptimizationRuntime {
 
             if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
                 CodePointer ip = KnownIntrinsics.readReturnAddress();
+                if (Deoptimizer.checkLazyDeoptimized(ip)) {
+                    ip = Deoptimizer.readLazyDeoptOriginalReturnAddress(CurrentIsolate.getCurrentThread(), sp);
+                }
                 traceDeoptimization(actionAndReason, speculation, action, sp, ip);
             }
 

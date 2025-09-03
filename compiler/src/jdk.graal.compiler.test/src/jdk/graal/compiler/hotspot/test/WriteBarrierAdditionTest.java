@@ -31,7 +31,6 @@ import static jdk.graal.compiler.core.common.GraalOptions.OptReadElimination;
 import static jdk.graal.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static jdk.graal.compiler.core.common.GraalOptions.PartialUnroll;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
-import static org.junit.Assume.assumeTrue;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -364,7 +363,6 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void before() {
-        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.X));
         expectedBarriers = -1;
     }
 

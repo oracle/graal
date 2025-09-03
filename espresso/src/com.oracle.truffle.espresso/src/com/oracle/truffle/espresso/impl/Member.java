@@ -22,14 +22,48 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import java.util.function.Function;
 
-public abstract class Member<T extends Descriptor> implements ModifiersProvider {
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.MemberAccess;
+
+public abstract class Member<T extends Descriptor> implements MemberAccess<Klass, Method, Field> {
 
     public abstract Symbol<Name> getName();
 
+    @Override
+    public final Symbol<Name> getSymbolicName() {
+        return getName();
+    }
+
     public abstract ObjectKlass getDeclaringKlass();
+
+    @Override
+    public final ObjectKlass getDeclaringClass() {
+        return getDeclaringKlass();
+    }
+
+    @Override
+    public final boolean accessChecks(Klass accessingClass, Klass holderClass) {
+        return RuntimeConstantPool.memberCheckAccess(accessingClass, holderClass, this);
+    }
+
+    @Override
+    @Idempotent
+    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    public boolean isAbstract() {
+        return MemberAccess.super.isAbstract();
+    }
+
+    @Override
+    public final void loadingConstraints(Klass accessingClass, Function<String, RuntimeException> errorHandler) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader(), errorHandler);
+    }
+
+    public abstract void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler);
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.util.Arrays;
-
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -34,12 +32,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
-import com.oracle.svm.hosted.image.NativeImage;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -48,6 +45,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
+
+    public static final int INVALID_TYPECHECK_ID = -1;
 
     public static final HostedType[] EMPTY_ARRAY = new HostedType[0];
 
@@ -101,11 +100,20 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     protected HostedType[] typeCheckInterfaceOrder;
     /**
-     * Flattened array of all dispatch tables installed in the hub for this type.
+     * Flattened array of all dispatch tables methods installed in the hub for this type.
      */
     protected HostedMethod[] openTypeWorldDispatchTables;
     /**
-     * Used for debugging to ensure the dispatch call resolution is correct.
+     * The dispatch table metadata used by Crema: for interfaces, the i-table prototype; for
+     * abstract types, the vtable; for other types, the dispatch table (v- & i-tables).
+     */
+    protected HostedMethod[] cremaOpenTypeWorldDispatchTables;
+    /**
+     * Used for tracking original call targets contained within the dispatch table. This is in
+     * contrast with {@link #openTypeWorldDispatchTables}, which contains the resolved methods for
+     * each of the targets for this given type. In other words,
+     *
+     * <code> openTypeWorldDispatchTables[i] = resolveMethod(openTypeWorldDispatchTableSlotTargets[i], [HostedType]) </code>
      */
     protected HostedMethod[] openTypeWorldDispatchTableSlotTargets;
     protected int[] itableStartingOffsets;
@@ -134,6 +142,9 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
      * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
      * cannot be strengthened.
+     * 
+     * For open world the strengthen stamp type is equal to this type itself if the type is not a
+     * leaf type, i.e., it cannot be extended.
      */
     protected HostedType strengthenStampType;
 
@@ -144,7 +155,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         this.storageKind = storageKind;
         this.superClass = superClass;
         this.interfaces = interfaces;
-        this.typeID = -1;
+        this.typeID = INVALID_TYPECHECK_ID;
     }
 
     public HostedType getStrengthenStampType() {
@@ -161,18 +172,32 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return closedTypeWorldVTable;
     }
 
-    protected HostedMethod[] getOpenTypeWorldDispatchTables() {
+    public HostedMethod[] getOpenTypeWorldDispatchTables() {
         assert openTypeWorldDispatchTables != null;
         return openTypeWorldDispatchTables;
+    }
+
+    public HostedMethod[] getCremaOpenTypeWorldDispatchTables() {
+        assert cremaOpenTypeWorldDispatchTables != null : this;
+        return cremaOpenTypeWorldDispatchTables;
+    }
+
+    public HostedMethod[] getOpenTypeWorldDispatchTableSlotTargets() {
+        assert openTypeWorldDispatchTableSlotTargets != null;
+        return openTypeWorldDispatchTableSlotTargets;
     }
 
     public HostedMethod[] getVTable() {
         return SubstrateOptions.useClosedTypeWorldHubLayout() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
     }
 
+    public HostedMethod[] getInterpreterDispatchTable() {
+        return RuntimeClassLoading.isSupported() ? getCremaOpenTypeWorldDispatchTables() : getVTable();
+    }
+
     @Override
     public int getTypeID() {
-        assert typeID != -1;
+        assert typeID != INVALID_TYPECHECK_ID;
         return typeID;
     }
 
@@ -254,13 +279,12 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return openTypeWorldTypeCheckSlots;
     }
 
-    /**
-     * Returns true if this type is part of the word type hierarchy, i.e, implements
-     * {@link WordBase}.
-     */
+    @Override
     public boolean isWordType() {
         /* Word types have the kind Object, but a primitive storageKind. */
-        return kind != storageKind;
+        boolean wordType = kind != storageKind;
+        assert !wordType || kind.isObject() : Assertions.errorMessage("Only words are expected to have a discrepancy between java kind and storage kind", this);
+        return wordType;
     }
 
     /**
@@ -270,10 +294,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     public HostedMethod[] getAllDeclaredMethods() {
         assert allDeclaredMethods != null : "not initialized yet";
         return allDeclaredMethods;
-    }
-
-    public HostedType getUniqueConcreteImplementation() {
-        return uniqueConcreteImplementation;
     }
 
     public void loadTypeID(int newTypeID) {
@@ -421,7 +441,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public final ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
+    public final HostedType findLeastCommonAncestor(ResolvedJavaType otherType) {
         return universe.lookup(wrapped.findLeastCommonAncestor(((HostedType) otherType).wrapped));
     }
 
@@ -558,12 +578,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return OriginalClassProvider.getJavaClass(this);
     }
 
-    public OpenTypeWorldFeature.DispatchInfo generateDispatchInfo() {
-        assert ImageLayerBuildingSupport.buildingImageLayer();
-
-        int[] interfaceOrder = Arrays.stream(typeCheckInterfaceOrder).mapToInt(t -> t.getWrapped().getId()).toArray();
-        String[] dispatchTables = Arrays.stream(openTypeWorldDispatchTables).map(NativeImage::localSymbolNameForMethod).toArray(String[]::new);
-        return new OpenTypeWorldFeature.DispatchInfo(interfaceOrder, itableStartingOffsets, dispatchTables);
+    @Override
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod m) {
+        if (m.canBeStaticallyBound() || universe.hostVM().isClosedTypeWorld()) {
+            return SharedType.super.findUniqueConcreteMethod(m);
+        }
+        /*
+         * With an open type world analysis we cannot make assumptions for methods that cannot be
+         * trivially statically bound.
+         */
+        return null;
     }
-
 }

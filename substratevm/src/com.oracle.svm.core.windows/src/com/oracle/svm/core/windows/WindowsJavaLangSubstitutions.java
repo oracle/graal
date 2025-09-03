@@ -27,10 +27,6 @@ package com.oracle.svm.core.windows;
 import java.io.Console;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -38,8 +34,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Jvm;
 
+import jdk.graal.compiler.word.Word;
+
 @TargetClass(java.lang.System.class)
-@Platforms(Platform.WINDOWS.class)
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) static volatile Console cons;
@@ -59,12 +56,11 @@ final class Target_java_lang_System {
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
-        return Jvm.JVM_CurrentTimeMillis(WordFactory.nullPointer(), WordFactory.nullPointer());
+        return Jvm.JVM_CurrentTimeMillis(Word.nullPointer(), Word.nullPointer());
     }
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaLangSubstitutions {
 
     /** Private constructor: No instances. */

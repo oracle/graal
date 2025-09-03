@@ -27,8 +27,6 @@ package jdk.graal.compiler.core.test;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,6 +62,8 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.util.GraphOrder;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -122,7 +122,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     private final boolean log;
 
     /*
-     * GR-49601: only check non boolean assertion calls for now.
+     * GR-49601: only check non-boolean assertion calls for now.
      */
     private final boolean verifyBooleanAssertionConditions;
 
@@ -175,7 +175,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     /**
      * The {@link AssertionError#AssertionError()} ctors for the assertion type with arguments.
      */
-    private final HashSet<ResolvedJavaMethod> nonEmptyAssertionCtor = new HashSet<>();
+    private final Set<ResolvedJavaMethod> nonEmptyAssertionCtor = new EconomicHashSet<>();
 
     /**
      * All methods that are ignored when checking for missed assertion messages.
@@ -236,7 +236,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
      * that are analyzed as well as JDK code used by Graal. {@link MethodInfo#root} determines if a
      * method was checked as a Graal method or not.
      */
-    private Map<ResolvedJavaMethod, MethodInfo> methodInfos = Collections.synchronizedMap(new HashMap<>());
+    private Map<ResolvedJavaMethod, MethodInfo> methodInfos = Collections.synchronizedMap(new EconomicHashMap<>());
     /**
      * All calls to assertions without error messages - these will be checked for exclude lists and
      * else reported as errors.
@@ -282,7 +282,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
          * assertion actually have an assertion. That is - all paths returning {@code true} must
          * also be dominated by an assertion if they are doing method calls.
          */
-        Set<ResolvedJavaMethod> calleesToPatchAsAssertionToBeCorrect = new HashSet<>();
+        Set<ResolvedJavaMethod> calleesToPatchAsAssertionToBeCorrect = new EconomicHashSet<>();
 
         /**
          * Static property - a call is used as return, that can be verified but that cannot be used
@@ -322,9 +322,9 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
          * assertion message. Any of these callees will be post processed and reported as an error
          * if the callee does not call an assertion with a message.
          */
-        Set<ResolvedJavaMethod> assertionCalleesWithoutAssertionMessage = new HashSet<>();
+        Set<ResolvedJavaMethod> assertionCalleesWithoutAssertionMessage = new EconomicHashSet<>();
 
-        Set<ResolvedJavaMethod> callees = new HashSet<>();
+        Set<ResolvedJavaMethod> callees = new EconomicHashSet<>();
 
         MethodInfo(ResolvedJavaMethod method) {
             super();
@@ -471,19 +471,19 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     }
 
     private void reportMissingAssertions(StringBuilder allErrorMessages) {
-        StringBuilder sbMissingAssertionMessages = new StringBuilder();
+        List<String> missingAssertionMessages = new ArrayList<>();
         for (AssertionCall ac : assertionCallsWithoutMessage) {
             ResolvedJavaMethod callee = ac.callee;
             if (callee == null || !getMethodInfo(callee).canBeCalledWithoutErrorMessage()) {
-                sbMissingAssertionMessages.append(formatNSP(ac.nsp)).append(System.lineSeparator());
+                missingAssertionMessages.add(formatNSP(ac.nsp));
             }
         }
-        if (!sbMissingAssertionMessages.isEmpty()) {
-            allErrorMessages.append(String.format("Found the following assertions that need error messages %n%s%n " +
-                            "This is because you added a new assertion without an error message. " +
-                            "Please fix all assertions in the report above such that they have error messages." +
-                            "Consider using API from " + Assertions.class.getName() + " to format assertion error messages with more context.",
-                            sbMissingAssertionMessages));
+        if (!missingAssertionMessages.isEmpty()) {
+            String sep = String.format("%n  ");
+            allErrorMessages.append(String.format("Found the assertions that need error messages at:%s%s%n" +
+                            "Please fix all above assertions such that they have error messages. " +
+                            "Consider using API from %s to format assertion error messages with more context.",
+                            sep, String.join(sep, missingAssertionMessages), Assertions.class));
             allErrorMessages.append(System.lineSeparator());
         }
     }

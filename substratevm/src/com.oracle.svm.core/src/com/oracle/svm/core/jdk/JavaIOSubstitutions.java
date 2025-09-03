@@ -28,14 +28,9 @@ import java.io.Closeable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
 import java.lang.ref.ReferenceQueue;
-import java.lang.reflect.Proxy;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
-
-import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -45,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.serialize.MissingSerializationRegistrationUtils;
 
 @TargetClass(java.io.FileDescriptor.class)
@@ -68,24 +64,12 @@ final class Target_java_io_ObjectStreamClass {
             return null;
         }
 
-        if (Serializable.class.isAssignableFrom(cl)) {
-            if (!cl.isArray() && !DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
-                boolean isLambda = cl.getTypeName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
-                boolean isProxy = Proxy.isProxyClass(cl);
-                if (isProxy || isLambda) {
-                    var interfaceList = Arrays.stream(cl.getInterfaces())
-                                    .map(Class::getTypeName)
-                                    .collect(Collectors.joining(", ", "[", "]"));
-                    if (isProxy) {
-                        MissingSerializationRegistrationUtils.missingSerializationRegistration(cl, "proxy type implementing interfaces: " + interfaceList);
-                    } else {
-                        MissingSerializationRegistrationUtils.missingSerializationRegistration(cl,
-                                        "lambda declared in: " + LambdaUtils.capturingClass(cl.getTypeName()),
-                                        "extending interfaces: " + interfaceList);
-                    }
-                } else {
-                    MissingSerializationRegistrationUtils.missingSerializationRegistration(cl, "type " + cl.getTypeName());
-                }
+        if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
+            if (MetadataTracer.enabled()) {
+                MetadataTracer.singleton().traceSerializationType(cl);
+            }
+            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
+                MissingSerializationRegistrationUtils.reportSerialization(cl);
             }
         }
 

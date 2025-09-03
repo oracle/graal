@@ -78,4 +78,8 @@ public class HotSpotFuzzedSuitesProvider extends HotSpotSuitesProvider {
     private Suites getOriginalSuites(OptionValues options) {
         return provider.getDefaultSuites(options, provider.runtime.getTarget().arch);
     }
+
+    public ThreadLocal<Long> getLastSeed() {
+        return lastSeed;
+    }
 }

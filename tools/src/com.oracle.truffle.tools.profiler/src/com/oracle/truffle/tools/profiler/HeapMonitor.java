@@ -399,7 +399,7 @@ public final class HeapMonitor implements Closeable {
         }
     }
 
-    private class Listener implements AllocationListener {
+    private final class Listener implements AllocationListener {
 
         public void onEnter(AllocationEvent event) {
             // nothing to do

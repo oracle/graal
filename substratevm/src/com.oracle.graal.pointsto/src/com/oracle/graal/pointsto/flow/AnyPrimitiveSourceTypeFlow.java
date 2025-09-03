@@ -57,7 +57,7 @@ public final class AnyPrimitiveSourceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
-    public boolean canSaturate() {
+    public boolean canSaturate(PointsToAnalysis bb) {
         /*
          * AnyPrimitiveSourceTypeFlow can be used as a global flow that should always propagate
          * values. The global version can be identified be having source == null, and it should

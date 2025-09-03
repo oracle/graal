@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -32,10 +39,12 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
-
+/**
+ * Directly load the address of {@code CGlobalData} memory.
+ *
+ * Only for use in AOT-compiled code because it uses relocations.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1, sizeRationale = "same as LoadAddressNode")
 public final class CGlobalDataLoadAddressNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CGlobalDataLoadAddressNode> TYPE = NodeClass.create(CGlobalDataLoadAddressNode.class);

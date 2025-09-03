@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.jdk.UninterruptibleUtils.Byte.toUnsignedInt;
+
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -36,48 +38,61 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 public final class PodReferenceMapDecoder {
     @DuplicatedInNativeCode
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
 
         UnsignedWord refOffset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);
-        UnsignedWord mapOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(obj));
+        UnsignedWord mapOffset = getReferenceMapOffset(obj, layoutEncoding);
 
         int nrefs;
         int gap;
         do {
             mapOffset = mapOffset.subtract(2);
-            gap = UninterruptibleUtils.Byte.toUnsignedInt(baseAddress.readByte(mapOffset));
-            nrefs = UninterruptibleUtils.Byte.toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
+            gap = toUnsignedInt(baseAddress.readByte(mapOffset));
+            nrefs = toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
 
-            for (int i = 0; i < nrefs; i++) {
-                if (!callVisitor(baseAddress, visitor, obj, isCompressed, refOffset)) {
-                    return false;
-                }
-                refOffset = refOffset.add(referenceSize);
-            }
-            refOffset = refOffset.add(referenceSize * gap);
+            Pointer firstObjRef = baseAddress.add(refOffset);
+            callVisitor(firstObjRef, visitor, obj, nrefs);
+            refOffset = refOffset.add(referenceSize * (nrefs + gap));
         } while (gap != 0 || nrefs == 0xff);
-
-        return true;
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(Pointer baseAddress, ObjectReferenceVisitor visitor, Object obj, boolean isCompressed, UnsignedWord refOffset) {
-        return visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj);
+    private static void callVisitor(Pointer firstObjRef, ObjectReferenceVisitor visitor, Object obj, int count) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        visitor.visitObjectReferences(firstObjRef, true, referenceSize, obj, count);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasEmptyReferenceMap(Object obj) {
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        int layoutEncoding = hub.getLayoutEncoding();
+
+        UnsignedWord mapOffset = getReferenceMapOffset(obj, layoutEncoding);
+        mapOffset = mapOffset.subtract(2);
+        int gap = toUnsignedInt(ObjectAccess.readByte(obj, mapOffset));
+        int nrefs = toUnsignedInt(ObjectAccess.readByte(obj, mapOffset.add(1)));
+        return gap == 0 && nrefs != 0xff;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static UnsignedWord getReferenceMapOffset(Object obj, int layoutEncoding) {
+        return LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(obj));
     }
 
     /**
@@ -129,8 +144,8 @@ public final class PodReferenceMapDecoder {
         UnsignedWord nrefs;
         do {
             mapOffset = mapOffset.subtract(2);
-            gap = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset)));
-            nrefs = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
+            gap = Word.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset)));
+            nrefs = Word.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
 
             // Copy references separately with the required barriers
             JavaMemoryUtil.copyReferencesForward(original, refOffset, copy, refOffset, nrefs);

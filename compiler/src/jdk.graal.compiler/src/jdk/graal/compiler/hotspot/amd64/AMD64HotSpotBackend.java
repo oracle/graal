@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -72,6 +73,9 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.lir.hotspot.amd64.AMD64HotSpotVectorLIRGenerator;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -101,12 +105,20 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        if (((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+            return new AMD64HotSpotVectorLIRGenerator(getProviders(), config, lirGenRes);
+        } else {
+            return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        }
     }
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
+        if (lirGen.getArithmetic() instanceof VectorLIRGeneratorTool) {
+            return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64VectorNodeMatchRules(lirGen));
+        } else {
+            return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
+        }
     }
 
     @Override
@@ -164,7 +176,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
             assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
-            if (!isStub && config.nmethodEntryBarrier != 0) {
+            if (!isStub) {
                 emitNmethodEntryBarrier(crb, asm);
             } else {
                 crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
@@ -337,7 +349,6 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             JavaType[] parameterTypes = {providers.getMetaAccess().lookupJavaType(Object.class)};
             CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, parameterTypes, this);
             Register receiver = asRegister(cc.getArgument(0));
-            AMD64Address src = new AMD64Address(receiver, config.hubOffset);
             int before;
             if (config.icSpeculatedKlassOffset == Integer.MAX_VALUE) {
                 crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
@@ -347,18 +358,23 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 if (config.useCompressedClassPointers) {
                     Register register = r10;
                     Register heapBase = providers.getRegisters().getHeapBaseRegister();
-                    AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, src, config);
+                    if (config.useCompactObjectHeaders) {
+                        ((AMD64HotSpotMacroAssembler) asm).loadCompactClassPointer(register, receiver);
+                    } else {
+                        asm.movl(register, new AMD64Address(receiver, config.hubOffset));
+                    }
+                    AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, config);
                     if (config.narrowKlassBase != 0) {
                         // The heap base register was destroyed above, so restore it
                         if (config.narrowOopBase == 0L) {
-                            asm.xorq(heapBase, heapBase);
+                            asm.xorl(heapBase, heapBase);
                         } else {
                             asm.movq(heapBase, config.narrowOopBase);
                         }
                     }
                     before = asm.cmpqAndJcc(inlineCacheKlass, register, ConditionFlag.NotEqual, null, false);
                 } else {
-                    before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
+                    before = asm.cmpqAndJcc(inlineCacheKlass, new AMD64Address(receiver, config.hubOffset), ConditionFlag.NotEqual, null, false);
                 }
                 crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
             } else {
@@ -376,6 +392,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                      */
                     inlineCacheCheckSize += 3 + 3;
                 }
+                if (config.useCompactObjectHeaders) {
+                    // 4 bytes for extra shift instruction, 1 byte less for 0-displacement address
+                    inlineCacheCheckSize += 3;
+                }
                 asm.align(config.codeEntryAlignment, asm.position() + inlineCacheCheckSize);
 
                 int startICCheck = asm.position();
@@ -384,10 +404,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
                 AMD64BaseAssembler.OperandSize size;
                 if (config.useCompressedClassPointers) {
-                    asm.movl(temp, src);
+                    if (config.useCompactObjectHeaders) {
+                        ((AMD64HotSpotMacroAssembler) asm).loadCompactClassPointer(temp, receiver);
+                    } else {
+                        asm.movl(temp, new AMD64Address(receiver, config.hubOffset));
+                    }
                     size = AMD64BaseAssembler.OperandSize.DWORD;
                 } else {
-                    asm.movptr(temp, src);
+                    asm.movptr(temp, new AMD64Address(receiver, config.hubOffset));
                     size = AMD64BaseAssembler.OperandSize.QWORD;
                 }
                 before = asm.cmpAndJcc(size, temp, icSpeculatedKlass, ConditionFlag.NotEqual, null, false);
@@ -447,17 +471,46 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
                 }
             }
-            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
-            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
+            emitExceptionHandler(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
+            emitDeoptHandler(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             if (config.supportsMethodHandleDeoptimizationEntry() && crb.needsMHDeoptHandler()) {
-                trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
+                emitDeoptHandler(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
             }
         }
     }
 
-    private static void trampolineCall(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId exceptionHandlerEntry) {
+    private static void emitExceptionHandler(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId exceptionHandlerEntry) {
         crb.recordMark(AMD64Call.directCall(crb, asm, callTarget, null, false, null), exceptionHandlerEntry);
         // Ensure the return location is a unique pc and that control flow doesn't return here
+        asm.halt();
+    }
+
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/74a2c831a2af55c66317ca8aead53fde2a2a6900/src/hotspot/cpu/x86/x86.ad#L1261-L1288",
+              sha1 = "1326c5aa33296807cd6fb271150c3fcc0bfb9388")
+    // @formatter:on
+    private static void emitDeoptHandler(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId deoptHandlerEntry) {
+        /* Line comments preserved from JDK code. */
+        crb.recordMark(asm.position(), deoptHandlerEntry);
+        int position = asm.position();
+        Label next = new Label();
+        // push a "the_pc" on the stack without destroying any registers
+        // as they all may be live.
+
+        // push address of "next"
+        asm.call(next);
+        asm.bind(next);
+        // adjust it so it matches "the_pc"
+        asm.subq(new AMD64Address(rsp, 0), asm.position() - position);
+
+        int jmpSize = 1 + 4;  // 1 byte opcode + 4 bytes displacement
+        crb.recordDirectCall(asm.position(), asm.position() + jmpSize, callTarget, null);
+        asm.rawJmpNoJCCErratumMitigation();
+
+        /*
+         * Ensure that control flow doesn't return here. The synthetic return location PC is the
+         * address of the call instruction above.
+         */
         asm.halt();
     }
 

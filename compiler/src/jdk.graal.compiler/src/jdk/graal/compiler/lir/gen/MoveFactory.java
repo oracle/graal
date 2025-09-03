@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.gen;
 
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -34,7 +36,6 @@ import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -107,7 +108,7 @@ public abstract class MoveFactory {
 
             RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
 
-            RegisterArray availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
+            List<Register> availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
             assert availableRegister != null;
             assert availableRegister.size() > 1 : Assertions.errorMessageContext("availableReg", availableRegister);
             Register scratchRegister = availableRegister.get(0);

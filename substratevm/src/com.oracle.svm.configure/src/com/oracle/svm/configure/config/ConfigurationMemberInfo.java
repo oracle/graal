@@ -92,10 +92,11 @@ public final class ConfigurationMemberInfo {
         }
 
         public boolean includes(ConfigurationMemberDeclaration other) {
-            if (equals(DECLARED_AND_PUBLIC)) {
-                return DECLARED.equals(other) || PUBLIC.equals(other);
-            }
-            return equals(other);
+            return switch (this) {
+                case PRESENT -> true;
+                case DECLARED_AND_PUBLIC -> other == DECLARED || other == PUBLIC;
+                default -> this == other;
+            };
         }
     }
 
@@ -116,7 +117,11 @@ public final class ConfigurationMemberInfo {
         ACCESSED;
 
         public ConfigurationMemberAccessibility combine(ConfigurationMemberAccessibility other) {
-            return (ordinal() < other.ordinal()) ? other : this;
+            return other.includes(this) ? other : this;
+        }
+
+        public ConfigurationMemberAccessibility intersect(ConfigurationMemberAccessibility other) {
+            return other.includes(this) ? this : other;
         }
 
         public ConfigurationMemberAccessibility remove(ConfigurationMemberAccessibility other) {

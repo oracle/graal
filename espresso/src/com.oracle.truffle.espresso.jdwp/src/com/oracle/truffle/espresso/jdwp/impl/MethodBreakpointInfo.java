@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,18 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.Arrays;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 
-public final class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodHook {
+public final class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodHook, Consumer<KlassRef> {
 
+    private final Set<KlassRef> classes = ConcurrentHashMap.newKeySet();
     private MethodRef[] methods = new MethodRef[0];
     private final boolean isMethodEntry;
     private final boolean isMethodExit;
@@ -38,6 +43,18 @@ public final class MethodBreakpointInfo extends AbstractBreakpointInfo implement
         super(filter);
         this.isMethodEntry = filter.getEventKind() == RequestedJDWPEvents.METHOD_ENTRY;
         this.isMethodExit = filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT || filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT_WITH_RETURN_VALUE;
+    }
+
+    @Override
+    public void accept(KlassRef klass) {
+        if (classes.add(klass)) {
+            if (getFilter().matchesType(klass)) {
+                for (MethodRef method : klass.getDeclaredMethods()) {
+                    method.addMethodHook(this);
+                    addMethod(method);
+                }
+            }
+        }
     }
 
     public void addMethod(MethodRef method) {
@@ -62,5 +79,12 @@ public final class MethodBreakpointInfo extends AbstractBreakpointInfo implement
     @Override
     public boolean onMethodExit(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") Object returnValue) {
         return isMethodExit;
+    }
+
+    @Override
+    public void dispose() {
+        for (MethodRef method : methods) {
+            method.disposeHooks();
+        }
     }
 }

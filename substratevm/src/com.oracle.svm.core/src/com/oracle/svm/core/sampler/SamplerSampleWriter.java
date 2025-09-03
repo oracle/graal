@@ -25,10 +25,8 @@
 
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -36,6 +34,9 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public final class SamplerSampleWriter {
     public static final long JFR_STACK_TRACE_END = -1;
@@ -62,9 +63,8 @@ public final class SamplerSampleWriter {
         SamplerSampleWriter.putInt(data, 0);
         /* Sample size. (will be patched later) */
         SamplerSampleWriter.putInt(data, 0);
-        /* Padding so that the long values below are aligned. */
-        SamplerSampleWriter.putInt(data, 0);
 
+        SamplerSampleWriter.putInt(data, data.getSkipCount());
         SamplerSampleWriter.putLong(data, JfrTicks.elapsedTicks());
         SamplerSampleWriter.putLong(data, SubstrateJVM.getCurrentThreadId());
         SamplerSampleWriter.putLong(data, JfrThreadState.getId(Thread.State.RUNNABLE));
@@ -111,7 +111,7 @@ public final class SamplerSampleWriter {
         /* This method is only called if ensureSize() succeeded earlier. */
         assert getAvailableSize(data).aboveOrEqual(Long.BYTES);
         data.getCurrentPos().writeLong(0, value);
-        increaseCurrentPos(data, WordFactory.unsigned(Long.BYTES));
+        increaseCurrentPos(data, Word.unsigned(Long.BYTES));
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
@@ -129,7 +129,7 @@ public final class SamplerSampleWriter {
         /* This method is only called if ensureSize() succeeded earlier. */
         assert getAvailableSize(data).aboveOrEqual(Integer.BYTES);
         data.getCurrentPos().writeInt(0, value);
-        increaseCurrentPos(data, WordFactory.unsigned(Integer.BYTES));
+        increaseCurrentPos(data, Word.unsigned(Integer.BYTES));
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
@@ -207,7 +207,7 @@ public final class SamplerSampleWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void cancel(SamplerSampleWriterData data) {
-        data.setEndPos(WordFactory.nullPointer());
+        data.setEndPos(Word.nullPointer());
         JfrThreadLocal.increaseMissedSamples();
     }
 

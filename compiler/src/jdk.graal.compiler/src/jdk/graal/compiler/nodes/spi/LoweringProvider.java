@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,10 @@ import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -60,20 +58,26 @@ public interface LoweringProvider {
     Integer smallestCompareWidth();
 
     /**
-     * Indicates whether this target platform supports bulk zeroing of arbitrary size.
+     * Indicates whether this target platform supports bulk zeroing of arbitrary size. This applies
+     * only eden memory such as the memory directly initialized in the allocation snippets.
      */
-    boolean supportsBulkZeroing();
+    boolean supportsBulkZeroingOfEden();
+
+    /**
+     * Indicates whether this target platform supports bulk zeroing arrays of arbitrary size that
+     * might not be in eden. See {@link #supportsBulkZeroingOfEden()}.
+     *
+     * @param elementKind the elementKind of the array elements
+     */
+    default boolean supportsBulkClearArray(JavaKind elementKind) {
+        return supportsBulkZeroingOfEden();
+    }
 
     /**
      * Indicates whether this target platform supports optimized filling of memory regions with
      * {@code long} values.
      */
     boolean supportsOptimizedFilling(OptionValues options);
-
-    /**
-     * Indicates whether this target platform supports lowering {@link RoundNode}.
-     */
-    boolean supportsRounding();
 
     /**
      * Indicates whether this target platform supports the usage of implicit (trapping) null checks.

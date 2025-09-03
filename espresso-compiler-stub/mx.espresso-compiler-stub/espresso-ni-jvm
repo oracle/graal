@@ -1,0 +1,4 @@
+# Use $GRAALVM/bin/native-image --vm.Dcom.oracle.svm.driver.java.executable.override=$GRAALVM/bin/espresso in the resulting GraalVM
+DYNAMIC_IMPORTS=/vm,/substratevm
+COMPONENTS=Espresso Launcher,LibGraal,Java on Truffle,SubstrateVM,Java on Truffle LLVM Java libraries,tflm,ni,sdkni,svmt,svmsl,tflc,tflsm,ecs
+NATIVE_IMAGES=lib:jvmcicompiler

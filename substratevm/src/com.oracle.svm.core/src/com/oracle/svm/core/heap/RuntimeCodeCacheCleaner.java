@@ -61,21 +61,20 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     }
 
     @Override
-    public boolean visitCode(CodeInfo codeInfo) {
+    public void visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
-            return true;
+            return;
         }
 
         int state = CodeInfoAccess.getState(codeInfo);
-        if (state == CodeInfo.STATE_UNREACHABLE) {
+        if (state == CodeInfo.STATE_PENDING_FREE) {
             freeMemory(codeInfo);
-        } else if (state == CodeInfo.STATE_READY_FOR_INVALIDATION) {
+        } else if (state == CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE) {
             // All objects that are accessed during invalidation must still be reachable.
             CodeInfoTable.invalidateNonStackCodeAtSafepoint(codeInfo);
-            assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_INVALIDATED;
+            assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE;
             freeMemory(codeInfo);
         }
-        return true;
     }
 
     private static void freeMemory(CodeInfo codeInfo) {

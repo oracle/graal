@@ -34,12 +34,13 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.FixedGlobalValueNumberable;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_4, size = SIZE_16)
-public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
+public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill, FixedGlobalValueNumberable {
     public static final NodeClass<KlassBeingInitializedCheckNode> TYPE = NodeClass.create(KlassBeingInitializedCheckNode.class);
 
     @Input protected ValueNode klass;

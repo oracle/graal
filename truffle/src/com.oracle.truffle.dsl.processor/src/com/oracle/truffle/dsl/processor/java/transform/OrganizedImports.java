@@ -78,7 +78,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeImport;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public final class OrganizedImports {
 
@@ -188,7 +188,7 @@ public final class OrganizedImports {
                 b.append("?");
             }
 
-            if (i < typeArguments.size() - 1) {
+            if (i < parameters.size() - 1) {
                 b.append(", ");
             }
         }
@@ -217,7 +217,7 @@ public final class OrganizedImports {
                         (anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType)) ||
                                         importFromEnclosingScope(enclosedType, ElementUtils.castTypeElement(importType)))) {
             return false; // same enclosing element -> no import
-        } else if (importType instanceof GeneratedTypeMirror && importPackageElement.getQualifiedName().contentEquals("")) {
+        } else if (importType instanceof DeclaredCodeTypeMirror && importPackageElement.getQualifiedName().contentEquals("")) {
             return false;
         } else if (ElementUtils.isDeprecated(importType)) {
             return false;
@@ -497,7 +497,7 @@ public final class OrganizedImports {
 
     }
 
-    private class ImportTypeReferenceVisitor extends TypeReferenceVisitor {
+    private final class ImportTypeReferenceVisitor extends TypeReferenceVisitor {
 
         @Override
         public void visitStaticFieldReference(Element enclosedType, TypeMirror type, String elementName) {

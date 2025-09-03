@@ -29,10 +29,14 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
 /**
  * Marks a position in the graph where a safepoint should be emitted.
@@ -42,12 +46,26 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
           cyclesRationale = "read",
           size = SIZE_1)
 // @formatter:on
-public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable {
+public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable, Simplifiable {
 
     public static final NodeClass<SafepointNode> TYPE = NodeClass.create(SafepointNode.class);
 
+    /**
+     * Optional edge that is set when safepoints are added to a graph. If this safepoint is
+     * semantically associated with a loop structure links to the loop begin or loop exit it is
+     * mapped to. Over the course of optimizations can "degrade" and point to control flow dominated
+     * by the original loop (exit).
+     */
+    @OptionalInput(InputType.Guard) protected GuardingNode loopLink;
+
     public SafepointNode() {
         super(TYPE, StampFactory.forVoid());
+    }
+
+    public SafepointNode(LoopBeginNode loop) {
+        super(TYPE, StampFactory.forVoid());
+        this.loopLink = loop;
+
     }
 
     @Override
@@ -58,5 +76,21 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (next() instanceof SafepointNode) {
+            this.graph().removeFixed(this);
+        }
+    }
+
+    public void setLoopLink(GuardingNode loopLink) {
+        updateUsagesInterface(this.loopLink, loopLink);
+        this.loopLink = loopLink;
+    }
+
+    public GuardingNode getLoopLink() {
+        return loopLink;
     }
 }

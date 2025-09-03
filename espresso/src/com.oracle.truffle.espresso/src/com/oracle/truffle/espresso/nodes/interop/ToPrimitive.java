@@ -34,6 +34,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -83,10 +84,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "boolean");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostBoolean(Object value) {
             return value instanceof Boolean;
         }
@@ -106,8 +103,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         int doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Integer) {
-                return (int) getMeta().java_lang_Integer_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInInt(value)) {
+                try {
+                    return EspressoInterop.asInt(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInInt returns true, asInt must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to int"));
@@ -133,10 +135,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "int");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostInteger(Object value) {
             return value instanceof Integer;
         }
@@ -156,8 +154,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         byte doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Byte) {
-                return (byte) getMeta().java_lang_Byte_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInByte(value)) {
+                try {
+                    return EspressoInterop.asByte(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInByte returns true, asByte must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to byte"));
@@ -183,10 +186,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "byte");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostByte(Object value) {
             return value instanceof Byte;
         }
@@ -206,8 +205,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         short doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Short) {
-                return (short) getMeta().java_lang_Short_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInShort(value)) {
+                try {
+                    return EspressoInterop.asShort(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInShort returns true, asShort must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to short"));
@@ -231,10 +235,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "short");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostShort(Object value) {
@@ -280,17 +280,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
                 throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", s, " to char"));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("Contract violation: if fitsInInt returns true, asInt must succeed.");
+                throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
             }
         }
 
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "char");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostCharacter(Object value) {
@@ -312,8 +308,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         long doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Long) {
-                return (long) getMeta().java_lang_Long_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInLong(value)) {
+                try {
+                    return EspressoInterop.asLong(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInLong returns true, asLong must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to long"));
@@ -342,10 +343,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         static boolean isHostLong(Object value) {
             return value instanceof Long;
         }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
     }
 
     @NodeInfo(shortName = "To float")
@@ -362,8 +359,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         float doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Float) {
-                return (float) getMeta().java_lang_Float_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInFloat(value)) {
+                try {
+                    return EspressoInterop.asFloat(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInFloat returns true, asFloat must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to float"));
@@ -389,10 +391,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "float");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostFloat(Object value) {
             return value instanceof Float;
         }
@@ -412,8 +410,13 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Specialization
         double doEspresso(StaticObject value,
                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
-            if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Double) {
-                return (double) getMeta().java_lang_Double_value.get(value);
+            if (value != null && !StaticObject.isNull(value) && EspressoInterop.fitsInDouble(value)) {
+                try {
+                    return EspressoInterop.asDouble(value);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("Contract violation: if fitsInDouble returns true, asDouble must succeed.");
+                }
             }
             exceptionProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to double"));
@@ -437,10 +440,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "double");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostDouble(Object value) {

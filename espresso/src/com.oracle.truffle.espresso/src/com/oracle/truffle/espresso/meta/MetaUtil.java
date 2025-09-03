@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**

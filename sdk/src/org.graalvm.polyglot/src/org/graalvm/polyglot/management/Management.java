@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,8 +80,8 @@ final class Management {
     private static final class ManagementAccessImpl extends ManagementAccess {
 
         @Override
-        public Object newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {
-            return new ExecutionListener(dispatch, receiver);
+        public Object newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver, Engine engine) {
+            return new ExecutionListener(dispatch, receiver, engine);
         }
 
         @Override

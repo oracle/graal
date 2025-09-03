@@ -26,17 +26,11 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.meta.AnalysisElement;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.hosted.Feature;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
@@ -54,13 +48,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PointstoAnalyzerTester {
     private Set<Executable> expectedReachableMethods = new HashSet<>();
@@ -307,11 +308,11 @@ public class PointstoAnalyzerTester {
             List<T> shouldReachableButNot = expectedReachables.stream().filter(t -> {
                 R element = getAnalysisElement.apply(t);
                 return element != null && !element.isReachable();
-            }).collect(Collectors.toList());
+            }).toList();
 
             if (!shouldReachableButNot.isEmpty()) {
                 StringBuilder sb = new StringBuilder(elementType + " should be reached but not:");
-                shouldReachableButNot.forEach(s -> sb.append(" ").append(getName.apply(s)).append("\n"));
+                shouldReachableButNot.forEach(s -> sb.append(" ").append(getName.apply(s)).append(System.lineSeparator()));
                 fail(sb.toString());
             }
         }

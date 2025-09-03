@@ -38,7 +38,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.oracle.truffle.espresso.polyglot;
 
 /**
@@ -126,12 +125,57 @@ public final class Polyglot {
     }
 
     /**
+     * If a regular {@link Class#cast} of {@code value} to {@code target#getRawType} succeeds,
+     * {@code Polyglot.castWithGenerics} succeeds too.
+     *
+     * In addition, if {@code value} is a {@link Polyglot#isForeignObject foreign} object:
+     * <ul>
+     * <li>if {@code target} represents a primitive class, converts the foreign value to this type
+     * and returns the result as a boxed type. To avoid eager conversion, cast to the corresponding
+     * wrapper class.
+     * <li>if {@code target} is a wrapper class, checks that the foreign value is a number, a
+     * boolean or a character respectively, and returns a wrapper of the foreign value. When the
+     * {@code value} field of the result is accessed, the current value of the foreign primitive is
+     * fetched.
+     * <li>if {@code target} represents an array class and the foreign value has array elements,
+     * returns the foreign value as {@code target}.
+     * <li>if {@code target} represents a (non-abstract, non-wrapper) class, checks that all the
+     * instance fields defined in the class or its ancestors exist in the foreign object. Returns
+     * the foreign object as {@code target}.
+     * <li>if {@code target} represents an interface, returns the foreign object as {@code target}.
+     * The existence of methods, defined in {@code target#getRawType}, is not verified and if a
+     * method does not exist, an exception will be thrown only when the method is invoked.
+     * </ul>
+     * <p>
+     *
+     * @throws NullPointerException is target is null
+     * @throws ClassCastException
+     *             <ul>
+     *             <li>if {@code value} is a foreign object, {@code target} represents a primitive
+     *             type but {@code value} does not represent an object of this primitive type
+     *             <li>if {@code value} is a foreign object, {@code target} represents an array type
+     *             but {@code value} does not have array elements
+     *             <li>if {@code value} is a foreign object, {@code target} represents an abstract
+     *             class and {@code value} was not previously cast to a concrete descendant of
+     *             {@code targetClass}
+     *             <li>if {@code value} is a foreign object, {@code target} represents a class and a
+     *             field of {@code targetClass} does not exist in the object
+     *             <li>if {@code value} is a regular Espresso object and cannot be cast to
+     *             {@code targetClass}
+     *             </ul>
+     * @since 24.2
+     */
+    public static <T> T castWithGenerics(Object value, TypeLiteral<T> target) throws ClassCastException {
+        return target.getRawType().cast(value);
+    }
+
+    /**
      * Evaluates the given code in the given language.
      *
      * <p>
      * To access members of the foreign object, write a corresponding class or interface stub in
      * Java and cast the eval result to it using {@link #cast Polyglot.cast}.
-     * 
+     *
      * @param languageId the id of one of the Truffle languages
      * @param sourceCode the source code in the language, identified by {@code languageId}
      *
@@ -171,7 +215,7 @@ public final class Polyglot {
      * <p>
      * To access the foreign object's members, write a corresponding class or interface stub in Java
      * and cast the eval result to it using {@link #cast Polyglot.cast}.
-     * 
+     *
      * @since 21.0
      */
     @SuppressWarnings("unused")
@@ -184,7 +228,7 @@ public final class Polyglot {
      * {@link Polyglot#cast casts} the result to the given class.
      * <p>
      * See {@link Polyglot#cast} for the details of casting.
-     * 
+     *
      * @since 21.0
      */
     public static <T> T importObject(String name, Class<? extends T> targetClass) throws ClassCastException {
@@ -193,7 +237,7 @@ public final class Polyglot {
 
     /**
      * Exports {@code value} under {@code name} to the Polyglot scope.
-     * 
+     *
      * @since 21.0
      */
     @SuppressWarnings("unused")

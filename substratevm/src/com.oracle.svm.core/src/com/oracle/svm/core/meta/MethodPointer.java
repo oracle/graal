@@ -33,29 +33,28 @@ import org.graalvm.word.ComparableWord;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/**
- * A pointer to the compiled code of a method.
- */
-public final class MethodPointer implements CFunctionPointer {
+/** The absolute address of the compiled code of a method. */
+public final class MethodPointer implements CFunctionPointer, MethodRef {
     private final ResolvedJavaMethod method;
-    private final boolean isAbsolute;
+    private final boolean permitsRewriteToPLT;
 
-    public MethodPointer(ResolvedJavaMethod method, boolean isAbsolute) {
+    public MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
         Objects.requireNonNull(method);
         this.method = method;
-        this.isAbsolute = isAbsolute;
+        this.permitsRewriteToPLT = permitsRewriteToPLT;
     }
 
     public MethodPointer(ResolvedJavaMethod method) {
-        this(method, false);
+        this(method, true);
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
 
-    public boolean isAbsolute() {
-        return isAbsolute;
+    public boolean permitsRewriteToPLT() {
+        return permitsRewriteToPLT;
     }
 
     @Override

@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -56,12 +55,16 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -91,8 +94,10 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class StackOverflowCheckImpl implements StackOverflowCheck {
     // The stack boundary for the stack overflow check
     public static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord("StackOverflowCheckImpl.stackBoundaryTL").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
@@ -201,7 +206,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
              * a recurring callback in the yellow zone is dangerous because a stack overflow in the
              * recurring callback would then lead to a fatal error.
              */
-            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks are considered user code and must not run in yellow zone");
+            RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks are considered user code and must not run in yellow zone");
 
             stackBoundaryTL.set(stackBoundaryTL.get().subtract(Options.StackYellowZoneSize.getValue()));
         }
@@ -241,7 +246,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         VMError.guarantee(newState < oldState && newState >= STATE_YELLOW_ENABLED, "StackOverflowCheckImpl.onYellowZoneProtected: Illegal state");
 
         if (newState == STATE_YELLOW_ENABLED) {
-            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+            RecurringCallbackSupport.resumeCallbackTimerAtNextSafepointCheck();
 
             stackBoundaryTL.set(stackBoundaryTL.get().add(Options.StackYellowZoneSize.getValue()));
         }
@@ -259,7 +264,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
          * Setting the boundary to a low value effectively disables the check. We are not using 0 so
          * that we can distinguish the value set here from an uninitialized value.
          */
-        stackBoundaryTL.set(WordFactory.unsigned(1));
+        stackBoundaryTL.set(Word.unsigned(1));
         /*
          * A random marker value. The actual value does not matter, but having a high value also
          * ensures that any future calls to protectYellowZone() do not modify the stack boundary
@@ -293,7 +298,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     public void updateStackOverflowBoundary() {
         long threadSize = PlatformThreads.getRequestedStackSize(Thread.currentThread());
         if (threadSize != 0) {
-            updateStackOverflowBoundary(WordFactory.unsigned(threadSize));
+            updateStackOverflowBoundary(Word.unsigned(threadSize));
         }
     }
 
@@ -466,7 +471,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
              * Methods that can deoptimize must have enough space on the stack for all frames after
              * deoptimization.
              */
-            stackBoundary = stackBoundary.add(WordFactory.unsigned(deoptFrameSize));
+            stackBoundary = stackBoundary.add(Word.unsigned(deoptFrameSize));
         }
         if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary))) {
 
@@ -514,9 +519,9 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
 
             long deoptFrameSize = StackOverflowCheckImpl.computeDeoptFrameSize(graph);
 
-            Arguments args = new Arguments(stackOverflowCheck, graph.getGuardsStage(), tool.getLoweringStage());
-            args.addConst("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
-            args.addConst("hasDeoptFrameSize", deoptFrameSize > 0);
+            Arguments args = new Arguments(stackOverflowCheck, graph, tool.getLoweringStage());
+            args.add("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
+            args.add("hasDeoptFrameSize", deoptFrameSize > 0);
             args.add("deoptFrameSize", deoptFrameSize);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

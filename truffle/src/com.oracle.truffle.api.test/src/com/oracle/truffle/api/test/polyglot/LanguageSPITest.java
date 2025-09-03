@@ -47,6 +47,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -1563,6 +1564,42 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testGR63778() {
+        try (Context context = Context.create()) {
+            execute(context, TestGR63778Language.class);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class TestGR63778Language extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TruffleContext truffleContext = env.newInnerContextBuilder().build();) {
+                Source source = Source.newBuilder(TestUtils.getDefaultLanguageId(TestGR63778Internal.class), "", "source").build();
+                assertFails(() -> truffleContext.evalPublic(null, source),
+                                IllegalArgumentException.class,
+                                (ia) -> {
+                                    String message = ia.getMessage();
+                                    assertTrue(message.contains(" language with id '" + TestUtils.getDefaultLanguageId(TestGR63778Internal.class) + "' is not available."));
+                                    assertTrue(message.contains("A language with this id is installed, but only available internally."));
+                                });
+                return null;
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class TestGR63778Internal extends AbstractExecutableTestLanguage {
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
+
+    @Test
     public void testInnerContextPermittedLanguages() {
         try (Context context = Context.create()) {
             execute(context, InnerContextPermittedLanguagesLanguage.class);
@@ -1680,6 +1717,7 @@ public class LanguageSPITest {
         static class Context {
             private final Env env;
             private int disposeCalled;
+            private TruffleContext innerCreatorTruffleContext;
             private static int disposeCalledStatic;
 
             Context(Env env) {
@@ -1702,11 +1740,11 @@ public class LanguageSPITest {
 
                 @TruffleBoundary
                 private Object executeBoundary() {
-                    Env env = CONTEXT_REF.get(null).env;
-                    TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
-                    Object p = innerContext.enter(null);
+                    Context outerLangContext = CONTEXT_REF.get(null);
+                    outerLangContext.innerCreatorTruffleContext = outerLangContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
+                    Object p = outerLangContext.innerCreatorTruffleContext.enter(null);
                     Context innerLangContext = CONTEXT_REF.get(null);
-                    innerContext.leave(null, p);
+                    outerLangContext.innerCreatorTruffleContext.leave(null, p);
                     return innerLangContext.disposeCalled;
                 }
             }.getCallTarget();
@@ -3571,4 +3609,35 @@ public class LanguageSPITest {
         assertEquals("java.lang.AssertionError: expectedMessage", e.getMessage());
     }
 
+    @Test
+    public void testEquals() {
+        try (Engine engine = Engine.create()) {
+            Language language1 = engine.getLanguages().get(EqualsLanguage1.ID);
+            Language language2 = engine.getLanguages().get(EqualsLanguage2.ID);
+            assertNotEquals(language1, language2);
+            assertEquals(language1, engine.getLanguages().get(EqualsLanguage1.ID));
+        }
+    }
+
+    @TruffleLanguage.Registration(id = EqualsLanguage1.ID)
+    public static final class EqualsLanguage1 extends TruffleLanguage<Void> {
+
+        static final String ID = "EqualsLanguage1";
+
+        @Override
+        protected Void createContext(Env env) {
+            return null;
+        }
+    }
+
+    @TruffleLanguage.Registration(id = EqualsLanguage2.ID)
+    public static final class EqualsLanguage2 extends TruffleLanguage<Void> {
+
+        static final String ID = "EqualsLanguage2";
+
+        @Override
+        protected Void createContext(Env env) {
+            return null;
+        }
+    }
 }

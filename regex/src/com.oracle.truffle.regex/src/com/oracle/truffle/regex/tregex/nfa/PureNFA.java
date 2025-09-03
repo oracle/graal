@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ public final class PureNFA implements StateIndex<PureNFAState> {
     private static final PureNFA[] NO_SUBTREES = {};
     private final int globalSubTreeId;
     private final int subTreeId;
+    private final int fixedWidth;
     @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
     @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
     @CompilationFinal(dimensions = 1) private final PureNFA[] subtrees;
@@ -73,9 +74,14 @@ public final class PureNFA implements StateIndex<PureNFAState> {
                     Counter.ThresholdCounter transitionIDCounter) {
         this.globalSubTreeId = astSubRoot.getGlobalSubTreeId();
         this.subTreeId = astSubRoot.getSubTreeId();
+        if (astSubRoot.isFixedWidth()) {
+            this.fixedWidth = astSubRoot.getGroup().getMinPath();
+        } else {
+            this.fixedWidth = -1;
+        }
         this.states = new PureNFAState[stateIDCounter.getCount()];
         this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
-        this.subtrees = astSubRoot.getSubtrees().size() == 0 ? NO_SUBTREES : new PureNFA[astSubRoot.getSubtrees().size()];
+        this.subtrees = astSubRoot.getSubtrees().isEmpty() ? NO_SUBTREES : new PureNFA[astSubRoot.getSubtrees().size()];
         for (PureNFAState s : states) {
             if (s == null) {
                 continue;
@@ -107,6 +113,14 @@ public final class PureNFA implements StateIndex<PureNFAState> {
 
     public RegexASTSubtreeRootNode getASTSubtree(RegexAST ast) {
         return isRoot() ? ast.getRoot().getSubTreeParent() : ast.getSubtrees().get(globalSubTreeId);
+    }
+
+    public boolean isFixedWidth() {
+        return fixedWidth >= 0;
+    }
+
+    public int getFixedWidth() {
+        return fixedWidth;
     }
 
     /**

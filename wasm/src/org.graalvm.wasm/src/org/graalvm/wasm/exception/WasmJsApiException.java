@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package org.graalvm.wasm.exception;
+
+import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -84,12 +86,15 @@ public class WasmJsApiException extends AbstractTruffleException {
 
     @TruffleBoundary
     public static WasmJsApiException format(WasmJsApiException.Kind kind, String s, Object arg) {
-        return new WasmJsApiException(kind, String.format(s, arg));
+        return new WasmJsApiException(kind, String.format(Locale.ROOT, s, arg));
     }
 
     @TruffleBoundary
     public static WasmJsApiException format(WasmJsApiException.Kind kind, String s, Object... args) {
-        return new WasmJsApiException(kind, String.format(s, args));
+        return new WasmJsApiException(kind, String.format(Locale.ROOT, s, args));
     }
 
+    public static ExceptionProvider provider() {
+        return ExceptionProviders.WASM_JS_API_EXCEPTION_PROVIDER;
+    }
 }

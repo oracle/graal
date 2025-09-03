@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,23 @@
  */
 package com.oracle.truffle.espresso.polyglot;
 
+/**
+ * This interface must be implemented by a custom defined type converter that is declared as context
+ * builder input using the 'java.PolyglotTypeConverters' option. If a polyglot object that is passed
+ * into Espresso has a declared meta name that matches the declaration used for the GuestConversion,
+ * the toGuest method is invoked. This invocation is responsible for returning a guest object
+ * matching the parameterized type.
+ * </p>
+ * Note that, in the case where the target type, e.g. a method parameter type in the guest, is not
+ * assignable from the returned instance of the toGuest method, the converted value is ignored.
+ * Hence, other custom or internal type mappings might be attempted in sequence in response to such
+ * incompatible conversion. For example, the built-in collection type mappings
+ * (java.BuiltInPolyglotCollections) might be compatible for the incoming polyglot object, or there
+ * might be custom interface mapping (java.PolyglotInterfaceMappings).
+ * 
+ * @param <T> the guest type this converter is converting an interop meta name-mapped polyglot
+ *            instance to.
+ */
 public interface GuestTypeConversion<T> {
     T toGuest(Object polyglotInstance);
 }

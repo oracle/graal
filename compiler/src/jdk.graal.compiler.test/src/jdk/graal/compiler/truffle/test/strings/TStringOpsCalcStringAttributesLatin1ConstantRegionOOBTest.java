@@ -44,7 +44,7 @@ public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends T
 
     static {
         try {
-            Method methodLatin1 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesLatin1", com.oracle.truffle.api.nodes.Node.class, Object.class, int.class, int.class);
+            Method methodLatin1 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesLatin1", com.oracle.truffle.api.nodes.Node.class, byte[].class, long.class, int.class);
             methodLatin1.setAccessible(true);
             calcLatin1 = MethodHandles.lookup().unreflect(methodLatin1);
         } catch (NoSuchMethodException | IllegalAccessException e) {
@@ -71,13 +71,13 @@ public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends T
     public void testConstantRegionOutOfBounds() throws Throwable {
         setConstantArgs(arrayA, offsetA, lengthA);
         // Make calcStringAttributesLatin1 branch reachable (must be in bounds)
-        runTestMethod(arrayA, 2, 2, true);
+        runTestMethod(arrayA, 2 + byteArrayBaseOffset(), 2, true);
         // Run and compile with constant offset + length out of bounds in the not taken branch.
         runTestMethod(arrayA, offsetA, lengthA, false);
         test("runTestMethod", arrayA, offsetA, lengthA, false);
     }
 
-    public static long runTestMethod(Object array, int offset, int length, boolean condition) throws Throwable {
+    public static long runTestMethod(byte[] array, long offset, int length, boolean condition) throws Throwable {
         if (condition) {
             return (int) calcLatin1.invokeExact(DUMMY_LOCATION, array, offset, length);
         } else {

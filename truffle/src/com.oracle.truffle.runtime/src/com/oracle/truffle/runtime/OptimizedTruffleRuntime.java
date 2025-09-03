@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,10 @@ package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
-import java.io.CharArrayWriter;
-import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -63,6 +62,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -70,7 +71,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -124,6 +124,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -166,10 +167,6 @@ import jdk.vm.ci.services.Services;
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
-    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
-    public static final int MIN_JDK_VERSION = 21;
-    public static final int MAX_JDK_VERSION = 25;
-    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 1);
 
     /**
      * Used only to reset state for native image compilation.
@@ -196,11 +193,11 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private final LoopNodeFactory loopNodeFactory;
     private EngineCacheSupport engineCacheSupport;
-    private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
+    private final Iterable<Class<?>> extraLookupTypes;
+    private UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final FloodControlHandler floodControlHandler;
-    private final List<OptionDescriptors> runtimeOptionDescriptors;
+    private final List<OptionDescriptors> extensionOptionDescriptors;
     protected volatile OptionDescriptors engineOptions;
 
     protected final TruffleCompilationSupport compilationSupport;
@@ -209,24 +206,21 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
-        this.lookupTypes = initLookupTypes(extraLookupTypes);
+        this.extraLookupTypes = extraLookupTypes;
         List<OptionDescriptors> options = new ArrayList<>();
-        this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         this.previousEngineCacheSupportOptions = engineCacheSupport.getEngineOptions();
-        options.add(OptimizedRuntimeOptions.getDescriptors());
-        options.add(new CompilerOptionsDescriptors());
-        this.runtimeOptionDescriptors = options;
+        this.extensionOptionDescriptors = options;
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
     public final void initializeEngineCacheSupport(EngineCacheSupport support) {
-        this.runtimeOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
+        this.extensionOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
         this.engineCacheSupport = support;
         OptionDescriptors engineCacheOptions = support.getEngineOptions();
         this.previousEngineCacheSupportOptions = engineCacheOptions;
-        this.runtimeOptionDescriptors.add(engineCacheOptions);
+        this.extensionOptionDescriptors.add(engineCacheOptions);
     }
 
     protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
@@ -252,7 +246,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      * Returns a set of classes that need to be initialized before compilations can be performed.
      */
     public final Iterable<Class<?>> getLookupTypes() {
-        return lookupTypes.getValues();
+        return getLookupTypesMap().getValues();
+    }
+
+    private UnmodifiableEconomicMap<String, Class<?>> getLookupTypesMap() {
+        UnmodifiableEconomicMap<String, Class<?>> map = this.lookupTypes;
+        if (map == null) {
+            this.lookupTypes = map = initLookupTypes(extraLookupTypes);
+        }
+        return map;
     }
 
     /**
@@ -405,6 +407,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         OptimizedAssumption.class,
                         HostCompilerDirectives.class,
                         CompilerDirectives.class,
+                        CompilerDirectives.TruffleBoundary.class,
+                        HostCompilerDirectives.BytecodeInterpreterSwitch.class,
+                        HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,
+                        HostCompilerDirectives.InliningCutoff.class,
                         InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
@@ -479,6 +485,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
         for (String className : new String[]{
                         "com.oracle.truffle.api.strings.TStringOps",
+                        "com.oracle.truffle.api.object.UnsafeAccess", // JDK 25+
+                        // JDK < 25, remove after dropping JDK 21 compatibility (GR-64984):
                         "com.oracle.truffle.object.UnsafeAccess",
         }) {
             try {
@@ -497,7 +505,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
-        Class<?> c = lookupTypes.get(className);
+        Class<?> c = getLookupTypesMap().get(className);
         if (c == null) {
             if (!required) {
                 return null;
@@ -630,11 +638,16 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
-        return getLoopNodeFactory().create(repeatingNode);
+        return OptimizedOSRLoopNode.create(repeatingNode);
     }
 
+    /**
+     * @deprecated do not use just here for compatibility with older SubstrateTruffleRuntime.
+     */
+    @SuppressWarnings("static-method")
+    @Deprecated
     protected final LoopNodeFactory getLoopNodeFactory() {
-        return loopNodeFactory;
+        return null;
     }
 
     public final EngineCacheSupport getEngineCacheSupport() {
@@ -802,10 +815,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.class) {
             return capability.cast(tvmci);
-        } else if (capability == com.oracle.truffle.api.object.LayoutFactory.class) {
-            com.oracle.truffle.api.object.LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            ModuleUtil.exportTo(layoutFactory.getClass());
-            return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
         }
@@ -908,6 +917,12 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
+    private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
+
+    public final AtomicLong stoppedCompilationTime() {
+        return stoppedCompilationTime;
+    }
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
@@ -971,7 +986,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 // ignore interrupted
             }
         }
+    }
 
+    public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout, BooleanSupplier cancelledPredicate) throws ExecutionException, TimeoutException {
+        CompilationTask task = optimizedCallTarget.getCompilationTask();
+        if (task != null) {
+            BooleanSupplier prev = task.cancelledPredicate;
+            try {
+                task.cancelledPredicate = cancelledPredicate;
+                try {
+                    task.awaitCompletion(timeout, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    // ignore interrupted
+                }
+            } finally {
+                task.cancelledPredicate = prev;
+            }
+        }
     }
 
     public int getCompilationQueueSize() {
@@ -1000,61 +1032,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     protected static EngineData getEngineData(RootNode rootNode) {
         return OptimizedTVMCI.getEngineData(rootNode);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.object.LayoutFactory loadObjectLayoutFactory() {
-        return selectObjectLayoutFactory(loadService(com.oracle.truffle.api.object.LayoutFactory.class));
-    }
-
-    private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
-        ClassLoader runtimeClassLoader = OptimizedTruffleRuntime.class.getClassLoader();
-        ClassLoader appClassLoader = service.getClassLoader();
-        ServiceLoader<T> appLoader = ServiceLoader.load(service, appClassLoader);
-        if (runtimeClassLoader.equals(appClassLoader)) {
-            /*
-             * Primary mode of operation for Truffle consumed from the application module path.
-             */
-            return List.of(appLoader);
-        } else {
-            ServiceLoader<T> runtimeLoader = ServiceLoader.load(service, runtimeClassLoader);
-            /*
-             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-             * Its module dependencies such as Truffle are supplied via --module-path which means
-             * they are loaded by the app class loader. As such, we need to search the app class
-             * loader path as well.
-             */
-            return List.of(runtimeLoader, appLoader);
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.object.LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<com.oracle.truffle.api.object.LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = Services.getSavedProperty("truffle.object.LayoutFactory");
-        com.oracle.truffle.api.object.LayoutFactory bestLayoutFactory = null;
-        for (Iterable<com.oracle.truffle.api.object.LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
-            for (com.oracle.truffle.api.object.LayoutFactory currentLayoutFactory : currentLayoutFactories) {
-                if (layoutFactoryImplName != null) {
-                    if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
-                        return currentLayoutFactory;
-                    }
-                } else {
-                    if (bestLayoutFactory == null) {
-                        bestLayoutFactory = currentLayoutFactory;
-                    } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                        assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                        bestLayoutFactory = currentLayoutFactory;
-                    }
-                }
-            }
-        }
-        return bestLayoutFactory;
-    }
-
-    protected String printStackTraceToString(Throwable e) {
-        CharArrayWriter caw = new CharArrayWriter();
-        e.printStackTrace(new PrintWriter(caw));
-        return caw.toString();
     }
 
     public final class KnownMethods {
@@ -1154,16 +1131,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     final OptionDescriptors getOptionDescriptors() {
-        // The engineOptions field needs to be initialized lazily because the
-        // OptimizedRuntimeAccessor
-        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime
-        // must be
-        // fully initialized before using the accessor otherwise a NullPointerException will be
-        // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
-        // still returns null.
+        /*
+         * The engineOptions field needs to be initialized lazily because the
+         * OptimizedRuntimeAccessor cannot be used in the OptimizedTruffleRuntime constructor. The
+         * OptimizedTruffleRuntime must be fully initialized before using the accessor otherwise a
+         * NullPointerException will be thrown from the Accessor.Constants static initializer
+         * because the Truffle#getRuntime still returns null.
+         */
         OptionDescriptors res = engineOptions;
         if (res == null) {
-            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors.toArray(new OptionDescriptors[runtimeOptionDescriptors.size()]));
+            List<OptionDescriptors> options = new ArrayList<>(extensionOptionDescriptors.size() + 2);
+            /*
+             * We initialize these options lazily so in case no engine options are used we don't
+             * need to load them.
+             */
+            options.addAll(extensionOptionDescriptors);
+            options.add(OptimizedRuntimeOptions.getDescriptors());
+            options.add(new CompilerOptionsDescriptors());
+            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(options.toArray(OptionDescriptors[]::new));
             engineOptions = res;
         }
         return res;
@@ -1286,9 +1271,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
 
         private static String formatPath(SourceSection sourceSection) {
-            if (sourceSection.getSource().getPath() != null) {
+            Source source = sourceSection.getSource();
+            URL url = source.getURL();
+            if (url != null && !"file".equals(url.getProtocol())) {
+                return url.toExternalForm();
+            } else if (source.getPath() != null) {
                 Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
-                Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+                Path filePath = FileSystems.getDefault().getPath(source.getPath()).toAbsolutePath();
 
                 try {
                     return path.relativize(filePath).toString();
@@ -1422,7 +1411,9 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 descriptors.add(convertDescriptor(descriptor));
             }
             for (TruffleCompilerOptionDescriptor descriptor : optionsArray) {
-                descriptors.add(convertDescriptorLegacy(descriptor));
+                if (isLegacyOption(convertToLegacyOptionName(descriptor.name()))) {
+                    descriptors.add(convertDescriptorLegacy(descriptor));
+                }
             }
             return descriptors.iterator();
         }
@@ -1479,4 +1470,25 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
+    public enum CompilationActivityMode {
+        /**
+         * Process compilations regularly.
+         */
+        RUN_COMPILATION,
+        /**
+         * Stop compilations temporarily.
+         */
+        STOP_COMPILATION,
+        /**
+         * Shutdown compilations permanently.
+         */
+        SHUTDOWN_COMPILATION;
+    }
+
+    /**
+     * Returns the current host compilation activity mode. The default is to run compilations.
+     */
+    protected CompilationActivityMode getCompilationActivityMode() {
+        return CompilationActivityMode.RUN_COMPILATION;
+    }
 }

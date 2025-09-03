@@ -55,7 +55,7 @@ import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;

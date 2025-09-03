@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,26 @@
  */
 package com.oracle.graal.pointsto;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.lang.reflect.Member;
-import java.lang.reflect.Modifier;
-
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.hosted.Feature;
-
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.meta.ModifiersProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Policy used to determine which classes, methods and fields need to be included in the image when
- * the {@code IncludeAllFromPath} and/or {@code IncludeAllFromModule} options are specified
- * depending on the configuration.
+ * Policy used to determine which types, methods and fields need to be included in an image. The
+ * decisions made by a policy are based on {@link ModifiersProvider#getModifiers()} which follows
+ * the type, method and field flags in the JVM spec. In the case of an inner class, the
+ * {@code InnerClasses} attribute ({@jvms 4.7.9}) is ignored. In contrast,
+ * {@link Class#getModifiers()} reflects the flags from the {@code InnerClasses} attribute.
  */
 public abstract class ClassInclusionPolicy {
+
     protected BigBang bb;
     protected final Object reason;
 
@@ -55,146 +56,205 @@ public abstract class ClassInclusionPolicy {
     }
 
     /**
-     * Determine if the given class needs to be included in the image according to the policy.
+     * Determines if {@code type} needs to be included in the image according to this policy.
      */
-    public boolean isClassIncluded(Class<?> cls) {
-        Class<?> enclosingClass = cls.getEnclosingClass();
-        return !Feature.class.isAssignableFrom(cls) && !AnnotationAccess.isAnnotationPresent(cls, TargetClass.class) && (enclosingClass == null || isClassIncluded(enclosingClass));
+    public boolean isOriginalTypeIncluded(ResolvedJavaType type) {
+        /* Delegate to host VM for additional checks. */
+        return bb.getHostVM().isSupportedOriginalType(bb, type);
     }
 
     /**
-     * Determine if the given method needs to be included in the image according to the policy.
+     * Includes the given {@code type} in the image.
      */
-    public boolean isMethodIncluded(Executable method) {
-        return isMethodIncluded(bb.getMetaAccess().lookupJavaMethod(method));
-    }
-
-    public boolean isMethodIncluded(AnalysisMethod method) {
-        /*
-         * Methods annotated with @Fold should not be included in the base image as they must be
-         * inlined. An extension image would inline the method as well and would not use the method
-         * from the base image.
-         */
-        return !AnnotationAccess.isAnnotationPresent(method, Fold.class);
-    }
-
-    /**
-     * Determine if the given field needs to be included in the image according to the policy.
-     */
-    public boolean isFieldIncluded(Field field) {
-        if (!bb.getHostVM().platformSupported(field)) {
-            return false;
-        }
-        return bb.getHostVM().isFieldIncluded(bb, field);
-    }
-
-    /**
-     * Includes the given class in the image.
-     */
-    public void includeClass(Class<?> cls) {
-        /*
-         * Those classes cannot be registered as allocated as they cannot be instantiated. They are
-         * instead registered as reachable as they can still have methods or fields that could be
-         * used by an extension image.
-         */
-        if (Modifier.isAbstract(cls.getModifiers()) || cls.isInterface() || cls.isPrimitive()) {
-            bb.getMetaAccess().lookupJavaType(cls).registerAsReachable(reason);
+    public void includeType(ResolvedJavaType type) {
+        AnalysisType aType = asAnalysisType(type);
+        if (type.isAbstract() || type.isInterface() || type.isPrimitive()) {
+            /*
+             * Those types cannot be instantiated. They are instead registered as reachable as they
+             * can still have methods or fields that could be used by an extension image.
+             */
+            aType.registerAsReachable(reason);
         } else {
-            bb.getMetaAccess().lookupJavaType(cls).registerAsInstantiated(reason);
+            aType.registerAsInstantiated(reason);
         }
     }
 
     /**
-     * Includes the given method in the image.
+     * Determines if {@code method} needs to be included in the image according to this policy.
      */
-    public abstract void includeMethod(Executable method);
-
-    /**
-     * Includes the given method in the image.
-     */
-    public abstract void includeMethod(AnalysisMethod method);
-
-    /**
-     * Includes the given field in the image.
-     */
-    public void includeField(Field field) {
-        bb.postTask(debug -> bb.addRootField(field));
+    public boolean isAnalysisMethodIncluded(AnalysisMethod method) {
+        /* Delegate to host VM for additional checks. */
+        return bb.getHostVM().isSupportedAnalysisMethod(bb, method);
     }
 
     /**
-     * The analysis for the base layer of a layered image assumes that any method that is reachable
-     * using the base java access rules can be an entry point. An upper layer does not have access
-     * to the packages from a lower layer. Thus, only the public classes with their public and
-     * protected inner classes and methods can be accessed by an upper layer.
-     * <p>
-     * Protected elements from a final or sealed class cannot be accessed as an upper layer cannot
-     * create a new class that extends the final or sealed class.
-     * <p>
-     * All the fields are included disregarding access rules as a missing field would cause issues
-     * in the object layout.
+     * Determines if {@code method} needs to be included in the image according to this policy.
      */
-    public static class LayeredBaseImageInclusionPolicy extends ClassInclusionPolicy {
-        public LayeredBaseImageInclusionPolicy(Object reason) {
+    public boolean isOriginalMethodIncluded(ResolvedJavaMethod method) {
+        /* Delegate to host VM for additional checks. */
+        return bb.getHostVM().isSupportedOriginalMethod(bb, method);
+    }
+
+    /**
+     * Includes the given {@code method} in the image.
+     */
+    public void includeMethod(ResolvedJavaMethod method) {
+        bb.postTask(debug -> bb.addRootMethod(asAnalysisMethod(method), method.isConstructor(), reason));
+    }
+
+    /**
+     * Determines if {@code field} needs to be included in the image according to this policy.
+     */
+    public boolean isAnalysisFieldIncluded(AnalysisField field) {
+        /* Delegate to host VM for additional checks. */
+        return bb.getHostVM().isSupportedAnalysisField(bb, field);
+    }
+
+    /**
+     * Determines if {@code field} needs to be included in the image according to this policy.
+     */
+    public boolean isOriginalFieldIncluded(ResolvedJavaField field) {
+        /* Delegate to host VM for additional checks. */
+        return bb.getHostVM().isSupportedOriginalField(bb, field);
+    }
+
+    /**
+     * Includes the given {@code field} in the image.
+     */
+    public void includeField(ResolvedJavaField field) {
+        bb.postTask(debug -> bb.addRootField(asAnalysisField(field)));
+    }
+
+    AnalysisType asAnalysisType(ResolvedJavaType type) {
+        return type instanceof AnalysisType aType ? aType : bb.getUniverse().lookup(type);
+    }
+
+    AnalysisField asAnalysisField(ResolvedJavaField field) {
+        return field instanceof AnalysisField aField ? aField : bb.getUniverse().lookup(field);
+    }
+
+    AnalysisMethod asAnalysisMethod(ResolvedJavaMethod method) {
+        return method instanceof AnalysisMethod aMethod ? aMethod : bb.getUniverse().lookup(method);
+    }
+
+    /**
+     * The inclusion policy is queried during the class path scanning to determine which code should
+     * be included in a shared layer. The policy tries to limit the code that we eagerly include by
+     * eliminating code that wouldn't be directly accessible from an extension layer.
+     * <p>
+     * For types and methods it follows the Java language access rules to determine accessibility.
+     * For example, it includes all {@code public} methods and types, but it doesn't include
+     * {@code private} methods, although a {@code private} method will still be included if
+     * reachable from a root.
+     * <p>
+     * All methods directly accessible from extension layers <em>must be marked as root</em> to
+     * ensure the correctness of the analysis. For the other methods, the inclusion policy is only a
+     * heuristic and the layer in which a method is included will not affect correctness.
+     * <p>
+     * Contrastingly, all the fields of included types are also included disregarding access rules
+     * since missing a field would cause inconsistencies in the object layout across layers.
+     * <p>
+     * Note: For a description of layers structure see {@code ImageLayerBuildingSupport}.
+     */
+    public static class SharedLayerImageInclusionPolicy extends ClassInclusionPolicy {
+        public SharedLayerImageInclusionPolicy(Object reason) {
             super(reason);
         }
 
+        /**
+         * A type from a shared layer is included iff it is public, which at the Java source level
+         * corresponds to {@code public} for top level types and either {@code public} or
+         * {@code protected} for inner types.
+         * <p>
+         * The VM access semantics for inner classes and interfaces differ from the Java language
+         * semantics. An inner type declared as {@code protected} in the source code has the
+         * ACC_PUBLIC access flag in the class file. Similarly, an inner type declared as
+         * {@code private} is treated as a package-private inner type and has no access modifiers
+         * set in the class file. We follow the VM access semantics for inner types.
+         */
         @Override
-        public boolean isClassIncluded(Class<?> cls) {
-            if (!super.isClassIncluded(cls)) {
+        public boolean isOriginalTypeIncluded(ResolvedJavaType type) {
+            if (!super.isOriginalTypeIncluded(type)) {
                 return false;
             }
-            Class<?> enclosingClass = cls.getEnclosingClass();
-            int classModifiers = cls.getModifiers();
-            if (enclosingClass != null) {
-                return isAccessible(enclosingClass, classModifiers) && isClassIncluded(enclosingClass);
-            } else {
-                return Modifier.isPublic(classModifiers);
+            if (!canLinkType(type)) {
+                return false;
             }
-        }
-
-        @Override
-        public boolean isMethodIncluded(Executable method) {
-            return !Modifier.isAbstract(method.getModifiers()) && isAccessible(method) && super.isMethodIncluded(method);
-        }
-
-        @Override
-        public void includeMethod(Executable method) {
-            bb.postTask(debug -> {
-                Class<?> declaringClass = method.getDeclaringClass();
-                AnalysisMethod analysisMethod = bb.getMetaAccess().lookupJavaMethod(method);
-                registerMethod(method.getModifiers(), declaringClass, analysisMethod);
-                bb.forcedAddRootMethod(analysisMethod, false, reason);
-            });
-        }
-
-        @Override
-        public void includeMethod(AnalysisMethod method) {
-            bb.postTask(debug -> {
-                Class<?> declaringClass = method.getDeclaringClass().getJavaClass();
-                registerMethod(method.getModifiers(), declaringClass, method);
-                bb.forcedAddRootMethod(method, false, reason);
-            });
-        }
-
-        private void registerMethod(int methodModifiers, Class<?> declaringClass, AnalysisMethod analysisMethod) {
-            /*
-             * Non-abstract methods from an abstract class or default methods from an interface are
-             * not registered as implementation invoked by the analysis because their declaring
-             * class cannot be marked as instantiated and AnalysisType.getTypeFlow only includes
-             * instantiated types (see TypeFlow.addObserver). For now, to ensure those methods are
-             * included in the image, they are manually registered as implementation invoked.
-             */
-            if (!Modifier.isAbstract(methodModifiers) && (declaringClass.isInterface() || Modifier.isAbstract(declaringClass.getModifiers()))) {
-                analysisMethod.registerAsDirectRootMethod(reason);
-                analysisMethod.registerAsImplementationInvoked(reason);
+            ResolvedJavaType enclosingType = type.getEnclosingType();
+            if (enclosingType != null && !isOriginalTypeIncluded(enclosingType)) {
+                return false;
             }
+            return type.isPublic();
+        }
+
+        /**
+         * Try to link the type. Linking can fail for example if the class path is incomplete.
+         * Methods of unlinked types cannot be parsed, so we exclude the type early. Linking would
+         * be triggered later when {@link AnalysisType} is created anyway.
+         */
+        private static boolean canLinkType(ResolvedJavaType type) {
+            try {
+                type.link();
+            } catch (LinkageError ex) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isAnalysisMethodIncluded(AnalysisMethod method) {
+            return super.isAnalysisMethodIncluded(method) && isMethodAccessible(method);
+        }
+
+        @Override
+        public boolean isOriginalMethodIncluded(ResolvedJavaMethod method) {
+            return super.isOriginalMethodIncluded(method) && isMethodAccessible(method);
+        }
+
+        /**
+         * Determines if {@code method} can be called (without reflection) from an extension layer.
+         * A public method can always be accessed. A private or package-private method can never be
+         * accessed as packages are never split between layers. A protected method can only be
+         * accessed from classes in the same package or subclasses. Since a final class cannot be
+         * subclassed and the complete closed hierarchy of a sealed class must be in the same layer,
+         * a protected method in a final or sealed class cannot be accessed from an extension layer.
+         * In addition, abstract methods cannot be included in the image as they cannot be analyzed
+         * or compiled.
+         */
+        private static boolean isMethodAccessible(ResolvedJavaMethod method) {
+            if (method.isAbstract()) {
+                return false;
+            }
+            if (method.isPublic()) {
+                return true;
+            }
+            if (method.isPrivate() || method.isPackagePrivate()) {
+                return false;
+            }
+            /* Protected methods from non-final non-sealed classes should be accessible. */
+            AnalysisError.guarantee(method.isProtected());
+            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            return !declaringClass.isFinalFlagSet() && !OriginalClassProvider.getJavaClass(declaringClass).isSealed();
+        }
+
+        @Override
+        public void includeMethod(ResolvedJavaMethod method) {
+            bb.postTask(debug -> bb.forcedAddRootMethod(asAnalysisMethod(method), method.isConstructor(), reason));
+        }
+
+        @Override
+        public boolean isAnalysisFieldIncluded(AnalysisField field) {
+            return super.isAnalysisFieldIncluded(field) && bb.getHostVM().isFieldIncludedInSharedLayer(field);
+        }
+
+        @Override
+        public boolean isOriginalFieldIncluded(ResolvedJavaField field) {
+            return super.isOriginalFieldIncluded(field) && bb.getHostVM().isFieldIncludedInSharedLayer(field);
         }
     }
 
     /**
-     * The default inclusion policy. Includes all classes and methods. Including all fields causes
-     * issues at the moment, so the same rules as for the {@link LayeredBaseImageInclusionPolicy}
-     * are used.
+     * The default inclusion policy. Includes all types, methods and fields.
      */
     public static class DefaultAllInclusionPolicy extends ClassInclusionPolicy {
         public DefaultAllInclusionPolicy(Object reason) {
@@ -202,23 +262,17 @@ public abstract class ClassInclusionPolicy {
         }
 
         @Override
-        public void includeMethod(Executable method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
+        public boolean isOriginalTypeIncluded(ResolvedJavaType type) {
+            if (!super.isOriginalTypeIncluded(type)) {
+                return false;
+            }
+            try {
+                ResolvedJavaType enclosingType = type.getEnclosingType();
+                return enclosingType == null || isOriginalTypeIncluded(enclosingType);
+            } catch (LinkageError e) {
+                /* Ignore missing type errors. */
+                return true;
+            }
         }
-
-        @Override
-        public void includeMethod(AnalysisMethod method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
-        }
-    }
-
-    protected boolean isAccessible(Member member) {
-        Class<?> cls = member.getDeclaringClass();
-        int modifiers = member.getModifiers();
-        return isAccessible(cls, modifiers);
-    }
-
-    protected boolean isAccessible(Class<?> cls, int modifiers) {
-        return Modifier.isPublic(modifiers) || (!Modifier.isFinal(cls.getModifiers()) && !cls.isSealed() && Modifier.isProtected(modifiers));
     }
 }

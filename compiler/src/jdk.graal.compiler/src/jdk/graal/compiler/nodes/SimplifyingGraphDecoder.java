@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,11 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -44,6 +46,7 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -110,11 +113,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public boolean supportsRounding() {
-            return getLowerer().supportsRounding();
-        }
-
-        @Override
         public boolean divisionOverflowIsJVMSCompliant() {
             return getLowerer().divisionOverflowIsJVMSCompliant();
         }
@@ -143,26 +141,34 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope rootMethodScope) {
         GraphUtil.normalizeLoops(graph);
-        super.cleanupGraph(methodScope);
+        super.cleanupGraph(rootMethodScope);
 
-        for (Node node : graph.getNewNodes(methodScope.methodStartMark)) {
-            if (node instanceof MergeNode) {
-                MergeNode mergeNode = (MergeNode) node;
+        /*
+         * To avoid calling tryKillUnused for each individual floating node we remove during
+         * cleanup, we maintain unused nodes in a bitmap and kill them after we finish iterating the
+         * new nodes in the graph.
+         */
+        final NodeBitMap unusedNodes = new NodeBitMap(graph);
+
+        for (Node node : graph.getNewNodes(rootMethodScope.methodStartMark)) {
+            if (node instanceof MergeNode mergeNode) {
                 if (mergeNode.forwardEndCount() == 1) {
-                    graph.reduceTrivialMerge(mergeNode);
+                    graph.reduceTrivialMerge(mergeNode, false, unusedNodes);
                 }
             } else if (node instanceof BeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
                     node.safeDelete();
                 }
+            } else if (GraphUtil.shouldKillUnused(node)) {
+                unusedNodes.mark(node);
             }
         }
 
-        for (Node node : graph.getNewNodes(methodScope.methodStartMark)) {
-            GraphUtil.tryKillUnused(node);
+        if (unusedNodes.isNotEmpty()) {
+            GraphUtil.killAllWithUnusedFloatingInputs(unusedNodes, false);
         }
     }
 
@@ -256,53 +262,45 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
+    static {
+        /* Check assumption made by earlyCanonicalization about IfNode. */
+        Edges edges = IfNode.TYPE.getSuccessorEdges();
+        GraalError.guarantee(edges.getCount() == IfNode.SUCCESSOR_EDGES_COUNT, "%s expected to have 0 indirect successors", IfNode.class);
+
+        /* Check assumptions made by earlyCanonicalization about IntegerSwitchNode. */
+        edges = IntegerSwitchNode.TYPE.getSuccessorEdges();
+        GraalError.guarantee(edges.getDirectCount() == 0, "%s expected to have 0 direct successor", IntegerSwitchNode.class);
+        GraalError.guarantee(edges.getCount() == 1, "%s expected to have 0 indirect successors", IntegerSwitchNode.class);
+    }
+
     @Override
     protected boolean earlyCanonicalization(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
-        if (node instanceof IfNode && ((IfNode) node).condition() instanceof LogicConstantNode) {
-            IfNode ifNode = (IfNode) node;
+        if (node instanceof IfNode ifNode && ifNode.condition() instanceof LogicConstantNode condition) {
 
-            assert !(ifNode.condition() instanceof LogicNegationNode) : "Negation of a constant must have been canonicalized before";
-
-            int survivingIndex = ((LogicConstantNode) ifNode.condition()).getValue() ? 0 : 1;
-
-            /* Check that the node has the expected encoding. */
-            if (Assertions.assertionsEnabled()) {
-                Edges edges = ifNode.getNodeClass().getSuccessorEdges();
-                assert edges.getDirectCount() == 2 : "IfNode expected to have 2 direct successors";
-                assert edges.getName(0).equals("trueSuccessor") : "Unexpected IfNode encoding";
-                assert edges.getName(1).equals("falseSuccessor") : "Unexpected IfNode encoding";
-                assert edges.getCount() == 2 : "IntegerSwitchNode expected to have 0 indirect successor";
-            }
+            long survivingIndex = condition.getValue() ? IfNode.TRUE_SUCCESSOR_EDGE_INDEX : IfNode.FALSE_SUCCESSOR_EDGE_INDEX;
 
             /* Read the surviving successor order id. */
             long successorsByteIndex = methodScope.reader.getByteIndex();
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);
-            methodScope.reader.setByteIndex(successorsByteIndex + 2 * methodScope.orderIdWidth);
+            // Reset decode position to first byte after successors
+            methodScope.reader.setByteIndex(successorsByteIndex + (IfNode.SUCCESSOR_EDGES_COUNT * methodScope.orderIdWidth));
 
             removeSplit(methodScope, loopScope, ifNode, survivingOrderId);
             return true;
-        } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
+        } else if (node instanceof IntegerSwitchNode switchNode && switchNode.value().isConstant()) {
             /*
              * Avoid spawning all successors for trivially canonicalizable switches, this ensures
              * that bytecode interpreters with huge switches do not allocate nodes that are removed
              * straight away during PE.
              */
-            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
             int value = switchNode.value().asJavaConstant().asInt();
-            int survivingIndex = switchNode.successorIndexAtKey(value);
-
-            /* Check that the node has the expected encoding. */
-            if (Assertions.assertionsEnabled()) {
-                Edges edges = switchNode.getNodeClass().getSuccessorEdges();
-                assert edges.getDirectCount() == 0 : "IntegerSwitchNode expected to have 0 direct successor";
-                assert edges.getCount() == 1 : "IntegerSwitchNode expected to have 1 indirect successor";
-                assert edges.getName(0).equals("successors") : "Unexpected IntegerSwitchNode encoding";
-            }
+            long survivingIndex = switchNode.successorIndexAtKey(value);
 
             /* Read the surviving successor order id. */
-            int size = methodScope.reader.getSVInt();
-            long successorsByteIndex = methodScope.reader.getByteIndex();
+            long size = methodScope.reader.getSVInt();
+            long successorsIndex = SwitchNode.SUCCESSORS_EDGE_INDEX;
+            long successorsByteIndex = methodScope.reader.getByteIndex() + successorsIndex * methodScope.orderIdWidth;
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);

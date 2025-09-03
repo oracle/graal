@@ -40,7 +40,7 @@ import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
  *
  * <p>
  * The location of the identity hashcode is configuration-dependent and will follow the same
- * placement convention as an array. The See {@link ObjectLayout} for more information on where the
+ * placement convention as an array. See {@link ObjectLayout} for more information on where the
  * identity hash can be placed. @Hybrid objects are treated the same way as instance classes for
  * determining whether (and where) they have a monitor slot; See {@link MultiThreadedMonitorSupport}
  * for more information on monitor slot placement.
@@ -65,6 +65,11 @@ import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
  * return {@code true} and {@link Class#isArray()} will return {@code false}, while
  * {@link LayoutEncoding#isPureInstance} will return {@code false} and
  * {@link LayoutEncoding#isArrayLike} will return {@code true} for hybrid objects.
+ *
+ * <p>
+ * Note that the array part of a hybrid object may only contain primitive data but no object
+ * references because the GC treats hybrid objects similar to normal instance objects. So, it would
+ * not be aware of any object references in the array part.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

@@ -87,6 +87,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
             return DEFAULT_ADDRESS;
+        } else if (address.equals("false")) {
+            return HostAndPort.disabled();
         } else {
             int colon = address.indexOf(':');
             String port;
@@ -283,7 +285,7 @@ public final class InspectorInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         OptionValues options = env.getOptions();
-        if (options.hasSetOptions()) {
+        if (options.hasSetOptions() && options.get(Inspect).isEnabled()) {
             HostAndPort hostAndPort = options.get(Inspect);
             connectionWatcher = new ConnectionWatcher();
             try {
@@ -386,22 +388,37 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final class HostAndPort {
 
+        private final boolean enabled;
         private final String host;
         private String portStr;
         private int port;
         private InetAddress inetAddress;
 
+        private HostAndPort() {
+            this.enabled = false;
+            this.host = null;
+        }
+
         HostAndPort(String host, int port) {
+            this.enabled = true;
             this.host = host;
             this.port = port;
         }
 
         HostAndPort(String host, String portStr) {
+            this.enabled = true;
             this.host = host;
             this.portStr = portStr;
         }
 
+        static HostAndPort disabled() {
+            return new HostAndPort();
+        }
+
         void verify() {
+            if (!enabled) {
+                return;
+            }
             // Check port:
             if (port == 0 && portStr != null) {
                 try {
@@ -433,6 +450,10 @@ public final class InspectorInstrument extends TruffleInstrument {
                 }
             }
             return hostName + ":" + port;
+        }
+
+        boolean isEnabled() {
+            return enabled;
         }
 
         InetSocketAddress createSocket() {

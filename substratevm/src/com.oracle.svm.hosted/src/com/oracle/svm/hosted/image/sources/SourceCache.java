@@ -63,7 +63,7 @@ import com.oracle.svm.util.LogUtils;
 
 public class SourceCache {
 
-    private static class SourceRoots {
+    private static final class SourceRoots {
         /**
          * A list of root directories which may contain source files from which this cache can be
          * populated.

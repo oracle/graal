@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,8 +83,7 @@ final class ByteArraySequence implements ByteSequence {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
-        } else if (obj instanceof ByteArraySequence) {
-            ByteArraySequence other = ((ByteArraySequence) obj);
+        } else if (obj instanceof ByteArraySequence other) {
             if (buffer == other.buffer) {
                 return start == other.start && length == other.length;
             }
@@ -97,15 +96,10 @@ final class ByteArraySequence implements ByteSequence {
                 // hash was already computed and hash is not equal
                 return false;
             }
-            int otherStart = other.start;
-            for (int i = 0; i < length; i++) {
-                if (buffer[start + i] != other.buffer[otherStart + i]) {
-                    return false;
-                }
-            }
-            return true;
-        } else if (obj instanceof ByteSequence) {
-            ByteSequence other = ((ByteSequence) obj);
+            return Arrays.equals(
+                            this.buffer, this.start, this.start + this.length,
+                            other.buffer, other.start, other.start + other.length);
+        } else if (obj instanceof ByteSequence other) {
             if (length != other.length()) {
                 return false;
             }
@@ -123,22 +117,29 @@ final class ByteArraySequence implements ByteSequence {
     public int hashCode() {
         int h = hash;
         if (h == 0 && length > 0) {
-            int end = start + length;
-            h = 1;
-            int i = start;
-            for (; i + 3 < end; i += 4) {
-                int h0 = buffer[i + 0] & 0xff << 0;
-                int h1 = buffer[i + 1] & 0xff << 8;
-                int h2 = buffer[i + 2] & 0xff << 16;
-                int h3 = buffer[i + 3] & 0xff << 24;
-                h = 31 * h + (h0 | h1 | h2 | h3);
-            }
-            for (; i < end; i++) {
-                h = 31 * h + buffer[i];
+            if (start == 0 && length == buffer.length) {
+                h = Arrays.hashCode(buffer);
+            } else {
+                h = hashCode(buffer, start, length, 1);
             }
             hash = h;
         }
         return h;
+    }
+
+    /**
+     * Calculates the hash code for a subrange of a byte array in the same way as
+     * {@code jdk.internal.util.ArraysSupport.hashCode(byte[], int, int, int)}.
+     *
+     * @see Arrays#hashCode(byte[])
+     */
+    private static int hashCode(byte[] a, int fromIndex, int length, int initialValue) {
+        int result = initialValue;
+        int end = fromIndex + length;
+        for (int i = fromIndex; i < end; i++) {
+            result = 31 * result + a[i];
+        }
+        return result;
     }
 
     public ByteSequence subSequence(int startIndex, int endIndex) {

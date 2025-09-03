@@ -24,14 +24,13 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.extended.JavaReadNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
@@ -59,7 +58,7 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     public SourceTypeFlow(SourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows, original.getState().canBeNull() ? TypeState.forNull() : TypeState.forEmpty());
+        super(original, methodFlows, original.getRawState().canBeNull() ? TypeState.forNull() : TypeState.forEmpty());
     }
 
     @Override
@@ -94,12 +93,12 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean canSaturate() {
+    public boolean canSaturate(PointsToAnalysis bb) {
         return false;
     }
 
     @Override
     public String toString() {
-        return "SourceFlow<" + getState() + ">";
+        return "SourceFlow<" + getStateDescription() + ">";
     }
 }

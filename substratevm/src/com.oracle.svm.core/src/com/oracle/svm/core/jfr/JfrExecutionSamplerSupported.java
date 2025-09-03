@@ -36,13 +36,11 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrExecutionSamplerSupported {
-
     public static boolean isSupported() {
         if (ImageSingletons.contains(JfrExecutionSamplerSupported.class)) {
             return !RuntimeCompilation.isEnabled() && ImageSingletons.lookup(JfrExecutionSamplerSupported.class).isSupported0();
-        } else {
-            return false;
         }
+        return false;
     }
 
     protected boolean isSupported0() {

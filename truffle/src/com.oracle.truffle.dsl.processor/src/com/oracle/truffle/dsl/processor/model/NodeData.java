@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final List<NodeData> enclosingNodes = new ArrayList<>();
     private NodeData declaringNode;
 
-    private final TypeSystemData typeSystem;
+    private TypeSystemData typeSystem;
     private final List<NodeChildData> children;
     private final List<NodeExecutionData> childExecutions;
     private final List<NodeFieldData> fields;
@@ -512,39 +513,61 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
-    public boolean needsState(ProcessorContext context) {
-        int count = 0;
-        for (SpecializationData specialization : getSpecializations()) {
-            if (specialization.getMethod() == null) {
-                continue;
-            }
-            if (count == 1) {
-                return true;
-            }
-            if (specialization.needsState(context)) {
-                return true;
-            }
-            count++;
-        }
+    private boolean forceSpecialize;
 
-        return false;
+    /**
+     * Enables force specialization even if node has a single specialization that would
+     * theoretically not require specialization. This is currently used if we generate boxing
+     * elimination quickenings that often have a single specialization but multiple boxing variants
+     * and we need to generate an executeAndSpecialize() method to integrate quickening.
+     */
+    public void setForceSpecialize(boolean enabled) {
+        this.forceSpecialize = enabled;
     }
 
-    public boolean needsRewrites(ProcessorContext context) {
-        int count = 0;
-        for (SpecializationData specialization : getSpecializations()) {
-            if (specialization.getMethod() == null) {
-                continue;
-            }
-            if (count == 1) {
+    public boolean isForceSpecialize() {
+        return forceSpecialize;
+    }
+
+    /**
+     * Returns <code>true</code> if this node needs its own specialization routine. In other words
+     * whether we need to generate an executeAndSpecialize() method. Returns <code>false</code>
+     * otherwise.
+     */
+    public boolean needsSpecialize() {
+        List<SpecializationData> s = getReachableSpecializations();
+        if (s.isEmpty()) {
+            return false;
+        } else if (s.size() == 1) {
+            if (isForceSpecialize()) {
                 return true;
             }
-            if (specialization.needsRewrite(context)) {
-                return true;
-            }
-            count++;
+            return s.get(0).needsSpecialize();
+        } else {
+            // if a node has more than one specialization
+            // we always require a specialize
+            return true;
         }
-        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if this node requires any profiling state, else <code>false</code>.
+     */
+    public boolean needsState() {
+        List<SpecializationData> s = getReachableSpecializations();
+        if (s.isEmpty()) {
+            // just for robustness, does not happen in practice
+            return false;
+        } else if (s.size() == 1) {
+            // even single specialization nodes may need state
+            // if they e.g. have use a @Cached annotation.
+            return s.get(0).needsState() || s.get(0).needsSpecialize();
+        } else {
+            // if a node has more than one specialization
+            // we always require state as we need to track
+            // the specialization active bits
+            return true;
+        }
     }
 
     public SpecializationData getFallbackSpecialization() {
@@ -558,6 +581,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public TypeSystemData getTypeSystem() {
         return typeSystem;
+    }
+
+    public void setTypeSystem(TypeSystemData typeSystem) {
+        this.typeSystem = typeSystem;
     }
 
     @Override
@@ -642,11 +669,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return children;
     }
 
-    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
-        Set<SpecializationData> uncached = new LinkedHashSet<>(s);
-        // remove all replacable specializations
-        for (SpecializationData specialization : s) {
-            uncached.removeAll(specialization.getReplaces());
+    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> allSpecializations) {
+        Set<SpecializationData> uncached = new LinkedHashSet<>(allSpecializations);
+        for (SpecializationData current : allSpecializations) {
+            if (current.isExcludeForUncached()) {
+                uncached.remove(current);
+            }
         }
         return uncached;
     }
@@ -735,6 +763,35 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
 
         return Arrays.asList(ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), foundTypes));
+    }
+
+    public List<SpecializationData> findSpecializationsByName(Collection<String> methodNames) {
+        Set<String> specializationsLeft = new HashSet<>(methodNames);
+        List<SpecializationData> includedSpecializations = new ArrayList<>();
+        for (SpecializationData specialization : getReachableSpecializations()) {
+            if (specialization.getMethod() == null) {
+                continue;
+            }
+            String methodName = specialization.getMethodName();
+            if (specializationsLeft.contains(methodName)) {
+                includedSpecializations.add(specialization);
+                specializationsLeft.remove(methodName);
+            }
+            if (specializationsLeft.isEmpty()) {
+                break;
+            }
+        }
+        if (!specializationsLeft.isEmpty()) {
+            Set<String> availableNames = new HashSet<>();
+            for (SpecializationData specialization : getReachableSpecializations()) {
+                availableNames.add(specialization.getMethodName());
+            }
+            throw new IllegalArgumentException(
+                            String.format("Referenced specialization(s) with method names %s  not found for in type '%s'. Available names %s.", ElementUtils.getSimpleName(getTemplateType()),
+                                            specializationsLeft, availableNames));
+        }
+
+        return includedSpecializations;
     }
 
     public void setReportPolymorphism(boolean report) {

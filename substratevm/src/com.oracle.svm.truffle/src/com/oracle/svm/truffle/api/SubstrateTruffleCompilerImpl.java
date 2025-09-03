@@ -85,7 +85,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     protected TruffleTier newTruffleTier(OptionValues options) {
-        return new TruffleTier(options, partialEvaluator,
+        return new TruffleTier(options,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
                         new SubstratePostPartialEvaluationSuite(getGraalOptions(), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }

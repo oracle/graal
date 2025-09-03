@@ -20,15 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.commands;
 
 import java.util.List;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -37,6 +39,8 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.ThreadState;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class ReferenceProcessCache extends EspressoNode {
     /*
@@ -44,12 +48,12 @@ public final class ReferenceProcessCache extends EspressoNode {
      * (j.i.misc vs j.i.access). Since we cannot select a type according to the version, we try all
      * known names here.
      */
-    private static final List<Symbol<Type>> SHARED_SECRETS_TYPES = List.of(Type.jdk_internal_access_SharedSecrets, Type.sun_misc_SharedSecrets,
-                    Type.jdk_internal_misc_SharedSecrets);
-    private static final List<Symbol<Type>> JAVA_LANG_ACCESS_TYPES = List.of(Type.jdk_internal_access_JavaLangAccess, Type.sun_misc_JavaLangAccess,
-                    Type.jdk_internal_misc_JavaLangAccess);
-    private static final List<Symbol<Signature>> RUN_FINALIZER_SIGNATURES = List.of(Signature._void_jdk_internal_access_JavaLangAccess, Signature._void_sun_misc_JavaLangAccess,
-                    Signature._void_jdk_internal_misc_JavaLangAccess);
+    private static final List<Symbol<Type>> SHARED_SECRETS_TYPES = List.of(Types.jdk_internal_access_SharedSecrets, Types.sun_misc_SharedSecrets,
+                    Types.jdk_internal_misc_SharedSecrets);
+    private static final List<Symbol<Type>> JAVA_LANG_ACCESS_TYPES = List.of(Types.jdk_internal_access_JavaLangAccess, Types.sun_misc_JavaLangAccess,
+                    Types.jdk_internal_misc_JavaLangAccess);
+    private static final List<Symbol<Signature>> RUN_FINALIZER_SIGNATURES = List.of(Signatures._void_jdk_internal_access_JavaLangAccess, Signatures._void_sun_misc_JavaLangAccess,
+                    Signatures._void_jdk_internal_misc_JavaLangAccess);
 
     private final EspressoContext context;
     private final DirectCallNode processPendingReferences;
@@ -64,10 +68,10 @@ public final class ReferenceProcessCache extends EspressoNode {
         Method processPendingReferenceMethod = findProcessPendingReferences(context);
         this.processPendingReferences = DirectCallNode.create(processPendingReferenceMethod.getCallTargetForceInit());
 
-        Field queue = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredField(Symbol.Name.queue, Type.java_lang_ref_ReferenceQueue);
+        Field queue = context.getMeta().java_lang_ref_Finalizer.lookupDeclaredField(Names.queue, Types.java_lang_ref_ReferenceQueue);
         this.finalizerQueue = queue.getObject(context.getMeta().java_lang_ref_Finalizer.tryInitializeAndGetStatics());
 
-        Method poll = finalizerQueue.getKlass().lookupMethod(Symbol.Name.poll, Signature.Reference);
+        Method poll = finalizerQueue.getKlass().lookupMethod(Names.poll, Signatures.Reference);
         this.queuePoll = DirectCallNode.create(poll.getCallTargetForceInit());
 
         Klass sharedSecrets = findSharedSecrets(context);
@@ -82,9 +86,14 @@ public final class ReferenceProcessCache extends EspressoNode {
         if (context.multiThreadingEnabled()) {
             throw throwIllegalStateException("Manual reference processing was requested, but the context is not in single-threaded mode.");
         }
-        context.triggerDrain();
-        processPendingReferences();
-        processFinalizers();
+        Transition transition = Transition.transition(ThreadState.IN_ESPRESSO, this);
+        try {
+            context.triggerDrain();
+            processPendingReferences();
+            processFinalizers();
+        } finally {
+            transition.restore(this);
+        }
     }
 
     private void processPendingReferences() {
@@ -126,7 +135,7 @@ public final class ReferenceProcessCache extends EspressoNode {
 
     private static Field findJlaField(Klass sharedSecrets) {
         for (Symbol<Type> type : JAVA_LANG_ACCESS_TYPES) {
-            Field f = sharedSecrets.lookupField(Symbol.Name.javaLangAccess, type, Klass.LookupMode.STATIC_ONLY);
+            Field f = sharedSecrets.lookupField(Names.javaLangAccess, type, Klass.LookupMode.STATIC_ONLY);
             if (f != null) {
                 return f;
             }
@@ -136,7 +145,7 @@ public final class ReferenceProcessCache extends EspressoNode {
 
     private static Method findRunFinalizer(EspressoContext context) {
         for (Symbol<Signature> signature : RUN_FINALIZER_SIGNATURES) {
-            Method m = context.getMeta().java_lang_ref_Finalizer.lookupMethod(Symbol.Name.runFinalizer, signature, Klass.LookupMode.INSTANCE_ONLY);
+            Method m = context.getMeta().java_lang_ref_Finalizer.lookupMethod(Names.runFinalizer, signature, Klass.LookupMode.INSTANCE_ONLY);
             if (m != null) {
                 return m;
             }
@@ -147,10 +156,10 @@ public final class ReferenceProcessCache extends EspressoNode {
     private static Method findProcessPendingReferences(EspressoContext context) {
         Method processPendingReferenceMethod;
         if (context.getJavaVersion().java8OrEarlier()) {
-            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Symbol.Name.tryHandlePending, Signature._boolean_boolean,
+            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Names.tryHandlePending, Signatures._boolean_boolean,
                             Klass.LookupMode.STATIC_ONLY);
         } else {
-            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Symbol.Name.processPendingReferences, Signature._void, Klass.LookupMode.STATIC_ONLY);
+            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Names.processPendingReferences, Signatures._void, Klass.LookupMode.STATIC_ONLY);
         }
         if (processPendingReferenceMethod == null) {
             throw EspressoError.shouldNotReachHere("Could not find pending reference processing method.");

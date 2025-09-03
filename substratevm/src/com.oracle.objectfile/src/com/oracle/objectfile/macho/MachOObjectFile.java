@@ -180,7 +180,7 @@ public final class MachOObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createUndefinedSymbol(String name, int size, boolean isCode) {
+    public Symbol createUndefinedSymbol(String name, boolean isCode) {
         MachOSymtab symtab = (MachOSymtab) getOrCreateSymbolTable();
         return symtab.newUndefinedEntry(name, isCode);
     }
@@ -381,7 +381,7 @@ public final class MachOObjectFile extends ObjectFile {
 
     private LoadCommandList loadCommands = new LoadCommandList();
 
-    private class LoadCommandList implements Iterable<LoadCommand> {
+    private final class LoadCommandList implements Iterable<LoadCommand> {
 
         LinkEditSegment64Command linkEditCommand; // or null; if present, always comes last!
         List<LoadCommand> otherCommands = new ArrayList<>();

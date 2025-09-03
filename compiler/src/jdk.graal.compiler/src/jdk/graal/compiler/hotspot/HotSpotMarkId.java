@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
  * Constants used to mark special positions in code being installed into the code cache by Graal C++
@@ -72,7 +71,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_BEFORE_MOV("aarch64"),
     Z_BARRIER_RELOCATION_FORMAT_STORE_BAD_BEFORE_MOV("aarch64");
 
-    @NativeImageReinitialize private Integer value;
+    private Integer value;
     private final String arch;
 
     HotSpotMarkId() {

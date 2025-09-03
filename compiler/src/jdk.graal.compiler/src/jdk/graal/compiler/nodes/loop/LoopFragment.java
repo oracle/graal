@@ -62,6 +62,7 @@ import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
@@ -296,6 +297,7 @@ public abstract class LoopFragment {
 
         final NodeBitMap nonLoopNodes = graph.createNodeBitMap();
         WorkQueue worklist = new WorkQueue(graph);
+        ArrayList<MonitorIdNode> ids = new ArrayList<>();
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -308,7 +310,7 @@ public abstract class LoopFragment {
                     }
                 }
                 if (n instanceof MonitorEnterNode) {
-                    markFloating(worklist, loop, ((MonitorEnterNode) n).getMonitorId(), nodes, nonLoopNodes);
+                    ids.add(((MonitorEnterNode) n).getMonitorId());
                 }
                 if (n instanceof AbstractMergeNode) {
                     /*
@@ -324,6 +326,26 @@ public abstract class LoopFragment {
                 for (Node usage : n.usages()) {
                     markFloating(worklist, loop, usage, nodes, nonLoopNodes);
                 }
+            }
+        }
+        /*
+         * Mark the MonitorIdNodes as part of the loop if all uses are within the loop. This will
+         * cause them to be duplicated when the body is cloned. This makes it possible for lock
+         * optimizations to identify independent lock regions since it relies on visiting the users
+         * of a MonitorIdNode to find the monitor nodes for a lock region.
+         */
+        boolean mark = true;
+        outer: for (MonitorIdNode id : ids) {
+            for (Node use : id.usages()) {
+                if (!nodes.contains(use)) {
+                    mark = false;
+                    break outer;
+                }
+            }
+        }
+        if (mark) {
+            for (MonitorIdNode id : ids) {
+                markFloating(worklist, loop, id, nodes, nonLoopNodes);
             }
         }
     }
@@ -449,23 +471,44 @@ public abstract class LoopFragment {
                 workList.pop();
                 boolean isLoopNode = currentEntry.isLoopNode;
                 Node current = currentEntry.n;
-                if (!isLoopNode && current instanceof GuardNode && !current.hasUsages()) {
-                    GuardNode guard = (GuardNode) current;
+                // NOTE: Guard Handling: Referenced by loop phases.
+                if (!isLoopNode && current instanceof GuardNode guard && !current.hasUsages()) {
                     if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE) {
                         ValueNode anchor = guard.getAnchor().asNode();
                         TriState isAnchorInLoop = isLoopNode(anchor, loopNodes, nonLoopNodes);
                         if (isAnchorInLoop != TriState.FALSE) {
                             if (!(anchor instanceof LoopExitNode && ((LoopExitNode) anchor).loopBegin() == loopBeginNode)) {
-                                // It is undecidable whether the node is in the loop or not. This is
-                                // not an issue for getting counted loop information,
-                                // but causes issues when using the information for actual loop
-                                // transformations. This is why a loop transformation must
-                                // not happen while guards are floating.
+                                /*
+                                 * Floating guards are treated specially in Graal. They are the only
+                                 * floating nodes that survive compilation without usages. If we
+                                 * have such floating guards they are normally not considered to be
+                                 * part of a loop if they have no usages. If they have usages inside
+                                 * the loop they will be naturally pulled inside the loop. If
+                                 * however only the condition of the guard is inside the loop we
+                                 * could schedule it outside the loop. It is necessary to schedule
+                                 * floating guards early however for correctness. Thus, we include
+                                 * guards as aggressively inside loops as possible since we "assume"
+                                 * they are scheduled later inside a loop because that would
+                                 * resemble their EARLY location.
+                                 */
                                 isLoopNode = true;
                             }
                         } else if (cfg.blockFor(anchor).strictlyDominates(cfg.blockFor(loopBeginNode))) {
-                            // The anchor is above the loop. The no-usage guard can potentially be
-                            // scheduled inside the loop.
+                            /*
+                             * The anchor dominates the loop, it could be the guard would be
+                             * scheduled inside the loop. Be pessimistic an also always include it
+                             * in the loop.
+                             */
+                            isLoopNode = true;
+                        }
+                    }
+                    if (!isLoopNode) {
+                        /*
+                         * If anchor or condition are inside a loop the guard should be in. We
+                         * schedule guards as early as possible for correctness.
+                         */
+                        if (isLoopNode(guard.getAnchor().asNode(), loopNodes, nonLoopNodes) == TriState.TRUE ||
+                                        isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) == TriState.TRUE) {
                             isLoopNode = true;
                         }
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Preopentype;
 import org.graalvm.wasm.predefined.wasi.types.Prestat;
@@ -70,9 +71,10 @@ final class PreopenedDirectoryFd extends DirectoryFd {
 
     @Override
     public Errno prestatGet(Node node, WasmMemory memory, int prestatAddress) {
-        Prestat.writeTag(node, memory, prestatAddress, Preopentype.Dir);
+        WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        Prestat.writeTag(node, memoryLib, memory, prestatAddress, Preopentype.Dir);
         final int prestatDirAddress = prestatAddress + Prestat.CONTENTSOFFSET;
-        PrestatDir.writePrNameLen(node, memory, prestatDirAddress, WasmMemory.encodedStringLength(virtualPath));
+        PrestatDir.writePrNameLen(node, memoryLib, memory, prestatDirAddress, WasmMemory.encodedStringLength(virtualPath));
         return Errno.Success;
     }
 

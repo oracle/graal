@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -204,43 +205,40 @@ public class OptionValues {
                 assert existing == null || existing == desc : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-        int size = 0;
-        if (all) {
-            size = sortedOptions.entrySet().size();
-        } else {
-            for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-                OptionDescriptor desc = e.getValue();
-                if (!excludeOptionFromHelp(desc)) {
-                    size++;
-                }
-            }
-        }
-        int i = 0;
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             String key = e.getKey();
             OptionDescriptor desc = e.getValue();
             if (all || !excludeOptionFromHelp(desc)) {
-                printHelp(out, namePrefix, key, desc);
-                if (i++ != size - 1) {
-                    // print new line between options
-                    out.printf("%n");
-                }
+                String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
+                printHelp(out, namePrefix,
+                                key,
+                                desc.getOptionKey().getValue(this),
+                                desc.getOptionValueType(),
+                                containsKey(desc.getOptionKey()) ? ":=" : "=",
+                                edition,
+                                desc.getHelp());
             }
         }
     }
 
-    private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
-        Object value = desc.getOptionKey().getValue(this);
-        if (value instanceof String) {
-            value = '"' + String.valueOf(value) + '"';
+    private static Object quoteNonNullString(Class<?> valueType, Object value) {
+        if (valueType == String.class && value != null) {
+            return '"' + String.valueOf(value) + '"';
         }
+        return value;
+    }
+
+    public static void printHelp(PrintStream out, String namePrefix,
+                    String key,
+                    Object value,
+                    Class<?> valueType,
+                    String assign,
+                    String edition,
+                    List<String> help) {
         String name = namePrefix + key;
-        String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
-        String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
+        String linePrefix = String.format("%s %s %s %s", name, assign, quoteNonNullString(valueType, value), edition);
 
-        String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
-        String linePrefix = String.format("%s %s %s %s", name, assign, value, edition);
-
+        String typeName = valueType.isEnum() ? "String" : valueType.getSimpleName();
         int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
         int linePad = typeStartPos - linePrefix.length();
         if (linePad > 0) {
@@ -249,17 +247,27 @@ public class OptionValues {
             out.printf("%s[%s]%n", linePrefix, typeName);
         }
 
-        List<String> helpLines;
-        String help = desc.getHelp();
-        if (help.length() != 0) {
-            helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-            helpLines.addAll(desc.getExtraHelp());
-        } else {
-            helpLines = desc.getExtraHelp();
+        List<String> helpLines = help;
+        if (!helpLines.isEmpty()) {
+            String first = helpLines.getFirst();
+            if (first.isEmpty()) {
+                helpLines = List.of();
+            } else {
+                List<String> brief = wrap(first, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+                if (brief.size() > 1) {
+                    brief.addAll(helpLines.subList(1, helpLines.size()));
+                    helpLines = brief;
+                } else {
+                    GraalError.guarantee(brief.size() == 1 && brief.getFirst().equals(first), "%s", brief);
+                }
+            }
         }
+
         for (String line : helpLines) {
             out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
         }
+        // print new line after each option
+        out.printf("%n");
     }
 
     private static boolean excludeOptionFromHelp(OptionDescriptor desc) {

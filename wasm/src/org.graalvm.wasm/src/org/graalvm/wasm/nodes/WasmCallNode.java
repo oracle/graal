@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,16 @@ import com.oracle.truffle.api.nodes.Node;
 
 public abstract class WasmCallNode extends Node {
 
-    public abstract int getBytecodeOffset();
+    public static final int NO_BYTECODE_INDEX = -1;
+
+    private final int bytecodeOffset;
+
+    protected WasmCallNode(int bytecodeOffset) {
+        this.bytecodeOffset = bytecodeOffset;
+    }
+
+    public final int getBytecodeOffset() {
+        return bytecodeOffset;
+    }
 
 }

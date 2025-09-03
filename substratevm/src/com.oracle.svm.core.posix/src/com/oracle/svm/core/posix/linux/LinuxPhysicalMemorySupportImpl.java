@@ -33,15 +33,17 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
@@ -54,7 +56,7 @@ public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
         if (numberOfPhysicalMemoryPages == -1 || sizeOfAPhysicalMemoryPage == -1) {
             throw VMError.shouldNotReachHere("Physical memory size (number of pages or page size) not available");
         }
-        return WordFactory.unsigned(numberOfPhysicalMemoryPages).multiply(WordFactory.unsigned(sizeOfAPhysicalMemoryPage));
+        return Word.unsigned(numberOfPhysicalMemoryPages).multiply(Word.unsigned(sizeOfAPhysicalMemoryPage));
     }
 
     @Override
@@ -121,7 +123,7 @@ public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 class LinuxPhysicalMemorySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(PhysicalMemorySupport.class)) {
+        if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(PhysicalMemorySupport.class)) {
             ImageSingletons.add(PhysicalMemorySupport.class, new LinuxPhysicalMemorySupportImpl());
         }
     }

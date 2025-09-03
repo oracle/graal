@@ -89,7 +89,7 @@ public final class CEntryPointCallStubSupport {
                 CEntryPointData entryPointData = entryPointDataSupplier.get();
                 CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(bb, method, entryPointData);
                 AnalysisMethod wrapped = bb.getUniverse().lookup(stub);
-                bb.addRootMethod(wrapped, true, "Registered in " + CEntryPointCallStubSupport.class).registerAsEntryPoint(entryPointData);
+                bb.addRootMethod(wrapped, true, "Registered in " + CEntryPointCallStubSupport.class).registerAsNativeEntryPoint(entryPointData);
                 value = wrapped;
             }
             return value;

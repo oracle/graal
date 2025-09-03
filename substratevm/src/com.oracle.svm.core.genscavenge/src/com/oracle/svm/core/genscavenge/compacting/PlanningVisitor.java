@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
@@ -36,6 +37,8 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.word.Word;
@@ -65,20 +68,21 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
-        UnsignedWord gapSize = WordFactory.zero();
-        UnsignedWord objSeqSize = WordFactory.zero();
-        UnsignedWord brickIndex = WordFactory.zero();
+        UnsignedWord gapSize = Word.zero();
+        UnsignedWord objSeqSize = Word.zero();
+        UnsignedWord brickIndex = Word.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
-        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
-        ObjectMoveInfo.setObjectSeqSize(objSeq, WordFactory.zero());
-        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
+        ObjectMoveInfo.setNewAddress(objSeq, objSeq);
+        ObjectMoveInfo.setObjectSeqSize(objSeq, Word.zero());
+        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
         BrickTable.setEntry(chunk, brickIndex, objSeq);
 
         Pointer p = objSeq;
         while (p.belowThan(initialTop)) {
-            Word header = ObjectHeaderImpl.readHeaderFromPointer(p);
+            ObjectHeader oh = Heap.getHeap().getObjectHeader();
+            Word header = oh.readHeaderFromPointer(p);
 
             UnsignedWord objSize;
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
@@ -91,11 +95,11 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
                 objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
             } else {
-                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObject());
+                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
             }
 
             if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObject());
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObjectNonNull());
 
                 /*
                  * Adding the optional identity hash field would increase an object's size, so we
@@ -110,9 +114,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
                     // Initialize new move info.
                     objSeq = p;
-                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
-                    gapSize = WordFactory.zero();
+                    gapSize = Word.zero();
                 }
 
                 objSeqSize = objSeqSize.add(objSize);
@@ -123,7 +127,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                     ObjectMoveInfo.setNewAddress(objSeq, newAddress);
                     ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
 
-                    objSeqSize = WordFactory.zero();
+                    objSeqSize = Word.zero();
 
                     /* Set brick table entries. */
                     UnsignedWord currentBrick = BrickTable.getIndex(chunk, p);
@@ -139,7 +143,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         assert gapSize.equal(0) || objSeqSize.equal(0);
 
         if (gapSize.notEqual(0)) { // truncate gap at chunk end
-            chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
+            UnsignedWord newTopOffset = chunk.getTopOffset(CHUNK_HEADER_TOP_IDENTITY).subtract(gapSize);
+            chunk.setTopOffset(newTopOffset, CHUNK_HEADER_TOP_IDENTITY);
         } else if (objSeqSize.notEqual(0)) {
             Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
             ObjectMoveInfo.setNewAddress(objSeq, newAddress);

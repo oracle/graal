@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,24 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.nodes.calc.RoundNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+import java.util.Arrays;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.ExactMath;
 
+import jdk.graal.compiler.nodes.calc.RoundNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.amd64.AMD64;
 
 public class ExactMathTest extends TruffleCompilerImplTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getTypes(), getReplacements(), getLowerer());
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getTypes());
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -194,6 +196,96 @@ public class ExactMathTest extends TruffleCompilerImplTest {
         Assert.assertEquals(1, getFinalGraph("truncateFloat").getNodes().filter(RoundNode.class).count());
     }
 
+    @Test
+    public void testDoubleToUnsigned() {
+        for (String methodName : Arrays.asList("truncateDoubleToUnsignedLong", "truncateDoubleToUnsignedInt")) {
+            test(methodName, Double.NEGATIVE_INFINITY);
+            test(methodName, -1.0);
+            test(methodName, Math.nextUp(-1.0));
+            test(methodName, -Double.MIN_VALUE);
+            test(methodName, -0.0);
+            test(methodName, 0.0);
+            test(methodName, Double.MIN_VALUE);
+            test(methodName, 0.5);
+            test(methodName, 1.0);
+            test(methodName, 1.5);
+            test(methodName, Math.nextDown(0x1p31));
+            test(methodName, 0x1p31);
+            test(methodName, Math.nextDown(0x1p32));
+            test(methodName, 0x1p32);
+            test(methodName, 0x1p52 - 1.0);
+            test(methodName, 0x1p52 - 0.5); // largest representable non-integral value
+            test(methodName, 0x1p52);
+            test(methodName, 0x1p53 - 1.0); // largest exactly representable integral value
+            test(methodName, 0x1p53);
+            test(methodName, 0x1p63);
+            test(methodName, Math.nextDown(0x1p64));
+            test(methodName, 0x1p64);
+            test(methodName, Double.MAX_VALUE);
+            test(methodName, Double.POSITIVE_INFINITY);
+            test(methodName, Double.NaN);
+            test(methodName, Double.longBitsToDouble(0x7ff0000000000001L)); // signaling NaN
+        }
+    }
+
+    @Test
+    public void testFloatToUnsigned() {
+        for (String methodName : Arrays.asList("truncateFloatToUnsignedLong", "truncateFloatToUnsignedInt")) {
+            test(methodName, Float.NEGATIVE_INFINITY);
+            test(methodName, -1.0f);
+            test(methodName, Math.nextUp(-1.0f));
+            test(methodName, -Float.MIN_VALUE);
+            test(methodName, -0.0f);
+            test(methodName, 0.0f);
+            test(methodName, Float.MIN_VALUE);
+            test(methodName, 0.5f);
+            test(methodName, 1.0f);
+            test(methodName, 1.5f);
+            test(methodName, 0x1p23f - 1.0f);
+            test(methodName, 0x1p23f - 0.5f); // largest representable non-integral value
+            test(methodName, 0x1p23f);
+            test(methodName, 0x1p24f - 1.0f); // largest exactly representable integral value
+            test(methodName, 0x1p24f);
+            test(methodName, Math.nextDown(0x1p31f));
+            test(methodName, 0x1p31f);
+            test(methodName, Math.nextDown(0x1p32f));
+            test(methodName, 0x1p32f);
+            test(methodName, 0x1p63f);
+            test(methodName, Math.nextDown(0x1p64f));
+            test(methodName, 0x1p64f);
+            test(methodName, Float.MAX_VALUE);
+            test(methodName, Float.POSITIVE_INFINITY);
+            test(methodName, Float.NaN);
+            test(methodName, Float.intBitsToFloat(0x7f800001)); // signaling NaN
+        }
+    }
+
+    @Test
+    public void testUnsignedLongToFloat() {
+        for (String methodName : Arrays.asList("unsignedLongToFloat", "unsignedLongToDouble")) {
+            test(methodName, 0L);
+            test(methodName, 1L);
+            test(methodName, (long) Integer.MAX_VALUE);
+            test(methodName, 1L << 31);
+            test(methodName, (1L << 32) - 1L);
+            test(methodName, 1L << 32);
+            test(methodName, 0x0020000020000000L);
+            test(methodName, 0x0020000020000001L);
+            test(methodName, 0x7fffffbfffffffffL);
+            test(methodName, 0x7fffffc000000000L);
+            test(methodName, 0x7ffffffffffffdffL);
+            test(methodName, 0x7ffffffffffffc00L);
+            test(methodName, Long.MAX_VALUE);
+            test(methodName, Long.MIN_VALUE);
+            test(methodName, 0x8000008000000001L);
+            test(methodName, 0xfffffe8000000001L);
+            test(methodName, 0xfffffe8000000002L);
+            test(methodName, 0xfffffffffffff401L);
+            test(methodName, 0xfffffffffffff402L);
+            test(methodName, 0xffffffffffffffffL);
+        }
+    }
+
     public static int add(int a, int b) {
         return Math.addExact(a, b);
     }
@@ -272,5 +364,29 @@ public class ExactMathTest extends TruffleCompilerImplTest {
 
     public static double truncateDouble(double a) {
         return ExactMath.truncate(a);
+    }
+
+    public static long truncateDoubleToUnsignedLong(double x) {
+        return ExactMath.truncateToUnsignedLong(x);
+    }
+
+    public static long truncateFloatToUnsignedLong(float x) {
+        return ExactMath.truncateToUnsignedLong(x);
+    }
+
+    public static int truncateDoubleToUnsignedInt(double x) {
+        return ExactMath.truncateToUnsignedInt(x);
+    }
+
+    public static int truncateFloatToUnsignedInt(float x) {
+        return ExactMath.truncateToUnsignedInt(x);
+    }
+
+    public static double unsignedLongToDouble(long x) {
+        return ExactMath.unsignedToDouble(x);
+    }
+
+    public static float unsignedLongToFloat(long x) {
+        return ExactMath.unsignedToFloat(x);
     }
 }

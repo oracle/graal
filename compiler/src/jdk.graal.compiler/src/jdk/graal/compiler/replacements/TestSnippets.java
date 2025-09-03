@@ -26,11 +26,11 @@ package jdk.graal.compiler.replacements;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.vm.ci.services.Services;
 
 /**
  * A class that lives in the compiler that is full of snippets used for testing. Given that snippets
@@ -82,12 +82,42 @@ public abstract class TestSnippets {
             public Templates(OptionValues options, Providers providers) {
                 super(options, providers);
 
-                assert !Services.IS_IN_NATIVE_IMAGE : "This code must only be used in jargraal unittests";
+                assert LibGraalSupport.INSTANCE == null : "This code must only be used in jargraal unittests";
 
                 producer = snippet(providers, TransplantTestSnippets.class, "producer", Snippet.SnippetType.TRANSPLANTED_SNIPPET);
                 producerWithArgs = snippet(providers, TransplantTestSnippets.class, "producerWithArgs", Snippet.SnippetType.TRANSPLANTED_SNIPPET);
                 producerWithDeopt = snippet(providers, TransplantTestSnippets.class, "producerWithDeopt", Snippet.SnippetType.TRANSPLANTED_SNIPPET);
             }
+        }
+    }
+
+    public static class CounterTestSnippets implements Snippets {
+        @Snippet
+        public static void increase(@Snippet.ConstantParameter TestSnippetCounters counters) {
+            counters.increments.inc();
+            counters.doubleIncrements.add(2);
+        }
+
+        public static class Templates extends AbstractTemplates {
+            public final SnippetInfo increase;
+
+            @SuppressWarnings("this-escape")
+            public Templates(OptionValues options, Providers providers) {
+                super(options, providers);
+                increase = snippet(providers, CounterTestSnippets.class, "increase");
+            }
+        }
+
+        public static class TestSnippetCounters {
+            public TestSnippetCounters(SnippetCounter.Group.Factory factory) {
+                SnippetCounter.Group allocations = factory.createSnippetCounterGroup("Increments");
+                increments = new SnippetCounter(allocations, "increments", "number of increments");
+                doubleIncrements = new SnippetCounter(allocations, "doubleIncrements", "number of increments times two");
+            }
+
+            public final SnippetCounter increments;
+
+            public final SnippetCounter doubleIncrements;
         }
     }
 }

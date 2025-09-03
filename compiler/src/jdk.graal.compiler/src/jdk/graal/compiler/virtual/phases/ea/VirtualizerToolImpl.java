@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,11 +44,13 @@ import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
+import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -174,6 +176,14 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
 
         if (canVirtualize) {
             getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for entryKind %s and access kind %s", current, entryKind, accessKind);
+            if (theAccessKind != null && entryKind != theAccessKind &&
+                            (theAccessKind != JavaKind.Int && theAccessKind.getStackKind() == JavaKind.Int)) {
+                ValueNode entry = getEntry(virtual, index);
+                // We can't just set the given value as the new entry but need to simulate a store
+                // operation
+                newValue = DefaultJavaLoweringProvider.simulatePrimitiveStore(accessKind, entry, newValue);
+                ensureAdded(newValue);
+            }
             state.setEntry(virtual.getObjectId(), index, newValue);
             if (entryKind == JavaKind.Int) {
                 if (accessKind.needsTwoSlots()) {
@@ -309,6 +319,12 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
             return;
         }
         effects.ensureAdded(node, position);
+        if (node instanceof NodeWithState withState) {
+            if (!node.isAlive()) {
+                current.graph().addWithoutUnique(node);
+            }
+            closure.processNodeWithState(withState, state, effects);
+        }
     }
 
     @Override
@@ -358,6 +374,15 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
+    public boolean canVirtualizeLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
+        if (getPlatformConfigurationProvider().requiresStrictLockOrder()) {
+            int id = virtualObject.getObjectId();
+            return !state.isNonImmediateRecursiveLock(id, monitorId);
+        }
+        return true;
+    }
+
+    @Override
     public void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
         int id = virtualObject.getObjectId();
         state.addLock(id, monitorId);
@@ -399,11 +424,6 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         } else {
             return null;
         }
-    }
-
-    @Override
-    public boolean supportsRounding() {
-        return getLowerer().supportsRounding();
     }
 
     @Override

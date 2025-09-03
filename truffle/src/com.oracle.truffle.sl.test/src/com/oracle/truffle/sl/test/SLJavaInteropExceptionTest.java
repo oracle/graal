@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,8 +69,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
 
-public class SLJavaInteropExceptionTest {
-    public static class Validator {
+public class SLJavaInteropExceptionTest extends AbstractSLTest {
+
+    public class Validator {
         @HostAccess.Export
         public int validateException() {
             throw new NoSuchElementException();
@@ -81,7 +82,7 @@ public class SLJavaInteropExceptionTest {
             String sourceText = "function test(validator) {\n" +
                             "  return validator.validateException();\n" +
                             "}";
-            try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+            try (Context context = newContextBuilder(SLLanguage.ID).build()) {
                 context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
                 Value test = context.getBindings(SLLanguage.ID).getMember("test");
                 test.execute(Validator.this);
@@ -119,7 +120,7 @@ public class SLJavaInteropExceptionTest {
         String sourceText = "function test(validator) {\n" +
                         "  return validator.validateException();\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
@@ -138,7 +139,7 @@ public class SLJavaInteropExceptionTest {
         String sourceText = "function test(validator) {\n" +
                         "  return validator.validateNested();\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
@@ -165,7 +166,7 @@ public class SLJavaInteropExceptionTest {
                         "function doCall(validator, x) {\n" +
                         "    doMultiCallback(validator, x - 1);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
             int numCalbacks = 3;
@@ -201,7 +202,7 @@ public class SLJavaInteropExceptionTest {
                         "function doCall(validator, x) {\n" +
                         "    doMultiCallback(validator, x - 1);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
             int numCalbacks = 3;
@@ -240,7 +241,7 @@ public class SLJavaInteropExceptionTest {
                         "function test(validator) {\n" +
                         "  return validator." + javaMethod + "(supplier);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
@@ -270,7 +271,7 @@ public class SLJavaInteropExceptionTest {
                         "function test(validator) {\n" +
                         "  return validator." + javaMethod + "(new());\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = newContextBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             test.execute(new Validator());

@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -73,6 +74,10 @@ public final class NotNode extends UnaryArithmeticNode<Not> implements Arithmeti
     private static ValueNode canonicalize(NotNode node, ValueNode x) {
         if (x instanceof NotNode) {
             return ((NotNode) x).getValue();
+        }
+        if (x instanceof AddNode addNode && addNode.getY().isJavaConstant() && addNode.getY().asJavaConstant().asLong() == -1) {
+            // ~(x - 1) -> -x
+            return NegateNode.create(addNode.getX(), NodeView.DEFAULT);
         }
         if (node != null) {
             return node;

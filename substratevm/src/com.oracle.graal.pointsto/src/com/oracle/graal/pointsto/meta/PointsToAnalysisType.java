@@ -62,7 +62,7 @@ public class PointsToAnalysisType extends AnalysisType {
             var bb = (PointsToAnalysis) universe.getBigbang();
             for (var f : getInstanceFields(true)) {
                 var field = (AnalysisField) f;
-                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
             }
         }
         return result;

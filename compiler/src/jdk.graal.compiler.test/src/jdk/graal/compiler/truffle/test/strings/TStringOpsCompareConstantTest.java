@@ -54,8 +54,8 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
                     byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
         super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
         constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP};
+                        arrayA, this.offsetA, strideA,
+                        arrayB, this.offsetB, strideB, lengthCMP};
     }
 
     @Override

@@ -37,7 +37,7 @@ public class Bridge_method01 extends JTTTest {
         abstract T get();
     }
 
-    private static class IWrap extends Wrap<Integer> {
+    private static final class IWrap extends Wrap<Integer> {
 
         @Override
         Integer get() {

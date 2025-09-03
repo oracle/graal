@@ -40,6 +40,12 @@ public interface G1BarrierSetLIRTool {
 
     int cardQueueIndexOffset();
 
+    boolean supportsLowLatencyBarriers();
+
+    boolean useConditionalCardMarking();
+
+    byte cleanCardValue();
+
     byte dirtyCardValue();
 
     byte youngCardValue();

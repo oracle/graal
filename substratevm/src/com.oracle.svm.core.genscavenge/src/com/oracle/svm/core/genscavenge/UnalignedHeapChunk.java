@@ -24,20 +24,24 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -63,17 +67,18 @@ import jdk.graal.compiler.word.Word;
  * An UnalignedHeapChunk is laid out:
  *
  * <pre>
- * +=================+-------+-------------------------------------+
- * | UnalignedHeader | Card  | Object                              |
- * | Fields          | Table |                                     |
- * +=================+-------+-------------------------------------+
+ * +=================+-------+--------------+-------------------------------------+
+ * | UnalignedHeader | Card  | Object Start | Object                              |
+ * | Fields          | Table | Offset       |                                     |
+ * +=================+-------+--------------+-------------------------------------+
  * </pre>
  *
- * The HeapChunk fields can be accessed as declared fields. The size of the card table depends on
- * the used {@link RememberedSet} implementation and may even be zero.
- *
- * In this implementation, I am only implementing imprecise card remembered sets, so I only need one
- * entry for the whole Object. But for consistency I am treating it as a 1-element table.
+ * The HeapChunk fields can be accessed as declared fields. The card table and the field for the
+ * object start offset are optional. Whether these fields are present depends on the used
+ * {@link RememberedSet} implementation. The size of the card table also depends on the used
+ * {@link RememberedSet} implementation and may even be zero. If present, the object start offset is
+ * properly aligned and stored as {@link UnsignedWord}. It is needed to get the chunk address from
+ * the object's address.
  */
 public final class UnalignedHeapChunk {
     private UnalignedHeapChunk() { // all static
@@ -82,37 +87,48 @@ public final class UnalignedHeapChunk {
     /**
      * Additional fields beyond what is in {@link HeapChunk.Header}.
      *
-     * This does <em>not</em> include the card remembered set table and certainly does not include
-     * the object. Those fields are accessed via Pointers that are computed below.
+     * This does <em>not</em> include the card table or the object start offset. See the comment on
+     * the class level above. Those fields are accessed via Pointers that are computed below.
      */
     @RawStructure
     public interface UnalignedHeader extends HeapChunk.Header<UnalignedHeader> {
     }
 
-    public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize) {
-        HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void initialize(HostedByteBufferPointer chunk, UnsignedWord objectSize) {
+        UnsignedWord objectStartOffset = calculateObjectStartOffset(objectSize);
+        RememberedSet.get().setObjectStartOffsetOfUnalignedChunk(chunk, objectStartOffset);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize, UnsignedWord objectSize) {
+        assert chunk.isNonNull();
+        UnsignedWord objectStartOffset = calculateObjectStartOffset(objectSize);
+        HeapChunk.initialize(chunk, HeapChunk.asPointer(chunk).add(objectStartOffset), chunkSize);
+        setObjectStartOffset(chunk, objectStartOffset);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Pointer getObjectStart(UnalignedHeader that) {
-        return HeapChunk.asPointer(that).add(getObjectStartOffset());
+        return HeapChunk.asPointer(that).add(getObjectStartOffset(that));
     }
 
     public static Pointer getObjectEnd(UnalignedHeader that) {
         return HeapChunk.getEndPointer(that);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
-        UnsignedWord objectStart = getObjectStartOffset();
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord objectStart = RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
     }
 
-    /** Allocate uninitialized memory within this AlignedHeapChunk. */
+    /** Allocate uninitialized memory within this UnalignedHeapChunk. */
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
-        Pointer result = WordFactory.nullPointer();
+        Pointer result = Word.nullPointer();
         if (size.belowOrEqual(available)) {
             result = HeapChunk.getTopPointer(that);
             Pointer newTop = result.add(size);
@@ -121,38 +137,59 @@ public final class UnalignedHeapChunk {
         return result;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnalignedHeader getEnclosingChunk(Object obj) {
         Pointer objPointer = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(objPointer);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
         if (!GraalDirectives.inIntrinsic()) {
             assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used for the image heap because the image heap is not aligned to the chunk size";
         }
-        Pointer chunkPointer = ptr.subtract(getObjectStartOffset());
+        Pointer chunkPointer = ptr.subtract(getOffsetForObject(ptr));
         return (UnalignedHeader) chunkPointer;
     }
 
-    public static boolean walkObjects(UnalignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFrom(that, getObjectStart(that), visitor);
+    public static void initializeObjectStartOffset(UnalignedHeader that, UnsignedWord objectSize) {
+        UnsignedWord objectStartOffset = calculateObjectStartOffset(objectSize);
+        setObjectStartOffset(that, objectStartOffset);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
+        return RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setObjectStartOffset(UnalignedHeader that, UnsignedWord objectStartOffset) {
+        RememberedSet.get().setObjectStartOffsetOfUnalignedChunk(that, objectStartOffset);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord getObjectStartOffset(UnalignedHeader that) {
+        return RememberedSet.get().getObjectStartOffsetOfUnalignedChunk(that);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord getOffsetForObject(Pointer objPtr) {
+        return RememberedSet.get().getOffsetForObjectInUnalignedChunk(objPtr);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void walkObjects(UnalignedHeader that, ObjectVisitor visitor) {
+        HeapChunk.walkObjectsFrom(that, getObjectStart(that), visitor);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkObjectsInline(UnalignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void walkObjectsInline(UnalignedHeader that, UninterruptibleObjectVisitor visitor) {
+        HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }
 
-    @Fold
-    static UnsignedWord getObjectStartOffset() {
-        return RememberedSet.get().getHeaderSizeOfUnalignedChunk();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
-        return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
+        return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset(that));
     }
 }

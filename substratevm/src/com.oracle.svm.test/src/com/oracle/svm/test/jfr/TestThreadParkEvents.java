@@ -96,6 +96,8 @@ public class TestThreadParkEvents extends JfrRecordingTest {
                     parkUntilFound = true;
                 }
             }
+
+            checkTopStackFrame(event, "park");
         }
 
         assertTrue(parkNanosFound);
@@ -104,6 +106,6 @@ public class TestThreadParkEvents extends JfrRecordingTest {
         assertTrue(parkUnparkFound);
     }
 
-    private static class Blocker {
+    private static final class Blocker {
     }
 }

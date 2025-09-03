@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -75,10 +73,6 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
         return false;
     }
 
-    private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.cgLastTransition);
-    }
-
     public short[] getCgLastTransition() {
         return cgLastTransition;
     }
@@ -89,20 +83,6 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
 
     public boolean hasUnAnchoredEntry() {
         return hasUnanchoredEntry;
-    }
-
-    /**
-     * Creates a node split copy of this initial state as described in {@link DFAAbstractStateNode},
-     * but ignores copyID, since having two initial states in a DFA is not supported. Therefore,
-     * this method should be used for replacing the original initial state with the copy.
-     *
-     * @param copyID new ID for the copy.
-     * @return a node split copy of this initial state as described in {@link DFAAbstractStateNode},
-     *         ignoring copyID.
-     */
-    @Override
-    public DFAAbstractStateNode createNodeSplitCopy(short copyID) {
-        return new DFAInitialStateNode(this);
     }
 
     @TruffleBoundary

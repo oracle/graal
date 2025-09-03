@@ -20,51 +20,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 
-final class DiffVersionLoadHelper {
+public final class DiffVersionLoadHelper {
 
     private final Meta meta;
     private Symbol<Name> name;
     private Symbol<Type> type;
     private Symbol<Signature> signature;
 
-    DiffVersionLoadHelper(Meta meta) {
+    public DiffVersionLoadHelper(Meta meta) {
         this.meta = meta;
     }
 
-    DiffVersionLoadHelper klass(VersionRange range, Symbol<Type> t) {
+    public DiffVersionLoadHelper klass(VersionRange range, Symbol<Type> t) {
         if (range.contains(meta.getJavaVersion())) {
             this.type = t;
         }
         return this;
     }
 
-    ObjectKlass klass() {
+    public ObjectKlass klass() {
         if (type == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return meta.knownKlass(type);
     }
 
-    ObjectKlass notRequiredKlass() {
+    public ObjectKlass notRequiredKlass() {
         if (type == null) {
             return null;
         }
         return meta.loadKlassWithBootClassLoader(type);
     }
 
-    DiffVersionLoadHelper method(VersionRange range, Symbol<Name> n, Symbol<Signature> s) {
+    public DiffVersionLoadHelper method(VersionRange range, Symbol<Name> n, Symbol<Signature> s) {
         if (range.contains(meta.getJavaVersion())) {
             this.name = n;
             this.signature = s;
@@ -72,24 +71,24 @@ final class DiffVersionLoadHelper {
         return this;
     }
 
-    Method method(ObjectKlass klass) {
+    public Method method(ObjectKlass klass) {
         if (name == null || signature == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return klass.requireDeclaredMethod(name, signature);
     }
 
-    Method notRequiredMethod(ObjectKlass klass) {
+    public Method notRequiredMethod(ObjectKlass klass) {
         if (name == null || signature == null) {
             return null;
         }
         if (klass == null) {
-            return null;
+            throw EspressoError.shouldNotReachHere("Missing klass for method " + name + ":" + signature);
         }
-        return klass.lookupDeclaredMethod(name, signature);
+        return klass.requireDeclaredMethod(name, signature);
     }
 
-    DiffVersionLoadHelper field(VersionRange range, Symbol<Name> n, Symbol<Type> t) {
+    public DiffVersionLoadHelper field(VersionRange range, Symbol<Name> n, Symbol<Type> t) {
         if (range.contains(meta.getJavaVersion())) {
             this.name = n;
             this.type = t;
@@ -97,32 +96,31 @@ final class DiffVersionLoadHelper {
         return this;
     }
 
-    Field field(ObjectKlass klass) {
+    public Field field(ObjectKlass klass) {
         if (name == null || type == null) {
             throw EspressoError.shouldNotReachHere();
         }
         return klass.requireDeclaredField(name, type);
     }
 
-    Field maybeHiddenfield(ObjectKlass klass) {
-        if (name == null || type == null) {
-            throw EspressoError.shouldNotReachHere();
-        }
-        Field f = klass.lookupDeclaredField(name, type);
-        if (f == null) {
-            return klass.requireHiddenField(name);
-        }
-        return f;
-    }
-
-    Field notRequiredField(ObjectKlass klass) {
+    public Field notRequiredField(ObjectKlass klass) {
         if (name == null || type == null) {
             return null;
         }
         if (klass == null) {
-            return null;
+            throw EspressoError.shouldNotReachHere("Missing klass for field " + name + ":" + type);
         }
-        return klass.lookupDeclaredField(name, type);
+        return klass.requireDeclaredField(name, type);
     }
 
+    public Field maybeHiddenfield(ObjectKlass klass) {
+        if (name == null || type == null) {
+            return null;
+        }
+        Field f = klass.lookupDeclaredField(name, type);
+        if (f != null) {
+            return f;
+        }
+        return klass.requireHiddenField(name);
+    }
 }

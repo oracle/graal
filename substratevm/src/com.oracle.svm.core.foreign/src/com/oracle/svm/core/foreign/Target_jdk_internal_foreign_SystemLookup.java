@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,12 @@
 package com.oracle.svm.core.foreign;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
 import java.util.Optional;
 
-import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -36,15 +39,31 @@ import com.oracle.svm.core.annotate.TargetClass;
  * libraries. The provided libraries are not really defined in the documentation, so the best we can
  * do is load the exact same libraries as HotSpot.
  */
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_jdk_internal_foreign_SystemLookup {
+    // Checkstyle: stop
+
+    /*
+     * This field must be cleared because on Windows, it references a closure which contains a
+     * native memory segment.
+     */
+    @Alias //
+    @RecomputeFieldValue(isFinal = true, kind = Kind.Reset) //
+    static SymbolLookup SYSTEM_LOOKUP;
+
+    @SuppressWarnings("static-method")
     @Substitute
     public Optional<MemorySegment> find(String name) {
         return RuntimeSystemLookup.INSTANCE.find(name);
     }
+    // Checkstyle: resume
 }
 
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols", onlyWith = ForeignFunctionsEnabled.class)
-@Delete
+/*
+ * IMPORTANT: If the substitution target (i.e. enum
+ * 'jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols') changes, ensure that the enum values
+ * are still in sync with 'com.oracle.svm.native.libchelper/src/syslookup.c'.
+ */
+@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
 }

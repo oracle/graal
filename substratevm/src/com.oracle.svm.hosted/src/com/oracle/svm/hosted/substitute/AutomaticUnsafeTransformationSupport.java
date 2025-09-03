@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -765,23 +766,45 @@ public class AutomaticUnsafeTransformationSupport {
          * continues until all usages are exhausted or an illegal use is found.
          */
         outer: for (Node valueNodeUsage : valueNode.usages()) {
-            if (valueNodeUsage instanceof StoreFieldNode && valueStoreField == null) {
-                valueStoreField = ((StoreFieldNode) valueNodeUsage).field();
-            } else if (valueNodeUsage instanceof SignExtendNode && valueStoreField == null) {
-                SignExtendNode signExtendNode = (SignExtendNode) valueNodeUsage;
+            if (valueNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                valueStoreField = storeFieldNode.field();
+            } else if (valueNodeUsage instanceof SignExtendNode signExtendNode && valueStoreField == null) {
                 for (Node signExtendNodeUsage : signExtendNode.usages()) {
-                    if (signExtendNodeUsage instanceof StoreFieldNode && valueStoreField == null) {
-                        valueStoreField = ((StoreFieldNode) signExtendNodeUsage).field();
-                    } else if (isAllowedUnsafeValueSink(signExtendNodeUsage)) {
-                        continue;
-                    } else {
+                    if (signExtendNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                        valueStoreField = storeFieldNode.field();
+                    } else if (!isAllowedUnsafeValueSink(signExtendNodeUsage)) {
                         illegalUseFound = true;
                         break outer;
                     }
                 }
-            } else if (isAllowedUnsafeValueSink(valueNodeUsage)) {
-                continue;
-            } else {
+            } else if (recomputeKind == ArrayBaseOffset && valueNodeUsage instanceof NarrowNode narrowNode &&
+                            narrowNode.getInputBits() == 64 && narrowNode.getResultBits() == 32 && valueStoreField == null) {
+                /*
+                 * JDK-8344168 changes the return type of Unsafe.arrayBaseOffset from int to long.
+                 * The rationale is to avoid 32 bit overflows when deriving values from the result.
+                 * However, the offset is still known to fit into in 32 bits. Usages of the function
+                 * might therefore cast the result to int, which is fine as it does not lose
+                 * information in this case. To support these patterns, we treat casts from long to
+                 * int as transparent, similar to sign extend from int to long.
+                 */
+                for (Node narrowNodeUsage : narrowNode.usages()) {
+                    if (narrowNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                        valueStoreField = storeFieldNode.field();
+                    } else if (narrowNodeUsage instanceof SignExtendNode signExtendNode && valueStoreField == null) {
+                        for (Node signExtendNodeUsage : signExtendNode.usages()) {
+                            if (signExtendNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                                valueStoreField = storeFieldNode.field();
+                            } else if (!isAllowedUnsafeValueSink(signExtendNodeUsage)) {
+                                illegalUseFound = true;
+                                break outer;
+                            }
+                        }
+                    } else if (!isAllowedUnsafeValueSink(narrowNodeUsage)) {
+                        illegalUseFound = true;
+                        break outer;
+                    }
+                }
+            } else if (!isAllowedUnsafeValueSink(valueNodeUsage)) {
                 illegalUseFound = true;
                 break;
             }

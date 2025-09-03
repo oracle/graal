@@ -41,7 +41,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
@@ -57,13 +56,19 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -71,8 +76,14 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.Word;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(IsolateListenerSupportFeature.class);
@@ -120,8 +131,8 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     }
 
     private static boolean isFirst() {
-        Word expected = WordFactory.zero();
-        Word actual = SEGFAULT_HANDLER_INSTALLED.get().compareAndSwapWord(0, expected, WordFactory.unsigned(1), LocationIdentity.ANY_LOCATION);
+        Word expected = Word.zero();
+        Word actual = SEGFAULT_HANDLER_INSTALLED.get().compareAndSwapWord(0, expected, Word.unsigned(1), LocationIdentity.ANY_LOCATION);
         return expected == actual;
     }
 }
@@ -129,7 +140,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
 public abstract class SubstrateSegfaultHandler {
     public static class Options {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
+        public static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
@@ -182,13 +193,13 @@ public abstract class SubstrateSegfaultHandler {
          * Try to determine the isolate via the thread register. Set the thread register to null so
          * that we don't execute this code more than once if we trigger a recursive segfault.
          */
-        WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
+        WriteCurrentVMThreadNode.writeCurrentVMThread(Word.nullPointer());
 
         IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
         if (isolateThread.isNonNull()) {
             Isolate isolate = VMThreads.IsolateTL.get(isolateThread);
             if (isValid(isolate)) {
-                CEntryPointSnippets.setHeapBase(isolate);
+                CEntryPointSnippets.initBaseRegisters(isolate);
                 WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
                 return true;
             }
@@ -200,10 +211,10 @@ public abstract class SubstrateSegfaultHandler {
     @NeverInline("Prevent register writes from floating")
     private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context) {
         /*
-         * Set the heap base register to null so that we don't execute this code more than once if
-         * we trigger a recursive segfault.
+         * Set the base registers to null so that we don't execute this code more than once if we
+         * trigger a recursive segfault.
          */
-        CEntryPointSnippets.setHeapBase(WordFactory.nullPointer());
+        CEntryPointSnippets.initBaseRegisters(Word.nullPointer(), Word.nullPointer());
 
         Isolate isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
         if (isValid(isolate)) {
@@ -224,8 +235,9 @@ public abstract class SubstrateSegfaultHandler {
          * value as an extra sanity check. Note that the heap base register still contains an
          * invalid value when we execute this code, which makes things a bit more complex.
          */
-        UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton().getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFields());
-        UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(WordFactory.unsigned(offsetOfStaticFieldWithWellKnownValue));
+        UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton()
+                        .getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER));
+        UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(Word.unsigned(offsetOfStaticFieldWithWellKnownValue));
         Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
         return wellKnownField.readLong(0) == MARKER_VALUE;
     }
@@ -246,7 +258,7 @@ public abstract class SubstrateSegfaultHandler {
              */
             int isolateThreadSize = VMThreadLocalSupport.singleton().vmThreadSize;
             IsolateThread structForUnattachedThread = UnsafeLateStackValue.get(isolateThreadSize);
-            UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, WordFactory.unsigned(isolateThreadSize), (byte) 0);
+            UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, Word.unsigned(isolateThreadSize), (byte) 0);
             CEntryPointSnippets.initializeIsolateThreadForCrashHandler(isolate, structForUnattachedThread);
         }
     }
@@ -258,6 +270,7 @@ public abstract class SubstrateSegfaultHandler {
     }
 
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
+    @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     public static void dump(PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         Pointer sp = (Pointer) RegisterDumper.singleton().getSP(context);
         CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(context);
@@ -321,9 +334,9 @@ public abstract class SubstrateSegfaultHandler {
         @Override
         @Uninterruptible(reason = "Thread state not yet set up.")
         public void afterCreateIsolate(Isolate isolate) {
-            PointerBase value = baseIsolate.get().compareAndSwapWord(0, WordFactory.zero(), isolate, LocationIdentity.ANY_LOCATION);
+            PointerBase value = baseIsolate.get().compareAndSwapWord(0, Word.zero(), isolate, LocationIdentity.ANY_LOCATION);
             if (!value.isNull()) {
-                baseIsolate.get().writeWord(0, WordFactory.signed(-1));
+                baseIsolate.get().writeWord(0, Word.signed(-1));
             }
         }
 

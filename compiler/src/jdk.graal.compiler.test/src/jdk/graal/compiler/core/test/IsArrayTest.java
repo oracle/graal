@@ -29,6 +29,7 @@ import java.io.Serializable;
 import org.junit.Test;
 
 public class IsArrayTest extends GraalCompilerTest {
+    @SuppressWarnings("cast")
     public static boolean test1(Object o) {
         if (o instanceof Serializable) {
             /*

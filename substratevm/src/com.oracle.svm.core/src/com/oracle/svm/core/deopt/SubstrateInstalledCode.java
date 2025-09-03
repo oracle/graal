@@ -102,7 +102,7 @@ public interface SubstrateInstalledCode {
      * {@link #isValid()} returns {@code false}, {@link #isAlive()} returns {@code true}, and
      * {@link #getEntryPoint()} returns 0.
      */
-    void invalidateWithoutDeoptimization();
+    void makeNonEntrant();
 
     SubstrateSpeculationLog getSpeculationLog();
 

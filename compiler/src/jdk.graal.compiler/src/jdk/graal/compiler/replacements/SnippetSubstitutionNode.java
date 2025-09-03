@@ -27,14 +27,15 @@ package jdk.graal.compiler.replacements;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
-import jdk.graal.compiler.replacements.nodes.MacroNode;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 
 /**
@@ -61,14 +62,14 @@ public class SnippetSubstitutionNode extends MacroWithExceptionNode implements L
 
     @Override
     public void lower(LoweringTool tool) {
-        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, this.graph().getGuardsStage(), tool.getLoweringStage());
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, this.graph(), tool.getLoweringStage());
         int arg = 0;
         for (; arg < arguments.size(); arg++) {
             args.add(snippet.getParameterName(arg), arguments.get(arg));
         }
         if (constantArguments != null) {
             for (Object argument : constantArguments) {
-                args.addConst(snippet.getParameterName(arg), argument);
+                args.add(snippet.getParameterName(arg), argument);
                 arg++;
             }
         }

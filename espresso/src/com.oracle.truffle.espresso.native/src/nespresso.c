@@ -125,7 +125,7 @@ struct VarargsA {
 
 static jboolean valist_pop_boolean(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (jboolean) (va_arg(v->args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
+    return va_arg(v->args, jint) == 0 ? JNI_FALSE : JNI_TRUE;
 }
 
 static jbyte valist_pop_byte(struct Varargs* varargs) {
@@ -145,7 +145,7 @@ static jshort valist_pop_short(struct Varargs* varargs) {
 
 static jint valist_pop_int(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (jint) va_arg(v->args, jint);
+    return va_arg(v->args, jint);
 }
 
 static jfloat valist_pop_float(struct Varargs* varargs) {
@@ -155,22 +155,22 @@ static jfloat valist_pop_float(struct Varargs* varargs) {
 
 static jdouble valist_pop_double(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (jdouble) va_arg(v->args, jdouble);
+    return va_arg(v->args, jdouble);
 }
 
 static jlong valist_pop_long(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (jlong) va_arg(v->args, jlong);
+    return va_arg(v->args, jlong);
 }
 
 static jobject valist_pop_object(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (jobject) va_arg(v->args, jobject);
+    return va_arg(v->args, jobject);
 }
 
 static void* valist_pop_word(struct Varargs* varargs) {
     struct VarargsV* v = (struct VarargsV*) varargs;
-    return (void*) va_arg(v->args, void*);
+    return va_arg(v->args, void*);
 }
 
 // jvalue* varargs impl
@@ -458,6 +458,10 @@ jint GetJavaVM(JNIEnv *env, JavaVM **vmPtr) {
   if (vmPtr == NULL) {
     return JNI_ERR;
   }
+  if (env == NULL) {
+    fprintf(stderr, "GetJavaVM: Passed JNIEnv* is NULL" OS_NEWLINE_STR);
+    return JNI_ERR;
+  }
 
   moka_env = (MokapotEnv*) (*env)->reserved1;
   if (moka_env == NULL) {
@@ -494,15 +498,16 @@ JNIEXPORT JNIEnv* JNICALL initializeNativeContext(void* (*fetch_by_name)(const c
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
 
+  jni_impl->reserved0 = nespresso_env;
+  jni_impl->reserved1 = NULL;
+  jni_impl->reserved2 = NULL;
+  jni_impl->reserved3 = NULL;
   int fnCount = sizeof(*jni_impl) / sizeof(void*);
-  int i;
-  for (i = 0; i < fnCount; ++i) {
+  for (int i = 4; i < fnCount; ++i) {
     ((void**)jni_impl)[i] = &unset_function_error;
   }
 
   *env = jni_impl;
-
-  jni_impl->reserved0 = nespresso_env;
 
   // Fetch Java ... varargs methods.
   #define INIT_VARARGS_METHOD__(fn_name) \
@@ -577,8 +582,4 @@ JNIEXPORT void JNICALL freeMemory(void *ptr) {
 
 JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size) {
   return realloc(ptr, new_size);
-}
-
-JNIEXPORT jlong JNICALL get_SIZE_MAX() {
-  return (jlong) SIZE_MAX;
 }

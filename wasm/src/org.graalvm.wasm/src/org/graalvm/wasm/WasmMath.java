@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.ExactMath;
-
 import static java.lang.Integer.compareUnsigned;
 
 /**
@@ -50,29 +48,6 @@ import static java.lang.Integer.compareUnsigned;
  * unsigned arithmetic, which are not built in Java nor provided by the {@link Math} class.
  */
 public final class WasmMath {
-
-    /**
-     * The number of logical bits in the significand of a {@code double}, <strong>excluding</strong>
-     * the implicit bit.
-     */
-    private static final long DOUBLE_SIGNIFICAND_WIDTH = 52;
-
-    /**
-     * Bit mask to isolate the significand field of a <code>double</code>.
-     */
-    public static final long DOUBLE_SIGNIFICAND_BIT_MASK = 0x000FFFFFFFFFFFFFL;
-
-    /**
-     * The spacing between two consecutive {@code float} values (aka Unit in the Last Place) in the
-     * range [2^31, 2^32): 2^40.
-     */
-    private static final long FLOAT_POWER_63_ULP = (long) Math.ulp(0x1p63f);
-
-    /**
-     * The spacing between two consecutive {@code double} values (aka Unit in the Last Place) in the
-     * range [2^63, 2^64): 2^11.
-     */
-    private static final long DOUBLE_POWER_63_ULP = (long) Math.ulp(0x1p63);
 
     /**
      * Don't let anyone instantiate this class.
@@ -130,147 +105,14 @@ public final class WasmMath {
      * Converts the given unsigned {@code int} to the closest {@code float} value.
      */
     public static float unsignedIntToFloat(int x) {
-        return unsignedIntToLong(x);
+        return Integer.toUnsignedLong(x);
     }
 
     /**
      * Converts the given unsigned {@code int} to the closest {@code double} value.
      */
     public static double unsignedIntToDouble(int x) {
-        return unsignedIntToLong(x);
-    }
-
-    /**
-     * Converts the given unsigned {@code int} to the corresponding {@code long}.
-     */
-    public static long unsignedIntToLong(int x) {
-        // See https://stackoverflow.com/a/22938125.
-        return x & 0xFFFFFFFFL;
-    }
-
-    /**
-     * Converts the given unsigned {@code long} to the closest {@code float} value.
-     */
-    public static float unsignedLongToFloat(long x) {
-        if (x >= 0) {
-            // If the first bit is not set, then we can simply cast which is faster.
-            return x;
-        }
-
-        // Transpose x from [Integer.MIN_VALUE,-1] to [0, Integer.MAX_VALUE]
-        final long shiftedX = x + Long.MIN_VALUE;
-
-        // We cannot simply compute 0x1p63f + shiftedX because it yields incorrect results in some
-        // edge cases due to rounding twice (conversion to long, and addition). See
-        // https://github.com/WebAssembly/spec/issues/421 and mentioned test cases for more context.
-        // Instead, we manually compute the offset from 0x1p63f.
-        final boolean roundUp = shiftedX % FLOAT_POWER_63_ULP > FLOAT_POWER_63_ULP / 2;
-        final long offset = (shiftedX / FLOAT_POWER_63_ULP) + (roundUp ? 1 : 0);
-
-        // Return the offset-nth next floating-point value starting from 2^63. This is equivalent to
-        // incrementing the significand (as Math.nextUp would do) offset times.
-        return 0x1p63f + (offset * (float) FLOAT_POWER_63_ULP);
-    }
-
-    /**
-     * Converts the given unsigned {@code long} to the closest {@code double} value.
-     */
-    public static double unsignedLongToDouble(long x) {
-        if (x >= 0) {
-            // If the first bit is not set, then we can simply cast which is faster.
-            return x;
-        }
-
-        // Transpose x from [Long.MIN_VALUE,-1] to [0, Long.MAX_VALUE].
-        final long shiftedX = x + Long.MIN_VALUE;
-
-        // We cannot simply compute 0x1p63 + shiftedX because it yields incorrect results in some
-        // edge cases due to rounding twice (conversion to long, and addition). See
-        // https://github.com/WebAssembly/spec/issues/421 and mentioned test cases for more context.
-        // Instead, we manually compute the offset from 0x1p63.
-        final boolean roundUp = shiftedX % DOUBLE_POWER_63_ULP > DOUBLE_POWER_63_ULP / 2;
-        final long offset = (shiftedX / DOUBLE_POWER_63_ULP) + (roundUp ? 1 : 0);
-
-        // Return the offset-nth next floating-point value starting form 2^63. This is equivalent to
-        // incrementing the significand (as Math.nextUp would do) offset times.
-        return 0x1p63 + (offset * (double) DOUBLE_POWER_63_ULP);
-    }
-
-    /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given float and
-     * converts it to a <strong>signed</strong> long.
-     * <p>
-     * The operation is saturating: if the float is smaller than {@link Integer#MIN_VALUE} or larger
-     * than {@link Integer#MAX_VALUE}, then respectively {@link Integer#MIN_VALUE} or
-     * {@link Integer#MAX_VALUE} is returned.
-     */
-    public static long truncFloatToLong(float x) {
-        return truncDoubleToLong(x);
-    }
-
-    /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given double and
-     * converts it to a <strong>signed</strong> long.
-     * <p>
-     * The operation is saturating: if the double is smaller than {@link Long#MIN_VALUE} or larger
-     * than {@link Long#MAX_VALUE}, then respectively {@link Long#MIN_VALUE} or
-     * {@link Long#MAX_VALUE} is returned.
-     */
-    public static long truncDoubleToLong(double x) {
-        return (long) ExactMath.truncate(x);
-    }
-
-    /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given float and
-     * converts it to an <strong>unsigned</strong> long.
-     * <p>
-     * The operation is saturating: if the float is smaller than 0 or larger than 2^32 - 1, then
-     * respectively 0 or 2^32 - 1 is returned.
-     */
-    public static long truncFloatToUnsignedLong(float x) {
-        return truncDoubleToUnsignedLong(x);
-    }
-
-    /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given double and
-     * converts it to an <strong>unsigned</strong> long.
-     * <p>
-     * The operation is saturating: if the double is smaller than 0 or larger than 2^64 - 1, then
-     * respectively 0 or 2^64 - 1 is returned.
-     */
-    public static long truncDoubleToUnsignedLong(double x) {
-        if (x < Long.MAX_VALUE) {
-            // If the first bit is not set, then we use the signed variant which is faster.
-            return truncDoubleToLong(x);
-        }
-
-        // There is no direct way to convert a double to an _unsigned_ long in Java. Therefore we
-        // manually split the binary representation of x into significand (aka base or mantissa) and
-        // exponent, and compute the resulting long by shifting the significand.
-
-        final long shift = Math.getExponent(x) - DOUBLE_SIGNIFICAND_WIDTH;
-        final long xBits = Double.doubleToRawLongBits(x);
-        final long significand = (1L << DOUBLE_SIGNIFICAND_WIDTH) | (xBits & DOUBLE_SIGNIFICAND_BIT_MASK);
-
-        if (shift >= Long.SIZE - DOUBLE_SIGNIFICAND_WIDTH) {
-            // Saturation: if x is too large to convert to a long, we return the highest possible
-            // value (all bits set).
-            return 0xffff_ffff_ffff_ffffL;
-        } else if (shift > 0) {
-            // Multiply significand by 2^shift.
-            return significand << shift;
-        }
-
-        // Should not reach here because x >= Long.MAX_VALUE, so shift >=
-        // (Math.getExponent(Long.MAX_VALUE) - DOUBLE_SIGNIFICAND_WIDTH) == 11.
-
-        if (shift >= -DOUBLE_SIGNIFICAND_WIDTH) {
-            // Multiply significand by 2^shift == divide significand by 2^(-shift).
-            return significand >> -shift;
-        } else {
-            // Saturation: if x is too small to convert to a long, we return 0.
-            return 0;
-        }
+        return Integer.toUnsignedLong(x);
     }
 
 }

@@ -2,7 +2,6 @@
   local common = import '../../ci/ci_common/common.jsonnet',
   local utils = import '../../ci/ci_common/common-utils.libsonnet',
   local top_level_ci = utils.top_level_ci,
-  local devkits = common.devkits,
 
   local tools_common = {
     setup+: [
@@ -25,10 +24,11 @@
   local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
     name: 'gate-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
-    targets: ["gate"],
+    targets: [if (self.jdk_name == "jdk-latest") then "tier2" else "tier3"],
     guard+: {
         includes+: ["**.jsonnet"],
-    }
+    },
+    notify_groups:: ["tools"],
   },
 
   local tools_weekly = tools_common + {
@@ -43,12 +43,13 @@
   },
 
   local tools_javadoc = tools_common + common_guard + {
-    name: "gate-tools-javadoc",
+    name: "gate-tools-javadoc-" + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "javadoc"],
     ],
-    targets: ["gate"]
+    targets: ["tier1"],
+    notify_groups:: ["tools"],
   },
 
   local coverage_whitelisting = [
@@ -85,13 +86,13 @@
     common.linux_amd64   + common.oraclejdkLatest + tools_gate,
     common.linux_amd64   + common.oraclejdk21 + tools_gate,
 
-    common.linux_amd64   + common.oraclejdk21 + tools_javadoc,
+    common.linux_amd64   + common.oraclejdkLatest + tools_javadoc,
     common.linux_amd64   + common.oraclejdk21 + tools_coverage_weekly,
     common.linux_aarch64 + common.labsjdkLatest   + tools_weekly,
     common.linux_aarch64 + common.labsjdk21   + tools_weekly,
 
-    common.windows_amd64 + common.oraclejdkLatest + tools_weekly + devkits["windows-jdkLatest"],
-    common.windows_amd64 + common.oraclejdk21 + tools_weekly + devkits["windows-jdk21"],
+    common.windows_amd64 + common.oraclejdkLatest + tools_weekly + common.deps.windows_devkit,
+    common.windows_amd64 + common.oraclejdk21 + tools_weekly + common.deps.windows_devkit,
 
     common.darwin_amd64  + common.oraclejdkLatest + tools_weekly,
     common.darwin_amd64  + common.oraclejdk21 + tools_weekly,

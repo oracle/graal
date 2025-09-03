@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex;
 
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -56,12 +57,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.analysis.InputStringGenerator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TruffleNull;
 
@@ -145,11 +144,9 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     public static final String MIME_TYPE = "application/tregex";
 
     private final GroupBoundaries[] cachedGroupBoundaries;
-    public final RegexParserGlobals parserGlobals;
 
     public RegexLanguage() {
         this.cachedGroupBoundaries = GroupBoundaries.createCachedGroupBoundaries();
-        this.parserGlobals = new RegexParserGlobals(this);
     }
 
     public GroupBoundaries[] getCachedGroupBoundaries() {
@@ -158,7 +155,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        RegexSource source = createRegexSource(parsingRequest.getSource());
+        RegexSource source = createRegexSource(parsingRequest);
         if (source.getOptions().isGenerateInput()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
             RegexParser parser = flavor.createParser(this, source, new CompilationBuffer(source.getEncoding()));
@@ -167,12 +164,13 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         return RootNode.createConstantNode(createRegexObject(source)).getCallTarget();
     }
 
-    public static RegexSource createRegexSource(Source source) {
+    private static RegexSource createRegexSource(ParsingRequest parsingRequest) {
+        Source source = parsingRequest.getSource();
         String srcStr = source.getCharacters().toString();
         if (srcStr.length() < 2) {
             throw CompilerDirectives.shouldNotReachHere("malformed regex");
         }
-        RegexOptions.Builder optBuilder = RegexOptions.builder(source, srcStr);
+        RegexOptions.Builder optBuilder = RegexOptions.builder(parsingRequest);
         int firstSlash = optBuilder.parseOptions();
         int lastSlash = srcStr.lastIndexOf('/');
         assert firstSlash >= 0 && firstSlash <= srcStr.length();
@@ -182,9 +180,16 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         String pattern = srcStr.substring(firstSlash + 1, lastSlash);
         String flags = srcStr.substring(lastSlash + 1);
         // ECMAScript-specific: the 'u' and 'v' flags change the encoding
-        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW &&
-                        (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0)) {
-            optBuilder.encoding(Encodings.UTF_16);
+        if (optBuilder.getFlavor().getName().equals(RegexOptions.FLAVOR_ECMASCRIPT)) {
+            if (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0) {
+                if (!optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW) {
+                    optBuilder.encoding(Encodings.UTF_16);
+                }
+            } else {
+                if (optBuilder.getEncoding() == Encodings.UTF_16) {
+                    optBuilder.encoding(Encodings.UTF_16_RAW);
+                }
+            }
         }
         return new RegexSource(pattern, flags, optBuilder.build(), source);
     }
@@ -204,6 +209,11 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     @Override
+    protected OptionDescriptors getSourceOptionDescriptors() {
+        return RegexOptions.getDescriptors();
+    }
+
+    @Override
     protected RegexContext createContext(Env env) {
         return new RegexContext(env);
     }
@@ -217,6 +227,12 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     @Override
     protected Object getScope(RegexContext context) {
         return null;
+    }
+
+    private static final LanguageReference<RegexLanguage> REFERENCE = LanguageReference.create(RegexLanguage.class);
+
+    public static RegexLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     /**

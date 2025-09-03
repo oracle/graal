@@ -114,7 +114,7 @@ abstract class CallSignatureNode extends Node {
         @ReportPolymorphism.Megamorphic
         @Specialization(guards = "signature.cachedState == null")
         static Object doSlowPath(NFISignature signature, Object function, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception,
                         @Cached ConvertToNativeNode convertArg,
                         @Cached ConvertFromNativeNode convertRet,
@@ -251,7 +251,7 @@ abstract class CallSignatureNode extends Node {
         @Specialization(limit = "1")
         @GenerateAOT.Exclude
         Object doCall(NFISignature signature, Object function, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception,
                         @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != convertArgs.length) {

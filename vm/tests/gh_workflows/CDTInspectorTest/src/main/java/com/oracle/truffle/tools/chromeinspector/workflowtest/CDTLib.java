@@ -128,8 +128,8 @@ public final class CDTLib {
 
         public Actions(WebDriver driver) throws NoSuchElementException {
             this.driver = driver;
-            WebElement toolbar = ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.scripts-debug-toolbar")).apply(driver);
-            toolbarButtons = toolbar.getShadowRoot().findElements(By.cssSelector("button.toolbar-button"));
+            WebElement toolbar = ExpectedConditions.presenceOfElementLocated(By.cssSelector("devtools-toolbar.scripts-debug-toolbar")).apply(driver);
+            toolbarButtons = toolbar.findElements(By.cssSelector("devtools-button.toolbar-button"));
             if (toolbarButtons.size() < Action.values().length) {
                 throw new NoSuchElementException("Insufficient numebr of toolbar buttons: " + toolbarButtons.size() + " expecting " + Action.values().length);
             }

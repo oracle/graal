@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,19 +69,16 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
     }
 
     private static class CompilationFinalWeakReferenceTestNode extends AbstractTestNode {
-        @CompilationFinal private WeakReference<Integer> finalWeakRefInteger;
         @CompilationFinal private WeakReference<Object> finalWeakRefNull;
         @CompilationFinal private WeakReference<IntSupplier> finalWeakRef;
 
         CompilationFinalWeakReferenceTestNode(IntSupplier data) {
-            this.finalWeakRefInteger = new WeakReference<>(0);
             this.finalWeakRefNull = new WeakReference<>(null);
             this.finalWeakRef = new WeakReference<>(data);
         }
 
         @Override
         public int execute(VirtualFrame frame) {
-            partialEvaluationConstantAndEquals(finalWeakRefInteger.get(), Integer.valueOf(0));
             partialEvaluationConstantAndEquals(finalWeakRefNull.get(), null);
 
             IntSupplier supplier = finalWeakRef.get();
@@ -185,7 +182,7 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
     }
 
     private static IntSupplier generateTestData() {
-        return IntStream.range(0, 42).mapToObj(i -> new TestData()).reduce((l, r) -> new TestData(l, r)).get();
+        return IntStream.range(0, 42).mapToObj(_ -> new TestData()).reduce((l, r) -> new TestData(l, r)).get();
     }
 
     /**

@@ -48,6 +48,9 @@ public final class Location {
      */
     private final int originLine;
 
+    private final int startOffset;
+    private final int endOffset;
+
     /**
      * Additional data/services, like OpenCookie, Node to present the data etc.
      */
@@ -62,10 +65,12 @@ public final class Location {
 
     private short frameFrom = -1, frameTo = -1;
 
-    public Location(String originSpec, FileKey originFile, int originLine, Location nested, int frame, int frameTo) {
+    public Location(String originSpec, FileKey originFile, int originLine, int startOffset, int endOffset, Location nested, int frame, int frameTo) {
         this.file = originFile;
         this.originSpec = originSpec;
         this.originLine = originLine;
+        this.startOffset = startOffset;
+        this.endOffset = endOffset;
         this.frameFrom = (short) frame;
         this.frameTo = (short) (frameTo == -1 ? frame : frameTo);
     }
@@ -103,6 +108,20 @@ public final class Location {
         return originLine;
     }
 
+    /** A pair of offsets.
+     *
+     * @return either {@code null} when there are no offsets or an {code @int} array
+     *   of size two. 0th element representing the start and 1st the end offset
+     *   in the document.
+     */
+    public int[] getOffsetsOrNull() {
+        if (startOffset >= 0 && endOffset > startOffset) {
+            return new int[] { startOffset, endOffset };
+        } else {
+            return null;
+        }
+    }
+
     Lookup getLookup() {
         return lookup;
     }
@@ -119,6 +138,8 @@ public final class Location {
         hash = 89 * hash + this.originLine;
         hash = 89 * hash + Objects.hashCode(this.file);
         hash = 89 * hash + Objects.hashCode(this.parent);
+        hash = 37 * hash + startOffset;
+        hash = 37 * hash + endOffset;
         cachedHash = hash == -1 ? 7 : hash;
         return cachedHash;
     }
@@ -136,6 +157,12 @@ public final class Location {
         }
         final Location other = (Location) obj;
         if (this.originLine != other.originLine) {
+            return false;
+        }
+        if (this.startOffset != other.startOffset) {
+            return false;
+        }
+        if (this.endOffset != other.endOffset) {
             return false;
         }
         if (this.parent != other.parent) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -292,6 +292,27 @@ public enum Vector128Shape {
             case Instructions.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> F64X2;
             case Instructions.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> F32X4;
             case Instructions.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> F64X2;
+
+            case Instructions.VECTOR_I8X16_RELAXED_SWIZZLE -> I8X16;
+            case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> I32X4;
+            case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> I32X4;
+            case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> I32X4;
+            case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> I32X4;
+            case Instructions.VECTOR_F32X4_RELAXED_MADD -> F32X4;
+            case Instructions.VECTOR_F32X4_RELAXED_NMADD -> F32X4;
+            case Instructions.VECTOR_F64X2_RELAXED_MADD -> F64X2;
+            case Instructions.VECTOR_F64X2_RELAXED_NMADD -> F64X2;
+            case Instructions.VECTOR_I8X16_RELAXED_LANESELECT -> I8X16;
+            case Instructions.VECTOR_I16X8_RELAXED_LANESELECT -> I16X8;
+            case Instructions.VECTOR_I32X4_RELAXED_LANESELECT -> I32X4;
+            case Instructions.VECTOR_I64X2_RELAXED_LANESELECT -> I64X2;
+            case Instructions.VECTOR_F32X4_RELAXED_MIN -> F32X4;
+            case Instructions.VECTOR_F32X4_RELAXED_MAX -> F32X4;
+            case Instructions.VECTOR_F64X2_RELAXED_MIN -> F64X2;
+            case Instructions.VECTOR_F64X2_RELAXED_MAX -> F64X2;
+            case Instructions.VECTOR_I16X8_RELAXED_Q15MULR_S -> I16X8;
+            case Instructions.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S -> I16X8;
+            case Instructions.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S -> I16X8;
             default -> null;
         };
     }

@@ -49,6 +49,11 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         this.value = value;
     }
 
+    @Override
+    public boolean structuralIntegrityValid() {
+        return super.structuralIntegrityValid() && offset.isAlive() && value.isAlive();
+    }
+
     public ValueNode getOffset() {
         return offset;
     }

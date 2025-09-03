@@ -30,26 +30,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Optional;
 
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirectoryProvider, AutoCloseable {
 
+    private final Path tempDirectoryOptionValue;
     private Path tempDirectory;
     private boolean deleteTempDirectory;
+
+    public TemporaryBuildDirectoryProviderImpl(Path tempDirectoryOptionValue) {
+        this.tempDirectoryOptionValue = tempDirectoryOptionValue;
+    }
 
     @Override
     public synchronized Path getTemporaryBuildDirectory() {
         if (tempDirectory == null) {
             try {
-                Optional<Path> tempName = NativeImageOptions.TempDirectory.getValue().lastValue();
-                if (tempName.isEmpty()) {
+                if (tempDirectoryOptionValue == null) {
                     tempDirectory = Files.createTempDirectory("SVM-");
                     deleteTempDirectory = true;
                 } else {
-                    tempDirectory = tempName.get().resolve("SVM-" + System.currentTimeMillis());
+                    tempDirectory = tempDirectoryOptionValue.resolve("SVM-" + TimeUtils.currentTimeMillis());
                     assert !Files.exists(tempDirectory);
                     Files.createDirectories(tempDirectory);
                 }

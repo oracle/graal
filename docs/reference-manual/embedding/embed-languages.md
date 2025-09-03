@@ -27,7 +27,7 @@ permalink: /reference-manual/embed-languages/
 
 The [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) lets you embed and run code from guest languages in Java host applications.
 
-Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language. 
+Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
 > Note: The usage description for polyglot embeddings was revised with GraalVM for JDK 21 and Polyglot API version 23.1.0. If you are still using Polyglot API version older than 23.1.0, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
@@ -40,23 +40,23 @@ See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-e
 
 Here is an example Maven dependency setup that you can put into your project:
 ```xml
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
-	<artifactId>polyglot</artifactId> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>polyglot</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 </dependency>
-<dependency> 
+<dependency>
 	<groupId>org.graalvm.polyglot</groupId>
 	<!-- Select a language: js, ruby, python, java, llvm, wasm, languages-->
-	<artifactId>js</artifactId> 
+	<artifactId>js</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- Add additional languages if needed -->
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
     <!-- Select a tool: profiler, inspect, coverage, dap, tools -->
-	<artifactId>profiler</artifactId> 
+	<artifactId>profiler</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
@@ -68,8 +68,9 @@ Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)
 To use community-licensed versions instead, add the `-community` suffix to each artifact (for example, `js-community`).
 To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (for example, `js-isolate`).
 
-The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
-This artifact might grow or shrink between major releases. We recommend selecting only the needed language(s) for a production deployment.
+The artifacts `languages` and `tools` include all available languages and tools as dependencies.
+This artifact might grow or shrink between major releases.
+We recommend selecting only the needed language(s) for a production deployment.
 
 Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules:
 ```java
@@ -81,7 +82,7 @@ module com.mycompany.app {
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
 For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
 
-We recommend configuring polyglot embeddings using modules and the module path whenever possible. 
+We recommend configuring polyglot embeddings using modules and the module path whenever possible.
 Be aware that using `org.graalvm.polyglot` from the class path instead will enable access to unsafe APIs for all libraries on the class path.
 If the application is not yet modularized, hybrid use of the class path and module path is possible.
 For example:
@@ -92,7 +93,7 @@ In this example, `lib/polyglot` directory should contain all polyglot and langua
 To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
 If you are using [GraalVM Native Image](#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
-While we do support creating single uber JAR files from polyglot libraries, for example, using the Maven Assembly plugin, but we do not recommend it.
+While we do support [creating single uber JAR files](#uber-jar-file-creation) from polyglot libraries, for example, using the Maven Assembly plugin, we do not recommend it.
 Also note that uber JAR files are not supported when creating native binaries with GraalVM Native Image.
 
 ## Compile and Run a Polyglot Application
@@ -124,17 +125,15 @@ You can use this application with other code examples to demonstrate more advanc
 
 Polyglot applications let you take values from one programming language and use them with other languages.
 
-Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript, R, Ruby, or Python functions as Java values.
+Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript or Python functions as Java values.
 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Function_JS" tab1name="JavaScript" tab1path="embed/function_js.java"
-tab2type="java" tab2id="Function_R" tab2name="R" tab2path="embed/function_R.java"
-tab3type="java" tab3id="Function_Ruby" tab3name="Ruby" tab3path="embed/function_ruby.java"
-tab4type="java" tab4id="Function_Python" tab4name="Python" tab4path="embed/function_python.java"
+tab2type="java" tab2id="Function_Python" tab2name="Python" tab2path="embed/function_python.java"
 %}
 
-&nbsp;In this code:
+In this code:
 - `Value function` is a Java value that refers to a function.
 - The `eval` call parses the script and returns the guest language function.
 - The first assertion checks that the value returned by the code snippet can be executed.
@@ -152,32 +151,20 @@ Use the code example in this section with your polyglot application to show how 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Access_JS" tab1name="JavaScript" tab1path="embed/access_js_from_java.java"
-tab2type="java" tab2id="Access_R" tab2name="R" tab2path="embed/access_R_from_java.java"
-tab3type="java" tab3id="Access_Ruby" tab3name="Ruby" tab3path="embed/access_ruby_from_java.java"
-tab4type="java" tab4id="Access_Python" tab4name="Python" tab4path="embed/access_python_from_java.java"
+tab2type="java" tab2id="Access_Python" tab2name="Python" tab2path="embed/access_python_from_java.java"
 %}
 
-&nbsp;In this code:
-- `Value result` is an Object that contains three members: a number named `id`,
-a string named `text`, and an array named `arr`.
-- The first assertion verifies that the return value can contain members, which
-indicates that the value is an object-like structure.
-- The `id` variable is initialized by reading the member with the name `id` from
-the resulting object. The result is then converted to a Java `int`
-using `asInt()`.
+In this code:
+- `Value result` is an Object that contains three members: a number named `id`, a string named `text`, and an array named `arr`.
+- The first assertion verifies that the return value can contain members, which indicates that the value is an object-like structure.
+- The `id` variable is initialized by reading the member with the name `id` from the resulting object. The result is then converted to a Java `int` using `asInt()`.
 - The next assert verifies that result has a value of `42`.
-- The `text` variable is initialized using the value of the member `text`,
-which is also converted to a Java `String` using `asString()`.
-- The following assertion verifies the result value is equal to the
-Java `String` `"42"`.
+- The `text` variable is initialized using the value of the member `text`, which is also converted to a Java `String` using `asString()`.
+- The following assertion verifies the result value is equal to the Java `String` `"42"`.
 - Next the `arr` member that holds an array is read.
-- Arrays return `true` for `hasArrayElements`. R array instances can have
-members and array elements at the same time.
-- The next assertion verifies that the size of the array equals three. The
-Polyglot API supports big arrays, so the array length is of type `long`.
-- Finally we verify that the array element at index `1` equals `42`. Array
-indexing with polyglot values is always zero-based, even for languages such as
-R where indices start with one.
+- Arrays return `true` for `hasArrayElements`.
+- The next assertion verifies that the size of the array equals three. The Polyglot API supports big arrays, so the array length is of type `long`.
+- Finally we verify that the array element at index `1` equals `42`. Array indexing with polyglot values is always zero-based, even for languages where indices start with one.
 
 ## Access Java from Guest Languages
 
@@ -193,12 +180,10 @@ Use the code example in this section with your polyglot application to show how 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Access_Java_from_JS" tab1name="JavaScript" tab1path="embed/access_java_from_js.java"
-tab2type="java" tab2id="Access_Java_from_R" tab2name="R" tab2path="embed/access_java_from_R.java"
-tab3type="java" tab3id="Access_Java_from_Ruby" tab3name="Ruby" tab3path="embed/access_java_from_ruby.java"
-tab4type="java" tab4id="Access_Java_from_Python" tab4name="Python" tab4path="embed/access_java_from_python.java"
+tab2type="java" tab2id="Access_Java_from_Python" tab2name="Python" tab2path="embed/access_java_from_python.java"
 %}
 
-&nbsp;In this code:
+In this code:
 - The Java class `MyClass` has four public fields `id`, `text`, `arr`, and
 `ret42`. The fields are initialized with `42`, `"42"`, `new int[]{1, 42, 3}`, and
 lambda `() -> 42` that always returns an `int` value of `42`.
@@ -215,8 +200,7 @@ to the number `42` and the string `'42'`.
 to the number `42`. Whether arrays are accessed using 0-based or 1-based indices
 depends on the guest language. Independently of the language, the Java array
 stored in the `arr` field is always accessed using translated 0-based indices. For
-example, in the R language, arrays are 1-based so the second array element is
-accessible using index `2`. In the JavaScript and Ruby languages, the second
+example, in the JavaScript and Ruby languages, the second
 array element is at index `1`. In all language examples, the Java array is read
 from using the same index `1`.
 - The last line invokes the Java lambda that is contained in the field `ret42`
@@ -233,12 +217,10 @@ Use the code example in this section with your polyglot application to show how 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Lookup_Java_from_JS" tab1name="JavaScript" tab1path="embed/lookup_java_from_js.java"
-tab2type="java" tab2id="Lookup_Java_from_R" tab2name="R" tab2path="embed/lookup_java_from_R.java"
-tab3type="java" tab3id="Lookup_Java_from_Ruby" tab3name="Ruby" tab3path="embed/lookup_java_from_ruby.java"
-tab4type="java" tab4id="Lookup_Java_from_Python" tab4name="Python" tab4path="embed/lookup_java_from_python.java"
+tab2type="java" tab2id="Lookup_Java_from_Python" tab2name="Python" tab2path="embed/lookup_java_from_python.java"
 %}
 
-&nbsp;In this code:
+In this code:
 - A new context is created with all access enabled (`allowAllAccess(true)`).
 - A guest language script is evaluated.
 - The script looks up the Java type `java.math.BigDecimal` and stores it in a variable named `BigDecimal`.
@@ -261,12 +243,10 @@ Use the code example in this section with your polyglot application to see how y
 {%
 include snippet-tabs
 tab1type="java" tab1id="Proxy_JS" tab1name="JavaScript" tab1path="embed/proxy_js.java"
-tab2type="java" tab2id="Proxy_R" tab2name="R" tab2path="embed/proxy_R.java"
-tab3type="java" tab3id="Proxy_Ruby" tab3name="Ruby" tab3path="embed/proxy_ruby.java"
-tab4type="java" tab4id="Proxy_Python" tab4name="Python" tab4path="embed/proxy_python.java"
+tab2type="java" tab2id="Proxy_Python" tab2name="Python" tab2path="embed/proxy_python.java"
 %}
 
-&nbsp;In this code:
+In this code:
 - The Java class `ComputedArray` implements the proxy interface `ProxyArray` so
 that guest languages treat instances of the Java class-like arrays.
 - `ComputedArray` array overrides the method `get` and computes the value
@@ -279,7 +259,7 @@ an `UnsupportedOperationException` in the implementation of `set`.
 - The guest language script imports the `arr` symbol, which returns the
 exported proxy.
 - The second element and the `1000000000`th element is accessed, summed up, and
-then returned. Note that array indices from 1-based languages such as R are
+then returned. Note that array indices from 1-based languages are
 converted to 0-based indices for proxy arrays.
 - The result of the language script is returned as a long value and verified.
 
@@ -295,7 +275,7 @@ These restrictions can be lifted entirely by setting `allowAllAccess` to `true`.
 ### Controlling Access to Host Functions
 
 It might be desirable to limit the access of guest applications to the host.
-For example, if a Java method is exposed that calls `System.exit` then the guest application will be able to exit the host process.
+For example, if a Java method is exposed that calls `System.exit`, then the guest application will be able to exit the host process.
 In order to avoid accidentally exposed methods, no host access is allowed by default and every public method or field needs to be annotated with `@HostAccess.Export` explicitly.
 
 {%
@@ -303,7 +283,7 @@ include snippet-tabs
 tab1type="java" tab1id="ExplicitHostAccess_js" tab1name="JavaScript" tab1path="embed/explicit_access_java_from_js.java"
 %}
 
-&nbsp;In this code:
+In this code:
 - The class `Employee` is declared with a field `name` of type `String`. Access to the `getName` method is explicitly allowed by annotating the method with `@HostAccess.Export`.
 - The `Services` class exposes two methods, `createEmployee` and `exitVM`. The `createEmployee` method takes the name of the employee as an argument and creates a new `Employee` instance. The `createEmployee` method is annotated with `@HostAccess.Export` and therefore accessible to the guest application. The `exitVM` method is not explicitly exported and therefore not accessible.
 - The `main` method first creates a new polyglot context in the default configuration, disallowing host access except for methods annotated with `@HostAccess.Export`.
@@ -426,20 +406,21 @@ Polyglot Truffle runtimes can be used on several host virtual machines with vary
 Runtime optimization of guest application code is crucial for the efficient execution of embedded guest applications.
 This table shows the level of optimizations the Java runtimes currently provide:
 
-| Java Runtime                                  | Runtime Optimization Level                        |
-|-----------------------------------------------|---------------------------------------------------|
-| Oracle GraalVM                                | Optimized with additional compiler passes         |
-| GraalVM Community Edition                     | Optimized                                         |
-| Oracle JDK                                    | Optimized if enabled via experimental VM option   |
-| OpenJDK                                       | Optimized if enabled via experimental VM option   |
-| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)       |
+| Java Runtime                                  | Runtime Optimization Level                          |
+|-----------------------------------------------|-----------------------------------------------------|
+| Oracle GraalVM                                | Best (includes additional compiler optimizations)   |
+| GraalVM Community Edition                     | Optimized                                           |
+| Oracle JDK                                    | Optimized via VM option                             |
+| OpenJDK                                       | Optimized via VM option and `--upgrade-module-path` |
+| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)         |
 
 ### Explanations
 
 * **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
 * **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
-* **Optimized if enabled via experimental VM option:** Optimization is not enabled by default and must be enabled using `-XX:+EnableJVMCI` virtual machine option. In addition, to support compilation, the Graal compiler must be downloaded as a JAR file and put on the `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
-* **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode. 
+* **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher.
+* **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
+* **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode.
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
 A project has been created to enable runtime optimization by default for Oracle JDK and OpenJDK.
@@ -456,8 +437,8 @@ Execution without runtime compilation will negatively impact the guest applicati
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
 The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`. 
-Note that `compiler.jar` must *not* be put on the module or class path. 
+In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`.
+Note that `compiler.jar` must *not* be put on the module or class path.
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
 ### Switching to the Fallback Engine
@@ -522,7 +503,7 @@ Here is a Maven profile configuration example:
                 <plugin>
                     <groupId>org.graalvm.buildtools</groupId>
                     <artifactId>native-maven-plugin</artifactId>
-                    <version>0.10.1</version>
+                    <version>${native.maven.plugin.version}</version>
                     <extensions>true</extensions>
                     <executions>
                         <execution>
@@ -553,13 +534,17 @@ To build a native executable with the above configuration, run:
 mvn -Pnative package
 ```
 
-To build a native executable from a polyglot application, for example, a Java-host application embedding Python, a `./resources` directory containing all the required files is created by default.
-By default, the language runtime will look for the resources directory relative to the native executable or library image that was built.
+Building a native executable from a polyglot application, for example, a Java-host application embedding Python, automatically captures all the internal resources required by the included languages and tools.
+By default, the resources are included in the native executable itself.
+The inclusion of resources in the native executable can be disabled by `-H:-IncludeLanguageResources`.
+Another option is a separate _resources_ directory containing all the required files.
+To switch to this option, use `-H:+CopyLanguageResources`. This is the default behavior when `-H:+IncludeLanguageResources` is not supported, i.e., with Graal Languages earlier than 24.2.x (see the [versions roadmap](https://www.graalvm.org/release-calendar/)).
+When `-H:+CopyLanguageResources` is used, the language runtime will look for the resources directory relative to the native executable or the shared library.
 At run time, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
-To disable the resource creation, the `-H:-CopyLanguageResources` build-time option may be used.
-Note that some languages may not support running without a resources directory.
+To disable the capturing of resources altogether, add both `-H:-IncludeLanguageResources` and `-H:-CopyLanguageResources` to build-time options.
+Note that some languages may not support running without their resources.
 
-With Polyglot version 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource directory option.
+With Graal Languages version 23.1 and newer the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource directory option.
 The language home options remain functional for compatibility reasons but may be removed in future releases.
 
 ### Configuring Native Host Reflection
@@ -708,9 +693,8 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 ```
 
 Starting from the Polyglot API version 24.1.0, the polyglot engine supports polyglot isolates for individual platforms.
-To download a polyglot isolate for a specific platform, append the operating system and
-CPU architecture classifiers to the polyglot isolate Maven `artifactId`. For example,
-to configure a dependency on isolated Python for Linux amd64, add the following Maven dependencies:
+To download a polyglot isolate for a specific platform, append the operating system and CPU architecture classifiers to the polyglot isolate Maven `artifactId`.
+For example, to configure a dependency on isolated Python for Linux amd64, add the following Maven dependencies:
 
 ```xml
 <dependency>
@@ -734,9 +718,7 @@ Supported platform classifiers are:
 * `darwin-aarch64`
 * `windows-amd64`
 
-For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform,
-refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
-
+For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform, refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
 
 To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
 The option `engine.SpawnIsolate` may not be available if used on any JDK other than Oracle GraalVM.
@@ -749,7 +731,7 @@ public class PolyglotIsolate {
 		try (Context context = Context.newBuilder("js")
 			  .allowHostAccess(HostAccess.SCOPED)
 			  .option("engine.SpawnIsolate", "true").build()) {
-			  
+
 			Value function = context.eval("js", "x => x+1");
 			assert function.canExecute();
 			int x = function.execute(41).asInt();
@@ -759,12 +741,24 @@ public class PolyglotIsolate {
 }
 ```
 
+Starting from GraalVM 25.0, a polyglot isolate can be launched in a separate external sub-process by setting the `--engine.IsolateMode=external` option.
+This allows the isolate to run in a fully separate OS process, providing an additional level of isolation. The default mode remains `internal`, which uses a Native Image isolate embedded in the same process.
+
+```java
+Context context = Context.newBuilder("js")
+			  .allowHostAccess(HostAccess.SCOPED)
+			  .option("engine.SpawnIsolate", "true")
+			  .option("engine.IsolateMode", "external")
+			  .build()
+```
+
 Currently, the following languages are available as polyglot isolates:
 
 | Language                      | Available from |
 |-------------------------------|----------------|
 | JavaScript (`js-isolate`)     | 23.1           |
 | Python (`python-isolate`)     | 24.1           |
+| Wasm (`wasm-isolate`)         | 25.0           |
 
 We plan to add support for more languages in future versions.
 
@@ -834,7 +828,7 @@ In Linux environments that support Memory Protection Keys, the `--engine.MemoryP
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
 GraalVM only enables access to the engine's heap when executing code of the Polyglot Isolate.
 
-## Embed Guest Languages in Java
+## Embed a Guest Language in Java
 
 The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
 This can be useful if a script needs to run isolated from the parent context.
@@ -911,7 +905,7 @@ for (;;) {
 
 ## Step Through with Execution Listeners
 
-The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html).
+The GraalVM Polyglot API allows users to instrument the execution of guest languages through the [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html).
 For example, it lets you attach an execution listener that is invoked for every statement of the guest language program.
 Execution listeners are designed as simple API for polyglot embedders and may become handy in, for example, single-stepping through the program.
 
@@ -943,6 +937,131 @@ In this code:
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
 
+## Uber JAR File Creation
+
+Uber JARs are JAR files that bundle all dependencies into a single archive for easier distribution.
+However, creating an Uber JAR is not recommended for Graal languages because it breaks module descriptors, file integrity metadata, and JAR signature information.
+Uber JARs are only supported on HotSpot and are not supported for native image generation, as the Native Image tool requires intact Java module descriptors.
+
+If you must use Uber JARs, use the minimal configuration below and verify that it is still up to date whenever you upgrade.
+
+You can find a working example of valid Maven Shade and Assembly plugin configurations in the [polyglot embedding example](https://github.com/graalvm/polyglot-embedding-demo?tab=readme-ov-file#maven-usage).
+See the `shade` and `assembly` profiles in [_pom.xml_](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml#L384).
+
+### Maven Shade Plugin
+
+If you intend to use the Maven Shade plugin, include at least the following transformers and filter configuration:
+
+```xml
+<profile>
+    <id>shade</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <mainClass>org.example.embedding.Main</mainClass>
+                            <manifestEntries>
+                                <Multi-Release>true</Multi-Release>
+                            </manifestEntries>
+                        </transformer>
+                    </transformers>
+                    <filters>
+                    	  <!-- Filters JAR signature files -->
+                        <filter>
+                            <artifact>*:*:*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+
+### Maven Assembly plugin
+
+If you are using the Maven Assembly plugin, you may apply the following configuration:
+
+```xml
+<profile>
+    <id>assembly</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.example.embedding.Main</mainClass>
+                                </manifest>
+                                <manifestEntries>
+                                    <Multi-Release>true</Multi-Release>
+                                </manifestEntries>
+                            </archive>
+                            <descriptors>
+                                <descriptor>assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+with the corresponding `assembly.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 http://maven.apache.org/xsd/assembly-2.2.0.xsd">
+    <id>jar-with-dependencies</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+        </dependencySet>
+    </dependencySets>
+    <containerDescriptorHandlers>
+        <containerDescriptorHandler>
+            <handlerName>metaInf-services</handlerName>
+        </containerDescriptorHandler>
+    </containerDescriptorHandlers>
+</assembly>
+```
+
 ## Compatibility with JSR-223 ScriptEngine
 
 <!--
@@ -966,9 +1085,10 @@ There are only two lines to adapt to your project:
 ```java
 public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
+    }
 ```
 
-Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "ruby" for TruffleRuby). 
+Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "js" for GraalJS).
 To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file in your resources with the chosen class name.
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
 Alternatively, the factory can be registered via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.

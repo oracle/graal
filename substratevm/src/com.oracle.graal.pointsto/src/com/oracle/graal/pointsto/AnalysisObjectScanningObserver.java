@@ -83,7 +83,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
         /* Add the new constant to the field's flow state. */
-        return fieldTypeFlow.addState(analysis, TypeState.forPrimitiveConstant(fieldValue.asLong()));
+        return fieldTypeFlow.addState(analysis, TypeState.forPrimitiveConstant(analysis, fieldValue.asLong()));
     }
 
     /**

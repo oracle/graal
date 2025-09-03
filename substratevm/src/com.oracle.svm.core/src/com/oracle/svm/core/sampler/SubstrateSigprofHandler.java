@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.Isolates;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This is the core class of the low overhead asynchronous execution sampler. It registers a SIGPROF
@@ -86,7 +86,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public void onIsolateTeardown() {
         ThreadLocalKey oldKey = keyForNativeThreadLocal;
-        keyForNativeThreadLocal = WordFactory.nullPointer();
+        keyForNativeThreadLocal = Word.nullPointer();
         PlatformThreads.singleton().deleteUnmanagedThreadLocal(oldKey);
     }
 
@@ -119,7 +119,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         /* Wait until all threads exited the signal handler and cleanup no longer needed data. */
         disallowThreadsInSamplerCode();
         try {
-            setSignalHandlerIsolate(WordFactory.nullPointer());
+            setSignalHandlerIsolate(Word.nullPointer());
         } finally {
             allowThreadsInSamplerCode();
         }
@@ -136,8 +136,13 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Override
-    @Uninterruptible(reason = "Prevent VM operations that modify the global or thread-local execution sampler state.")
     public void beforeThreadRun() {
+        /* Workaround for GR-48636. */
+        beforeThreadRun0();
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the global or thread-local execution sampler state.")
+    private void beforeThreadRun0() {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (isSampling()) {
             SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
@@ -180,7 +185,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
              * Invalidate thread-local area. Once this value is set to null, the signal handler
              * can't interrupt this thread anymore.
              */
-            storeIsolateThreadInNativeThreadLocal(WordFactory.nullPointer());
+            storeIsolateThreadInNativeThreadLocal(Word.nullPointer());
             ExecutionSamplerInstallation.uninstalled(thread);
             uninstall0(thread);
         }
@@ -198,7 +203,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         }
 
         /* Write isolate pointer (heap base) into register. */
-        CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
+        CEntryPointSnippets.initBaseRegisters(Isolates.getHeapBase(isolate));
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
         ThreadLocalKey key = singleton().keyForNativeThreadLocal;

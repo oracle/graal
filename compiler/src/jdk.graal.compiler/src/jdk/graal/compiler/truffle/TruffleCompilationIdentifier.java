@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.truffle;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
-
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
+
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 
 public interface TruffleCompilationIdentifier extends CompilationIdentifier {
 
@@ -35,4 +35,7 @@ public interface TruffleCompilationIdentifier extends CompilationIdentifier {
 
     TruffleCompilable getCompilable();
 
+    default long getTruffleCompilationId() {
+        return -1;
+    }
 }

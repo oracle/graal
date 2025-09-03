@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -48,6 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.Truffle;
@@ -68,6 +71,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             }
         }
     };
+
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
     private final long id;
@@ -75,6 +79,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
     private final EngineData engineData;
     private volatile Future<?> future;
     private volatile boolean cancelled;
+    volatile BooleanSupplier cancelledPredicate;
     private volatile boolean started;
     // Traversing queue related
     private int lastCount;
@@ -91,12 +96,25 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         this.targetRef = targetRef;
         this.action = action;
         this.id = id;
-        OptimizedCallTarget target = targetRef.get();
-        lastCount = target != null ? target.getCallAndLoopCount() : Integer.MIN_VALUE;
+        // Last weight < 0 indicates that this task's weight has not been initialized yet.
+        // Why not initialize/calculate it here? We do not have any information about the rate of
+        // change of its call and loop count yet since the task is newly created. Consequently, we
+        // cannot compute a reliable rate yet. The rate will be computed the first time updateWeight
+        // is called.
+        lastWeight = -1.0;
         lastTime = System.nanoTime();
-        lastWeight = target != null ? target.getCallAndLoopCount() : -1;
-        engineData = target != null ? target.engine : null;
-        isOSR = target != null && target.isOSR();
+        OptimizedCallTarget target = targetRef.get();
+        if (target == null) {
+            lastCount = Integer.MIN_VALUE;
+            engineData = null;
+            isOSR = false;
+            cancelledPredicate = null;
+        } else {
+            lastCount = target.getCallAndLoopCount();
+            engineData = target.engine;
+            isOSR = target.isOSR();
+            cancelledPredicate = target.engine.cancelledPredicate;
+        }
     }
 
     static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
@@ -157,7 +175,8 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
 
     @Override
     public boolean isCancelled() {
-        return cancelled;
+        BooleanSupplier cancelPredicate = cancelledPredicate;
+        return cancelled || (cancelPredicate != null && cancelPredicate.getAsBoolean());
     }
 
     @Override
@@ -239,22 +258,13 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
      * corrupt a queue data structure.
      */
     boolean isHigherPriorityThan(CompilationTask other) {
-        if (action != COMPILATION_ACTION) {
+        if (action != COMPILATION_ACTION || other.action != COMPILATION_ACTION) {
             // Any non-compilation action (e.g. compiler init) is higher priority.
-            return true;
-        }
-        if (this.isOSR && other.isLastTier()) {
-            return true;
+            return action != COMPILATION_ACTION;
         }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
-        }
-        int otherCompileTier = other.targetHighestCompiledTier();
-        int compiledTier = targetHighestCompiledTier();
-        if (tier == other.tier() && compiledTier != otherCompileTier) {
-            // tasks previously compiled with higher tier are better
-            return compiledTier > otherCompileTier;
         }
         if (engineData.weightingBothTiers || isFirstTier()) {
             return lastWeight > other.lastWeight;
@@ -271,7 +281,10 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             return false;
         }
         long elapsed = currentTime - lastTime;
-        if (elapsed < 1_000_000) {
+        // A last weight > 0 indicates that it has been initialized. If so, only update its weight
+        // if 1_000_000ns have elapsed since its last calculation. The elapsed time may be negative
+        // since tasks may be added to the queue while traversing it.
+        if (lastWeight > 0 && elapsed < 1_000_000 || elapsed < 0) {
             return true;
         }
         int count = target.getCallAndLoopCount();
@@ -279,9 +292,14 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         lastTime = currentTime;
         lastCount = count;
         double weight = (1 + lastRate) * lastCount;
-        if (engineData.traversingFirstTierPriority) {
-            lastWeight = weight;
-        } else {
+        assert weight >= 0.0 : "weight must be positive";
+        lastWeight = weight * bonus();
+        return true;
+    }
+
+    private double bonus() {
+        double bonus = 1.0;
+        if (!engineData.traversingFirstTierPriority && isFirstTier()) {
             // @formatter:off
             // We multiply first tier compilations with this bonus to bring first and last tier
             // compilation weights to roughly the same order of magnitude and give first tier compilations some priority.
@@ -295,15 +313,45 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             //                                   This controls for the fact that weight is a multiple of the callAndLoopCount and this
             //                                   count is on the order of the thresholds which is much smaller for first tier compilations
             // @formatter:on
-            lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
+            bonus *= engineData.traversingFirstTierBonus;
         }
-        assert weight >= 0.0 : "weight must be positive";
-        return true;
+        if (targetHighestCompiledTier() >= tier()) {
+            // If the task has already been compiled with the same or a higher tier, implying the
+            // previous compilation has been invalidated, boost its priority.
+            // This bonus is 1.0 by default, i.e. it has no effect.
+            bonus *= engineData.traversingInvalidatedBonus;
+        }
+        if (isOSR) {
+            // Boost OSR tasks' priority. This bonus is 1.0 by default, i.e. it has no effect.
+            bonus *= engineData.traversingOSRBonus;
+        }
+        return bonus;
+    }
+
+    public List<String> bonusDescriptors() {
+        List<String> bonuses = new ArrayList<>(3);
+        if (!engineData.traversingFirstTierPriority && isFirstTier() && hasEffect(engineData.traversingFirstTierBonus)) {
+            bonuses.add("first tier");
+        }
+        if (targetHighestCompiledTier() >= tier() && hasEffect(engineData.traversingInvalidatedBonus)) {
+            bonuses.add("invalidation");
+        }
+        if (isOSR && hasEffect(engineData.traversingOSRBonus)) {
+            bonuses.add("OSR");
+        }
+        return bonuses;
+    }
+
+    private static final double EPSILON = 1E-6;
+
+    private static boolean hasEffect(double bonus) {
+        // Checks if the given bonus differs from 1.
+        return Math.abs(bonus - 1.0) > EPSILON;
     }
 
     private double rate(int count, long elapsed) {
-        lastRate = ((double) count - lastCount) / elapsed;
-        return (Double.isNaN(lastRate) ? 0 : lastRate);
+        // Divide by a minimum of 1000 to prevent division by zero/very small numbers.
+        return lastRate = ((double) count - lastCount) / Math.max(elapsed, 1000);
     }
 
     public int targetHighestCompiledTier() {

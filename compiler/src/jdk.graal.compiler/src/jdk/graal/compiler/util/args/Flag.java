@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.util.args;
 
+import java.io.PrintWriter;
+
 /**
  * A boolean flag option value that is {@code false} when not present in the program arguments and
  * {@code true} when it is present.
@@ -45,8 +47,7 @@ public class Flag extends OptionValue<Boolean> {
     }
 
     @Override
-    public String getUsage() {
+    public void printUsage(PrintWriter writer, boolean detailed) {
         // No value, usage is only determined by flag name
-        return "";
     }
 }

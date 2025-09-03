@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import static com.oracle.truffle.tck.tests.TruffleTestAssumptions.isDeoptLoopDetectionAvailable;
+import static com.oracle.truffle.tck.tests.TruffleTestAssumptions.isOptimizingRuntime;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -55,10 +58,16 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -81,13 +90,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import java.util.function.Function;
-import org.graalvm.collections.Pair;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class DebuggerSessionTest extends AbstractDebugTest {
 
@@ -217,8 +220,16 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                         "  CALL(foo)\n" +
                         ")\n");
         popContext();
-        Engine engine = Engine.create();
-        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true).engine(engine));
+        Engine.Builder builder = Engine.newBuilder();
+        if (isOptimizingRuntime()) {
+            // TODO GR-65179
+            builder.option("engine.MaximumCompilations", "-1");
+            if (isDeoptLoopDetectionAvailable()) {
+                builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+            }
+        }
+        Engine engine = builder.build();
+        tester = new DebuggerTester(engine, Context.newBuilder().allowAllAccess(true));
         try (DebuggerSession session = startSession()) {
             Instrument instrument = engine.getInstruments().get("SuspendDebuggerFromInstrument");
             Node nodeNoRoot = new Node() {
@@ -240,8 +251,16 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                         "  CALL(foo)\n" +
                         ")\n");
         popContext();
-        Engine engine = Engine.create();
-        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true).engine(engine));
+        Engine.Builder builder = Engine.newBuilder();
+        if (isOptimizingRuntime()) {
+            // TODO GR-65179
+            builder.option("engine.MaximumCompilations", "-1");
+            if (TruffleTestAssumptions.isDeoptLoopDetectionAvailable()) {
+                builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+            }
+        }
+        Engine engine = builder.build();
+        tester = new DebuggerTester(engine, Context.newBuilder().allowAllAccess(true));
         try (DebuggerSession session = startSession()) {
             Instrument instrument = engine.getInstruments().get("SuspendDebuggerFromInstrument");
             Pair<DebuggerSession, Function<Node, Node>> sessionNode = Pair.create(session, node -> null);

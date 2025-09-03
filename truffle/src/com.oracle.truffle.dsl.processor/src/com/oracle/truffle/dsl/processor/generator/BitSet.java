@@ -213,6 +213,10 @@ final class BitSet {
     }
 
     public String formatMask(long mask) {
+        return formatMask(mask, getBitCount());
+    }
+
+    public static String formatMask(long mask, int bitCount) {
         if (mask == 0) {
             return "0";
         }
@@ -220,7 +224,7 @@ final class BitSet {
         if (bitsUsed <= 16) {
             return "0b" + Integer.toBinaryString((int) mask);
         } else {
-            if (getBitCount() <= 32) {
+            if (bitCount <= 32) {
                 return "0x" + Integer.toHexString((int) mask);
             } else {
                 return "0x" + Long.toHexString(mask) + "L";

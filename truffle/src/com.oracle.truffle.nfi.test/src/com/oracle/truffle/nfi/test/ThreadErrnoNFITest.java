@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import java.util.concurrent.TimeoutException;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
@@ -61,11 +63,6 @@ import com.oracle.truffle.tck.TruffleRunner;
 public class ThreadErrnoNFITest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true).allowIO(IOAccess.ALL));
-
-    static final class TimeoutException extends Exception {
-
-        private static final long serialVersionUID = 1L;
-    }
 
     private Functions fn;
 
@@ -100,6 +97,8 @@ public class ThreadErrnoNFITest {
         }
     }
 
+    private static final int TIMEOUT_MILLIS = 10000;
+
     final class TestThreadRunnable implements Runnable {
 
         private final int errno;
@@ -119,11 +118,17 @@ public class ThreadErrnoNFITest {
          */
         void ensureSyncpoint() throws Throwable {
             synchronized (lock) {
-                if (error == null && !waiting) {
-                    lock.wait(1000);
-                }
-                if (error != null) {
-                    throw error;
+                long waitStart = System.currentTimeMillis();
+                Throwable err = TruffleSafepoint.setBlockedThreadInterruptibleFunction(null, lockObject -> {
+                    assert Thread.holdsLock(lockObject);
+                    long currentTime;
+                    while (error == null && !waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < TIMEOUT_MILLIS) {
+                        lockObject.wait(TIMEOUT_MILLIS - (currentTime - waitStart));
+                    }
+                    return error;
+                }, lock);
+                if (err != null) {
+                    throw err;
                 }
                 if (!waiting) {
                     throw new TimeoutException();
@@ -150,17 +155,25 @@ public class ThreadErrnoNFITest {
             }
         }
 
-        private void syncpoint() throws InterruptedException, TimeoutException {
+        private void syncpoint() throws TimeoutException {
             synchronized (lock) {
                 waiting = true;
                 lock.notifyAll();
-                lock.wait(1000);
+                long waitStart = System.currentTimeMillis();
+                TruffleSafepoint.setBlockedThreadInterruptible(null, lockObject -> {
+                    assert Thread.holdsLock(lockObject);
+                    long currentTime;
+                    while (waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < TIMEOUT_MILLIS) {
+                        lockObject.wait(TIMEOUT_MILLIS - (currentTime - waitStart));
+                    }
+                    if (!waiting && extraRunnable != null) {
+                        extraRunnable.run();
+                        extraRunnable = null;
+                    }
+
+                }, lock);
                 if (waiting) {
                     throw new TimeoutException();
-                }
-                if (extraRunnable != null) {
-                    extraRunnable.run();
-                    extraRunnable = null;
                 }
             }
         }

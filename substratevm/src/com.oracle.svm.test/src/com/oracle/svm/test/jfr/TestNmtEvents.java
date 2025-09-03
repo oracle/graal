@@ -30,8 +30,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -54,7 +54,7 @@ public class TestNmtEvents extends JfrRecordingTest {
         };
         Recording recording = startRecording(events);
 
-        Pointer ptr = NativeMemory.malloc(WordFactory.unsigned(ALLOCATION_SIZE), NmtCategory.Code);
+        Pointer ptr = NativeMemory.malloc(Word.unsigned(ALLOCATION_SIZE), NmtCategory.Code);
 
         /* Force a chunk rotation to trigger periodic event emission. */
         recording.dump(createTempJfrFile());

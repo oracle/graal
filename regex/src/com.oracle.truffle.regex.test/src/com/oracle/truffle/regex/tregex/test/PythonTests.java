@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.errors.PyErrorMessages;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import java.util.Map;
+
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.regex.flavor.python.PyErrorMessages;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.test.generated.PythonGeneratedTests;
+
 public class PythonTests extends RegexTestBase {
 
+    public static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Python");
+    private static final Map<String, String> OPT_MUST_ADVANCE = Map.of("regexDummyLang.MustAdvance", "true");
+
     @Override
-    String getEngineOptions() {
-        return "Flavor=Python";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
@@ -99,7 +106,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28905() {
-        test("\\B", "", "PythonMethod=match", "abc", 0, false);
+        test("\\B", "", OPT_MATCHING_MODE_MATCH, "abc", 0, false);
         test("\\B", "", "", 0, false);
         test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14, 1);
         test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15, 1);
@@ -107,8 +114,8 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28906() {
-        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "a|", 0, false);
-        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "|a", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", OPT_MATCHING_MODE_MATCH, "a|", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", OPT_MATCHING_MODE_MATCH, "|a", 0, false);
     }
 
     @Test
@@ -168,7 +175,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr32018() {
-        test("\\s*(?:#\\s*)?$", "", "PythonMethod=match", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+        test("\\s*(?:#\\s*)?$", "", OPT_MATCHING_MODE_MATCH, new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
     }
 
     @Test
@@ -241,61 +248,61 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28565() {
-        test("\\b|:", "", "MustAdvance=false", "a:", 0, true, 0, 0, -1);
-        test("\\b|:", "", "MustAdvance=true", "a:", 0, true, 1, 1, -1);
-        test("\\b|:", "", "MustAdvance=true", "a:", 1, true, 1, 2, -1);
-        test("\\b|:", "", "MustAdvance=false", "a:", 2, false);
+        test("\\b|:", "", "a:", 0, true, 0, 0, -1);
+        test("\\b|:", "", OPT_MUST_ADVANCE, "a:", 0, true, 1, 1, -1);
+        test("\\b|:", "", OPT_MUST_ADVANCE, "a:", 1, true, 1, 2, -1);
+        test("\\b|:", "", "a:", 2, false);
     }
 
     @Test
     public void gr28565SimplerAsciiTests() {
-        test("(?=a)|(?<=a)|:", "", "MustAdvance=false", "a:", 0, true, 0, 0, -1);
-        test("(?=a)|(?<=a)|:", "", "MustAdvance=true", "a:", 0, true, 1, 1, -1);
-        test("(?=a)|(?<=a)|:", "", "MustAdvance=true", "a:", 1, true, 1, 2, -1);
-        test("(?=a)|(?<=a)|:", "", "MustAdvance=false", "a:", 2, false);
+        test("(?=a)|(?<=a)|:", "", "a:", 0, true, 0, 0, -1);
+        test("(?=a)|(?<=a)|:", "", OPT_MUST_ADVANCE, "a:", 0, true, 1, 1, -1);
+        test("(?=a)|(?<=a)|:", "", OPT_MUST_ADVANCE, "a:", 1, true, 1, 2, -1);
+        test("(?=a)|(?<=a)|:", "", "a:", 2, false);
     }
 
     @Test
     public void mustAdvanceLiteralEngineTests() {
-        test("", "", "MustAdvance=true", "", 0, false);
-        test("", "", "MustAdvance=true", "a", 0, true, 1, 1, -1);
-        test("\\A", "", "MustAdvance=true", "", 0, false);
-        test("\\Z", "", "MustAdvance=true", "", 0, false);
-        test("\\A\\Z", "", "MustAdvance=true", "", 0, false);
+        test("", "", OPT_MUST_ADVANCE, "", 0, false);
+        test("", "", OPT_MUST_ADVANCE, "a", 0, true, 1, 1, -1);
+        test("\\A", "", OPT_MUST_ADVANCE, "", 0, false);
+        test("\\Z", "", OPT_MUST_ADVANCE, "", 0, false);
+        test("\\A\\Z", "", OPT_MUST_ADVANCE, "", 0, false);
     }
 
     @Test
     public void cpythonTestBug817234() {
-        test(".*", "", "MustAdvance=false", "asdf", 0, true, 0, 4, -1);
-        test(".*", "", "MustAdvance=false", "asdf", 4, true, 4, 4, -1);
-        test(".*", "", "MustAdvance=true", "asdf", 4, false);
+        test(".*", "", "asdf", 0, true, 0, 4, -1);
+        test(".*", "", "asdf", 4, true, 4, 4, -1);
+        test(".*", "", OPT_MUST_ADVANCE, "asdf", 4, false);
     }
 
     @Test
     public void cpythonTestDollarMatchesTwice() {
-        test("$", "", "MustAdvance=false", "a\nb\n", 0, true, 3, 3, -1);
-        test("$", "", "MustAdvance=true", "a\nb\n", 3, true, 4, 4, -1);
-        test("$", "", "MustAdvance=true", "a\nb\n", 4, false);
+        test("$", "", "a\nb\n", 0, true, 3, 3, -1);
+        test("$", "", OPT_MUST_ADVANCE, "a\nb\n", 3, true, 4, 4, -1);
+        test("$", "", OPT_MUST_ADVANCE, "a\nb\n", 4, false);
 
-        test("$", "m", "MustAdvance=false", "a\nb\n", 0, true, 1, 1, -1);
-        test("$", "m", "MustAdvance=true", "a\nb\n", 1, true, 3, 3, -1);
-        test("$", "m", "MustAdvance=true", "a\nb\n", 3, true, 4, 4, -1);
-        test("$", "m", "MustAdvance=true", "a\nb\n", 4, false);
+        test("$", "m", "a\nb\n", 0, true, 1, 1, -1);
+        test("$", "m", OPT_MUST_ADVANCE, "a\nb\n", 1, true, 3, 3, -1);
+        test("$", "m", OPT_MUST_ADVANCE, "a\nb\n", 3, true, 4, 4, -1);
+        test("$", "m", OPT_MUST_ADVANCE, "a\nb\n", 4, false);
     }
 
     @Test
     public void testFullMatch() {
-        test("a|ab", "", "PythonMethod=fullmatch", "ab", 0, true, 0, 2, -1);
+        test("a|ab", "", OPT_MATCHING_MODE_FULLMATCH, "ab", 0, true, 0, 2, -1);
     }
 
     @Test
     public void testBrokenSurrogate() {
-        test("(.*?)([\"\\\\\\x00-\\x1f])", "msx", "PythonMethod=match", "\"z\ud834x\"", 1, true, 1, 5, 1, 4, 4, 5, 2);
+        test("(.*?)([\"\\\\\\x00-\\x1f])", "msx", OPT_MATCHING_MODE_MATCH, "\"z\ud834x\"", 1, true, 1, 5, 1, 4, 4, 5, 2);
     }
 
     @Test
     public void testBStar() {
-        test("b*", "", "MustAdvance=true", "xyz", 0, true, 1, 1);
+        test("b*", "", OPT_MUST_ADVANCE, "xyz", 0, true, 1, 1);
     }
 
     @Test
@@ -309,10 +316,10 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr41215() {
-        test("(?<= )b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
-        test("(?<= )b|abc", "", "PythonMethod=match", " b", 1, true, 1, 2);
-        test("(?<!\\.)b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
-        test("(?=a)|(?<=a)|:", "", "PythonMethod=match", "a:", 1, true, 1, 1);
+        test("(?<= )b|ab", "", OPT_MATCHING_MODE_MATCH, " b", 1, true, 1, 2);
+        test("(?<= )b|abc", "", OPT_MATCHING_MODE_MATCH, " b", 1, true, 1, 2);
+        test("(?<!\\.)b|ab", "", OPT_MATCHING_MODE_MATCH, " b", 1, true, 1, 2);
+        test("(?=a)|(?<=a)|:", "", OPT_MATCHING_MODE_MATCH, "a:", 1, true, 1, 1);
     }
 
     @Test
@@ -385,7 +392,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?a)(?u)", "", "ASCII and UNICODE flags are incompatible");
 
         expectSyntaxError("", "L", "cannot use LOCALE flag with a str pattern");
-        expectSyntaxError("", "u", "Encoding=LATIN-1", "cannot use UNICODE flag with a bytes pattern");
+        expectSyntaxError("", "u", Encodings.LATIN_1, "cannot use UNICODE flag with a bytes pattern", Integer.MIN_VALUE);
 
         Assert.assertTrue("expected str pattern to default to UNICODE flag",
                         compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());
@@ -497,134 +504,23 @@ public class PythonTests extends RegexTestBase {
     public void testLazyLastGroup() {
         Value compiledRegex = compileRegex(".*(.*bbba|ab)", "");
         for (int i = 0; i < TRegexOptions.TRegexGenerateDFAThresholdCalls * 4; i++) {
-            Value result = execRegex(compiledRegex, "xxxxxxabxx", 0);
+            Value result = execRegex(compiledRegex, getTRegexEncoding(), "xxxxxxabxx", 0);
             Assert.assertEquals(1, result.getMember("lastGroup").asInt());
         }
     }
 
     @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3, 1);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8, -1);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4, -1);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
     public void generatedTests() {
-        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
-
-        // Generated using sre from CPython 3.12.4
-        // re._casefix._EXTRA_CASES
-        test("i", "i", "\u0131", 0, true, 0, 1);
-        test("s", "i", "\u017f", 0, true, 0, 1);
-        test("\u00b5", "i", "\u03bc", 0, true, 0, 1);
-        test("\u0131", "i", "i", 0, true, 0, 1);
-        test("\u017f", "i", "s", 0, true, 0, 1);
-        test("\u0345", "i", "\u03b9", 0, true, 0, 1);
-        test("\u0345", "i", "\u1fbe", 0, true, 0, 1);
-        test("\u0390", "i", "\u1fd3", 0, true, 0, 1);
-        test("\u03b0", "i", "\u1fe3", 0, true, 0, 1);
-        test("\u03b2", "i", "\u03d0", 0, true, 0, 1);
-        test("\u03b5", "i", "\u03f5", 0, true, 0, 1);
-        test("\u03b8", "i", "\u03d1", 0, true, 0, 1);
-        test("\u03b9", "i", "\u0345", 0, true, 0, 1);
-        test("\u03b9", "i", "\u1fbe", 0, true, 0, 1);
-        test("\u03ba", "i", "\u03f0", 0, true, 0, 1);
-        test("\u03bc", "i", "\u00b5", 0, true, 0, 1);
-        test("\u03c0", "i", "\u03d6", 0, true, 0, 1);
-        test("\u03c1", "i", "\u03f1", 0, true, 0, 1);
-        test("\u03c2", "i", "\u03c3", 0, true, 0, 1);
-        test("\u03c3", "i", "\u03c2", 0, true, 0, 1);
-        test("\u03c6", "i", "\u03d5", 0, true, 0, 1);
-        test("\u03d0", "i", "\u03b2", 0, true, 0, 1);
-        test("\u03d1", "i", "\u03b8", 0, true, 0, 1);
-        test("\u03d5", "i", "\u03c6", 0, true, 0, 1);
-        test("\u03d6", "i", "\u03c0", 0, true, 0, 1);
-        test("\u03f0", "i", "\u03ba", 0, true, 0, 1);
-        test("\u03f1", "i", "\u03c1", 0, true, 0, 1);
-        test("\u03f5", "i", "\u03b5", 0, true, 0, 1);
-        test("\u0432", "i", "\u1c80", 0, true, 0, 1);
-        test("\u0434", "i", "\u1c81", 0, true, 0, 1);
-        test("\u043e", "i", "\u1c82", 0, true, 0, 1);
-        test("\u0441", "i", "\u1c83", 0, true, 0, 1);
-        test("\u0442", "i", "\u1c84", 0, true, 0, 1);
-        test("\u0442", "i", "\u1c85", 0, true, 0, 1);
-        test("\u044a", "i", "\u1c86", 0, true, 0, 1);
-        test("\u0463", "i", "\u1c87", 0, true, 0, 1);
-        test("\u1c80", "i", "\u0432", 0, true, 0, 1);
-        test("\u1c81", "i", "\u0434", 0, true, 0, 1);
-        test("\u1c82", "i", "\u043e", 0, true, 0, 1);
-        test("\u1c83", "i", "\u0441", 0, true, 0, 1);
-        test("\u1c84", "i", "\u0442", 0, true, 0, 1);
-        test("\u1c84", "i", "\u1c85", 0, true, 0, 1);
-        test("\u1c85", "i", "\u0442", 0, true, 0, 1);
-        test("\u1c85", "i", "\u1c84", 0, true, 0, 1);
-        test("\u1c86", "i", "\u044a", 0, true, 0, 1);
-        test("\u1c87", "i", "\u0463", 0, true, 0, 1);
-        test("\u1c88", "i", "\ua64b", 0, true, 0, 1);
-        test("\u1e61", "i", "\u1e9b", 0, true, 0, 1);
-        test("\u1e9b", "i", "\u1e61", 0, true, 0, 1);
-        test("\u1fbe", "i", "\u0345", 0, true, 0, 1);
-        test("\u1fbe", "i", "\u03b9", 0, true, 0, 1);
-        test("\u1fd3", "i", "\u0390", 0, true, 0, 1);
-        test("\u1fe3", "i", "\u03b0", 0, true, 0, 1);
-        test("\ua64b", "i", "\u1c88", 0, true, 0, 1);
-        test("\ufb05", "i", "\ufb06", 0, true, 0, 1);
-        test("\ufb06", "i", "\ufb05", 0, true, 0, 1);
-        // Syntax errors
-        expectSyntaxError("()\\2", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2", 3);
-        expectSyntaxError("()\\378", "", "", getTRegexEncoding(), "", 0, "invalid group reference 37", 3);
-        expectSyntaxError("()\\777", "", "", getTRegexEncoding(), "", 0, "octal escape value \\777 outside of range 0-0o377", 2);
-        expectSyntaxError("(\\1)", "", "", getTRegexEncoding(), "", 0, "cannot refer to an open group", 1);
-        expectSyntaxError("(?<=()\\1)", "", "", getTRegexEncoding(), "", 0, "cannot refer to group defined in the same lookbehind subpattern", 8);
-        expectSyntaxError("()(?P=1)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '1'", 6);
-        expectSyntaxError("(?P<1)", "", "", getTRegexEncoding(), "", 0, "missing >, unterminated name", 4);
-        expectSyntaxError("(?P<1>)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '1'", 4);
-        expectSyntaxError("(?P<a>)(?P<a>})", "", "", getTRegexEncoding(), "", 0, "redefinition of group name 'a' as group 2; was group 1", 11);
-        expectSyntaxError("[]", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 0);
-        expectSyntaxError("[a-", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 0);
-        expectSyntaxError("[b-a]", "", "", getTRegexEncoding(), "", 0, "bad character range b-a", 1);
-        expectSyntaxError("[\\d-e]", "", "", getTRegexEncoding(), "", 0, "bad character range \\d-e", 1);
-        expectSyntaxError("\\x", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\x", 0);
-        expectSyntaxError("\\x1", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\x1", 0);
-        expectSyntaxError("\\u111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\u111", 0);
-        expectSyntaxError("\\U1111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\U1111", 0);
-        expectSyntaxError("\\U1111111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\U1111111", 0);
-        expectSyntaxError("\\U11111111", "", "", getTRegexEncoding(), "", 0, "bad escape \\U11111111", 0);
-        expectSyntaxError("\\N1", "", "", getTRegexEncoding(), "", 0, "missing {", 2);
-        expectSyntaxError("\\N{1", "", "", getTRegexEncoding(), "", 0, "missing }, unterminated name", 3);
-        expectSyntaxError("\\N{}", "", "", getTRegexEncoding(), "", 0, "missing character name", 3);
-        expectSyntaxError("\\N{a}", "", "", getTRegexEncoding(), "", 0, "undefined character name 'a'", 0);
-        expectSyntaxError("x{2,1}", "", "", getTRegexEncoding(), "", 0, "min repeat greater than max repeat", 2);
-        expectSyntaxError("x**", "", "", getTRegexEncoding(), "", 0, "multiple repeat", 2);
-        expectSyntaxError("^*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 1);
-        expectSyntaxError("\\A*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
-        expectSyntaxError("\\Z*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
-        expectSyntaxError("\\b*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
-        expectSyntaxError("\\B*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
-        expectSyntaxError("(?", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 2);
-        expectSyntaxError("(?P", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 3);
-        expectSyntaxError("(?P<", "", "", getTRegexEncoding(), "", 0, "missing group name", 4);
-        expectSyntaxError("(?Px", "", "", getTRegexEncoding(), "", 0, "unknown extension ?Px", 1);
-        expectSyntaxError("(?<", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 3);
-        expectSyntaxError("(?x", "", "", getTRegexEncoding(), "", 0, "missing -, : or )", 3);
-        expectSyntaxError("(?P<>)", "", "", getTRegexEncoding(), "", 0, "missing group name", 4);
-        expectSyntaxError("(?P<?>)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '?'", 4);
-        expectSyntaxError("(?P=a)", "", "", getTRegexEncoding(), "", 0, "unknown group name 'a'", 4);
-        expectSyntaxError("(?#", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated comment", 0);
-        expectSyntaxError("(", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 0);
-        expectSyntaxError("(?i", "", "", getTRegexEncoding(), "", 0, "missing -, : or )", 3);
-        expectSyntaxError("(?L", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot use 'L' flag with a str pattern", 3);
-        expectSyntaxError("(?t:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot turn on global flag", 3);
-        expectSyntaxError("(?-t:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot turn off global flag", 4);
-        expectSyntaxError("(?-:)", "", "", getTRegexEncoding(), "", 0, "missing flag", 3);
-        expectSyntaxError("(?ij:)", "", "", getTRegexEncoding(), "", 0, "unknown flag", 3);
-        expectSyntaxError("(?i-i:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: flag turned on and off", 5);
-        expectSyntaxError(")", "", "", getTRegexEncoding(), "", 0, "unbalanced parenthesis", 0);
-        expectSyntaxError("\\", "", "", getTRegexEncoding(), "", 0, "bad escape (end of pattern)", 0);
-        expectSyntaxError("(?P<a>)(?(0)a|b)", "", "", getTRegexEncoding(), "", 0, "bad group number", 10);
-        expectSyntaxError("()(?(1", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated name", 5);
-        expectSyntaxError("()(?(1)a", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 2);
-        expectSyntaxError("()(?(1)a|b", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 2);
-        expectSyntaxError("()(?(2)a)", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2", 5);
-        expectSyntaxError("(?(a))", "", "", getTRegexEncoding(), "", 0, "unknown group name 'a'", 3);
-        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "", getTRegexEncoding(), "", 0, "cannot refer to an open group", 13);
-        expectSyntaxError("(?(2147483648)a|b)", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2147483648", 3);
-        expectSyntaxError("(?(42)a|b)[", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 10);
-
-        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+        runGeneratedTests(PythonGeneratedTests.TESTS);
     }
 }

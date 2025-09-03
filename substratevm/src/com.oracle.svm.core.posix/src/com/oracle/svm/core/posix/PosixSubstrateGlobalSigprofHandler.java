@@ -27,10 +27,10 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -58,7 +58,7 @@ public final class PosixSubstrateGlobalSigprofHandler extends PosixSubstrateSigp
         newValue.it_interval().set_tv_sec(us / TimeUtils.microsPerSecond);
         newValue.it_interval().set_tv_usec(us % TimeUtils.microsPerSecond);
 
-        int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
+        int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, Word.nullPointer());
         PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");
     }
 

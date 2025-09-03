@@ -35,7 +35,7 @@ import com.oracle.svm.core.util.DuplicatedInNativeCode;
 public class NoHostedAnnotationsTest {
 
     @DuplicatedInNativeCode
-    private static class TestClass {
+    private static final class TestClass {
     }
 
     @Test

@@ -159,6 +159,7 @@ public class ArrayIndexOfForeignCalls {
     public static ForeignCallDescriptor getStub(ArrayIndexOfNode indexOfNode) {
         Stride stride = indexOfNode.getStride();
         int valueCount = indexOfNode.getNumberOfValues();
+        // Checkstyle: stop FallThrough
         switch (indexOfNode.getVariant()) {
             case MatchAny:
                 int index = (4 * stride.log2) + (valueCount - 1);
@@ -221,5 +222,6 @@ public class ArrayIndexOfForeignCalls {
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(indexOfNode.getVariant()); // ExcludeFromJacocoGeneratedReport
         }
+        // Checkstyle: resume FallThrough
     }
 }

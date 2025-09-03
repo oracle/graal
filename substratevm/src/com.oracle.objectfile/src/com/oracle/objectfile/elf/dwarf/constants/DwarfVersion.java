@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,7 +36,8 @@ public enum DwarfVersion {
      * still need to be generated as version 2.
      */
     DW_VERSION_2((short) 2),
-    DW_VERSION_4((short) 4);
+    DW_VERSION_4((short) 4),
+    DW_VERSION_5((short) 5);
 
     private final short value;
 

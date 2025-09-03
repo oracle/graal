@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,8 +75,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkAsDeadVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
@@ -84,14 +85,12 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
  */
 public final class RegexASTBuilder {
 
-    private final RegexParserGlobals globals;
     private final RegexOptions options;
     private final Encoding encoding;
     private final RegexAST ast;
     private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
-    private final SetSourceSectionVisitor setSourceSectionVisitor;
     private final boolean canExplodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
@@ -104,7 +103,6 @@ public final class RegexASTBuilder {
 
     @TruffleBoundary
     public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean canExplodeUTF16, CompilationBuffer compilationBuffer) {
-        this.globals = language.parserGlobals;
         this.options = source.getOptions();
         this.encoding = source.getEncoding();
         this.canExplodeUTF16 = canExplodeUTF16;
@@ -112,7 +110,6 @@ public final class RegexASTBuilder {
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.countVisitor = new NodeCountVisitor();
-        this.setSourceSectionVisitor = options.isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
         this.groupStartPositions = source.getOptions().getFlavor().needsGroupStartPositions() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
@@ -216,7 +213,7 @@ public final class RegexASTBuilder {
      */
     public RegexAST popRootGroup() {
         optimizeGroup(curGroup);
-        ast.getRoot().setEnclosedCaptureGroupsHigh(groupCount.getCount());
+        ast.getRoot().setEnclosedCaptureGroupsHi(groupCount.getCount());
         return ast;
     }
 
@@ -229,6 +226,9 @@ public final class RegexASTBuilder {
      */
     public void pushGroup(Token token) {
         pushGroup(token, ast.createGroup(), null, true);
+        if (token != null && token.kind == Token.Kind.inlineFlags) {
+            curGroup.setLocalFlags(true);
+        }
     }
 
     public void pushGroup() {
@@ -332,7 +332,7 @@ public final class RegexASTBuilder {
         addSourceSection(group, token);
         setGroupStartPosition(group, token);
         curGroup = group;
-        curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
+        curGroup.setEnclosedCaptureGroupsLo(groupCount.getCount());
         if (openFirstSequence) {
             nextSequence();
         } else {
@@ -361,7 +361,7 @@ public final class RegexASTBuilder {
             ast.getNodeCount().dec();
         }
         optimizeGroup(curGroup);
-        curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
+        curGroup.setEnclosedCaptureGroupsHi(groupCount.getCount());
         addSourceSection(curGroup, token);
         if (curGroup.getParent().isSubtreeRoot()) {
             addSourceSection(curGroup.getParent(), token);
@@ -422,8 +422,18 @@ public final class RegexASTBuilder {
         addCharClass(Token.createCharClass(charSet, wasSingleChar));
     }
 
+    public void addCharClass(CodePointSet charSet, boolean wasSingleChar, SourceSection sourceSection) {
+        Token.CharacterClass charClass = Token.createCharClass(charSet, wasSingleChar);
+        charClass.setSourceSection(sourceSection);
+        addCharClass(charClass);
+    }
+
     public void addCharClass(CodePointSet charSet) {
         addCharClass(charSet, charSet.matchesSingleChar());
+    }
+
+    public void addLiteralChar(Token.LiteralCharacter literalCharacter) {
+        addCharClass(CodePointSet.create(literalCharacter.getCodePoint()), true, literalCharacter.getSourceSection());
     }
 
     private CodePointSet pruneCharClass(CodePointSet cps) {
@@ -448,8 +458,8 @@ public final class RegexASTBuilder {
             return createCharClass(codePointSet, token, wasSingleChar);
         }
         Group group = ast.createGroup();
-        group.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        group.setEnclosedCaptureGroupsHigh(groupCount.getCount());
+        group.setEnclosedCaptureGroupsLo(groupCount.getCount());
+        group.setEnclosedCaptureGroupsHi(groupCount.getCount());
         IntRangesBuffer tmp = compilationBuffer.getIntRangesBuffer1();
         CodePointSet bmpRanges = codePointSet.createIntersection(Constants.BMP_WITHOUT_SURROGATES, tmp);
         CodePointSet astralRanges = codePointSet.createIntersection(Constants.ASTRAL_SYMBOLS, tmp);
@@ -466,12 +476,16 @@ public final class RegexASTBuilder {
         if (loneLeadSurrogateRanges.matchesSomething()) {
             Sequence loneLeadSurrogateAlternative = group.addSequence(ast);
             loneLeadSurrogateAlternative.add(createCharClass(loneLeadSurrogateRanges, token));
-            loneLeadSurrogateAlternative.add(globals.getJsNoTrailSurrogateAhead().copyRecursive(ast, compilationBuffer));
+            try (StashedState ignored = withTempState(group, loneLeadSurrogateAlternative, null)) {
+                addNoTrailSurrogateAhead();
+            }
         }
 
         if (loneTrailSurrogateRanges.matchesSomething()) {
             Sequence loneTrailSurrogateAlternative = group.addSequence(ast);
-            loneTrailSurrogateAlternative.add(globals.getJsNoLeadSurrogateBehind().copyRecursive(ast, compilationBuffer));
+            try (StashedState ignored = withTempState(group, loneTrailSurrogateAlternative, null)) {
+                addNoLeadSurrogateBehind();
+            }
             loneTrailSurrogateAlternative.add(createCharClass(loneTrailSurrogateRanges, token));
         }
 
@@ -546,6 +560,16 @@ public final class RegexASTBuilder {
         return group;
     }
 
+    private void addNoLeadSurrogateBehind() {
+        // (?:^|(?<=[^\uD800-\uDBFF]))
+        addCaretOrLookBehind(Constants.LEAD_SURROGATES.createInverse(Encodings.UTF_16));
+    }
+
+    private void addNoTrailSurrogateAhead() {
+        // (?:$|(?=[^\uDC00-\uDFFF]))
+        addDollarOrLookAhead(Constants.TRAIL_SURROGATES.createInverse(Encodings.UTF_16));
+    }
+
     /**
      * Adds a new {@link Group} representing a class set expression to the current {@link Sequence}.
      *
@@ -556,6 +580,10 @@ public final class RegexASTBuilder {
         CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
 
         ClassSetContents contents = token.getContents();
+        if (contents.isEmpty()) {
+            addCharClass(CodePointSet.getEmpty());
+            return;
+        }
         pushGroup(false);
 
         String[] sortedStrings = new String[contents.getStrings().size()];
@@ -803,8 +831,8 @@ public final class RegexASTBuilder {
 
     private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
         term.setQuantifier(quantifier);
-        if (!term.isUnrollingCandidate()) {
-            properties.setLargeCountedRepetitions();
+        if (!term.isUnrollingCandidate(options)) {
+            properties.setLargeBoundedQuantifiers();
         }
         properties.setQuantifiers();
     }
@@ -812,11 +840,11 @@ public final class RegexASTBuilder {
     private Group wrapTermInGroup(Term term) {
         Group wrapperGroup = ast.createGroup();
         if (term.isGroup()) {
-            wrapperGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
-            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+            wrapperGroup.setEnclosedCaptureGroupsLo(term.asGroup().getCaptureGroupsLo());
+            wrapperGroup.setEnclosedCaptureGroupsHi(term.asGroup().getCaptureGroupsHi());
         } else if (term.isAtomicGroup()) {
-            wrapperGroup.setEnclosedCaptureGroupsLow(term.asAtomicGroup().getEnclosedCaptureGroupsLow());
-            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asAtomicGroup().getEnclosedCaptureGroupsHigh());
+            wrapperGroup.setEnclosedCaptureGroupsLo(term.asAtomicGroup().getEnclosedCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHi(term.asAtomicGroup().getEnclosedCaptureGroupsHigh());
         }
         Sequence wrapperSequence = wrapperGroup.addSequence(ast);
         term.getParent().asSequence().replace(term.getSeqIndex(), wrapperGroup);
@@ -825,25 +853,11 @@ public final class RegexASTBuilder {
     }
 
     /**
-     * Adds a copy of {@code sourceGroup} to the current {@link Sequence}.
-     * 
-     * @param token a token indicating which source sections should be attributed to the copied
-     *            group
-     * @param sourceGroup the {@link Group} to be copied
-     */
-    public void addCopy(Token token, Group sourceGroup) {
-        Group copy = sourceGroup.copyRecursive(ast, compilationBuffer);
-        if (options.isDumpAutomataWithSourceSections()) {
-            setSourceSectionVisitor.run(copy, overrideSourceSection != null ? overrideSourceSection : token.getSourceSection());
-        }
-        addTerm(copy);
-    }
-
-    /**
      * Removes the current {@link Term} from the current {@link Sequence}.
      */
     public void removeCurTerm() {
         ast.getNodeCount().dec(countVisitor.count(curSequence.getLastTerm()));
+        MarkAsDeadVisitor.markAsDead(curSequence.getLastTerm());
         curSequence.removeLastTerm();
         curTerm = curSequence.isEmpty() ? null : curSequence.getLastTerm();
     }
@@ -882,58 +896,44 @@ public final class RegexASTBuilder {
         curTerm = atomicGroup;
     }
 
-    public void addWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
+    public void addWordBoundaryAssertion(Token token, CodePointSet wordChars, CodePointSet nonWordChars) {
+        if (token != null) {
+            setOverrideSourceSection(token.getSourceSection());
+        }
+        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:$|(?=\W)))
+        pushGroup();
+        // (?:^|(?<=\W))
+        addCaretOrLookBehind(nonWordChars);
+        // (?=\w)
+        addLookAhead(wordChars);
+        // |
+        nextSequence();
+        // (?<=\w)
+        addLookBehind(wordChars);
+        // (?:$|(?=\W))
+        addDollarOrLookAhead(nonWordChars);
+        popGroup();
+        clearOverrideSourceSection();
     }
 
-    public void addWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        popGroup(); // )
+    public void addWordNonBoundaryAssertion(Token token, CodePointSet wordChars, CodePointSet nonWordChars) {
+        if (token != null) {
+            setOverrideSourceSection(token.getSourceSection());
+        }
+        // (?:(?:^|(?<=\W))(?:$|(?=\W))|(?<=\w)(?=\w))
+        pushGroup();
+        // (?:^|(?<=\W))
+        addCaretOrLookBehind(nonWordChars);
+        // (?:$|(?=\W))
+        addDollarOrLookAhead(nonWordChars);
+        // |
+        nextSequence();
+        // (?<=\w)
+        addLookBehind(wordChars);
+        // (?=\w)
+        addLookAhead(wordChars);
+        popGroup();
+        clearOverrideSourceSection();
     }
 
     public void addWordNonBoundaryAssertionPython(CodePointSet wordChars, CodePointSet nonWordChars) {
@@ -965,10 +965,40 @@ public final class RegexASTBuilder {
         popGroup(); // )
     }
 
+    public void addCaretOrLookBehind(CodePointSet lookbehind) {
+        // (?:^|(?<=[...]))
+        pushGroup();
+        addCaret();
+        nextSequence();
+        addLookBehind(lookbehind);
+        popGroup();
+    }
+
+    public void addDollarOrLookAhead(CodePointSet lookahead) {
+        // (?:$|(?=[...]))
+        pushGroup();
+        addDollar();
+        nextSequence();
+        addLookAhead(lookahead);
+        popGroup();
+    }
+
+    private void addLookAhead(CodePointSet lookahead) {
+        pushLookAheadAssertion(false);
+        addCharClass(lookahead);
+        popGroup();
+    }
+
+    private void addLookBehind(CodePointSet lookbehind) {
+        pushLookBehindAssertion(false);
+        addCharClass(lookbehind);
+        popGroup();
+    }
+
     /* optimizations */
 
     private void optimizeGroup(Group group) {
-        if (group.isConditionalBackReferenceGroup()) {
+        if (group.isConditionalBackReferenceGroup() || group.isInLookBehindAssertion()) {
             return;
         }
         sortAlternatives(group);
@@ -1103,9 +1133,9 @@ public final class RegexASTBuilder {
                                 copy.add(t);
                                 if (t.isGroup()) {
                                     Group g = t.asGroup();
-                                    if (g.getEnclosedCaptureGroupsLow() != g.getEnclosedCaptureGroupsHigh()) {
-                                        enclosedCGLo = Math.min(enclosedCGLo, g.getEnclosedCaptureGroupsLow());
-                                        enclosedCGHi = Math.max(enclosedCGHi, g.getEnclosedCaptureGroupsHigh());
+                                    if (g.getEnclosedCaptureGroupsLo() != g.getEnclosedCaptureGroupsHi()) {
+                                        enclosedCGLo = Math.min(enclosedCGLo, g.getEnclosedCaptureGroupsLo());
+                                        enclosedCGHi = Math.max(enclosedCGHi, g.getEnclosedCaptureGroupsHi());
                                     }
                                     if (g.isCapturing()) {
                                         enclosedCGLo = Math.min(enclosedCGLo, g.getGroupNumber());
@@ -1117,8 +1147,8 @@ public final class RegexASTBuilder {
                     }
                 }
                 if (enclosedCGLo != Integer.MAX_VALUE) {
-                    innerGroup.setEnclosedCaptureGroupsLow(enclosedCGLo);
-                    innerGroup.setEnclosedCaptureGroupsHigh(enclosedCGHi);
+                    innerGroup.setEnclosedCaptureGroupsLo(enclosedCGLo);
+                    innerGroup.setEnclosedCaptureGroupsHi(enclosedCGHi);
                 }
                 if (!innerGroup.isEmpty() && !(innerGroup.size() == 1 && innerGroup.getFirstAlternative().isEmpty())) {
                     optimizeGroup(innerGroup);
@@ -1244,5 +1274,27 @@ public final class RegexASTBuilder {
             ret = i + 1;
         }
         return ret;
+    }
+
+    private StashedState withTempState(Group tempGroup, Sequence tempSequence, Term tempTerm) {
+        StashedState stashedState = new StashedState(this);
+        curGroup = tempGroup;
+        curSequence = tempSequence;
+        curTerm = tempTerm;
+        return stashedState;
+    }
+
+    private record StashedState(RegexASTBuilder builder, Group curGroup, Sequence curSequence, Term curTerm) implements AutoCloseable {
+
+        StashedState(RegexASTBuilder builder) {
+            this(builder, builder.curGroup, builder.curSequence, builder.curTerm);
+        }
+
+        @Override
+        public void close() {
+            builder.curGroup = curGroup;
+            builder.curSequence = curSequence;
+            builder.curTerm = curTerm;
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class Attribute {
 
+    // see llvm/include/llvm/Bitcode/LLVMBitCodes.h, enum AttributeKindCodes
     public enum Kind {
 
         NONE,
@@ -114,7 +115,31 @@ public abstract class Attribute {
         SWIFT_ASYNC,
         NO_SANITIZE_COVERAGE,
         ELEMENTTYPE,
-        DISABLE_SANITIZER_INSTRUMENTATION;
+        DISABLE_SANITIZER_INSTRUMENTATION,
+        NO_SANITIZE_BOUNDS,
+        ALLOC_ALIGN,
+        ALLOCATED_POINTER,
+        ALLOC_KIND,
+        PRESPLIT_COROUTINE,
+        FNRETTHUNK_EXTERN,
+        SKIP_PROFILE,
+        MEMORY,
+        NOFPCLASS,
+        OPTIMIZE_FOR_DEBUGGING,
+        WRITABLE,
+        CORO_ONLY_DESTROY_WHEN_COMPLETE,
+        DEAD_ON_UNWIND,
+        RANGE,
+        SANITIZE_NUMERICAL_STABILITY,
+        INITIALIZES,
+        HYBRID_PATCHABLE,
+        SANITIZE_REALTIME,
+        SANITIZE_REALTIME_BLOCKING,
+        CORO_ELIDE_SAFE,
+        NO_EXT,
+        NO_DIVERGENCE_SOURCE,
+        SANITIZE_TYPE,
+        CAPTURES;
 
         private static final Kind[] VALUES = values();
 

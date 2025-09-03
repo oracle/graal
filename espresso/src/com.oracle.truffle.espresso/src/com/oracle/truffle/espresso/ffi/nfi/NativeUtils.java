@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -33,11 +32,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
@@ -172,21 +171,12 @@ public final class NativeUtils {
             return null;
         }
         ByteBuffer buf = directByteBuffer(rawBytesPtr, Integer.MAX_VALUE);
-
-        int utfLen = 0;
         while (buf.get() != 0) {
-            utfLen++;
+            // find the end of the utf8
         }
-
-        byte[] bytes = new byte[utfLen];
-        buf.clear();
-        buf.get(bytes);
-        try {
-            return ModifiedUtf8.toJavaString(bytes);
-        } catch (IOException e) {
-            // return StaticObject.NULL;
-            throw EspressoError.shouldNotReachHere(e);
-        }
+        buf.limit(buf.position() - 1);
+        buf.position(0);
+        return ModifiedUTF8.toJavaStringSafe(buf);
     }
 
     @TruffleBoundary

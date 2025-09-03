@@ -211,6 +211,10 @@ class LinearScanWalker extends IntervalWalker {
     void freeCollectInactiveAny(Interval current) {
         Interval interval = inactiveLists.get(RegisterBinding.Any);
         while (!interval.isEndMarker()) {
+            if (interval.currentFrom() > current.to()) {
+                // these two can never intersect
+                return;
+            }
             setUsePos(interval, interval.currentIntersectsAt(current), true);
             interval = interval.next;
         }
@@ -1004,7 +1008,7 @@ class LinearScanWalker extends IntervalWalker {
         if (allocatableRegisters == null) {
             throw new OutOfRegistersException("There are no allocatable registers for kind " + interval.kind().getPlatformKind() + ", consider assigning fixed registers.");
         }
-        availableRegs = allocatableRegisters.allocatableRegisters;
+        availableRegs = allocatableRegisters.allocatableRegisters.toArray(Register[]::new);
         minReg = allocatableRegisters.minRegisterNumber;
         maxReg = allocatableRegisters.maxRegisterNumber;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -66,7 +65,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * Note that {@link CharacterClass} nodes and the {@link CodePointSet}s that they rely on can only
  * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
  * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
- * by {@link JSRegexParser} into a more complex expression which matches the individual code units
+ * by {@code JSRegexParser} into a more complex expression which matches the individual code units
  * that would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends QuantifiableTerm {
@@ -128,8 +127,29 @@ public class CharacterClass extends QuantifiableTerm {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
+    public boolean isUnrollingCandidate(RegexOptions options) {
+        if (!hasQuantifier()) {
+            return false;
+        }
+        if (getQuantifier().isWithinThreshold(Math.min(options.quantifierUnrollLimitGroup, options.quantifierUnrollLimitSingleCC))) {
+            return true;
+        }
+        if (getQuantifier().isWithinThreshold(Math.max(options.quantifierUnrollLimitGroup, options.quantifierUnrollLimitSingleCC))) {
+            // If the quantifier on this character class is large, but still within unroll
+            // threshold, we take parent group quantifiers into account; If there is a bounded
+            // quantifier on any parent group, unrolling the current quantifier may lead to either
+            // an explosion of NFA states if the parent quantifier is unrolled as well, or an
+            // explosion of guarded NFA transitions if the parent quantifier is not unrolled.
+            Group parent = getQuantifiedParentGroup();
+            while (parent != null) {
+                if (!parent.getQuantifier().isUnrollTrivial()) {
+                    return false;
+                }
+                parent = parent.getQuantifiedParentGroup();
+            }
+            return true;
+        }
+        return false;
     }
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {

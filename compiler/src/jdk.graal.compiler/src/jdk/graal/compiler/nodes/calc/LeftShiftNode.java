@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -109,13 +110,21 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
                 if (xStamp.getBits() == selfStamp.getBits()) {
-                    long i = ((PrimitiveConstant) c).asLong();
+                    long shiftAmount = ((PrimitiveConstant) c).asLong();
                     /*
-                     * If i == 63, this will give Long.MIN_VALUE, which is negative but still
-                     * correct as the multiplier. We have to do a shift here, computing this as
-                     * (long) Math.pow(2, 63) would round to the wrong value.
+                     * The shift below is done in long arithmetic, but if the underlying values are
+                     * ints (or smaller), we must shift according to int semantics. So mask
+                     * accordingly.
                      */
-                    long multiplier = 1L << i;
+                    if (selfStamp.getBits() <= Integer.SIZE) {
+                        shiftAmount &= CodeUtil.mask(CodeUtil.log2(Integer.SIZE));
+                    }
+                    /*
+                     * If shiftAmount == 63, this will give Long.MIN_VALUE, which is negative but
+                     * still correct as the multiplier. We have to do a shift here, computing this
+                     * as (long) Math.pow(2, 63) would round to the wrong value.
+                     */
+                    long multiplier = 1L << shiftAmount;
                     return new MulNode(getX(), ConstantNode.forIntegerStamp(xStamp, multiplier));
                 }
             }

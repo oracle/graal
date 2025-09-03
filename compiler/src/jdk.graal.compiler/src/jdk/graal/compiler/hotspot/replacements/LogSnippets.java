@@ -94,8 +94,8 @@ public class LogSnippets implements Snippets {
             } else if (logNode.getL1() != null) {
                 info = printf1;
             }
-            Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());
-            args.addConst("message", graph.unique(new ConstantNode(new CStringConstant(logNode.message()), StampFactory.pointer())));
+            Arguments args = new Arguments(info, graph, tool.getLoweringStage());
+            args.add("message", graph.unique(new ConstantNode(new CStringConstant(logNode.message()), StampFactory.pointer())));
             if (logNode.getL1() != null) {
                 args.add("l1", logNode.getL1());
             }

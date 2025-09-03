@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.EmptyArrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Stream;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -53,20 +57,19 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-import java.util.stream.Stream;
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.flavor.java.JavaFlags;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.test.generated.JavaGeneratedTests;
+import com.oracle.truffle.regex.util.EmptyArrays;
 
 public class JavaUtilPatternTests extends RegexTestBase {
 
-    public static final String ENGINE_OPTIONS = "Flavor=JavaUtilPattern,MatchingMode=search,JavaJDKVersion=" + Runtime.version().feature();
+    public static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "JavaUtilPattern", "regexDummyLang.JavaJDKVersion", String.valueOf(Runtime.version().feature()));
 
     @Override
-    String getEngineOptions() {
+    Map<String, String> getEngineOptions() {
         return ENGINE_OPTIONS;
     }
 
@@ -163,6 +166,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
         // Boundary matchers
         test("^", 0, "");
         test("$", 0, "");
+        test("$", 0, "empty");
+        test("\\Z", 0, "\r\n");
         test("\\b", 0, " a", 1);
         // test("\\b{g}", 0, "");
         test("\\B", 0, "b");
@@ -1140,7 +1145,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 String flags = new JavaFlags(regexes[i].getRight()).toString();
                 try {
                     compiledJava[i] = Pattern.compile(regexes[i].getLeft(), regexes[i].getRight().intValue());
-                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, "", getTRegexEncoding());
+                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, options(), getTRegexEncoding());
                 } catch (PatternSyntaxException e) {
                     nErrors++;
                     expectSyntaxError(regexes[i].getLeft(), flags, e);
@@ -1153,7 +1158,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 String s = Character.toString(j);
                 for (int i = 0; i < regexes.length; i++) {
                     if (compiledJava[i] != null) {
-                        test(compiledTRegex[i], compiledJava[i], regexes[i].getLeft(), regexes[i].getRight(), s, 0);
+                        test(compiledTRegex[i], compiledJava[i], regexes[i].getLeft(), regexes[i].getRight(), OPT_MATCHING_MODE_FULLMATCH, s, 0, false);
                     }
                 }
             }
@@ -1240,11 +1245,11 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void unsupportedOperations() {
-        Assert.assertTrue(compileRegex("(?>X)", "").isNull());
-        Assert.assertTrue(compileRegex("\\X", "").isNull());
-        Assert.assertTrue(compileRegex("\\G", "").isNull());
-        Assert.assertTrue(compileRegex("\\b{g}", "").isNull());
-        Assert.assertTrue(compileRegex("abc", "c").isNull());
+        expectUnsupported("(?>X)");
+        expectUnsupported("\\X");
+        expectUnsupported("\\G");
+        expectUnsupported("\\b{g}");
+        expectUnsupported("abc", "c");
     }
 
     @Test
@@ -1263,20 +1268,50 @@ public class JavaUtilPatternTests extends RegexTestBase {
         });
     }
 
+    @Test
+    public void fullMatch() {
+        testFullMatch("b", 0, "bb");
+        testFullMatch("[a-z]", 0, "bb");
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
+    public void generatedTests() {
+        runGeneratedTests(JavaGeneratedTests.TESTS);
+    }
+
+    @Override
+    void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        test(pattern, flags, OPT_MATCHING_MODE_SEARCH, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
 
     void test(String pattern, int javaFlags, String input, int fromIndex) {
-        test(null, null, pattern, javaFlags, input, fromIndex);
+        test(null, null, pattern, javaFlags, OPT_MATCHING_MODE_SEARCH, input, fromIndex, false);
     }
 
-    void test(Value compiledRegex, Pattern compiledJavaRegex, String pattern, int javaFlags, String input, int fromIndex) {
+    void testFullMatch(String pattern, int javaFlags, String input) {
+        test(null, null, pattern, javaFlags, OPT_MATCHING_MODE_FULLMATCH, input, 0, true);
+    }
+
+    void test(Value compiledRegex, Pattern compiledJavaRegex, String pattern, int javaFlags, Map<String, String> options, String input, int fromIndex, boolean fullMatch) {
         String flags = new JavaFlags(javaFlags).toString();
         try {
             Pattern javaPattern = compiledJavaRegex == null ? Pattern.compile(pattern, javaFlags) : compiledJavaRegex;
             Matcher m = javaPattern.matcher(input);
-            boolean isMatch = m.find(fromIndex);
+            boolean isMatch = fullMatch ? m.matches() : m.find(fromIndex);
             final int[] groupBoundaries;
             if (isMatch) {
                 groupBoundaries = new int[(m.groupCount() + 1) << 1];
@@ -1288,9 +1323,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 groupBoundaries = EmptyArrays.INT;
             }
             if (compiledRegex == null) {
-                test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
+                test(pattern, flags, options, input, fromIndex, isMatch, groupBoundaries);
             } else {
-                test(compiledRegex, pattern, flags, "", getTRegexEncoding(), input, fromIndex, isMatch, groupBoundaries);
+                test(compiledRegex, pattern, flags, options, getTRegexEncoding(), input, fromIndex, isMatch, groupBoundaries);
             }
         } catch (PatternSyntaxException javaPatternException) {
             expectSyntaxError(pattern, flags, javaPatternException);
@@ -1299,7 +1334,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     private void expectSyntaxError(String pattern, String flags, PatternSyntaxException javaPatternException) {
         try {
-            compileRegex(pattern, flags, "", getTRegexEncoding());
+            compileRegex(pattern, flags);
         } catch (PolyglotException tRegexException) {
             Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
             return;

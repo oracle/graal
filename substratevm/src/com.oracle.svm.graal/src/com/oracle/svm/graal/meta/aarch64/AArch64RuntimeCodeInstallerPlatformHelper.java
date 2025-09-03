@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -30,8 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.CodeSynchronizationOperations;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -48,9 +46,20 @@ public class AArch64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeIns
         }
     }
 
+    /**
+     * According to the <a href="https://developer.arm.com/documentation/ddi0487/latest">ARM
+     * Architecture Reference Manual</a> (see Section B2.2.5), it is necessary to flush the
+     * instruction cache and to issue an ISB (instruction synchronization barrier) if new code was
+     * made executable.
+     */
     @Override
-    public void performCodeSynchronization(CodeInfo codeInfo) {
-        CodeSynchronizationOperations.clearCache(CodeInfoAccess.getCodeStart(codeInfo).rawValue(), CodeInfoAccess.getCodeSize(codeInfo).rawValue());
+    public boolean needsInstructionCacheSynchronization() {
+        return true;
+    }
+
+    @Override
+    public void performCodeSynchronization(long codeStart, long codeSize) {
+        CodeSynchronizationOperations.clearCache(codeStart, codeSize);
         VMThreads.ActionOnTransitionToJavaSupport.requestAllThreadsSynchronizeCode();
     }
 }

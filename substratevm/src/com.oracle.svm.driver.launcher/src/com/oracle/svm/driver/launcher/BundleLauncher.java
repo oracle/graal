@@ -126,8 +126,8 @@ public class BundleLauncher {
                             .sorted()
                             .toList();
             showMessage("Executing [");
-            showMessage(String.join(" \\\n", environmentList));
-            showMessage(String.join(" \\\n", pb.command()));
+            showMessage(String.join(" \\" + System.lineSeparator(), environmentList));
+            showMessage(String.join(" \\" + System.lineSeparator(), pb.command()));
             showMessage("]");
         }
 

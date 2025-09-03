@@ -46,11 +46,13 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
 import com.oracle.truffle.espresso.polyglot.Polyglot;
+import com.oracle.truffle.espresso.polyglot.TypeLiteral;
 import com.oracle.truffle.espresso.polyglot.UnknownKeyException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
@@ -89,7 +91,8 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         try {
             Object hashValues = Interop.getHashValuesIterator(this);
             while (Interop.hasIteratorNextElement(hashValues)) {
-                Object next = Polyglot.cast(Object.class, Interop.getIteratorNextElement(hashValues));
+                TypeLiteral<V> typeLiteral = TypeLiteral.getReifiedType(this, 1);
+                Object next = Polyglot.castWithGenerics(Interop.getIteratorNextElement(hashValues), typeLiteral);
                 if (value.equals(next)) {
                     return true;
                 }
@@ -104,7 +107,8 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
     @SuppressWarnings("unchecked")
     public V get(Object key) {
         try {
-            return (V) Polyglot.cast(Object.class, Interop.readHashValue(this, key));
+            TypeLiteral<V> typeLiteral = TypeLiteral.getReifiedType(this, 1);
+            return Polyglot.castWithGenerics(Interop.readHashValue(this, key), typeLiteral);
         } catch (UnknownKeyException e) {
             return null;
         } catch (InteropException e) {
@@ -199,7 +203,8 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         @SuppressWarnings("unchecked")
         public K next() {
             try {
-                return (K) Polyglot.cast(Object.class, Interop.getIteratorNextElement(keysIterator));
+                TypeLiteral<K> typeLiteral = TypeLiteral.getReifiedType(EspressoForeignMap.this, 0);
+                return Polyglot.castWithGenerics(Interop.getIteratorNextElement(keysIterator), typeLiteral);
             } catch (InteropException e) {
                 throw new NoSuchElementException();
             }
@@ -259,7 +264,8 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         @SuppressWarnings("unchecked")
         public V next() {
             try {
-                return (V) Polyglot.cast(Object.class, Interop.getIteratorNextElement(valuesIterator));
+                TypeLiteral<V> typeLiteral = TypeLiteral.getReifiedType(EspressoForeignMap.this, 1);
+                return Polyglot.castWithGenerics(Interop.getIteratorNextElement(valuesIterator), typeLiteral);
             } catch (InteropException e) {
                 throw new NoSuchElementException();
             }
@@ -347,7 +353,9 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         @SuppressWarnings("unchecked")
         public K getKey() {
             try {
-                return (K) Polyglot.cast(Object.class, Interop.readArrayElement(entry, 0));
+                Object rawObject = Interop.readArrayElement(entry, 0);
+                TypeLiteral<K> typeLiteral = TypeLiteral.getReifiedType(EspressoForeignMap.this, 0);
+                return Polyglot.castWithGenerics(rawObject, typeLiteral);
             } catch (InteropException e) {
                 throw new UnsupportedOperationException();
             }
@@ -357,7 +365,9 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         @SuppressWarnings("unchecked")
         public V getValue() {
             try {
-                return (V) Polyglot.cast(Object.class, Interop.readArrayElement(entry, 1));
+                Object rawObject = Interop.readArrayElement(entry, 1);
+                TypeLiteral<V> typeLiteral = TypeLiteral.getReifiedType(EspressoForeignMap.this, 1);
+                return Polyglot.castWithGenerics(rawObject, typeLiteral);
             } catch (InteropException e) {
                 throw new UnsupportedOperationException();
             }
@@ -366,6 +376,32 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         @Override
         public V setValue(V value) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            EspressoForeignEntry that = (EspressoForeignEntry) o;
+
+            Object thisKey = getKey();
+            Object thatKey = that.getKey();
+
+            Object thisValue = getValue();
+            Object thatValue = that.getValue();
+
+            return Objects.equals(thisKey, thatKey) && Objects.equals(thisValue, thatValue);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(getKey()) + 31 * Objects.hashCode(getValue());
         }
     }
 }

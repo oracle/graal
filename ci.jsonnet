@@ -38,6 +38,9 @@ local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 # Visualizer
 local visualizer = import 'visualizer/ci/ci.jsonnet';
 
+# Web Image
+local web_image = import 'web-image/ci/ci.jsonnet';
+
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
 # Filter builds to include/exclude jobs whose name contains "libgraal"
@@ -47,7 +50,13 @@ local libgraal(builds, include=true) = [b for b in builds if (std.findSubstr("li
   assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
-  specVersion: "4",
+  specVersion: "7",
+  tierConfig: {
+    tier1: "gate",
+    tier2: "gate",
+    tier3: "gate",
+    tier4: "post-merge",
+  },
   builds: [common.add_excludes_guard(common.with_style_component(b)) for b in (
     common.with_components(compiler.builds + libgraal(vm.builds), ["compiler"]) +
     common.with_components(wasm.builds, ["wasm"]) +
@@ -60,7 +69,8 @@ local libgraal(builds, include=true) = [b for b in builds if (std.findSubstr("li
     common.with_components(truffle.builds, ["truffle"]) +
     common.with_components(javadoc.builds, ["javadoc"]) +
     common.with_components(libgraal(vm.builds, false), ["vm"]) +
-    common.with_components(visualizer.builds, ["visualizer"])
+    common.with_components(visualizer.builds, ["visualizer"]) +
+    common.with_components(web_image.builds, ["webimage"])
   )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works

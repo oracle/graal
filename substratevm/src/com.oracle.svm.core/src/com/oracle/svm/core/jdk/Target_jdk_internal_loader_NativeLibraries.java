@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.Deque;
+import java.util.Map;
+
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -53,4 +59,12 @@ final class Target_jdk_internal_loader_NativeLibraries {
 
 @TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl")
 final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl {
+}
+
+@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryContext")
+final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryContext {
+
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    static Map<Thread, Deque<Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl>> nativeLibraryThreadContext;
 }

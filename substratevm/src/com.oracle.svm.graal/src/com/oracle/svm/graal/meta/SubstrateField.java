@@ -34,9 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -51,8 +53,8 @@ public class SubstrateField implements SharedField {
 
     protected static final SubstrateField[] EMPTY_ARRAY = new SubstrateField[0];
 
-    @UnknownObjectField SubstrateType type;
-    @UnknownObjectField SubstrateType declaringClass;
+    @UnknownObjectField(availability = AfterAnalysis.class) SubstrateType type;
+    @UnknownObjectField(availability = AfterAnalysis.class) SubstrateType declaringClass;
     private final String name;
     private final int modifiers;
     private int hashCode;
@@ -88,7 +90,7 @@ public class SubstrateField implements SharedField {
         this.declaringClass = declaringClass;
     }
 
-    public void setSubstrateData(int location, boolean isAccessed, boolean isWritten, JavaConstant constantValue) {
+    public void setSubstrateDataAfterCompilation(int location, boolean isAccessed, boolean isWritten, JavaConstant constantValue) {
         this.location = location;
         this.isAccessed = isAccessed;
         this.isWritten = isWritten;
@@ -176,18 +178,11 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public boolean isValueAvailable() {
-        return true;
-    }
-
-    @Override
-    public boolean isInBaseLayer() {
-        return false;
-    }
-
-    @Override
-    public JavaConstant getStaticFieldBase() {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    public int getInstalledLayerNum() {
+        /*
+         * GR-62500: Layered images are not yet supported for runtime compilation.
+         */
+        return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
     }
 
     @Override

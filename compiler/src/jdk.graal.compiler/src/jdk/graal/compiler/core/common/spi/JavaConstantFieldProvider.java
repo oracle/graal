@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,9 @@ package jdk.graal.compiler.core.common.spi;
 import java.util.Arrays;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -98,7 +98,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
 
     private static boolean isArray(ResolvedJavaField field) {
         JavaType fieldType = field.getType();
-        return fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray();
+        return fieldType instanceof ResolvedJavaType && fieldType.isArray();
     }
 
     @SuppressWarnings("unused")
@@ -175,6 +175,32 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     private final ResolvedJavaField stringHashField;
 
     protected boolean isWellKnownImplicitStableField(ResolvedJavaField field) {
+        if (isArray(field) && field.isFinal() && field.getName().equals("cache")) {
+            ResolvedJavaType type = field.getDeclaringClass();
+            String typeName = type.getName();
+            if (typeName.equals("Ljdk/incubator/vector/VectorOperators$ImplCache;")) {
+                return true;
+            }
+        }
+        if (field.getName().equals("dummyVector")) {
+            ResolvedJavaType type = field.getDeclaringClass();
+            String typeName = type.getName();
+            if (typeName.equals("Ljdk/incubator/vector/AbstractSpecies;")) {
+                return true;
+            }
+        }
+        if (field.getName().equals("asIntegral") || field.getName().equals("asFloating")) {
+            ResolvedJavaType type = field.getDeclaringClass();
+            String typeName = type.getName();
+            if (typeName.equals("Ljdk/incubator/vector/LaneType;")) {
+                return true;
+            }
+        }
         return field.equals(stringValueField);
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return false;
     }
 }

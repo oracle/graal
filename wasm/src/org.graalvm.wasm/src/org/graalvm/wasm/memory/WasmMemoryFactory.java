@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,39 +40,39 @@
  */
 package org.graalvm.wasm.memory;
 
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.exception.Failure;
-
 import static org.graalvm.wasm.Assert.assertTrue;
 
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.exception.Failure;
+
 public class WasmMemoryFactory {
-    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared, boolean unsafeMemory) {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess,
+                    WasmContext context) {
+        if (directByteBufferMemoryAccess) {
+            assertTrue(unsafeMemory, "DirectByteBufferMemoryAccess is only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
+        }
         if (shared) {
             assertTrue(unsafeMemory, "Shared memories are only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
         }
 
         if (unsafeMemory) {
-            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
-                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
-            } else {
-                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
+            if (directByteBufferMemoryAccess || shared) {
+                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
+            } else if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, context.memoryContext());
             }
-        } else {
-            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
-            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
         }
+        return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64);
     }
 
-    public static Class<? extends WasmMemory> getMemoryImplementation(long maxAllowedSize, boolean unsafeMemory) {
+    public static long getMaximumAllowedSize(boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {
         if (unsafeMemory) {
-            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
-                return NativeWasmMemory.class;
+            if (directByteBufferMemoryAccess || shared) {
+                return UnsafeWasmMemory.MAX_ALLOWED_SIZE;
             } else {
-                return UnsafeWasmMemory.class;
+                return NativeWasmMemory.MAX_ALLOWED_SIZE;
             }
-        } else {
-            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
-            return ByteArrayWasmMemory.class;
         }
+        return ByteArrayWasmMemory.MAX_ALLOWED_SIZE;
     }
 }

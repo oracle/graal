@@ -40,8 +40,11 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
         super(original, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         if (declaredType.getJavaKind() == JavaKind.Void) {
             /*
              * Void ReturnTypeFlow has a use edge from the latest predicate, which can propagate
@@ -68,6 +71,6 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     public String format(boolean withState, boolean withSource) {
         return "Formal return from " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 }

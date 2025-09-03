@@ -571,7 +571,7 @@ public final class InspectServerSession implements MessageEndpoint {
         return dom;
     }
 
-    private class EventHandlerImpl implements EventHandler {
+    private final class EventHandlerImpl implements EventHandler {
 
         @Override
         public void event(Event event) {

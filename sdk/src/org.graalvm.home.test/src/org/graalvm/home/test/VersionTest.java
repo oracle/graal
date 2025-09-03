@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,10 +48,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.home.Version;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class VersionTest {
@@ -206,6 +208,40 @@ public class VersionTest {
         assertFormat("%[2XX]", "22.3", "XX");
         assertFormat("%[2XX]", "23.0", "");
         assertFormat("%%[R%d.%%d]", "23.0", "%[R23.%d]");
+    }
+
+    @Test
+    public void testGetComponents() {
+        Version version = Version.create(23, 1, 4);
+        try {
+            version.getComponent(-1);
+            Assert.fail("Should not reach here");
+        } catch (IllegalArgumentException illegalArgument) {
+            // expected
+        }
+        assertVersionComponents(new int[]{23, 1, 4, 0}, version);
+        version = Version.create(23, 1);
+        assertVersionComponents(new int[]{23, 1, 0, 0}, version);
+        version = Version.create(23);
+        assertVersionComponents(new int[]{23, 0, 0, 0}, version);
+        version = Version.create(23, 0, 0);
+        assertVersionComponents(new int[]{23, 0, 0, 0}, version);
+        version = Version.parse("23.1.4");
+        assertVersionComponents(new int[]{23, 1, 4, 0}, version);
+        version = Version.parse("23.1.4-snapshot");
+        assertVersionComponents(new int[]{23, 1, 4, 0}, version);
+        version = Version.parse("23.1.4-dev");
+        assertVersionComponents(new int[]{23, 1, 4, 0}, version);
+        version = Version.parse("dev");
+        assertVersionComponents(new int[]{0, 0, 0, 0}, version);
+        version = Version.parse("snapshot");
+        assertVersionComponents(new int[]{0, 0, 0, 0}, version);
+    }
+
+    private static void assertVersionComponents(int[] expectedComponents, Version version) {
+        for (int i = 0; i < expectedComponents.length; i++) {
+            assertEquals("Expected " + Arrays.toString(expectedComponents) + "components in " + version, expectedComponents[i], version.getComponent(i));
+        }
     }
 
     private static void assertFormat(String format, String version, String expected) {

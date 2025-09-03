@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,7 +127,17 @@ public interface ArithmeticLIRGeneratorTool {
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
+    @SuppressWarnings("unused")
+    default Variable emitMaskedLoad(LIRKind kind, Value address, Value mask, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
+
+    @SuppressWarnings("unused")
+    default void emitMaskedStore(LIRKind kind, Value address, Value mask, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
 
     /**
      * Generate an fma instruction to calculate the value of a * b + c.
@@ -150,12 +160,27 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
+    default Value emitMathSinh(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
     default Value emitMathTan(Value input) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
+    default Value emitMathTanh(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
     default Value emitMathExp(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathCbrt(Value input) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 

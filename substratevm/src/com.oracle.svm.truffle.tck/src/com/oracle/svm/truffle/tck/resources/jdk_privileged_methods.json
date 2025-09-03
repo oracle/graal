@@ -1,0 +1,6360 @@
+[
+  {
+    "name": "java.base",
+    "classes": [
+      {
+        "name": "java.io.File",
+        "methods": [
+          {
+            "name": "canExecute",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "canRead",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "canWrite",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "createNewFile",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "createTempFile",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String",
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "delete",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "deleteOnExit",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "exists",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getAbsolutePath",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getCanonicalPath",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getFreeSpace",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getTotalSpace",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getUsableSpace",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "isDirectory",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "isFile",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "isHidden",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "lastModified",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "length",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "list",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "list",
+            "parameterTypes": [
+              "java.io.FilenameFilter"
+            ]
+          },
+          {
+            "name": "listFiles",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "listFiles",
+            "parameterTypes": [
+              "java.io.FileFilter"
+            ]
+          },
+          {
+            "name": "listFiles",
+            "parameterTypes": [
+              "java.io.FilenameFilter"
+            ]
+          },
+          {
+            "name": "listRoots",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "mkdir",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "renameTo",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "setExecutable",
+            "parameterTypes": [
+              "boolean",
+              "boolean"
+            ]
+          },
+          {
+            "name": "setLastModified",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "setReadOnly",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setReadable",
+            "parameterTypes": [
+              "boolean",
+              "boolean"
+            ]
+          },
+          {
+            "name": "setWritable",
+            "parameterTypes": [
+              "boolean",
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.FileInputStream",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.FileDescriptor"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.FileOutputStream",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.File",
+              "boolean"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.FileDescriptor"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.ObjectInputFilter$Config",
+        "methods": [
+          {
+            "name": "setSerialFilter",
+            "parameterTypes": [
+              "java.io.ObjectInputFilter"
+            ]
+          },
+          {
+            "name": "setSerialFilterFactory",
+            "parameterTypes": [
+              "java.util.function.BinaryOperator"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.ObjectInputStream",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.InputStream"
+            ]
+          },
+          {
+            "name": "defaultReadObject",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "enableResolveObject",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "readFields",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "readObject",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "readUnshared",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setObjectInputFilter",
+            "parameterTypes": [
+              "java.io.ObjectInputFilter"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.ObjectOutputStream",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.OutputStream"
+            ]
+          },
+          {
+            "name": "enableReplaceObject",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.io.RandomAccessFile",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.File",
+              "java.lang.String"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.Class",
+        "methods": [
+          {
+            "name": "getProtectionDomain",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ClassLoader",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ClassLoader"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.ClassLoader"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ModuleLayer",
+        "methods": [
+          {
+            "name": "defineModules",
+            "parameterTypes": [
+              "java.lang.module.Configuration",
+              "java.util.List",
+              "java.util.function.Function"
+            ]
+          },
+          {
+            "name": "defineModulesWithManyLoaders",
+            "parameterTypes": [
+              "java.lang.module.Configuration",
+              "java.util.List",
+              "java.lang.ClassLoader"
+            ]
+          },
+          {
+            "name": "defineModulesWithOneLoader",
+            "parameterTypes": [
+              "java.lang.module.Configuration",
+              "java.util.List",
+              "java.lang.ClassLoader"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ProcessBuilder",
+        "methods": [
+          {
+            "name": "environment",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "start",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "startPipeline",
+            "parameterTypes": [
+              "java.util.List"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ProcessHandle",
+        "methods": [
+          {
+            "name": "allProcesses",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "of",
+            "parameterTypes": [
+              "long"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ProcessHandleImpl",
+        "methods": [
+          {
+            "name": "children",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "current",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "descendants",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "parent",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ProcessImpl",
+        "methods": [
+          {
+            "name": "toHandle",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.Runtime",
+        "methods": [
+          {
+            "name": "addShutdownHook",
+            "parameterTypes": [
+              "java.lang.Thread"
+            ]
+          },
+          {
+            "name": "exit",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "halt",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "load",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "loadLibrary",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "removeShutdownHook",
+            "parameterTypes": [
+              "java.lang.Thread"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.SecurityManager",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.StackWalker",
+        "methods": [
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.util.Set"
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.util.Set",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.System",
+        "methods": [
+          {
+            "name": "clearProperty",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getProperties",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getProperty",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getProperty",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getenv",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getenv",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "load",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "loadLibrary",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setErr",
+            "parameterTypes": [
+              "java.io.PrintStream"
+            ]
+          },
+          {
+            "name": "setIn",
+            "parameterTypes": [
+              "java.io.InputStream"
+            ]
+          },
+          {
+            "name": "setOut",
+            "parameterTypes": [
+              "java.io.PrintStream"
+            ]
+          },
+          {
+            "name": "setProperties",
+            "parameterTypes": [
+              "java.util.Properties"
+            ]
+          },
+          {
+            "name": "setProperty",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setSecurityManager",
+            "parameterTypes": [
+              "java.lang.SecurityManager"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.System$LoggerFinder",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getLoggerFinder",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.Thread",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.Runnable",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable",
+              "java.lang.String",
+              "long"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable",
+              "java.lang.String",
+              "long",
+              "boolean"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.ThreadGroup",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "checkAccess",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "interrupt",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getAllStackTraces",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getStackTrace",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setContextClassLoader",
+            "parameterTypes": [
+              "java.lang.ClassLoader"
+            ]
+          },
+          {
+            "name": "setDefaultUncaughtExceptionHandler",
+            "parameterTypes": [
+              "java.lang.Thread$UncaughtExceptionHandler"
+            ]
+          },
+          {
+            "name": "setDaemon",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setName",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setPriority",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "setUncaughtExceptionHandler",
+            "parameterTypes": [
+              "java.lang.Thread$UncaughtExceptionHandler"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ThreadBuilders$PlatformThreadBuilder",
+        "methods": [
+          {
+            "name": "unstarted",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ThreadBuilders$PlatformThreadFactory",
+        "methods": [
+          {
+            "name": "newThread",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.ThreadGroup",
+        "methods": [
+          {
+            "name": "checkAccess",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.VirtualThread",
+        "methods": [
+          {
+            "name": "interrupt",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.invoke.MethodHandles",
+        "methods": [
+          {
+            "name": "reflectAs",
+            "parameterTypes": [
+              "java.lang.Class",
+              "java.lang.invoke.MethodHandle"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.invoke.MethodType",
+        "methods": [
+          {
+            "name": "fromMethodDescriptorString",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.ClassLoader"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.module.ModuleFinder",
+        "methods": [
+          {
+            "name": "ofSystem",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.reflect.AccessibleObject",
+        "methods": [
+          {
+            "name": "setAccessible",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setAccessible",
+            "parameterTypes": [
+              "java.lang.reflect.AccessibleObject[]",
+              "boolean"
+            ]
+          },
+          {
+            "name": "trySetAccessible",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.reflect.Proxy",
+        "methods": [
+          {
+            "name": "getProxyClass",
+            "parameterTypes": [
+              "java.lang.ClassLoader",
+              "java.lang.Class[]"
+            ]
+          },
+          {
+            "name": "newProxyInstance",
+            "parameterTypes": [
+              "java.lang.ClassLoader",
+              "java.lang.Class[]",
+              "java.lang.reflect.InvocationHandler"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.Authenticator",
+        "methods": [
+          {
+            "name": "getDefault",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "requestPasswordAuthentication",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.net.InetAddress",
+              "int",
+              "java.lang.String",
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "requestPasswordAuthentication",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.net.InetAddress",
+              "int",
+              "java.lang.String",
+              "java.lang.String",
+              "java.lang.String",
+              "java.net.URL",
+              "java.net.Authenticator$RequestorType"
+            ]
+          },
+          {
+            "name": "requestPasswordAuthentication",
+            "parameterTypes": [
+              "java.net.Authenticator",
+              "java.lang.String",
+              "java.net.InetAddress",
+              "int",
+              "java.lang.String",
+              "java.lang.String",
+              "java.lang.String",
+              "java.net.URL",
+              "java.net.Authenticator$RequestorType"
+            ]
+          },
+          {
+            "name": "requestPasswordAuthentication",
+            "parameterTypes": [
+              "java.net.InetAddress",
+              "int",
+              "java.lang.String",
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.net.Authenticator"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.CookieHandler",
+        "methods": [
+          {
+            "name": "getDefault",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.net.CookieHandler"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.DatagramSocket",
+        "methods": [
+          {
+            "name": "setDatagramSocketImplFactory",
+            "parameterTypes": [
+              "java.net.DatagramSocketImplFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.HttpConnectSocketImpl",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.HttpURLConnection",
+        "methods": [
+          {
+            "name": "setFollowRedirects",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setRequestMethod",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.InetAddress",
+        "methods": [
+          {
+            "name": "getAllByName",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getCanonicalHostName",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getHostName",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getLocalHost",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.NetMulticastSocket",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.InetAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "joinGroup",
+            "parameterTypes": [
+              "java.net.InetAddress"
+            ]
+          },
+          {
+            "name": "joinGroup",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "java.net.NetworkInterface"
+            ]
+          },
+          {
+            "name": "leaveGroup",
+            "parameterTypes": [
+              "java.net.InetAddress"
+            ]
+          },
+          {
+            "name": "leaveGroup",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "java.net.NetworkInterface"
+            ]
+          },
+          {
+            "name": "receive",
+            "parameterTypes": [
+              "java.net.DatagramPacket"
+            ]
+          },
+          {
+            "name": "send",
+            "parameterTypes": [
+              "java.net.DatagramPacket"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.NetworkInterface",
+        "methods": [
+          {
+            "name": "getHardwareAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getInetAddresses",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getInterfaceAddresses",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "inetAddresses",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.ProxySelector",
+        "methods": [
+          {
+            "name": "getDefault",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.net.ProxySelector"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.ResponseCache",
+        "methods": [
+          {
+            "name": "getDefault",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.net.ResponseCache"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.ServerSocket",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.net.SocketImpl"
+            ]
+          },
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getInetAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "implAccept",
+            "parameterTypes": [
+              "java.net.Socket"
+            ]
+          },
+          {
+            "name": "setSocketFactory",
+            "parameterTypes": [
+              "java.net.SocketImplFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.Socket",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.net.Proxy"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.net.SocketImpl"
+            ]
+          },
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setSocketImplFactory",
+            "parameterTypes": [
+              "java.net.SocketImplFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.SocketPermission",
+        "methods": [
+          {
+            "name": "equals",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "hashCode",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "implies",
+            "parameterTypes": [
+              "java.security.Permission"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.SocketPermissionCollection",
+        "methods": [
+          {
+            "name": "implies",
+            "parameterTypes": [
+              "java.security.Permission"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.SocksSocketImpl",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.URL",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String",
+              "int",
+              "java.lang.String",
+              "java.net.URLStreamHandler"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.net.URL",
+              "java.lang.String",
+              "java.net.URLStreamHandler"
+            ]
+          },
+          {
+            "name": "openConnection",
+            "parameterTypes": [
+              "java.net.Proxy"
+            ]
+          },
+          {
+            "name": "setURLStreamHandlerFactory",
+            "parameterTypes": [
+              "java.net.URLStreamHandlerFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.URLConnection",
+        "methods": [
+          {
+            "name": "setContentHandlerFactory",
+            "parameterTypes": [
+              "java.net.ContentHandlerFactory"
+            ]
+          },
+          {
+            "name": "setFileNameMap",
+            "parameterTypes": [
+              "java.net.FileNameMap"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.spi.InetAddressResolverProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.spi.URLStreamHandlerProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.nio.channels.spi.AsynchronousChannelProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.nio.channels.spi.SelectorProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.nio.charset.spi.CharsetProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.nio.file.spi.FileSystemProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.nio.file.spi.FileTypeDetector",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.AccessControlContext",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.security.AccessControlContext",
+              "java.security.DomainCombiner"
+            ]
+          },
+          {
+            "name": "getDomainCombiner",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Identity",
+        "methods": [
+          {
+            "name": "addCertificate",
+            "parameterTypes": [
+              "java.security.Certificate"
+            ]
+          },
+          {
+            "name": "removeCertificate",
+            "parameterTypes": [
+              "java.security.Certificate"
+            ]
+          },
+          {
+            "name": "setInfo",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setPublicKey",
+            "parameterTypes": [
+              "java.security.PublicKey"
+            ]
+          },
+          {
+            "name": "toString",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.IdentityScope",
+        "methods": [
+          {
+            "name": "setSystemScope",
+            "parameterTypes": [
+              "java.security.IdentityScope"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Permission",
+        "methods": [
+          {
+            "name": "checkGuard",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Policy",
+        "methods": [
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.security.Policy$Parameters"
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.security.Policy$Parameters",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.security.Policy$Parameters",
+              "java.security.Provider"
+            ]
+          },
+          {
+            "name": "getPolicy",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setPolicy",
+            "parameterTypes": [
+              "java.security.Policy"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.ProtectionDomain",
+        "methods": [
+          {
+            "name": "toString",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Provider",
+        "methods": [
+          {
+            "name": "clear",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "compute",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.util.function.BiFunction"
+            ]
+          },
+          {
+            "name": "computeIfAbsent",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.util.function.Function"
+            ]
+          },
+          {
+            "name": "computeIfPresent",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.util.function.BiFunction"
+            ]
+          },
+          {
+            "name": "load",
+            "parameterTypes": [
+              "java.io.InputStream"
+            ]
+          },
+          {
+            "name": "merge",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object",
+              "java.util.function.BiFunction"
+            ]
+          },
+          {
+            "name": "put",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "putAll",
+            "parameterTypes": [
+              "java.util.Map"
+            ]
+          },
+          {
+            "name": "putIfAbsent",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "putService",
+            "parameterTypes": [
+              "java.security.Provider$Service"
+            ]
+          },
+          {
+            "name": "remove",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "remove",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "removeService",
+            "parameterTypes": [
+              "java.security.Provider$Service"
+            ]
+          },
+          {
+            "name": "replace",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "replace",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.lang.Object",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "replaceAll",
+            "parameterTypes": [
+              "java.util.function.BiFunction"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Security",
+        "methods": [
+          {
+            "name": "getProperty",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "insertProviderAt",
+            "parameterTypes": [
+              "java.security.Provider",
+              "int"
+            ]
+          },
+          {
+            "name": "removeProvider",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setProperty",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.security.Signer",
+        "methods": [
+          {
+            "name": "getPrivateKey",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setKeyPair",
+            "parameterTypes": [
+              "java.security.KeyPair"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.Locale",
+        "methods": [
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.util.Locale$Category",
+              "java.util.Locale"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.ResourceBundle",
+        "methods": [
+          {
+            "name": "getBundle",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Module"
+            ]
+          },
+          {
+            "name": "getBundle",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.util.Locale",
+              "java.lang.Module"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.TimeZone",
+        "methods": [
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "java.util.TimeZone"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.concurrent.Executors",
+        "methods": [
+          {
+            "name": "privilegedCallableUsingCurrentClassLoader",
+            "parameterTypes": [
+              "java.util.concurrent.Callable"
+            ]
+          },
+          {
+            "name": "privilegedThreadFactory",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.concurrent.ForkJoinPool",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "int",
+              "java.util.concurrent.ForkJoinPool$ForkJoinWorkerThreadFactory",
+              "java.lang.Thread$UncaughtExceptionHandler",
+              "boolean",
+              "int",
+              "int",
+              "int",
+              "java.util.function.Predicate",
+              "long",
+              "java.util.concurrent.TimeUnit"
+            ]
+          },
+          {
+            "name": "setParallelism",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "shutdown",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "shutdownNow",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.concurrent.ThreadPerTaskExecutor",
+        "methods": [
+          {
+            "name": "close",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "shutdown",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "shutdownNow",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.concurrent.ThreadPoolExecutor",
+        "methods": [
+          {
+            "name": "shutdown",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "shutdownNow",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.spi.LocaleServiceProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.zip.ZipFile",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.io.File",
+              "int",
+              "java.nio.charset.Charset"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.net.ssl.HttpsURLConnection",
+        "methods": [
+          {
+            "name": "setDefaultHostnameVerifier",
+            "parameterTypes": [
+              "javax.net.ssl.HostnameVerifier"
+            ]
+          },
+          {
+            "name": "setDefaultSSLSocketFactory",
+            "parameterTypes": [
+              "javax.net.ssl.SSLSocketFactory"
+            ]
+          },
+          {
+            "name": "setSSLSocketFactory",
+            "parameterTypes": [
+              "javax.net.ssl.SSLSocketFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.net.ssl.SSLContext",
+        "methods": [
+          {
+            "name": "setDefault",
+            "parameterTypes": [
+              "javax.net.ssl.SSLContext"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.Subject",
+        "methods": [
+          {
+            "name": "doAs",
+            "parameterTypes": [
+              "javax.security.auth.Subject",
+              "java.security.PrivilegedAction"
+            ]
+          },
+          {
+            "name": "doAs",
+            "parameterTypes": [
+              "javax.security.auth.Subject",
+              "java.security.PrivilegedExceptionAction"
+            ]
+          },
+          {
+            "name": "doAsPrivileged",
+            "parameterTypes": [
+              "javax.security.auth.Subject",
+              "java.security.PrivilegedAction",
+              "java.security.AccessControlContext"
+            ]
+          },
+          {
+            "name": "doAsPrivileged",
+            "parameterTypes": [
+              "javax.security.auth.Subject",
+              "java.security.PrivilegedExceptionAction",
+              "java.security.AccessControlContext"
+            ]
+          },
+          {
+            "name": "getPrincipals",
+            "parameterTypes": [
+              "java.lang.Class"
+            ]
+          },
+          {
+            "name": "getPrivateCredentials",
+            "parameterTypes": [
+              "java.lang.Class"
+            ]
+          },
+          {
+            "name": "getPublicCredentials",
+            "parameterTypes": [
+              "java.lang.Class"
+            ]
+          },
+          {
+            "name": "getSubject",
+            "parameterTypes": [
+              "java.security.AccessControlContext"
+            ]
+          },
+          {
+            "name": "setReadOnly",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.Subject$SecureSet",
+        "methods": [
+          {
+            "name": "add",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "contains",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.Subject$SecureSet$1",
+        "methods": [
+          {
+            "name": "next",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "remove",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.SubjectDomainCombiner",
+        "methods": [
+          {
+            "name": "getSubject",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.login.Configuration",
+        "methods": [
+          {
+            "name": "getConfiguration",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.login.Configuration$Parameters"
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.login.Configuration$Parameters",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getInstance",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.login.Configuration$Parameters",
+              "java.security.Provider"
+            ]
+          },
+          {
+            "name": "setConfiguration",
+            "parameterTypes": [
+              "javax.security.auth.login.Configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.security.auth.login.LoginContext",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.Subject"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.Subject",
+              "javax.security.auth.callback.CallbackHandler",
+              "javax.security.auth.login.Configuration"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.callback.CallbackHandler"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.internal.jrtfs.JrtFileSystemProvider",
+        "methods": [
+          {
+            "name": "getFileSystem",
+            "parameterTypes": [
+              "java.net.URI"
+            ]
+          },
+          {
+            "name": "getPath",
+            "parameterTypes": [
+              "java.net.URI"
+            ]
+          },
+          {
+            "name": "newFileSystem",
+            "parameterTypes": [
+              "java.net.URI",
+              "java.util.Map"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.internal.logger.DefaultLoggerFinder",
+        "methods": [
+          {
+            "name": "getLogger",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Module"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.net.www.protocol.http.HttpURLConnection",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getInputStream",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getOutputStream",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.net.www.protocol.jar.JarURLConnection",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.net.www.protocol.jrt.JavaRuntimeURLConnection",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.net.www.protocol.mailto.MailToURLConnection",
+        "methods": [
+          {
+            "name": "getOutputStream",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.AsynchronousServerSocketChannelImpl",
+        "methods": [
+          {
+            "name": "accept",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "accept",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.nio.channels.CompletionHandler"
+            ]
+          },
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.AsynchronousSocketChannelImpl",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "java.lang.Object",
+              "java.nio.channels.CompletionHandler"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.DatagramChannelImpl",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "join",
+            "parameterTypes": [
+              "java.net.InetAddress",
+              "java.net.NetworkInterface"
+            ]
+          },
+          {
+            "name": "join",
+            "parameterTypes": [
+              "java.net.InetAddress",
+              "java.net.NetworkInterface",
+              "java.net.InetAddress"
+            ]
+          },
+          {
+            "name": "read",
+            "parameterTypes": [
+              "java.nio.ByteBuffer"
+            ]
+          },
+          {
+            "name": "read",
+            "parameterTypes": [
+              "java.nio.ByteBuffer[]",
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "receive",
+            "parameterTypes": [
+              "java.nio.ByteBuffer"
+            ]
+          },
+          {
+            "name": "send",
+            "parameterTypes": [
+              "java.nio.ByteBuffer",
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "write",
+            "parameterTypes": [
+              "java.nio.ByteBuffer"
+            ]
+          },
+          {
+            "name": "write",
+            "parameterTypes": [
+              "java.nio.ByteBuffer[]",
+              "int",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.DatagramSocketAdaptor",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.InetAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getLocalSocketAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "joinGroup",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "java.net.NetworkInterface"
+            ]
+          },
+          {
+            "name": "leaveGroup",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "java.net.NetworkInterface"
+            ]
+          },
+          {
+            "name": "receive",
+            "parameterTypes": [
+              "java.net.DatagramPacket"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.EPollPort$EventHandlerTask",
+        "methods": [
+          {
+            "name": "run",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.EPollSelectorProvider",
+        "methods": [
+          {
+            "name": "inheritedChannel",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.PollSelectorProvider",
+        "methods": [
+          {
+            "name": "inheritedChannel",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.ServerSocketAdaptor",
+        "methods": [
+          {
+            "name": "accept",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getInetAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.ServerSocketChannelImpl",
+        "methods": [
+          {
+            "name": "accept",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.SocketAdaptor",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getLocalSocketAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.SocketChannelImpl",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "getLocalAddress",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.AbstractFileSystemProvider",
+        "methods": [
+          {
+            "name": "delete",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "deleteIfExists",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.LinuxDosFileAttributeView",
+        "methods": [
+          {
+            "name": "readAttributes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setArchive",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setHidden",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setReadOnly",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setSystem",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixFileAttributeViews$Basic",
+        "methods": [
+          {
+            "name": "readAttributes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setTimes",
+            "parameterTypes": [
+              "java.nio.file.attribute.FileTime",
+              "java.nio.file.attribute.FileTime",
+              "java.nio.file.attribute.FileTime"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixFileAttributeViews$Posix",
+        "methods": [
+          {
+            "name": "readAttributes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setGroup",
+            "parameterTypes": [
+              "java.nio.file.attribute.GroupPrincipal"
+            ]
+          },
+          {
+            "name": "setOwner",
+            "parameterTypes": [
+              "java.nio.file.attribute.UserPrincipal"
+            ]
+          },
+          {
+            "name": "setPermissions",
+            "parameterTypes": [
+              "java.util.Set"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixFileSystem",
+        "methods": [
+          {
+            "name": "getFileStores",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getRootDirectories",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getUserPrincipalLookupService",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixFileSystem$FileStoreIterator",
+        "methods": [
+          {
+            "name": "hasNext",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "next",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixFileSystemProvider",
+        "methods": [
+          {
+            "name": "checkAccess",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.AccessMode[]"
+            ]
+          },
+          {
+            "name": "copy",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.Path",
+              "java.nio.file.CopyOption[]"
+            ]
+          },
+          {
+            "name": "createDirectory",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "createLink",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "createSymbolicLink",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.Path",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "exists",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.LinkOption[]"
+            ]
+          },
+          {
+            "name": "getFileStore",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "isHidden",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "isSameFile",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "move",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.Path",
+              "java.nio.file.CopyOption[]"
+            ]
+          },
+          {
+            "name": "newAsynchronousFileChannel",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.util.Set",
+              "java.util.concurrent.ExecutorService",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "newByteChannel",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.util.Set",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "newDirectoryStream",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.DirectoryStream$Filter"
+            ]
+          },
+          {
+            "name": "newFileChannel",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.util.Set",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "readAttributesIfExists",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.lang.Class",
+              "java.nio.file.LinkOption[]"
+            ]
+          },
+          {
+            "name": "readSymbolicLink",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixPath",
+        "methods": [
+          {
+            "name": "register",
+            "parameterTypes": [
+              "java.nio.file.WatchService",
+              "java.nio.file.WatchEvent$Kind[]",
+              "java.nio.file.WatchEvent$Modifier[]"
+            ]
+          },
+          {
+            "name": "toAbsolutePath",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "toRealPath",
+            "parameterTypes": [
+              "java.nio.file.LinkOption[]"
+            ]
+          },
+          {
+            "name": "toUri",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixSecureDirectoryStream",
+        "methods": [
+          {
+            "name": "deleteDirectory",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "deleteFile",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "move",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.nio.file.SecureDirectoryStream",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "newByteChannel",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.util.Set",
+              "java.nio.file.attribute.FileAttribute[]"
+            ]
+          },
+          {
+            "name": "newDirectoryStream",
+            "parameterTypes": [
+              "java.lang.Object",
+              "java.nio.file.LinkOption[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixSecureDirectoryStream$BasicFileAttributeViewImpl",
+        "methods": [
+          {
+            "name": "readAttributes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setTimes",
+            "parameterTypes": [
+              "java.nio.file.attribute.FileTime",
+              "java.nio.file.attribute.FileTime",
+              "java.nio.file.attribute.FileTime"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.fs.UnixSecureDirectoryStream$PosixFileAttributeViewImpl",
+        "methods": [
+          {
+            "name": "readAttributes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setGroup",
+            "parameterTypes": [
+              "java.nio.file.attribute.GroupPrincipal"
+            ]
+          },
+          {
+            "name": "setOwner",
+            "parameterTypes": [
+              "java.nio.file.attribute.UserPrincipal"
+            ]
+          },
+          {
+            "name": "setPermissions",
+            "parameterTypes": [
+              "java.util.Set"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.provider.ConfigFile$Spi",
+        "methods": [
+          {
+            "name": "engineRefresh",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.ssl.SSLSessionImpl",
+        "methods": [
+          {
+            "name": "getSessionContext",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.datatransfer",
+    "classes": [
+      {
+        "name": "java.awt.datatransfer.DataFlavor",
+        "methods": [
+          {
+            "name": "tryToLoadClass",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.ClassLoader"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.desktop",
+    "classes": [
+      {
+        "name": "com.sun.media.sound.AbstractDataLine",
+        "methods": [
+          {
+            "name": "close",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "open",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "start",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "stop",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Button",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Canvas",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Checkbox",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Choice",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Desktop",
+        "methods": [
+          {
+            "name": "addAppEventListener",
+            "parameterTypes": [
+              "java.awt.desktop.SystemEventListener"
+            ]
+          },
+          {
+            "name": "browse",
+            "parameterTypes": [
+              "java.net.URI"
+            ]
+          },
+          {
+            "name": "browseFileDirectory",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "disableSuddenTermination",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "edit",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "enableSuddenTermination",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "mail",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "mail",
+            "parameterTypes": [
+              "java.net.URI"
+            ]
+          },
+          {
+            "name": "moveToTrash",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "open",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "openHelpViewer",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "print",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "removeAppEventListener",
+            "parameterTypes": [
+              "java.awt.desktop.SystemEventListener"
+            ]
+          },
+          {
+            "name": "requestForeground",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setAboutHandler",
+            "parameterTypes": [
+              "java.awt.desktop.AboutHandler"
+            ]
+          },
+          {
+            "name": "setDefaultMenuBar",
+            "parameterTypes": [
+              "javax.swing.JMenuBar"
+            ]
+          },
+          {
+            "name": "setOpenFileHandler",
+            "parameterTypes": [
+              "java.awt.desktop.OpenFilesHandler"
+            ]
+          },
+          {
+            "name": "setOpenURIHandler",
+            "parameterTypes": [
+              "java.awt.desktop.OpenURIHandler"
+            ]
+          },
+          {
+            "name": "setPreferencesHandler",
+            "parameterTypes": [
+              "java.awt.desktop.PreferencesHandler"
+            ]
+          },
+          {
+            "name": "setPrintFileHandler",
+            "parameterTypes": [
+              "java.awt.desktop.PrintFilesHandler"
+            ]
+          },
+          {
+            "name": "setQuitHandler",
+            "parameterTypes": [
+              "java.awt.desktop.QuitHandler"
+            ]
+          },
+          {
+            "name": "setQuitStrategy",
+            "parameterTypes": [
+              "java.awt.desktop.QuitStrategy"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Dialog",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setModalityType",
+            "parameterTypes": [
+              "java.awt.Dialog$ModalityType"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.EventQueue",
+        "methods": [
+          {
+            "name": "dispatchEvent",
+            "parameterTypes": [
+              "java.awt.AWTEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.FileDialog",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Font",
+        "methods": [
+          {
+            "name": "createFont",
+            "parameterTypes": [
+              "int",
+              "java.io.File"
+            ]
+          },
+          {
+            "name": "createFonts",
+            "parameterTypes": [
+              "java.io.File"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Frame",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.awt.GraphicsConfiguration"
+            ]
+          },
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.KeyboardFocusManager",
+        "methods": [
+          {
+            "name": "clearGlobalFocusOwner",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getGlobalActiveWindow",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getGlobalCurrentFocusCycleRoot",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getGlobalFocusOwner",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getGlobalFocusedWindow",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getGlobalPermanentFocusOwner",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setCurrentKeyboardFocusManager",
+            "parameterTypes": [
+              "java.awt.KeyboardFocusManager"
+            ]
+          },
+          {
+            "name": "setGlobalActiveWindow",
+            "parameterTypes": [
+              "java.awt.Window"
+            ]
+          },
+          {
+            "name": "setGlobalCurrentFocusCycleRoot",
+            "parameterTypes": [
+              "java.awt.Container"
+            ]
+          },
+          {
+            "name": "setGlobalFocusOwner",
+            "parameterTypes": [
+              "java.awt.Component"
+            ]
+          },
+          {
+            "name": "setGlobalFocusedWindow",
+            "parameterTypes": [
+              "java.awt.Window"
+            ]
+          },
+          {
+            "name": "setGlobalPermanentFocusOwner",
+            "parameterTypes": [
+              "java.awt.Component"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Label",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.List",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.MenuBar",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.MouseInfo",
+        "methods": [
+          {
+            "name": "getPointerInfo",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Panel",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.PopupMenu",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Robot",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.GraphicsDevice"
+            ]
+          },
+          {
+            "name": "createMultiResolutionScreenCapture",
+            "parameterTypes": [
+              "java.awt.Rectangle"
+            ]
+          },
+          {
+            "name": "createScreenCapture",
+            "parameterTypes": [
+              "java.awt.Rectangle"
+            ]
+          },
+          {
+            "name": "getPixelColor",
+            "parameterTypes": [
+              "int",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.ScrollPane",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Scrollbar",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.SystemTray",
+        "methods": [
+          {
+            "name": "getSystemTray",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Taskbar",
+        "methods": [
+          {
+            "name": "getIconImage",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getMenu",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "requestUserAttention",
+            "parameterTypes": [
+              "boolean",
+              "boolean"
+            ]
+          },
+          {
+            "name": "requestWindowUserAttention",
+            "parameterTypes": [
+              "java.awt.Window"
+            ]
+          },
+          {
+            "name": "setIconBadge",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setIconImage",
+            "parameterTypes": [
+              "java.awt.Image"
+            ]
+          },
+          {
+            "name": "setMenu",
+            "parameterTypes": [
+              "java.awt.PopupMenu"
+            ]
+          },
+          {
+            "name": "setProgressValue",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "setWindowIconBadge",
+            "parameterTypes": [
+              "java.awt.Window",
+              "java.awt.Image"
+            ]
+          },
+          {
+            "name": "setWindowProgressState",
+            "parameterTypes": [
+              "java.awt.Window",
+              "java.awt.Taskbar$State"
+            ]
+          },
+          {
+            "name": "setWindowProgressValue",
+            "parameterTypes": [
+              "java.awt.Window",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.TextArea",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.TextField",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Toolkit",
+        "methods": [
+          {
+            "name": "addAWTEventListener",
+            "parameterTypes": [
+              "java.awt.event.AWTEventListener",
+              "long"
+            ]
+          },
+          {
+            "name": "getAWTEventListeners",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getAWTEventListeners",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "getSystemEventQueue",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "removeAWTEventListener",
+            "parameterTypes": [
+              "java.awt.event.AWTEventListener"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.TrayIcon",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Image"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.Window",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Frame"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Window"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Window",
+              "java.awt.GraphicsConfiguration"
+            ]
+          },
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setAlwaysOnTop",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setIconImages",
+            "parameterTypes": [
+              "java.util.List"
+            ]
+          },
+          {
+            "name": "setModalExclusionType",
+            "parameterTypes": [
+              "java.awt.Dialog$ModalExclusionType"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.event.KeyEvent",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Component",
+              "int",
+              "long",
+              "int",
+              "int",
+              "char",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.event.MouseEvent",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.awt.Component",
+              "int",
+              "long",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "boolean",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.awt.print.PrinterJob",
+        "methods": [
+          {
+            "name": "getPrinterJob",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.beans.Beans",
+        "methods": [
+          {
+            "name": "setDesignTime",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setGuiAvailable",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.beans.Introspector",
+        "methods": [
+          {
+            "name": "setBeanInfoSearchPath",
+            "parameterTypes": [
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.beans.PropertyEditorManager",
+        "methods": [
+          {
+            "name": "registerEditor",
+            "parameterTypes": [
+              "java.lang.Class",
+              "java.lang.Class"
+            ]
+          },
+          {
+            "name": "setEditorSearchPath",
+            "parameterTypes": [
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.accessibility.AccessibilityProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.imageio.ImageIO",
+        "methods": [
+          {
+            "name": "createImageInputStream",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "createImageOutputStream",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.print.PrintServiceLookup",
+        "methods": [
+          {
+            "name": "lookupMultiDocPrintServices",
+            "parameterTypes": [
+              "javax.print.DocFlavor[]",
+              "javax.print.attribute.AttributeSet"
+            ]
+          },
+          {
+            "name": "lookupPrintServices",
+            "parameterTypes": [
+              "javax.print.DocFlavor",
+              "javax.print.attribute.AttributeSet"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.print.ServiceUI",
+        "methods": [
+          {
+            "name": "printDialog",
+            "parameterTypes": [
+              "java.awt.GraphicsConfiguration",
+              "int",
+              "int",
+              "javax.print.PrintService[]",
+              "javax.print.PrintService",
+              "javax.print.DocFlavor",
+              "javax.print.attribute.PrintRequestAttributeSet"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.JFrame",
+        "methods": [
+          {
+            "name": "setDefaultCloseOperation",
+            "parameterTypes": [
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.JPopupMenu",
+        "methods": [
+          {
+            "name": "pack",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setLocation",
+            "parameterTypes": [
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "setPopupSize",
+            "parameterTypes": [
+              "java.awt.Dimension"
+            ]
+          },
+          {
+            "name": "setVisible",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.RepaintManager",
+        "methods": [
+          {
+            "name": "paintDirtyRegions",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "validateInvalidComponents",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.RepaintManager$ProcessingRunnable",
+        "methods": [
+          {
+            "name": "run",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.TransferHandler$TransferAction",
+        "methods": [
+          {
+            "name": "actionPerformed",
+            "parameterTypes": [
+              "java.awt.event.ActionEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.filechooser.FileSystemView",
+        "methods": [
+          {
+            "name": "getChooserComboBoxFiles",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getChooserShortcutPanelFiles",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getDefaultDirectory",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getRoots",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.plaf.metal.MetalFileChooserUI",
+        "methods": [
+          {
+            "name": "doDirectoryChanged",
+            "parameterTypes": [
+              "java.beans.PropertyChangeEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.plaf.metal.MetalFileChooserUI$DirectoryComboBoxModel",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "javax.swing.plaf.metal.MetalFileChooserUI"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.plaf.metal.MetalTitlePane",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.swing.plaf.metal.MetalTitlePane$PropertyChangeHandler",
+        "methods": [
+          {
+            "name": "propertyChange",
+            "parameterTypes": [
+              "java.beans.PropertyChangeEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.LightweightFrame",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.SunToolkit",
+        "methods": [
+          {
+            "name": "checkImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "createImage",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "createImage",
+            "parameterTypes": [
+              "java.net.URL"
+            ]
+          },
+          {
+            "name": "getImage",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getImage",
+            "parameterTypes": [
+              "java.net.URL"
+            ]
+          },
+          {
+            "name": "prepareImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "java.awt.image.ImageObserver"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.X11GraphicsDevice",
+        "methods": [
+          {
+            "name": "isFullScreenSupported",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.X11.XEmbeddedFrame",
+        "methods": [
+          {
+            "name": "addNotify",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.X11.XToolkit",
+        "methods": [
+          {
+            "name": "getPrintJob",
+            "parameterTypes": [
+              "java.awt.Frame",
+              "java.lang.String",
+              "java.awt.JobAttributes",
+              "java.awt.PageAttributes"
+            ]
+          },
+          {
+            "name": "getPrintJob",
+            "parameterTypes": [
+              "java.awt.Frame",
+              "java.lang.String",
+              "java.util.Properties"
+            ]
+          },
+          {
+            "name": "getSystemClipboard",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getSystemSelection",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.dnd.SunDropTargetContextPeer",
+        "methods": [
+          {
+            "name": "getTransferData",
+            "parameterTypes": [
+              "java.awt.datatransfer.DataFlavor"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.ImageFetcher",
+        "methods": [
+          {
+            "name": "run",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.ImageRepresentation",
+        "methods": [
+          {
+            "name": "imageComplete",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "setColorModel",
+            "parameterTypes": [
+              "java.awt.image.ColorModel"
+            ]
+          },
+          {
+            "name": "setDimensions",
+            "parameterTypes": [
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "setHints",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "setPixels",
+            "parameterTypes": [
+              "int",
+              "int",
+              "int",
+              "int",
+              "java.awt.image.ColorModel",
+              "byte[]",
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "setPixels",
+            "parameterTypes": [
+              "int",
+              "int",
+              "int",
+              "int",
+              "java.awt.image.ColorModel",
+              "int[]",
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "setProperties",
+            "parameterTypes": [
+              "java.util.Hashtable"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.InputStreamImageSource",
+        "methods": [
+          {
+            "name": "addConsumer",
+            "parameterTypes": [
+              "java.awt.image.ImageConsumer"
+            ]
+          },
+          {
+            "name": "startProduction",
+            "parameterTypes": [
+              "java.awt.image.ImageConsumer"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.MultiResolutionCachedImage",
+        "methods": [
+          {
+            "name": "getResolutionVariant",
+            "parameterTypes": [
+              "double",
+              "double"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.MultiResolutionToolkitImage$ObserverCache",
+        "methods": [
+          {
+            "name": "imageUpdate",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.image.ToolkitImage",
+        "methods": [
+          {
+            "name": "flush",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getHeight",
+            "parameterTypes": [
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "getProperty",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "getSource",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getWidth",
+            "parameterTypes": [
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "setAccelerationPriority",
+            "parameterTypes": [
+              "float"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.www.content.image.gif",
+        "methods": [
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection"
+            ]
+          },
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection",
+              "java.lang.Class[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.www.content.image.jpeg",
+        "methods": [
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection"
+            ]
+          },
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection",
+              "java.lang.Class[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.www.content.image.png",
+        "methods": [
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection"
+            ]
+          },
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection",
+              "java.lang.Class[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.www.content.image.x_xbitmap",
+        "methods": [
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection"
+            ]
+          },
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection",
+              "java.lang.Class[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.awt.www.content.image.x_xpixmap",
+        "methods": [
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection"
+            ]
+          },
+          {
+            "name": "getContent",
+            "parameterTypes": [
+              "java.net.URLConnection",
+              "java.lang.Class[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.java2d.SunGraphics2D",
+        "methods": [
+          {
+            "name": "drawImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "java.awt.Color",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "drawImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "int",
+              "int",
+              "java.awt.Color",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "drawImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "int",
+              "int",
+              "java.awt.Color",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "drawImage",
+            "parameterTypes": [
+              "java.awt.Image",
+              "java.awt.geom.AffineTransform",
+              "java.awt.image.ImageObserver"
+            ]
+          },
+          {
+            "name": "drawImage",
+            "parameterTypes": [
+              "java.awt.image.BufferedImage",
+              "java.awt.image.BufferedImageOp",
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "drawRenderedImage",
+            "parameterTypes": [
+              "java.awt.image.RenderedImage",
+              "java.awt.geom.AffineTransform"
+            ]
+          },
+          {
+            "name": "setComposite",
+            "parameterTypes": [
+              "java.awt.Composite"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.print.IPPPrintService",
+        "methods": [
+          {
+            "name": "createPrintJob",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.print.PrintServiceLookupProvider",
+        "methods": [
+          {
+            "name": "getDefaultPrintService",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getMultiDocPrintServices",
+            "parameterTypes": [
+              "javax.print.DocFlavor[]",
+              "javax.print.attribute.AttributeSet"
+            ]
+          },
+          {
+            "name": "getPrintServices",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getPrintServices",
+            "parameterTypes": [
+              "javax.print.DocFlavor",
+              "javax.print.attribute.AttributeSet"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.print.ServiceDialog$PrintServicePanel",
+        "methods": [
+          {
+            "name": "actionPerformed",
+            "parameterTypes": [
+              "java.awt.event.ActionEvent"
+            ]
+          },
+          {
+            "name": "popupMenuWillBecomeInvisible",
+            "parameterTypes": [
+              "javax.swing.event.PopupMenuEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.print.UnixPrintJob",
+        "methods": [
+          {
+            "name": "print",
+            "parameterTypes": [
+              "javax.print.Doc",
+              "javax.print.attribute.PrintRequestAttributeSet"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.print.UnixPrintService",
+        "methods": [
+          {
+            "name": "createPrintJob",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.swing.plaf.synth.SynthFileChooserUI$SynthFCPropertyChangeListener",
+        "methods": [
+          {
+            "name": "propertyChange",
+            "parameterTypes": [
+              "java.beans.PropertyChangeEvent"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.swing.plaf.synth.SynthFileChooserUIImpl",
+        "methods": [
+          {
+            "name": "installComponents",
+            "parameterTypes": [
+              "javax.swing.JFileChooser"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.logging",
+    "classes": [
+      {
+        "name": "java.util.logging.FileHandler",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "int",
+              "int"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "long",
+              "int",
+              "boolean"
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.logging.Handler",
+        "methods": [
+          {
+            "name": "getErrorManager",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setEncoding",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setErrorManager",
+            "parameterTypes": [
+              "java.util.logging.ErrorManager"
+            ]
+          },
+          {
+            "name": "setFilter",
+            "parameterTypes": [
+              "java.util.logging.Filter"
+            ]
+          },
+          {
+            "name": "setFormatter",
+            "parameterTypes": [
+              "java.util.logging.Formatter"
+            ]
+          },
+          {
+            "name": "setLevel",
+            "parameterTypes": [
+              "java.util.logging.Level"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.logging.LogManager",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "addConfigurationListener",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "addLogger",
+            "parameterTypes": [
+              "java.util.logging.Logger"
+            ]
+          },
+          {
+            "name": "checkAccess",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getLogger",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getLoggerNames",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "readConfiguration",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "readConfiguration",
+            "parameterTypes": [
+              "java.io.InputStream"
+            ]
+          },
+          {
+            "name": "removeConfigurationListener",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "reset",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "updateConfiguration",
+            "parameterTypes": [
+              "java.io.InputStream",
+              "java.util.function.Function"
+            ]
+          },
+          {
+            "name": "updateConfiguration",
+            "parameterTypes": [
+              "java.util.function.Function"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.util.logging.Logger",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "addHandler",
+            "parameterTypes": [
+              "java.util.logging.Handler"
+            ]
+          },
+          {
+            "name": "getAnonymousLogger",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getLogger",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getLogger",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "removeHandler",
+            "parameterTypes": [
+              "java.util.logging.Handler"
+            ]
+          },
+          {
+            "name": "setFilter",
+            "parameterTypes": [
+              "java.util.logging.Filter"
+            ]
+          },
+          {
+            "name": "setLevel",
+            "parameterTypes": [
+              "java.util.logging.Level"
+            ]
+          },
+          {
+            "name": "setParent",
+            "parameterTypes": [
+              "java.util.logging.Logger"
+            ]
+          },
+          {
+            "name": "setResourceBundle",
+            "parameterTypes": [
+              "java.util.ResourceBundle"
+            ]
+          },
+          {
+            "name": "setUseParentHandlers",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.management",
+    "classes": [
+      {
+        "name": "com.sun.jmx.interceptor.DefaultMBeanServerInterceptor",
+        "methods": [
+          {
+            "name": "addNotificationListener",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.NotificationListener",
+              "javax.management.NotificationFilter",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "createMBean",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.ObjectName",
+              "javax.management.ObjectName",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "createMBean",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.ObjectName",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "getAttribute",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getAttributes",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "getClassLoader",
+            "parameterTypes": [
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "getClassLoaderFor",
+            "parameterTypes": [
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "getDomains",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getMBeanInfo",
+            "parameterTypes": [
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "getObjectInstance",
+            "parameterTypes": [
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "invoke",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "java.lang.String",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "isInstanceOf",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "queryMBeans",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.QueryExp"
+            ]
+          },
+          {
+            "name": "queryNames",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.QueryExp"
+            ]
+          },
+          {
+            "name": "registerMBean",
+            "parameterTypes": [
+              "java.lang.Object",
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "removeNotificationListener",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.NotificationListener"
+            ]
+          },
+          {
+            "name": "removeNotificationListener",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.NotificationListener",
+              "javax.management.NotificationFilter",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "setAttribute",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.Attribute"
+            ]
+          },
+          {
+            "name": "setAttributes",
+            "parameterTypes": [
+              "javax.management.ObjectName",
+              "javax.management.AttributeList"
+            ]
+          },
+          {
+            "name": "unregisterMBean",
+            "parameterTypes": [
+              "javax.management.ObjectName"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.jmx.mbeanserver.JmxMBeanServer",
+        "methods": [
+          {
+            "name": "getClassLoaderRepository",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "instantiate",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "instantiate",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.ObjectName"
+            ]
+          },
+          {
+            "name": "instantiate",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.ObjectName",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "instantiate",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.jmx.mbeanserver.JmxMBeanServerBuilder",
+        "methods": [
+          {
+            "name": "newMBeanServer",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.MBeanServer",
+              "javax.management.MBeanServerDelegate"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.jmx.remote.security.FileLoginModule",
+        "methods": [
+          {
+            "name": "login",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.lang.management.ManagementFactory",
+        "methods": [
+          {
+            "name": "getPlatformMBeanServer",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.management.MBeanServerBuilder",
+        "methods": [
+          {
+            "name": "newMBeanServer",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.management.MBeanServer",
+              "javax.management.MBeanServerDelegate"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.management.MBeanServerFactory",
+        "methods": [
+          {
+            "name": "createMBeanServer",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "findMBeanServer",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "newMBeanServer",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "releaseMBeanServer",
+            "parameterTypes": [
+              "javax.management.MBeanServer"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.management.modelmbean.RequiredModelMBean",
+        "methods": [
+          {
+            "name": "getAttribute",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "invoke",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "setAttribute",
+            "parameterTypes": [
+              "javax.management.Attribute"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.management.ClassLoadingImpl",
+        "methods": [
+          {
+            "name": "setVerbose",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.management.MemoryImpl",
+        "methods": [
+          {
+            "name": "setVerbose",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.management.MemoryPoolImpl",
+        "methods": [
+          {
+            "name": "resetPeakUsage",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setCollectionUsageThreshold",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "setUsageThreshold",
+            "parameterTypes": [
+              "long"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.management.RuntimeImpl",
+        "methods": [
+          {
+            "name": "getInputArguments",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.management.ThreadImpl",
+        "methods": [
+          {
+            "name": "dumpAllThreads",
+            "parameterTypes": [
+              "boolean",
+              "boolean",
+              "int"
+            ]
+          },
+          {
+            "name": "findDeadlockedThreads",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "findMonitorDeadlockedThreads",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getAllThreadIds",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getThreadInfo",
+            "parameterTypes": [
+              "long[]",
+              "int"
+            ]
+          },
+          {
+            "name": "getThreadInfo",
+            "parameterTypes": [
+              "long[]",
+              "boolean",
+              "boolean",
+              "int"
+            ]
+          },
+          {
+            "name": "resetPeakThreadCount",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setThreadContentionMonitoringEnabled",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "setThreadCpuTimeEnabled",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.management.rmi",
+    "classes": [
+      {
+        "name": "javax.management.remote.rmi.RMIJRMPServerImpl",
+        "methods": [
+          {
+            "name": "export",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "makeClient",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.security.auth.Subject"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.management.remote.rmi.RMIServerImpl",
+        "methods": [
+          {
+            "name": "newClient",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.naming",
+    "classes": [
+      {
+        "name": "com.sun.jndi.toolkit.url.GenericURLContext",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "createSubcontext",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "destroySubcontext",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getNameParser",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "list",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "listBindings",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "lookup",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "lookupLink",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "rebind",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object"
+            ]
+          },
+          {
+            "name": "rename",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "unbind",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.jndi.toolkit.url.GenericURLDirContext",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object",
+              "javax.naming.directory.Attributes"
+            ]
+          },
+          {
+            "name": "createSubcontext",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.naming.directory.Attributes"
+            ]
+          },
+          {
+            "name": "getAttributes",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getAttributes",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String[]"
+            ]
+          },
+          {
+            "name": "getSchema",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getSchemaClassDefinition",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "modifyAttributes",
+            "parameterTypes": [
+              "java.lang.String",
+              "int",
+              "javax.naming.directory.Attributes"
+            ]
+          },
+          {
+            "name": "modifyAttributes",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.naming.directory.ModificationItem[]"
+            ]
+          },
+          {
+            "name": "rebind",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object",
+              "javax.naming.directory.Attributes"
+            ]
+          },
+          {
+            "name": "search",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String",
+              "javax.naming.directory.SearchControls"
+            ]
+          },
+          {
+            "name": "search",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String",
+              "java.lang.Object[]",
+              "javax.naming.directory.SearchControls"
+            ]
+          },
+          {
+            "name": "search",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.naming.directory.Attributes"
+            ]
+          },
+          {
+            "name": "search",
+            "parameterTypes": [
+              "java.lang.String",
+              "javax.naming.directory.Attributes",
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.naming.ldap.spi.LdapDnsProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "javax.naming.spi.NamingManager",
+        "methods": [
+          {
+            "name": "setInitialContextFactoryBuilder",
+            "parameterTypes": [
+              "javax.naming.spi.InitialContextFactoryBuilder"
+            ]
+          },
+          {
+            "name": "setObjectFactoryBuilder",
+            "parameterTypes": [
+              "javax.naming.spi.ObjectFactoryBuilder"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.provider.certpath.ldap.JdkLDAP$ProviderService",
+        "methods": [
+          {
+            "name": "newInstance",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.net.http",
+    "classes": [
+      {
+        "name": "java.net.http.HttpRequest$BodyPublishers",
+        "methods": [
+          {
+            "name": "ofFile",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.http.HttpResponse$BodyHandlers",
+        "methods": [
+          {
+            "name": "ofFile",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.OpenOption[]"
+            ]
+          },
+          {
+            "name": "ofFileDownload",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.OpenOption[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.net.http.HttpResponse$BodySubscribers",
+        "methods": [
+          {
+            "name": "ofFile",
+            "parameterTypes": [
+              "java.nio.file.Path",
+              "java.nio.file.OpenOption[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.internal.net.http.HttpClientBuilderImpl",
+        "methods": [
+          {
+            "name": "build",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.internal.net.http.websocket.BuilderImpl",
+        "methods": [
+          {
+            "name": "buildAsync",
+            "parameterTypes": [
+              "java.net.URI",
+              "java.net.http.WebSocket$Listener"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.prefs",
+    "classes": [
+      {
+        "name": "java.util.prefs.Preferences",
+        "methods": [
+          {
+            "name": "systemRoot",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "userRoot",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.rmi",
+    "classes": [
+      {
+        "name": "java.rmi.registry.LocateRegistry",
+        "methods": [
+          {
+            "name": "createRegistry",
+            "parameterTypes": [
+              "int"
+            ]
+          },
+          {
+            "name": "createRegistry",
+            "parameterTypes": [
+              "int",
+              "java.rmi.server.RMIClientSocketFactory",
+              "java.rmi.server.RMIServerSocketFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.rmi.server.LogStream",
+        "methods": [
+          {
+            "name": "setDefaultStream",
+            "parameterTypes": [
+              "java.io.PrintStream"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.rmi.server.RMIClassLoader",
+        "methods": [
+          {
+            "name": "getDefaultProviderInstance",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },      
+      {
+        "name": "java.rmi.server.RMISocketFactory",
+        "methods": [
+          {
+            "name": "setFailureHandler",
+            "parameterTypes": [
+              "java.rmi.server.RMIFailureHandler"
+            ]
+          },
+          {
+            "name": "setSocketFactory",
+            "parameterTypes": [
+              "java.rmi.server.RMISocketFactory"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.rmi.server.UnicastRemoteObject",
+        "methods": [
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote"
+            ]
+          },
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "int"
+            ]
+          },
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "int",
+              "java.io.ObjectInputFilter"
+            ]
+          },
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "int",
+              "java.rmi.server.RMIClientSocketFactory",
+              "java.rmi.server.RMIServerSocketFactory"
+            ]
+          },
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "int",
+              "java.rmi.server.RMIClientSocketFactory",
+              "java.rmi.server.RMIServerSocketFactory",
+              "java.io.ObjectInputFilter"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.rmi.server.UnicastRef",
+        "methods": [
+          {
+            "name": "invoke",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "java.lang.reflect.Method",
+              "java.lang.Object[]",
+              "long"
+            ]
+          },
+          {
+            "name": "newCall",
+            "parameterTypes": [
+              "java.rmi.server.RemoteObject",
+              "java.rmi.server.Operation[]",
+              "int",
+              "long"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.rmi.server.UnicastServerRef",
+        "methods": [
+          {
+            "name": "exportObject",
+            "parameterTypes": [
+              "java.rmi.Remote",
+              "java.lang.Object"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.rmi.transport.StreamRemoteCall",
+        "methods": [
+          {
+            "name": "releaseInputStream",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.security.jgss",
+    "classes": [
+      {
+        "name": "javax.security.auth.kerberos.KerberosPrincipal",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.String",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.jgss.GSSContextImpl",
+        "methods": [
+          {
+            "name": "acceptSecContext",
+            "parameterTypes": [
+              "java.io.InputStream",
+              "java.io.OutputStream"
+            ]
+          },
+          {
+            "name": "getCredDelegState",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getDelegCred",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getSrcName",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getTargName",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "initSecContext",
+            "parameterTypes": [
+              "java.io.InputStream",
+              "java.io.OutputStream"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.jgss.GSSCredentialImpl",
+        "methods": [
+          {
+            "name": "add",
+            "parameterTypes": [
+              "org.ietf.jgss.GSSName",
+              "int",
+              "int",
+              "org.ietf.jgss.Oid",
+              "int"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.jgss.GSSManagerImpl",
+        "methods": [
+          {
+            "name": "createName",
+            "parameterTypes": [
+              "java.lang.String",
+              "org.ietf.jgss.Oid"
+            ]
+          },
+          {
+            "name": "createName",
+            "parameterTypes": [
+              "java.lang.String",
+              "org.ietf.jgss.Oid",
+              "org.ietf.jgss.Oid"
+            ]
+          },
+          {
+            "name": "createName",
+            "parameterTypes": [
+              "byte[]",
+              "org.ietf.jgss.Oid"
+            ]
+          },
+          {
+            "name": "createName",
+            "parameterTypes": [
+              "byte[]",
+              "org.ietf.jgss.Oid",
+              "org.ietf.jgss.Oid"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.jgss.GSSNameImpl",
+        "methods": [
+          {
+            "name": "canonicalize",
+            "parameterTypes": [
+              "org.ietf.jgss.Oid"
+            ]
+          },
+          {
+            "name": "equals",
+            "parameterTypes": [
+              "org.ietf.jgss.GSSName"
+            ]
+          },
+          {
+            "name": "export",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.smartcardio",
+    "classes": [
+      {
+        "name": "sun.security.smartcardio.CardImpl",
+        "methods": [
+          {
+            "name": "beginExclusive",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "disconnect",
+            "parameterTypes": [
+              "boolean"
+            ]
+          },
+          {
+            "name": "getBasicChannel",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "openLogicalChannel",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "transmitControlCommand",
+            "parameterTypes": [
+              "int",
+              "byte[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.security.smartcardio.TerminalImpl",
+        "methods": [
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.lang.String"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.sql",
+    "classes": [
+      {
+        "name": "java.sql.DriverManager",
+        "methods": [
+          {
+            "name": "deregisterDriver",
+            "parameterTypes": [
+              "java.sql.Driver"
+            ]
+          },
+          {
+            "name": "setLogStream",
+            "parameterTypes": [
+              "java.io.PrintStream"
+            ]
+          },
+          {
+            "name": "setLogWriter",
+            "parameterTypes": [
+              "java.io.PrintWriter"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.sql.rowset",
+    "classes": [
+      {
+        "name": "javax.sql.rowset.spi.SyncFactory",
+        "methods": [
+          {
+            "name": "setJNDIContext",
+            "parameterTypes": [
+              "javax.naming.Context"
+            ]
+          },
+          {
+            "name": "setLogger",
+            "parameterTypes": [
+              "java.util.logging.Logger"
+            ]
+          },
+          {
+            "name": "setLogger",
+            "parameterTypes": [
+              "java.util.logging.Logger",
+              "java.util.logging.Level"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.accessibility",
+    "classes": [
+      {
+        "name": "com.sun.java.accessibility.util.AWTEventMonitor",
+        "methods": [
+          {
+            "name": "addActionListener",
+            "parameterTypes": [
+              "java.awt.event.ActionListener"
+            ]
+          },
+          {
+            "name": "addAdjustmentListener",
+            "parameterTypes": [
+              "java.awt.event.AdjustmentListener"
+            ]
+          },
+          {
+            "name": "addComponentListener",
+            "parameterTypes": [
+              "java.awt.event.ComponentListener"
+            ]
+          },
+          {
+            "name": "addItemListener",
+            "parameterTypes": [
+              "java.awt.event.ItemListener"
+            ]
+          },
+          {
+            "name": "addKeyListener",
+            "parameterTypes": [
+              "java.awt.event.KeyListener"
+            ]
+          },
+          {
+            "name": "addMouseListener",
+            "parameterTypes": [
+              "java.awt.event.MouseListener"
+            ]
+          },
+          {
+            "name": "addMouseMotionListener",
+            "parameterTypes": [
+              "java.awt.event.MouseMotionListener"
+            ]
+          },
+          {
+            "name": "addTextListener",
+            "parameterTypes": [
+              "java.awt.event.TextListener"
+            ]
+          },
+          {
+            "name": "addWindowListener",
+            "parameterTypes": [
+              "java.awt.event.WindowListener"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.attach",
+    "classes": [
+      {
+        "name": "com.sun.tools.attach.spi.AttachProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.crypto.cryptoki",
+    "classes": [
+      {
+        "name": "sun.security.pkcs11.SunPKCS11",
+        "methods": [
+          {
+            "name": "login",
+            "parameterTypes": [
+              "javax.security.auth.Subject",
+              "javax.security.auth.callback.CallbackHandler"
+            ]
+          },
+          {
+            "name": "logout",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "setCallbackHandler",
+            "parameterTypes": [
+              "javax.security.auth.callback.CallbackHandler"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.dynalink",
+    "classes": [
+      {
+        "name": "jdk.dynalink.SecureLookupSupplier",
+        "methods": [
+          {
+            "name": "getLookup",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.dynalink.linker.GuardingDynamicLinkerExporter",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.httpserver",
+    "classes": [
+      {
+        "name": "com.sun.net.httpserver.SimpleFileServer",
+        "methods": [
+          {
+            "name": "createFileHandler",
+            "parameterTypes": [
+              "java.nio.file.Path"
+            ]
+          },
+          {
+            "name": "createFileServer",
+            "parameterTypes": [
+              "java.net.InetSocketAddress",
+              "java.nio.file.Path",
+              "com.sun.net.httpserver.SimpleFileServer$OutputLevel"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.net.httpserver.spi.HttpServerProvider",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.jdi",
+    "classes": [
+      {
+        "name": "com.sun.jdi.Bootstrap",
+        "methods": [
+          {
+            "name": "virtualMachineManager",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.jfr",
+    "classes": [
+      {
+        "name": "jdk.jfr.AnnotationElement",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.Class",
+              "java.util.Map"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.jfr.EventFactory",
+        "methods": [
+          {
+            "name": "create",
+            "parameterTypes": [
+              "java.util.List",
+              "java.util.List"
+            ]
+          },
+          {
+            "name": "register",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "unregister",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.jfr.FlightRecorder",
+        "methods": [
+          {
+            "name": "addListener",
+            "parameterTypes": [
+              "jdk.jfr.FlightRecorderListener"
+            ]
+          },
+          {
+            "name": "addPeriodicEvent",
+            "parameterTypes": [
+              "java.lang.Class",
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "getFlightRecorder",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "register",
+            "parameterTypes": [
+              "java.lang.Class"
+            ]
+          },
+          {
+            "name": "removeListener",
+            "parameterTypes": [
+              "jdk.jfr.FlightRecorderListener"
+            ]
+          },
+          {
+            "name": "removePeriodicEvent",
+            "parameterTypes": [
+              "java.lang.Runnable"
+            ]
+          },
+          {
+            "name": "unregister",
+            "parameterTypes": [
+              "java.lang.Class"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.jfr.ValueDescriptor",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "java.lang.Class",
+              "java.lang.String",
+              "java.util.List"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.jfr.consumer.EventStream",
+        "methods": [
+          {
+            "name": "openRepository",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "jdk.jfr.consumer.RecordingStream",
+        "methods": [
+          {
+            "name": "<init>",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "<init>",
+            "parameterTypes": [
+              "jdk.jfr.Configuration"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.jlink",
+    "classes": [
+      {
+        "name": "jdk.tools.jlink.internal.Main$JlinkToolProvider",
+        "methods": [
+          {
+            "name": "run",
+            "parameterTypes": [
+              "java.io.PrintWriter",
+              "java.io.PrintWriter",
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.management",
+    "classes": [
+      {
+        "name": "com.sun.management.internal.DiagnosticCommandImpl",
+        "methods": [
+          {
+            "name": "invoke",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.Object[]",
+              "java.lang.String[]"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.management.internal.HotSpotDiagnostic",
+        "methods": [
+          {
+            "name": "dumpHeap",
+            "parameterTypes": [
+              "java.lang.String",
+              "boolean"
+            ]
+          },
+          {
+            "name": "dumpThreads",
+            "parameterTypes": [
+              "java.lang.String",
+              "com.sun.management.HotSpotDiagnosticMXBean$ThreadDumpFormat"
+            ]
+          },
+          {
+            "name": "setVMOption",
+            "parameterTypes": [
+              "java.lang.String",
+              "java.lang.String"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.management.internal.HotSpotThreadImpl",
+        "methods": [
+          {
+            "name": "setThreadAllocatedMemoryEnabled",
+            "parameterTypes": [
+              "boolean"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.management.agent",
+    "classes": [
+      {
+        "name": "sun.management.jmxremote.ConnectorBootstrap$AccessFileCheckerAuthenticator",
+        "methods": [
+          {
+            "name": "authenticate",
+            "parameterTypes": [
+              "java.lang.Object"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.management.jfr",
+    "classes": [
+      {
+        "name": "jdk.management.jfr.FlightRecorderMXBeanImpl",
+        "methods": [
+          {
+            "name": "cloneRecording",
+            "parameterTypes": [
+              "long",
+              "boolean"
+            ]
+          },
+          {
+            "name": "closeRecording",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "closeStream",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "copyTo",
+            "parameterTypes": [
+              "long",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "getConfigurations",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getEventTypes",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "getRecordingOptions",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "getRecordingSettings",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "getRecordings",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "newRecording",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "openStream",
+            "parameterTypes": [
+              "long",
+              "java.util.Map"
+            ]
+          },
+          {
+            "name": "readStream",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "setConfiguration",
+            "parameterTypes": [
+              "long",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setPredefinedConfiguration",
+            "parameterTypes": [
+              "long",
+              "java.lang.String"
+            ]
+          },
+          {
+            "name": "setRecordingOptions",
+            "parameterTypes": [
+              "long",
+              "java.util.Map"
+            ]
+          },
+          {
+            "name": "setRecordingSettings",
+            "parameterTypes": [
+              "long",
+              "java.util.Map"
+            ]
+          },
+          {
+            "name": "startRecording",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "stopRecording",
+            "parameterTypes": [
+              "long"
+            ]
+          },
+          {
+            "name": "takeSnapshot",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.naming.dns",
+    "classes": [
+      {
+        "name": "com.sun.jndi.dns.DnsContextFactory",
+        "methods": [
+          {
+            "name": "getInitialContext",
+            "parameterTypes": [
+              "java.util.Hashtable"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.net",
+    "classes": [
+      {
+        "name": "jdk.nio.Channels",
+        "methods": [
+          {
+            "name": "readWriteSelectableChannel",
+            "parameterTypes": [
+              "java.io.FileDescriptor",
+              "jdk.nio.Channels$SelectableChannelCloser"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.sctp",
+    "classes": [
+      {
+        "name": "sun.nio.ch.sctp.SctpChannelImpl",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "connect",
+            "parameterTypes": [
+              "java.net.SocketAddress"
+            ]
+          },
+          {
+            "name": "getAllLocalAddresses",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.sctp.SctpMultiChannelImpl",
+        "methods": [
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getAllLocalAddresses",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "receive",
+            "parameterTypes": [
+              "java.nio.ByteBuffer",
+              "java.lang.Object",
+              "com.sun.nio.sctp.NotificationHandler"
+            ]
+          },
+          {
+            "name": "send",
+            "parameterTypes": [
+              "java.nio.ByteBuffer",
+              "com.sun.nio.sctp.MessageInfo"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "sun.nio.ch.sctp.SctpServerChannelImpl",
+        "methods": [
+          {
+            "name": "accept",
+            "parameterTypes": [
+            ]
+          },
+          {
+            "name": "bind",
+            "parameterTypes": [
+              "java.net.SocketAddress",
+              "int"
+            ]
+          },
+          {
+            "name": "getAllLocalAddresses",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.security.jgss",
+    "classes": [
+      {
+        "name": "com.sun.security.jgss.ExtendedGSSContextImpl",
+        "methods": [
+          {
+            "name": "inquireSecContext",
+            "parameterTypes": [
+              "com.sun.security.jgss.InquireType"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.sun.security.jgss.GSSUtil",
+        "methods": [
+          {
+            "name": "createSubject",
+            "parameterTypes": [
+              "org.ietf.jgss.GSSName",
+              "org.ietf.jgss.GSSCredential"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.unsupported",
+    "classes": [
+      {
+        "name": "sun.reflect.ReflectionFactory",
+        "methods": [
+          {
+            "name": "getReflectionFactory",
+            "parameterTypes": [
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

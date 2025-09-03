@@ -39,7 +39,9 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
+import com.oracle.svm.core.thread.SafepointCheckCounter;
+import com.oracle.svm.core.thread.SafepointSlowpath;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -48,6 +50,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
@@ -58,30 +61,32 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-final class SafepointSnippets extends SubstrateTemplates implements Snippets {
-
-    @Snippet
-    private static void safepointSnippet() {
-        final boolean needSlowPath = SafepointCheckNode.test();
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathSafepointCheck(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
-        }
-    }
+public final class SafepointSnippets extends SubstrateTemplates implements Snippets {
 
     private final SnippetInfo safepoint;
 
     SafepointSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
-        this.safepoint = snippet(providers, SafepointSnippets.class, "safepointSnippet", getKilledLocations());
+        this.safepoint = snippet(providers, SafepointSnippets.class, "safepointSnippet", getKilledLocations(providers.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
         lowerings.put(SafepointNode.class, new SafepointLowering());
     }
 
-    private static LocationIdentity[] getKilledLocations() {
-        int newLength = GC_LOCATIONS.length + 1;
+    @Snippet
+    private static void safepointSnippet() {
+        final boolean needSlowPath = SafepointCheckNode.test();
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
+            callSlowPathSafepointCheck(SafepointSlowpath.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
+        }
+    }
+
+    private static LocationIdentity[] getKilledLocations(ResolvedJavaField memorySessionImplStateField) {
+        int newLength = GC_LOCATIONS.length + 2;
         LocationIdentity[] locations = Arrays.copyOf(GC_LOCATIONS, newLength);
-        locations[newLength - 1] = Safepoint.getThreadLocalSafepointRequestedLocationIdentity();
+        locations[newLength - 2] = SafepointCheckCounter.getLocationIdentity();
+        locations[newLength - 1] = new FieldLocationIdentity(memorySessionImplStateField);
         return locations;
     }
 
@@ -96,7 +101,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
                     /* Basic sanity check to catch errors during safepoint insertion. */
                     throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger)); // ExcludeFromJacocoGeneratedReport
                 }
-                Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(safepoint, node.graph(), tool.getLoweringStage());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
@@ -109,7 +114,7 @@ class SafepointFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(Safepoint.FOREIGN_CALLS);
+        foreignCalls.register(SafepointSlowpath.FOREIGN_CALLS);
     }
 
     @Override

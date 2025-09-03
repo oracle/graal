@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,18 +58,19 @@ public class RegexProperties implements JsonConvertible {
     private static final int FLAG_LOOK_BEHIND_ASSERTIONS = 1 << 7;
     private static final int FLAG_NON_LITERAL_LOOK_BEHIND_ASSERTIONS = 1 << 8;
     private static final int FLAG_NEGATIVE_LOOK_BEHIND_ASSERTIONS = 1 << 9;
-    private static final int FLAG_LARGE_COUNTED_REPETITIONS = 1 << 10;
+    private static final int FLAG_LARGE_BOUNDED_QUANTIFIERS = 1 << 10;
     private static final int FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK = 1 << 11;
     private static final int FLAG_FIXED_CODEPOINT_WIDTH = 1 << 12;
     private static final int FLAG_CAPTURE_GROUPS_IN_LOOK_AROUND_ASSERTIONS = 1 << 13;
     private static final int FLAG_EMPTY_CAPTURE_GROUPS = 1 << 14;
-    private static final int FLAG_ATOMIC_GROUPS = 1 << 15;
-    private static final int FLAG_BACK_REFERENCES = 1 << 16;
-    private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 17;
-    private static final int FLAG_NESTED_LOOK_BEHIND_ASSERTIONS = 1 << 18;
+    private static final int FLAG_BACK_REFERENCES = 1 << 15;
+    private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 16;
+    private static final int FLAG_NESTED_LOOK_BEHIND_ASSERTIONS = 1 << 17;
+    private static final int FLAG_LOOK_AROUND_WITH_CAPTURE_GROUPS_NESTED_IN_QUANTIFIER = 1 << 18;
     private static final int FLAG_CONDITIONAL_BACKREFERENCES = 1 << 19;
     private static final int FLAG_CONDITIONAL_REFERENCES_INTO_LOOK_AHEADS = 1 << 20;
     private static final int FLAG_MATCH_BOUNDARY_ASSERTIONS = 1 << 21;
+    private static final int FLAG_NESTED_BOUNDED_QUANTIFIER = 1 << 22;
 
     private int flags = FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK | FLAG_FIXED_CODEPOINT_WIDTH;
     private int innerLiteralStart = -1;
@@ -109,14 +110,6 @@ public class RegexProperties implements JsonConvertible {
 
     public void setEmptyCaptureGroups() {
         setFlag(FLAG_EMPTY_CAPTURE_GROUPS);
-    }
-
-    public boolean hasAtomicGroups() {
-        return getFlag(FLAG_ATOMIC_GROUPS);
-    }
-
-    public void setAtomicGroups() {
-        setFlag(FLAG_ATOMIC_GROUPS);
     }
 
     public boolean hasCharClasses() {
@@ -187,12 +180,20 @@ public class RegexProperties implements JsonConvertible {
         setFlag(FLAG_NEGATIVE_LOOK_BEHIND_ASSERTIONS);
     }
 
-    public boolean hasLargeCountedRepetitions() {
-        return getFlag(FLAG_LARGE_COUNTED_REPETITIONS);
+    public boolean hasLargeBoundedQuantifiers() {
+        return getFlag(FLAG_LARGE_BOUNDED_QUANTIFIERS);
     }
 
-    public void setLargeCountedRepetitions() {
-        setFlag(FLAG_LARGE_COUNTED_REPETITIONS);
+    public void setLargeBoundedQuantifiers() {
+        setFlag(FLAG_LARGE_BOUNDED_QUANTIFIERS);
+    }
+
+    public boolean hasNestedBoundedQuantifiers() {
+        return getFlag(FLAG_NESTED_BOUNDED_QUANTIFIER);
+    }
+
+    public void setNestedBoundedQuantifier() {
+        setFlag(FLAG_NESTED_BOUNDED_QUANTIFIER);
     }
 
     public boolean charClassesCanBeMatchedWithMask() {
@@ -264,6 +265,14 @@ public class RegexProperties implements JsonConvertible {
         setFlag(FLAG_NESTED_LOOK_BEHIND_ASSERTIONS);
     }
 
+    public boolean hasLookAroundWithCaptureGroupsNestedInQuantifier() {
+        return getFlag(FLAG_LOOK_AROUND_WITH_CAPTURE_GROUPS_NESTED_IN_QUANTIFIER);
+    }
+
+    public void setLookAroundWithCaptureGroupsNestedInQuantifier() {
+        setFlag(FLAG_LOOK_AROUND_WITH_CAPTURE_GROUPS_NESTED_IN_QUANTIFIER);
+    }
+
     public boolean hasConditionalBackReferences() {
         return getFlag(FLAG_CONDITIONAL_BACKREFERENCES);
     }
@@ -294,15 +303,18 @@ public class RegexProperties implements JsonConvertible {
         return Json.obj(Json.prop("alternations", hasAlternations()),
                         Json.prop("charClasses", hasCharClasses()),
                         Json.prop("captureGroups", hasCaptureGroups()),
+                        Json.prop("matchBoundaryAssertions", hasMatchBoundaryAssertions()),
                         Json.prop("lookAheadAssertions", hasLookAheadAssertions()),
                         Json.prop("negativeLookAheadAssertions", hasNegativeLookAheadAssertions()),
                         Json.prop("lookBehindAssertions", hasLookBehindAssertions()),
                         Json.prop("nonLiteralLookBehindAssertions", hasNonLiteralLookBehindAssertions()),
                         Json.prop("negativeLookBehindAssertions", hasNegativeLookBehindAssertions()),
-                        Json.prop("largeCountedRepetitions", hasLargeCountedRepetitions()),
+                        Json.prop("largeBoundedQuantifiers", hasLargeBoundedQuantifiers()),
+                        Json.prop("nestedBoundedQuantifiers", hasNestedBoundedQuantifiers()),
                         Json.prop("captureGroupsInLookAroundAssertions", hasCaptureGroupsInLookAroundAssertions()),
                         Json.prop("backReferences", hasBackReferences()),
                         Json.prop("nestedLookBehindAssertions", hasNestedLookBehindAssertions()),
+                        Json.prop("lookAroundWithCaptureGroupsNestedInQuantifier", hasLookAroundWithCaptureGroupsNestedInQuantifier()),
                         Json.prop("conditionalBackReferences", hasConditionalBackReferences()),
                         Json.prop("conditionalReferencesIntoLookAheads", hasConditionalReferencesIntoLookAheads()));
     }

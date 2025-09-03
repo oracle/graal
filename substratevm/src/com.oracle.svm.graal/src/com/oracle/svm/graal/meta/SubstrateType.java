@@ -31,13 +31,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -57,10 +58,10 @@ public class SubstrateType implements SharedType {
      * If it is not known if the type has an instance field (because the type metadata was created
      * at image runtime), it is null.
      */
-    @UnknownObjectField(canBeNull = true)//
+    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField(canBeNull = true)//
+    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
     protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
@@ -87,7 +88,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setTypeCheckData(DynamicHub uniqueConcreteImplementation) {
+    public void setSingleImplementor(DynamicHub uniqueConcreteImplementation) {
         this.uniqueConcreteImplementation = uniqueConcreteImplementation;
     }
 
@@ -98,11 +99,16 @@ public class SubstrateType implements SharedType {
      */
     @Override
     public final JavaKind getStorageKind() {
-        if (WordBase.class.isAssignableFrom(DynamicHub.toClass(hub))) {
+        if (isWordType()) {
             return ConfigurationValues.getWordKind();
         } else {
             return getJavaKind();
         }
+    }
+
+    @Override
+    public boolean isWordType() {
+        return WordBase.class.isAssignableFrom(DynamicHub.toClass(hub));
     }
 
     @Override
@@ -189,8 +195,13 @@ public class SubstrateType implements SharedType {
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj.getJavaKind() == JavaKind.Object && !obj.isNull()) {
-            DynamicHub objHub = KnownIntrinsics.readHub(SubstrateObjectConstant.asObject(obj));
-            return DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(objHub));
+            Class<?> objClass;
+            if (obj instanceof IsolatedObjectConstant ioc) {
+                objClass = ioc.getObjectClass();
+            } else {
+                objClass = SubstrateObjectConstant.asObject(obj).getClass();
+            }
+            return DynamicHub.toClass(hub).isAssignableFrom(objClass);
         }
         return false;
     }

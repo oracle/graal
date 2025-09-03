@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,19 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
+import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
+
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
-import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
-
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -46,7 +45,7 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     public SubstrateLLVMLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
                     TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -76,12 +75,7 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     }
 
     @Override
-    public boolean supportsBulkZeroing() {
-        return false;
-    }
-
-    @Override
-    public boolean supportsRounding() {
+    public boolean supportsBulkZeroingOfEden() {
         return false;
     }
 

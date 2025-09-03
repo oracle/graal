@@ -84,7 +84,7 @@ public class NodeChildNoNameTest {
         Assert.assertEquals(126, TestHelper.createCallTarget(arg).call());
     }
 
-    private static class ConstantNode extends ValueNode {
+    private static final class ConstantNode extends ValueNode {
 
         @Override
         public Object execute(VirtualFrame frame) {

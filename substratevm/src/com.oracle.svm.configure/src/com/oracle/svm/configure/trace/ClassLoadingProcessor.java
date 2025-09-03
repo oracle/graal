@@ -34,7 +34,7 @@ import com.oracle.svm.configure.config.ConfigurationSet;
 public class ClassLoadingProcessor extends AbstractProcessor {
 
     @Override
-    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -42,7 +42,7 @@ public class ClassLoadingProcessor extends AbstractProcessor {
 
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
-        if ("onClassFileLoadHook".equals(function) || "onMethodHandleClassFileInit".equals(function)) {
+        if ("onClassFileLoadHook".equals(function) || "lambdaPredefinition".equals(function)) {
             expectSize(args, 2);
             String nameInfo = (String) args.get(0);
             byte[] classData = asBinary(args.get(1));

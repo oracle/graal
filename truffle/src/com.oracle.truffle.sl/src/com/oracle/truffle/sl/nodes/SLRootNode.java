@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,27 +40,15 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
-import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
-import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -69,49 +57,26 @@ import com.oracle.truffle.sl.runtime.SLContext;
  * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
  */
 @NodeInfo(language = "SL", description = "The root of all SL execution trees")
-public class SLRootNode extends RootNode {
-    /** The function body that is executed, and specialized during execution. */
-    @Child private SLExpressionNode bodyNode;
+public abstract class SLRootNode extends RootNode {
 
-    /** The name of the function, for printing purposes only. */
-    private final TruffleString name;
+    protected transient boolean isCloningAllowed;
 
-    private boolean isCloningAllowed;
-
-    private final SourceSection sourceSection;
-
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private volatile SLWriteLocalVariableNode[] argumentNodesCache;
-
-    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, TruffleString name) {
+    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-        this.bodyNode = bodyNode;
-        this.name = name;
-        this.sourceSection = sourceSection;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
+    public abstract SourceSection getSourceSection();
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        assert SLContext.get(this) != null;
-        return bodyNode.executeGeneric(frame);
-    }
-
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
+    public abstract SLExpressionNode getBodyNode();
 
     @Override
     public String getName() {
-        return name.toJavaStringUncached();
+        TruffleString name = getTSName();
+        return name == null ? null : name.toJavaStringUncached();
     }
 
-    public TruffleString getTSName() {
-        return name;
-    }
+    public abstract TruffleString getTSName();
 
     public void setCloningAllowed(boolean isCloningAllowed) {
         this.isCloningAllowed = isCloningAllowed;
@@ -124,47 +89,21 @@ public class SLRootNode extends RootNode {
 
     @Override
     public String toString() {
-        return "root " + name;
+        return "root " + getTSName();
     }
 
-    public final SLWriteLocalVariableNode[] getDeclaredArguments() {
-        SLWriteLocalVariableNode[] argumentNodes = argumentNodesCache;
-        if (argumentNodes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            argumentNodesCache = argumentNodes = findArgumentNodes();
-        }
-        return argumentNodes;
-    }
+    /*
+     * The way local values work is very different between AST and bytecode interpreter. For example
+     * the AST interpreter just uses the FrameDescriptor from the frame, where as the bytecode
+     * interpreter implements scoping of values and hence requires additional logic to find the
+     * current set of locals.
+     */
+    public abstract Object[] getLocalValues(FrameInstance frame);
 
-    private SLWriteLocalVariableNode[] findArgumentNodes() {
-        List<SLWriteLocalVariableNode> writeArgNodes = new ArrayList<>(4);
-        NodeUtil.forEachChild(this.getBodyNode(), new NodeVisitor() {
+    public abstract Object[] getLocalNames(FrameInstance frame);
 
-            private SLWriteLocalVariableNode wn; // The current write node containing a slot
+    public abstract void setLocalValues(FrameInstance frame, Object[] args);
 
-            @Override
-            public boolean visit(Node node) {
-                // When there is a write node, search for SLReadArgumentNode among its children:
-                if (node instanceof InstrumentableNode.WrapperNode) {
-                    return NodeUtil.forEachChild(node, this);
-                }
-                if (node instanceof SLWriteLocalVariableNode) {
-                    wn = (SLWriteLocalVariableNode) node;
-                    boolean all = NodeUtil.forEachChild(node, this);
-                    wn = null;
-                    return all;
-                } else if (wn != null && (node instanceof SLReadArgumentNode)) {
-                    writeArgNodes.add(wn);
-                    return true;
-                } else if (wn == null && (node instanceof SLStatementNode && !(node instanceof SLBlockNode || node instanceof SLFunctionBodyNode))) {
-                    // A different SL node - we're done.
-                    return false;
-                } else {
-                    return NodeUtil.forEachChild(node, this);
-                }
-            }
-        });
-        return writeArgNodes.toArray(new SLWriteLocalVariableNode[writeArgNodes.size()]);
-    }
+    public abstract SourceSection ensureSourceSection();
 
 }

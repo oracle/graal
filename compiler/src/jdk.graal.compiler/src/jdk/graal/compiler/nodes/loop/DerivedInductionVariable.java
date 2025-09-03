@@ -62,6 +62,11 @@ public abstract class DerivedInductionVariable extends InductionVariable {
         return copy(newBase, copyValue(newBase, false/* no gvn */));
     }
 
+    @Override
+    public boolean structuralIntegrityValid() {
+        return base.structuralIntegrityValid();
+    }
+
     public abstract ValueNode copyValue(InductionVariable newBase);
 
     public abstract ValueNode copyValue(InductionVariable newBase, boolean gvn);

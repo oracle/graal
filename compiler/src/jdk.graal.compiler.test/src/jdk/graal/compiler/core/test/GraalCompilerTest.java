@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -79,7 +81,7 @@ import jdk.graal.compiler.core.phases.fuzzing.PhasePlanSerializer;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
@@ -129,6 +131,7 @@ import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -150,6 +153,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -395,7 +399,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
+    protected static final ThreadLocal<HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>>> cache = ThreadLocal.withInitial(HashMap::new);
 
     /**
      * Reset the entire {@linkplain #cache} of {@linkplain InstalledCode}. Additionally, invalidate
@@ -404,8 +408,8 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     @BeforeClass
     public static void resetCodeCache() {
-        for (InstalledCode code : cache.get().values()) {
-            code.invalidate();
+        for (Pair<OptionValues, InstalledCode> code : cache.get().values()) {
+            code.getRight().invalidate();
         }
         cache.get().clear();
     }
@@ -486,7 +490,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     @Override
-    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
+    protected Collection<DebugDumpHandlersFactory> getDebugHandlersFactories() {
         return Collections.singletonList(new GraalDebugHandlersFactory(getSnippetReflection()));
     }
 
@@ -522,7 +526,6 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@code actual} in its context so that these graphs are dumped when the comparison
      *            fails and {@code DumpOnError=true}
      */
-    @SuppressWarnings("try")
     protected void assertEquals(StructuredGraph expected,
                     StructuredGraph actual,
                     boolean excludeVirtual,
@@ -536,7 +539,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
 
         // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
-        try (DebugContext.Scope scope = addGraphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
+        try (DebugContext.Scope _ = addGraphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
             if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
                 debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
                 debug.dump(DebugContext.BASIC_LEVEL, actual, "Node count not matching - actual");
@@ -1006,7 +1009,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() != null) {
-            testAgainstExpected(options, method, expect, receiver, args);
+            testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
         }
         return expect;
     }
@@ -1029,15 +1032,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
-    }
-
-    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(getInitialOptions(), method, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(options, method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+        testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
@@ -1045,7 +1044,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         assertEquals(expect, actual);
     }
 
-    protected Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected final Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
         ProfilingInfo profile = method.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
@@ -1129,15 +1129,17 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param installAsDefault specifies whether to install as the default implementation
      * @param options the options that will be used in {@link #parseForCompile(ResolvedJavaMethod)}
      */
-    @SuppressWarnings("try")
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            HashMap<ResolvedJavaMethod, InstalledCode> tlCache = cache.get();
-            InstalledCode cached = tlCache.get(installedCodeOwner);
+            HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>> tlCache = cache.get();
+            Pair<OptionValues, InstalledCode> cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
-                if (cached.isValid()) {
-                    return cached;
+                // Reuse the cached code if it is still valid and the same options was used for
+                // the compilation. We use a deep equals for the option values to catch cases where
+                // users create new option values but with the same values.
+                if (cached.getRight().isValid() && (options.getMap().equals(cached.getLeft().getMap()) || optionsMapDeepEquals(options.getMap(), cached.getLeft().getMap()))) {
+                    return cached.getRight();
                 } else {
                     tlCache.remove(installedCodeOwner);
                 }
@@ -1151,12 +1153,12 @@ public abstract class GraalCompilerTest extends GraalTest {
             StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, id, options) : graph;
             DebugContext debug = graphToCompile.getDebug();
 
-            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); DebugContext.Scope ds = debug.scope("Compiling", graph)) {
+            try (AllocSpy _ = AllocSpy.open(installedCodeOwner); DebugContext.Scope _ = debug.scope("Compiling", graph)) {
                 CompilationPrinter printer = CompilationPrinter.begin(options, id, installedCodeOwner, INVOCATION_ENTRY_BCI);
                 CompilationResult compResult = compile(installedCodeOwner, graphToCompile, new CompilationResult(graphToCompile.compilationId()), id, options);
 
-                try (DebugContext.Scope s = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
-                                DebugContext.Activation a = debug.activate()) {
+                try (DebugContext.Scope _ = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
+                                DebugContext.Activation _ = debug.activate()) {
                     try {
                         if (installAsDefault) {
                             installedCode = addDefaultMethod(debug, installedCodeOwner, compResult);
@@ -1182,13 +1184,34 @@ public abstract class GraalCompilerTest extends GraalTest {
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-
             if (useCache) {
-                cache.get().put(installedCodeOwner, installedCode);
+                cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
             return installedCode;
         }
         throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    private static boolean optionsMapDeepEquals(UnmodifiableEconomicMap<OptionKey<?>, Object> map1, UnmodifiableEconomicMap<OptionKey<?>, Object> map2) {
+        if (map1.size() != map2.size()) {
+            return false;
+        }
+        var c1 = map1.getEntries();
+        var c2 = map2.getEntries();
+        while (c1.advance() && c2.advance()) {
+            Object c1Key = c1.getKey();
+            Object c2Key = c2.getKey();
+            if (!c1Key.equals(c2Key)) {
+                return false;
+            }
+            Object c1Val = c1.getValue();
+            Object c2Val = c2.getValue();
+            if (!c1Val.equals(c2Val)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1273,12 +1296,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param compilationId
      */
-    @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult, CompilationIdentifier compilationId, OptionValues options) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, compilationId, options) : graph;
         lastCompiledGraph = graphToCompile;
         DebugContext debug = graphToCompile.getDebug();
-        try (DebugContext.Scope s = debug.scope("Compile", graphToCompile)) {
+        try (DebugContext.Scope _ = debug.scope("Compile", graphToCompile)) {
             assert options != null;
 
             Suites suites = createSuites(options);
@@ -1312,10 +1334,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph;
     }
 
-    @SuppressWarnings("try")
     protected void applyFrontEnd(StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("FrontEnd", graph)) {
+        try (DebugContext.Scope _ = debug.scope("FrontEnd", graph)) {
             GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), getOptimisticOptimizations(), graph.getProfilingInfo(), createSuites(graph.getOptions()));
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1344,7 +1365,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
-        return backend.addInstalledCode(debug, method, null, compilationResult);
+        return backend.createInstalledCode(debug, method, null, compilationResult, null, false, true, null);
     }
 
     protected InstalledCode addDefaultMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
@@ -1558,7 +1579,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     };
 
-    @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
@@ -1576,7 +1596,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope ds = debug.scope("Parsing", javaMethod, graph)) {
+        try (DebugContext.Scope _ = debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             Object[] args = getArgumentToBind();
             if (args != null) {

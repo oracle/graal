@@ -29,11 +29,19 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParserOption;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -77,7 +85,7 @@ public final class ConfigurationFiles {
                         AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User, deprecated = true, //
                         deprecationMessage = "This can be caused by a proxy-config.json file in your META-INF directory. " +
-                                        "Consider including proxy configuration in the reflection section of reachability-metadata.md instead.")//
+                                        "Consider including proxy configuration in the reflection section of reachability-metadata.json instead.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
@@ -122,16 +130,8 @@ public final class ConfigurationFiles {
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Resources describing reachability metadata needed for the program " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json", type = OptionType.User)//
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json", type = OptionType.User)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ReachabilityMetadataResources = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
-
-        @Option(help = "Files describing stubs allowing foreign calls.", type = OptionType.User)//
-        @BundleMember(role = BundleMember.Role.Input)//
-        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> ForeignConfigurationFiles = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing stubs allowing foreign calls.", type = OptionType.User)//
-        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ForeignResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @OptionMigrationMessage("Use a predefined-classes-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
@@ -165,6 +165,43 @@ public final class ConfigurationFiles {
 
         @Option(help = "Warn when reflection and JNI configuration files have elements that could not be found on the classpath or modulepath.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> WarnAboutMissingReflectionOrJNIMetadataElements = new HostedOptionKey<>(false);
+
+        /**
+         * Converts hosted options to a set of {@link ConfigurationParserOption parser options} used
+         * by {@link com.oracle.svm.configure.ConfigurationParser}.
+         */
+        public static EnumSet<ConfigurationParserOption> getConfigurationParserOptions() {
+            EnumSet<ConfigurationParserOption> result = EnumSet.noneOf(ConfigurationParserOption.class);
+            if (StrictConfiguration.getValue()) {
+                result.add(ConfigurationParserOption.STRICT_CONFIGURATION);
+            }
+            if (WarnAboutMissingReflectionOrJNIMetadataElements.getValue()) {
+                result.add(ConfigurationParserOption.PRINT_MISSING_ELEMENTS);
+            }
+            if (TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                result.add(ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
+            }
+            if (TreatAllNameEntriesAsType.getValue() || FutureDefaultsOptions.completeReflectionTypes()) {
+                result.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
+            }
+            return result;
+        }
+
+        /**
+         * Like {@link #getConfigurationParserOptions()}, but overrides the hosted options with
+         * specific includes and excludes sets.
+         */
+        public static EnumSet<ConfigurationParserOption> getConfigurationParserOptions(EnumSet<ConfigurationParserOption> includes, EnumSet<ConfigurationParserOption> excludes) {
+            assert includes == null || excludes == null || Collections.disjoint(includes, excludes);
+            EnumSet<ConfigurationParserOption> result = getConfigurationParserOptions();
+            if (includes != null) {
+                result.addAll(includes);
+            }
+            if (excludes != null) {
+                result.removeAll(excludes);
+            }
+            return result;
+        }
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {
@@ -213,6 +250,7 @@ public final class ConfigurationFiles {
         return resources;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static UserError.UserException foundLockFile(String container) {
         throw UserError.abort("%s contains file '%s', which means an agent is currently writing to it." +
                         "The agent must finish execution before its generated configuration can be used to build a native image." +

@@ -57,6 +57,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.Timer;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -122,7 +123,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
             if (emitErrors) {
                 model.emitMessages(log);
             }
-            if (model instanceof NodeData || model instanceof LibraryData) {
+            if (model instanceof NodeData || model instanceof LibraryData || model instanceof BytecodeDSLModels) {
                 return model;
             } else {
                 return emitErrors ? filterErrorElements(model) : model;

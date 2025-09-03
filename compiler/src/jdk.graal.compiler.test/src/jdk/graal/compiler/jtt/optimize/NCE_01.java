@@ -32,7 +32,7 @@ import org.junit.Test;
  */
 public class NCE_01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         int field1 = 22;
         int field2 = 23;
     }

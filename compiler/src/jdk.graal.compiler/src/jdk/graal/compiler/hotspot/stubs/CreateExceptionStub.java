@@ -29,8 +29,6 @@ import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Trans
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static org.graalvm.word.LocationIdentity.any;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -86,7 +84,7 @@ public class CreateExceptionStub extends SnippetStub {
     }
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception) {
-        Word message = WordFactory.zero();
+        Word message = Word.zero();
         return createException(threadRegister, exception, message);
     }
 

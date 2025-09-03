@@ -54,8 +54,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/59ac7039d3ace0ec481742c3a10c81f1675e12da/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6532-L6690",
-          sha1 = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6030-L6202",
+          sha1 = "f0d710b1f37beded6afe58263684e90862dde1da")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
 public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {

@@ -43,7 +43,7 @@ import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigi
 import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
 
 public final class ConfigurationGenerateConditionalsCommand extends ConfigurationCommand {
     @Override

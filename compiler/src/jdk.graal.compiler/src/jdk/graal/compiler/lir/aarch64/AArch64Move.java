@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64Move {
@@ -107,6 +108,11 @@ public class AArch64Move {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return true;
         }
     }
 
@@ -668,12 +674,20 @@ public class AArch64Move {
     static void const2reg(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, JavaConstant input) {
         JavaKind stackKind = input.getJavaKind().getStackKind();
         assert stackKind.isObject() || moveKind.getSizeInBytes() <= stackKind.getByteCount() : Assertions.errorMessageContext("stackKind", stackKind, "moveKind", moveKind);
+        // VMConstant is the marker interface for patched constants
+        boolean needsPatching = input instanceof VMConstant;
         switch (stackKind) {
             case Int:
-                masm.mov(result, input.asInt());
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                masm.mov(result, input.asInt(), needsPatching);
                 break;
             case Long:
-                masm.mov(result, input.asLong());
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                masm.mov(result, input.asLong(), needsPatching);
                 break;
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat()) && result.getRegisterCategory().equals(SIMD)) {

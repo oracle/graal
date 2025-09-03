@@ -91,7 +91,7 @@ public final class CEntryPointData {
     private static CEntryPointData create(CEntryPoint annotation, CEntryPointOptions options, Supplier<String> alternativeNameSupplier) {
         String annotatedName = annotation.name();
         Class<? extends Function<String, String>> nameTransformation = DEFAULT_NAME_TRANSFORMATION;
-        String documentation = String.join(System.lineSeparator(), annotation.documentation());
+        String documentation = annotation.documentation().length == 0 ? "" : String.join(System.lineSeparator(), annotation.documentation());
         CEntryPoint.Builtin builtin = annotation.builtin();
         Class<?> prologue = DEFAULT_PROLOGUE;
         Class<?> prologueBailout = DEFAULT_PROLOGUE_BAILOUT;

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.SignatureCallNode;
+import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs.DowncallStub;
@@ -48,14 +49,16 @@ public class DowncallStubNode extends Node {
     }
 
     public static DowncallStubNode create(DowncallStub stub, NativeAccess access) {
-        return new DowncallStubNode(stub, access.createSignatureCall(stub.signature, false));
+        return new DowncallStubNode(stub, access.createSignatureCall(stub.signature));
     }
 
+    @SuppressWarnings("try") // Throwable.addSuppressed blocklisted by SVM.
     public Object call(Object[] args) {
         EspressoContext context = EspressoContext.get(this);
         Object target = downcallStub.getTarget(args, context);
+        RawBuffer.Buffers bb = new RawBuffer.Buffers();
         try {
-            Object result = signatureCall.call(target, downcallStub.processArgs(args));
+            Object result = signatureCall.call(target, downcallStub.processArgs(args, bb, context));
             if (downcallStub.hasCapture()) {
                 downcallStub.captureState(args, interop, context);
             }
@@ -63,6 +66,8 @@ public class DowncallStubNode extends Node {
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
+        } finally {
+            bb.writeBack(context);
         }
     }
 }

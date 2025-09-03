@@ -50,7 +50,7 @@ public class Object_wait03 extends JTTTest {
 
     @Rule public TestRule timeout = createTimeoutMillis(TIMEOUT_MS);
 
-    private static class TestClass implements Runnable {
+    private static final class TestClass implements Runnable {
         @Override
         public void run() {
             try {

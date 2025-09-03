@@ -38,6 +38,7 @@ public class ClassLinkedByCompilerTest extends PartialEvaluationTest {
     public void testClassLinkedByCompiler() {
         RootNode root = new RootNodeImpl();
         OptimizedCallTarget compilable = (OptimizedCallTarget) root.getCallTarget();
+        compilable.ensureInitialized();
         TruffleCompilationTask task = newTask();
         TruffleCompilerImpl compiler = getTruffleCompiler(compilable);
         ResolvedJavaType unlinked = getMetaAccess().lookupJavaType(Unlinked.class);

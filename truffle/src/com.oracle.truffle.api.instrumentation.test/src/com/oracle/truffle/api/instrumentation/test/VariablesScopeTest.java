@@ -194,7 +194,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         return INTEROP.isNull(object);
     }
 
-    private static class ILScopeTester implements TestScopeInstrument.Tester {
+    private static final class ILScopeTester implements TestScopeInstrument.Tester {
 
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame, boolean nodeEnter) throws Exception {
             assertTrue(NodeLibrary.getUncached().hasScope(node, null));
@@ -261,7 +261,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
     }
 
-    private static class DefaultScopeTester implements TestScopeInstrument.Tester {
+    private static final class DefaultScopeTester implements TestScopeInstrument.Tester {
 
         private final StringBuilder visitedLocations = new StringBuilder();
 
@@ -620,7 +620,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
     }
 
-    private static class CustomScopeTester implements TestScopeInstrument.Tester {
+    private static final class CustomScopeTester implements TestScopeInstrument.Tester {
 
         @Override
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame, boolean nodeEnter) {

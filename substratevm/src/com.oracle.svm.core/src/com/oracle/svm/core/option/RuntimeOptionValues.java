@@ -134,7 +134,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         if (descriptor == null) {
             return null;
         }
-        String help = descriptor.getHelp();
+        String help = descriptor.getHelp().getFirst();
         int helpLen = help.length();
         if (helpLen > 0 && help.charAt(helpLen - 1) != '.') {
             help += '.';

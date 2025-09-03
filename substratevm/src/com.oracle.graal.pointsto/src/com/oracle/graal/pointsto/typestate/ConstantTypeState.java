@@ -31,6 +31,7 @@ import java.util.Objects;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -47,14 +48,15 @@ public class ConstantTypeState extends SingleTypeState {
 
     /** Creates a new type state from incoming objects. */
     public ConstantTypeState(PointsToAnalysis bb, AnalysisType type, JavaConstant constant) {
-        super(bb, false, type);
+        super(false, type);
         assert !bb.analysisPolicy().isContextSensitiveAnalysis() : "The ConstantTypeState is indented to be used with a context insensitive analysis.";
-        this.constant = constant;
+        assert !(constant instanceof ImageHeapRelocatableConstant) : "relocatable constants have an unknown state and should not be represented by a constant type state: " + constant;
+        this.constant = Objects.requireNonNull(constant);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
-    protected ConstantTypeState(PointsToAnalysis bb, boolean canBeNull, ConstantTypeState other) {
-        super(bb, canBeNull, other);
+    protected ConstantTypeState(boolean canBeNull, ConstantTypeState other) {
+        super(canBeNull, other);
         this.constant = other.constant;
     }
 
@@ -67,7 +69,7 @@ public class ConstantTypeState extends SingleTypeState {
         if (stateCanBeNull == this.canBeNull()) {
             return this;
         } else {
-            return new ConstantTypeState(bb, stateCanBeNull, this);
+            return PointsToStats.registerTypeState(bb, new ConstantTypeState(stateCanBeNull, this));
         }
     }
 

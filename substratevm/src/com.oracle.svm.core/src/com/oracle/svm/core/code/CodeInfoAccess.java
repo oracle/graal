@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
@@ -155,12 +155,12 @@ public final class CodeInfoAccess {
                 return "code constants live";
             case CodeInfo.STATE_NON_ENTRANT:
                 return "non-entrant";
-            case CodeInfo.STATE_READY_FOR_INVALIDATION:
-                return "ready for invalidation";
-            case CodeInfo.STATE_INVALIDATED:
-                return "invalidated";
-            case CodeInfo.STATE_UNREACHABLE:
-                return "unreachable";
+            case CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE:
+                return "pending removal from code cache";
+            case CodeInfo.STATE_REMOVED_FROM_CODE_CACHE:
+                return "removed from code cache";
+            case CodeInfo.STATE_PENDING_FREE:
+                return "pending free";
             case CodeInfo.STATE_FREED:
                 return "invalid (freed)";
             default:
@@ -249,7 +249,7 @@ public final class CodeInfoAccess {
     }
 
     public static CodePointer absoluteIP(CodeInfo info, long relativeIP) {
-        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(WordFactory.unsigned(relativeIP));
+        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(Word.unsigned(relativeIP));
     }
 
     @SuppressWarnings("unchecked")
@@ -422,6 +422,20 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAOTImageCode(CodeInfo info) {
         return cast(info).getIsAOTImageCode();
+    }
+
+    /**
+     * In some callers, we can't necessarily assume that we have a valid {@link CodeInfo} object.
+     * So, this method explicitly avoids any {@link CodeInfo} field accesses.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAOTImageCodeSlow(CodeInfo info) {
+        for (CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo(); imageCodeInfo.isNonNull(); imageCodeInfo = getNextImageCodeInfo(imageCodeInfo)) {
+            if (info == imageCodeInfo) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

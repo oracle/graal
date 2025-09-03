@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64MoveFactory extends MoveFactory {
@@ -113,7 +114,8 @@ public class AArch64MoveFactory extends MoveFactory {
                      * immediates are encoded as bitmasks (see
                      * AArch64Assembler.LogicalBitmaskImmediateEncoding).
                      */
-                    return NumUtil.isSignedNbit(17, c.asLong());
+                    int optimisticMaxInlineWidth = 17;
+                    return c instanceof PrimitiveConstant && NumUtil.isSignedNbit(optimisticMaxInlineWidth, c.asLong());
                 case Object:
                     return c.isNull();
                 case Float:

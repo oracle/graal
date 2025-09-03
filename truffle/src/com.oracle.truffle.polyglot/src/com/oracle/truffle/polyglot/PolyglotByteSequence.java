@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
@@ -71,6 +72,11 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
     final PolyglotLanguageContext languageContext;
 
     final Cache cache;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this byte sequence is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotByteSequence(Object buffer, PolyglotLanguageContext languageContext) {
         this(buffer, languageContext, 0, UNKNOWN_SEQUENCE_LENGTH);
@@ -82,6 +88,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
         this.length = length;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, buffer.getClass());
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -212,7 +219,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings("unused")
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 Object length = args[ARGUMENT_OFFSET + 1];
@@ -249,7 +256,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused"})
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 Object start = args[ARGUMENT_OFFSET];
@@ -292,7 +299,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused"})
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 Object start = args[ARGUMENT_OFFSET];
@@ -347,7 +354,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused"})
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 Object start = args[ARGUMENT_OFFSET];

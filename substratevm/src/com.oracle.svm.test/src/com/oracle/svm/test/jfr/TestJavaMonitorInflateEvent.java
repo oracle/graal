@@ -32,45 +32,78 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
 public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
-    private final EnterHelper enterHelper = new EnterHelper();
     private Thread firstThread;
     private Thread secondThread;
+    private String expectedClassName;
+    private volatile boolean passedCheckpoint;
 
     @Test
-    public void test() throws Throwable {
+    public void testObject() throws Throwable {
+        test(new MonitorTester());
+    }
+
+    @Test
+    public void testArray() throws Throwable {
+        test(new MonitorTester[5]);
+    }
+
+    @Test
+    public void testClass() throws Throwable {
+        test(MonitorTester.class, DynamicHubCompanion.class.getName());
+    }
+
+    @Test
+    public void testString() throws Throwable {
+        test("ABC");
+    }
+
+    private void test(Object obj) throws Throwable {
+        test(obj, obj.getClass().getName());
+    }
+
+    private void test(Object obj, String className) throws Throwable {
+        firstThread = new Thread(() -> {
+            try {
+                synchronized (obj) {
+                    secondThread.start();
+                    /* Spin until second thread blocks. */
+                    while (!secondThread.getState().equals(Thread.State.BLOCKED) || !passedCheckpoint) {
+                        Thread.sleep(10);
+                    }
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        secondThread = new Thread(() -> {
+            passedCheckpoint = true;
+            synchronized (obj) {
+                GraalDirectives.blackhole(obj);
+            }
+        });
+
+        expectedClassName = className;
+
+        /* Now that the data is prepared, start the JFR recording. */
         String[] events = new String[]{JfrEvent.JavaMonitorInflate.getName()};
         Recording recording = startRecording(events);
 
-        Runnable first = () -> {
-            try {
-                enterHelper.doWork();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        };
-
-        Runnable second = () -> {
-            try {
-                enterHelper.passedCheckpoint = true;
-                enterHelper.doWork();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        };
-
-        firstThread = new Thread(first);
-        secondThread = new Thread(second);
-
-        /* Generate event with "Monitor Enter" cause. */
+        /*
+         * Generate event with "Monitor Enter" cause. Start the first thread so that it can then
+         * start the second thread.
+         */
         firstThread.start();
 
         firstThread.join();
@@ -85,34 +118,17 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
             String cause = event.getValue("cause");
-            if (monitorClass.equals(EnterHelper.class.getName()) &&
-                            cause.equals(MonitorInflationCause.MONITOR_ENTER.getText()) &&
+
+            if (monitorClass.equals(expectedClassName) && cause.equals(MonitorInflationCause.MONITOR_ENTER.getText()) &&
                             (eventThread.equals(firstThread.getName()) || eventThread.equals(secondThread.getName()))) {
                 foundCauseEnter = true;
             }
+
+            checkTopStackFrame(event, "monitorEnter", "createMonitorAndAddToMap", "getOrCreateMonitorFromObject");
         }
         assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
     }
 
-    private class EnterHelper {
-        volatile boolean passedCheckpoint = false;
-
-        synchronized void doWork() throws InterruptedException {
-            if (Thread.currentThread().equals(secondThread)) {
-                /*
-                 * The second thread only needs to enter the critical section but doesn't need to do
-                 * work.
-                 */
-                return;
-            }
-            // ensure ordering of critical section entry
-            secondThread.start();
-
-            // spin until second thread blocks
-            while (!secondThread.getState().equals(Thread.State.BLOCKED) || !passedCheckpoint) {
-                Thread.sleep(10);
-            }
-            Thread.sleep(60);
-        }
+    private static final class MonitorTester {
     }
 }

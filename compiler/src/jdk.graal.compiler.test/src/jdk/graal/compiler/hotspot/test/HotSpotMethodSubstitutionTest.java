@@ -170,7 +170,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         return System.identityHashCode(obj);
     }
 
-    private static class TestClassA {
+    private static final class TestClassA {
     }
 
     public static String testCallSiteGetTargetSnippet(int i) throws Exception {

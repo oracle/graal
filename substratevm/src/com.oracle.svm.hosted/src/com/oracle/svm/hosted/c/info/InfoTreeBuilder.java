@@ -55,7 +55,9 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
@@ -64,6 +66,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
@@ -224,13 +227,17 @@ public class InfoTreeBuilder {
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
         for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            final AccessorInfo accessorInfo;
-            final String fieldName;
+            if (!AnnotationSubstitutionProcessor.isIncluded(method.getAnnotation(TargetElement.class), ((AnalysisType) method.getDeclaringClass()).getJavaClass(), method)) {
+                continue;
+            }
 
             CField fieldAnnotation = getMethodAnnotation(method, CField.class);
             CFieldAddress fieldAddressAnnotation = getMethodAnnotation(method, CFieldAddress.class);
             CFieldOffset fieldOffsetAnnotation = getMethodAnnotation(method, CFieldOffset.class);
             CBitfield bitfieldAnnotation = getMethodAnnotation(method, CBitfield.class);
+
+            final AccessorInfo accessorInfo;
+            final String fieldName;
             if (fieldAnnotation != null) {
                 accessorInfo = new AccessorInfo(method, getAccessorKind(method), false, hasLocationIdentityParameter(method), hasUniqueLocationIdentity(method));
                 fieldName = getStructFieldName(accessorInfo, fieldAnnotation.value());
@@ -524,7 +531,7 @@ public class InfoTreeBuilder {
     }
 
     private static String removePrefix(String name, String prefix) {
-        assert prefix.length() > 0;
+        assert !prefix.isEmpty();
         String result = name;
         if (result.startsWith(prefix)) {
             result = result.substring(prefix.length());
@@ -538,7 +545,7 @@ public class InfoTreeBuilder {
     private static String getConstantName(ResolvedJavaMethod method) {
         CConstant constantAnnotation = getMethodAnnotation(method, CConstant.class);
         String name = constantAnnotation.value();
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = method.getName();
             /* Remove "get" prefix for automatically inferred names. */
             name = removePrefix(name, "get");
@@ -562,7 +569,7 @@ public class InfoTreeBuilder {
             pointerToType = pointerToType.getInterfaces().length == 1 ? pointerToType.getInterfaces()[0] : null;
         } while (pointerToType != null);
 
-        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToCPointerAnnotation != null ? 1 : 0);
+        int n = (!nameOfCType.isEmpty() ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToCPointerAnnotation != null ? 1 : 0);
         if (n != 1) {
             nativeLibs.addError("Exactly one of " +  //
                             "1) literal C type name, " +  //
@@ -622,7 +629,7 @@ public class InfoTreeBuilder {
 
         String name = structAnnotation.value();
 
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = getSimpleJavaName(type);
         }
         if (structAnnotation.addStructKeyword()) {
@@ -643,7 +650,7 @@ public class InfoTreeBuilder {
     }
 
     private static String getStructFieldName(AccessorInfo info, String annotationValue) {
-        if (annotationValue.length() != 0) {
+        if (!annotationValue.isEmpty()) {
             return annotationValue;
         } else {
             return removePrefix(info.getAnnotatedElement().getName(), info.getAccessorPrefix());
@@ -705,7 +712,7 @@ public class InfoTreeBuilder {
             name = fieldAnnotation.value();
             includeInLookup = fieldAnnotation.includeInLookup();
         }
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             name = field.getName();
         }
 

@@ -29,7 +29,7 @@ Here you will learn how to generate a Build Report and how to use each report se
 
 ## Report Generation
 
-A simple HelloWorld Micronaut application (available in the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos/tree/master/micronaut-hello-rest-maven)) is used to demonstrate Build Report generation and its structure.
+A simple HelloWorld Micronaut application (available in the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos/tree/master/native-image/microservices/micronaut-hello-rest-maven)) is used to demonstrate Build Report generation and its structure.
 
 A Build Report can simply be generated using the `--emit` option when running the `native-image` command:
 

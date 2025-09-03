@@ -89,11 +89,6 @@ public abstract class AbstractBreakpointInfo implements BreakpointInfo {
     }
 
     @Override
-    public Object getThread() {
-        return null;
-    }
-
-    @Override
     public long getClassId() {
         return 0;
     }

@@ -30,13 +30,15 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
+import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -225,7 +227,7 @@ public class UninterruptibleUtils {
         protected final AtomicLong value;
 
         /**
-         * Creates a new AtomicWord with initial value {@link WordFactory#zero}.
+         * Creates a new AtomicWord with initial value {@link Word#zero}.
          */
         public AtomicWord() {
             value = new AtomicLong(0L);
@@ -238,7 +240,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final T get() {
-            return WordFactory.unsigned(value.get());
+            return Word.unsigned(value.get());
         }
 
         /**
@@ -259,7 +261,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final T getAndSet(T newValue) {
-            return WordFactory.unsigned(value.getAndSet(newValue.rawValue()));
+            return Word.unsigned(value.getAndSet(newValue.rawValue()));
         }
 
         /**
@@ -292,7 +294,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord getAndAdd(UnsignedWord delta) {
-            return WordFactory.unsigned(value.getAndAdd(delta.rawValue()));
+            return Word.unsigned(value.getAndAdd(delta.rawValue()));
         }
 
         /**
@@ -303,7 +305,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord addAndGet(UnsignedWord delta) {
-            return WordFactory.unsigned(value.addAndGet(delta.rawValue()));
+            return Word.unsigned(value.addAndGet(delta.rawValue()));
         }
 
         /**
@@ -314,7 +316,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord getAndSubtract(UnsignedWord delta) {
-            return WordFactory.unsigned(value.getAndAdd(-delta.rawValue()));
+            return Word.unsigned(value.getAndAdd(-delta.rawValue()));
         }
 
         /**
@@ -325,7 +327,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord subtractAndGet(UnsignedWord delta) {
-            return WordFactory.unsigned(value.addAndGet(-delta.rawValue()));
+            return Word.unsigned(value.addAndGet(-delta.rawValue()));
         }
     }
 
@@ -346,7 +348,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public T get() {
-            return WordFactory.pointer(value);
+            return Word.pointer(value);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -427,8 +429,27 @@ public class UninterruptibleUtils {
             return (a >= b) ? a : b;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static double max(double a, double b) {
+            if (a != a) {
+                return a;   // a is NaN
+            }
+            if ((a == 0.0d) && (b == 0.0d) && (Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(-0.0d))) {
+                // Raw conversion ok since NaN can't map to -0.0.
+                return b;
+            }
+            return (a >= b) ? a : b;
+        }
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int clamp(int value, int min, int max) {
+            assert min <= max;
+            return min(max(value, min), max);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long clamp(long value, long min, long max) {
+            assert min <= max;
             return min(max(value, min), max);
         }
 
@@ -455,6 +476,24 @@ public class UninterruptibleUtils {
         }
     }
 
+    public static class NumUtil {
+
+        /**
+         * Determines if a given {@code long} value is the range of signed int values.
+         */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isInt(long l) {
+            return (int) l == l;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int safeToInt(long v) {
+            assert isInt(v);
+            return (int) v;
+        }
+
+    }
+
     public static class Byte {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("cast")
@@ -464,26 +503,10 @@ public class UninterruptibleUtils {
     }
 
     public static class Long {
-        /** Uninterruptible version of {@link java.lang.Long#numberOfLeadingZeros(long)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        // Checkstyle: stop
-        public static int numberOfLeadingZeros(long i) {
-        // @formatter:off
-            // HD, Figure 5-6
-            if (i == 0)
-               return 64;
-           int n = 1;
-           int x = (int)(i >>> 32);
-           if (x == 0) { n += 32; x = (int)i; }
-           if (x >>> 16 == 0) { n += 16; x <<= 16; }
-           if (x >>> 24 == 0) { n +=  8; x <<=  8; }
-           if (x >>> 28 == 0) { n +=  4; x <<=  4; }
-           if (x >>> 30 == 0) { n +=  2; x <<=  2; }
-           n -= x >>> 31;
-           return n;
-           // @formatter:on
+        public static int countTrailingZeros(long i) {
+            return CountTrailingZerosNode.countLongTrailingZeros(i);
         }
-        // Checkstyle: resume
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int hashCode(long value) {
@@ -492,40 +515,15 @@ public class UninterruptibleUtils {
     }
 
     public static class Integer {
-        // Checkstyle: stop
-        /** Uninterruptible version of {@link java.lang.Integer#numberOfLeadingZeros(int)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        @SuppressWarnings("all")
-        public static int numberOfLeadingZeros(int i) {
-        // @formatter:off
-            // HD, Figure 5-6
-            if (i == 0)
-                return 32;
-            int n = 1;
-            if (i >>> 16 == 0) { n += 16; i <<= 16; }
-            if (i >>> 24 == 0) { n +=  8; i <<=  8; }
-            if (i >>> 28 == 0) { n +=  4; i <<=  4; }
-            if (i >>> 30 == 0) { n +=  2; i <<=  2; }
-            n -= i >>> 31;
-            return n;
-            // @formatter:on
+        public static int highestOneBit(int i) {
+            return i & (java.lang.Integer.MIN_VALUE >>> numberOfLeadingZeros(i));
         }
 
-        /** Uninterruptible version of {@link java.lang.Integer#highestOneBit(int)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        @SuppressWarnings("all")
-        public static int highestOneBit(int i) {
-        // @formatter:off
-            // HD, Figure 3-1
-            i |= (i >>  1);
-            i |= (i >>  2);
-            i |= (i >>  4);
-            i |= (i >>  8);
-            i |= (i >> 16);
-            return i - (i >>> 1);
-            // @formatter:on
+        public static int numberOfLeadingZeros(int i) {
+            return CountLeadingZerosNode.countIntLeadingZeros(i);
         }
-        // Checkstyle: resume
 
         /** Uninterruptible version of {@link java.lang.Integer#compare(int, int)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -712,6 +710,17 @@ public class UninterruptibleUtils {
     public interface CharReplacer {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         char replace(char val);
+    }
+
+    public static final class ReplaceDotWithSlash implements CharReplacer {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public char replace(char ch) {
+            if (ch == '.') {
+                return '/';
+            }
+            return ch;
+        }
     }
 
     public static class CodeUtil {

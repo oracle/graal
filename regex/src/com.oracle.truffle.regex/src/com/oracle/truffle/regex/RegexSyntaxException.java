@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,22 +52,45 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(InteropLibrary.class)
 public final class RegexSyntaxException extends AbstractTruffleException {
 
-    private final SourceSection sourceSection;
+    public enum ErrorCode {
+        InvalidBackReference,
+        InvalidCharacterClass,
+        InvalidEscape,
+        InvalidFlag,
+        InvalidGroup,
+        InvalidInlineFlag,
+        InvalidLookbehind,
+        InvalidNamedGroup,
+        InvalidOption,
+        InvalidQuantifier,
+        InvalidSubexpressionCall,
+        UnfinishedSequence,
+        UnmatchedBracket,
+        UnmatchedParenthesis,
+        TRegexBailout;
 
-    public static RegexSyntaxException createOptions(Source source, String msg, int position) {
-        return new RegexSyntaxException(msg, source, position);
+        public int intValue() {
+            return -(ordinal() + 3);
+        }
     }
 
-    public static RegexSyntaxException createPattern(RegexSource source, String msg, int position) {
-        return new RegexSyntaxException(msg, patternSource(source), position);
+    private final SourceSection sourceSection;
+    private final ErrorCode errorCode;
+
+    public static RegexSyntaxException createOptions(Source source, String msg, int position) {
+        return new RegexSyntaxException(msg, source, position, ErrorCode.InvalidOption);
+    }
+
+    public static RegexSyntaxException createPattern(RegexSource source, String msg, int position, ErrorCode errorCode) {
+        return new RegexSyntaxException(msg, patternSource(source), position, errorCode);
     }
 
     public static RegexSyntaxException createFlags(RegexSource source, String msg) {
-        return new RegexSyntaxException(msg, flagsSource(source), 0);
+        return new RegexSyntaxException(msg, flagsSource(source), 0, ErrorCode.InvalidFlag);
     }
 
     public static RegexSyntaxException createFlags(RegexSource source, String msg, int position) {
-        return new RegexSyntaxException(msg, flagsSource(source), position);
+        return new RegexSyntaxException(msg, flagsSource(source), position, ErrorCode.InvalidFlag);
     }
 
     @TruffleBoundary
@@ -89,10 +112,22 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     }
 
     @TruffleBoundary
-    private RegexSyntaxException(String reason, Source src, int position) {
+    private RegexSyntaxException(String reason, Source src, int position, ErrorCode errorCode) {
         super(reason);
         assert position <= src.getLength();
         this.sourceSection = src.createSection(position, src.getLength() - position);
+        this.errorCode = errorCode;
+    }
+
+    @TruffleBoundary
+    private RegexSyntaxException(String reason, SourceSection sourceSection, ErrorCode errorCode) {
+        super(reason);
+        this.sourceSection = sourceSection;
+        this.errorCode = errorCode;
+    }
+
+    public RegexSyntaxException withErrorCodeInMessage() {
+        return new RegexSyntaxException(errorCode.name() + ' ' + getMessage(), sourceSection, errorCode);
     }
 
     @ExportMessage
@@ -110,6 +145,10 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     @ExportMessage(name = "getSourceLocation")
     SourceSection getSourceSection() {
         return sourceSection;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
     }
 
     private static final long serialVersionUID = 1L;

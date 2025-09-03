@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.truffle.regex.flavor.python.PythonFlags;
+
 public class PythonFlagsTest {
 
     private static PythonFlags parse(String flags) {
@@ -57,7 +59,6 @@ public class PythonFlagsTest {
         assertTrue(parse("i").isIgnoreCase());
         assertTrue(parse("m").isMultiLine());
         assertTrue(parse("s").isDotAll());
-        assertTrue(parse("t").isTemplate());
         assertTrue(parse("u").isUnicodeExplicitlySet());
         assertTrue(parse("x").isVerbose());
     }

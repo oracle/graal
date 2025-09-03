@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import jdk.graal.compiler.core.aarch64.AArch64LIRGenerator;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -43,7 +44,6 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -173,7 +173,7 @@ public class AArch64AtomicMove {
             }
 
             int moveSize = Math.max(memAccessSize, 32);
-            if (AArch64LIRFlags.useLSE(masm)) {
+            if (masm.useLSE()) {
                 masm.mov(moveSize, result, expected);
                 moveSPAndEmitCode(masm, newValue, newVal -> {
                     masm.cas(memAccessSize, result, newVal, address, acquire, release);
@@ -242,7 +242,7 @@ public class AArch64AtomicMove {
      * constant within the load-store conditional implementation.
      */
     public static AArch64LIRInstruction createAtomicReadAndAdd(LIRGenerator gen, AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
-        if (AArch64LIRFlags.useLSE((AArch64) gen.target().arch)) {
+        if (((AArch64LIRGenerator) gen).useLSE()) {
             return new AtomicReadAndAddLSEOp(kind, result, address, gen.asAllocatable(delta));
         } else {
             return new AtomicReadAndAddOp(kind, result, address, delta);
@@ -404,7 +404,7 @@ public class AArch64AtomicMove {
         protected static void emitSwap(AArch64MacroAssembler masm, AArch64Kind accessKind, Register address, Register result, Register newValue) {
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
             moveSPAndEmitCode(masm, newValue, value -> {
-                if (AArch64LIRFlags.useLSE(masm)) {
+                if (masm.useLSE()) {
                     masm.swp(memAccessSize, value, result, address, true, true);
                 } else {
                     try (ScratchRegister scratchRegister = masm.getScratchRegister()) {

@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -101,7 +104,8 @@ class AdaptiveWeightedAverage {
         return expAvg(avg, sample, adaptiveWeight);
     }
 
-    private static double expAvg(double avg, double sample, double adaptiveWeight) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static double expAvg(double avg, double sample, double adaptiveWeight) {
         assert adaptiveWeight > 0 && adaptiveWeight <= 100 : "weight must be a percentage";
         return (100.0 - adaptiveWeight) * avg / 100.0 + adaptiveWeight * sample / 100.0;
     }

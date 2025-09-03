@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -145,15 +147,9 @@ public class BackgroundCompileQueue {
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             this.compilationQueue = createQueue(callTarget, threads);
-            ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
+            ThreadPoolExecutor threadPoolExecutor = new TruffleThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
-                            compilationQueue, factory) {
-                @Override
-                @SuppressWarnings({"unchecked"})
-                protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-                    return (RunnableFuture<T>) new CompilationTask.ExecutorServiceWrapper((CompilationTask) callable);
-                }
-            };
+                            compilationQueue, factory);
 
             if (compilerIdleDelay > 0) {
                 // There are two mechanisms to signal idleness: if core threads can timeout, then
@@ -218,7 +214,8 @@ public class BackgroundCompileQueue {
 
     /**
      * Return call targets waiting in queue. This does not include call targets currently being
-     * compiled.
+     * compiled. If {@code engine} is {@code null}, the call targets for all engines are returned,
+     * otherwise only the call targets belonging to {@code engine} will be returned.
      */
     public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
         BlockingQueue<Runnable> queue = this.compilationQueue;
@@ -230,7 +227,7 @@ public class BackgroundCompileQueue {
         CompilationTask.ExecutorServiceWrapper[] array = queue.toArray(new CompilationTask.ExecutorServiceWrapper[0]);
         for (CompilationTask.ExecutorServiceWrapper wrapper : array) {
             OptimizedCallTarget target = wrapper.compileTask.targetRef.get();
-            if (target != null && target.engine == engine) {
+            if (target != null && (engine == null || target.engine == engine)) {
                 queuedTargets.add(target);
             }
         }
@@ -246,7 +243,6 @@ public class BackgroundCompileQueue {
                 return;
             }
         }
-
         threadPool.shutdownNow();
         try {
             threadPool.awaitTermination(timeout, TimeUnit.MILLISECONDS);
@@ -281,9 +277,40 @@ public class BackgroundCompileQueue {
 
     }
 
-    private final class TruffleCompilerThreadFactory implements ThreadFactory {
+    private final class TruffleThreadPoolExecutor extends ThreadPoolExecutor {
+        private TruffleThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory) {
+            super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
+        }
+
+        @Override
+        @SuppressWarnings({"unchecked"})
+        protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+            return (RunnableFuture<T>) new CompilationTask.ExecutorServiceWrapper((CompilationTask) callable);
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            ThreadFactory threadFactory = getThreadFactory();
+            if (threadFactory instanceof JoinableThreadFactory) {
+                return ((JoinableThreadFactory) threadFactory).joinOtherThreads(timeout, unit);
+            } else {
+                return super.awaitTermination(timeout, unit);
+            }
+        }
+    }
+
+    public interface JoinableThreadFactory extends ThreadFactory {
+        /**
+         * Join all but the current thread. If the current thread belongs to this thread factory,
+         * its interrupted status is just cleared instead of joining it.
+         */
+        boolean joinOtherThreads(long timeout, TimeUnit unit) throws InterruptedException;
+    }
+
+    private final class TruffleCompilerThreadFactory implements JoinableThreadFactory {
         private final String namePrefix;
         private final OptimizedTruffleRuntime runtime;
+        private final Set<Thread> threads = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
         TruffleCompilerThreadFactory(final String namePrefix, OptimizedTruffleRuntime runtime) {
             this.namePrefix = namePrefix;
@@ -314,7 +341,32 @@ public class BackgroundCompileQueue {
             t.setName(namePrefix + "-" + t.getId());
             t.setPriority(Thread.MAX_PRIORITY);
             t.setDaemon(true);
+            threads.add(t);
             return t;
+        }
+
+        @Override
+        public boolean joinOtherThreads(long timeout, TimeUnit unit) throws InterruptedException {
+            long timeoutNanos = unit.toNanos(timeout);
+            synchronized (threads) {
+                if (threads.contains(Thread.currentThread())) {
+                    // clear interrupt status
+                    Thread.interrupted();
+                }
+                for (Thread thread : threads) {
+                    if (thread == Thread.currentThread()) {
+                        continue;
+                    }
+                    long joinStart = System.nanoTime();
+                    TimeUnit.NANOSECONDS.timedJoin(thread, timeoutNanos);
+                    long joinEnd = System.nanoTime();
+                    timeoutNanos -= (joinEnd - joinStart);
+                    if (timeoutNanos <= 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }
         }
     }
 

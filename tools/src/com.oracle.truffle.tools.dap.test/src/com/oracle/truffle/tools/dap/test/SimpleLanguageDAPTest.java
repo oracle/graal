@@ -29,15 +29,30 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.Map;
+import java.util.List;
 
 import org.graalvm.polyglot.Source;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import static com.oracle.truffle.tools.dap.test.DAPTester.getFilePath;
 
+@RunWith(Parameterized.class)
 public final class SimpleLanguageDAPTest {
+
+    @Parameters(name = "useBytecode={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter(0) public Boolean useBytecode;
 
     private static final String FACTORIAL = "function factorial(n) {\n" +
                     "  f = 1;\n" +
@@ -156,6 +171,10 @@ public final class SimpleLanguageDAPTest {
 
     private DAPTester tester;
 
+    private DAPTester startDAPTester(boolean suspend) throws Exception {
+        return DAPTester.start(suspend, null, Collections.emptyList(), Map.of("sl.UseBytecode", useBytecode.toString()));
+    }
+
     @After
     public void tearDown() {
         tester = null;
@@ -165,7 +184,7 @@ public final class SimpleLanguageDAPTest {
     // CheckStyle: stop line length check
     @Test
     public void testInitialSuspendAndSource() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -207,7 +226,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testStepping() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -276,7 +295,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBreakpoints() throws Exception {
-        tester = DAPTester.start(false);
+        tester = startDAPTester(false);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
         String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
@@ -331,7 +350,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBreakpointsBySourceReferences() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -395,7 +414,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBreakpointRemoval() throws Exception {
-        tester = DAPTester.start(false);
+        tester = startDAPTester(false);
         File sourceFile = createTemporaryFile(CODE2);
         Source source = Source.newBuilder("sl", sourceFile).build();
         String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
@@ -499,7 +518,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testGuestFunctionBreakpoints() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", GUEST_FUNCTIONS, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -552,7 +571,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBuiltInFunctionBreakpoints() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", BUILTIN_FUNCTIONS, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -605,7 +624,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testScopes() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -632,9 +651,16 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Ask for the local scope variables at the beginning of main:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
-        tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[]},\"type\":\"response\",\"request_seq\":8,\"command\":\"variables\",\"seq\":14}");
+        if (useBytecode) {
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Global\",\"variablesReference\":2,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
+            // The bytecode interpreter doesn't have a local scope, but we still need to request something to keep the sequence numbers in sync.
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":8}");
+            tester.getMessage();
+        } else {
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":8}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[]},\"type\":\"response\",\"request_seq\":8,\"command\":\"variables\",\"seq\":14}");
+        }
         // Continue to the breakpoint set at line 5:
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"sourceReference\":2},\"lines\":[5],\"breakpoints\":[{\"line\":5}],\"sourceModified\":false},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":5,\"endColumn\":13,\"line\":5,\"verified\":true,\"column\":5,\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"setBreakpoints\",\"seq\":15}");
@@ -650,7 +676,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":5,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":20}");
         // Ask for the local scope variables at line 5:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":13}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"scopes\",\"seq\":21}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"scopes\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"variables\",\"seq\":22}");
         // Step over:
@@ -666,11 +692,20 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":17,\"command\":\"stackTrace\",\"seq\":27}");
         // Ask for the local scope variables at line 6:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":18}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
-        tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":19}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"c\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"12\"}]},\"type\":\"response\",\"request_seq\":19,\"command\":\"variables\",\"seq\":29}");
-        tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":20}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":20,\"command\":\"variables\",\"seq\":30}");
+        if (useBytecode) {
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":19}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"},{\"name\":\"c\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"12\"}]},\"type\":\"response\",\"request_seq\":19,\"command\":\"variables\",\"seq\":29}");
+            // The bytecode interpreter doesn't have a second local scope, but we still need to request something to keep the sequence numbers in sync.
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":20}");
+            tester.getMessage();
+        } else {
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":19}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"c\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"12\"}]},\"type\":\"response\",\"request_seq\":19,\"command\":\"variables\",\"seq\":29}");
+            tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":20}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":20,\"command\":\"variables\",\"seq\":30}");
+        }
         // Remove the breakpoint:
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"sourceReference\":2},\"lines\":[],\"breakpoints\":[],\"sourceModified\":false},\"type\":\"request\",\"seq\":21}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[]},\"type\":\"response\",\"request_seq\":21,\"command\":\"setBreakpoints\",\"seq\":31}");
@@ -685,7 +720,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testNotSuspended() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -724,7 +759,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testReturnValue() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -801,7 +836,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":21}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":22}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":23}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":23,\"command\":\"variables\",\"seq\":37}");
         // at addThem:6, step into steps to the next line and check that `a` is 10_000_000_000
@@ -816,7 +851,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":26}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":26,\"command\":\"stackTrace\",\"seq\":42}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":27}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":27,\"command\":\"scopes\",\"seq\":43}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":27,\"command\":\"scopes\",\"seq\":43}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":28}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10000000000\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":28,\"command\":\"variables\",\"seq\":44}");
         // at addThem:7
@@ -842,7 +877,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":34}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":35}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":36}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10000000000\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":36,\"command\":\"variables\",\"seq\":56}");
         // Resume to finish:
@@ -857,7 +892,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBreakpointCorrections() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -919,7 +954,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testBreakpointLocations() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
@@ -982,7 +1017,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testExceptionBreakpoints() throws Exception {
-        tester = DAPTester.start(false);
+        tester = startDAPTester(false);
         URI uri = new URI("file:///test/SLThrow.sl");
         Source source = Source.newBuilder("sl", CODE_THROW, "SLThrow.sl").uri(uri).build();
         String path = getFilePath(new File(uri));
@@ -1025,7 +1060,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testSetVariableValue() throws Exception {
-        tester = DAPTester.start(false);
+        tester = startDAPTester(false);
         File sourceFile = createTemporaryFile(CODE_VARS);
         Source source = Source.newBuilder("sl", sourceFile).build();
         String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
@@ -1056,7 +1091,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":16,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":" + sourceJson + "}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":14}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"scopes\",\"seq\":15}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"scopes\",\"seq\":15}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"n\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"},"
                 + "{\"name\":\"m\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"4\"},"
@@ -1086,7 +1121,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":16,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":" + sourceJson + "}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":16,\"command\":\"stackTrace\",\"seq\":25}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":17}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":17,\"command\":\"scopes\",\"seq\":26}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":17,\"command\":\"scopes\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":18}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"n\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"0\"},"
                 + "{\"name\":\"m\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1000\"},"
@@ -1107,7 +1142,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testEval() throws Exception {
-        tester = DAPTester.start(false);
+        tester = startDAPTester(false);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
         String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
@@ -1157,7 +1192,7 @@ public final class SimpleLanguageDAPTest {
 
     @Test
     public void testSourcePath() throws Exception {
-        tester = DAPTester.start(true);
+        tester = startDAPTester(true);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");

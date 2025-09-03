@@ -293,7 +293,7 @@ public class EncapsulatedNodeTest {
     }
 
     @SuppressWarnings("serial")
-    private static class GetStackTraceException extends AbstractTruffleException {
+    private static final class GetStackTraceException extends AbstractTruffleException {
     }
 
     @TruffleBoundary

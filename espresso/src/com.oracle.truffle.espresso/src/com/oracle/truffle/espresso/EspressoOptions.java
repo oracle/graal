@@ -41,8 +41,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -154,6 +154,16 @@ public final class EspressoOptions {
                     usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
+    @Option(help = "Allow or deny access to code and data outside the Java runtime " +
+                    "by code in modules for which native access is not explicitly enabled. " +
+                    "<value> is one of `deny`, `warn` or `allow`. The default value is `warn`. " +
+                    "This option will be removed in a future release." +
+                    "\\nEquivalent to '--illegal-native-access=<value>'", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "warn|deny|allow") //
+    public static final OptionKey<String> IllegalNativeAccess = new OptionKey<>("");
+
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
@@ -219,6 +229,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
     public static final OptionKey<OptionMap<String>> PolyglotTypeConverters = OptionKey.mapOf(String.class);
+
+    @Option(help = "Option to enable target type conversions for foreign objects using type hints from generics signatures.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableGenericTypeHints = new OptionKey<>(true);
 
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //
@@ -389,38 +405,37 @@ public final class EspressoOptions {
             final String[] options = s.split(",");
             String transport = null;
             String host = null;
-            String port = null;
+            int port = 0;
             boolean server = false;
             boolean suspend = true;
 
             for (String keyValue : options) {
-                String[] parts = keyValue.split("=");
-                if (parts.length != 2) {
+                int equalsIndex = keyValue.indexOf('=');
+                if (equalsIndex <= 0) {
                     throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
                 }
-                String key = parts[0];
-                String value = parts[1];
+                String key = keyValue.substring(0, equalsIndex);
+                String value = keyValue.substring(equalsIndex + 1);
                 switch (key) {
                     case "address":
-                        parts = value.split(":");
                         String inputHost = null;
-                        String inputPort;
-                        if (parts.length == 1) {
-                            inputPort = parts[0];
-                        } else if (parts.length == 2) {
-                            inputHost = parts[0];
-                            inputPort = parts[1];
-                        } else {
-                            throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
-                        }
-                        long realValue;
-                        try {
-                            realValue = Long.valueOf(inputPort);
-                            if (realValue < 0 || realValue > 65535) {
-                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                        int inputPort = 0;
+                        if (!value.isEmpty()) {
+                            int colonIndex = value.indexOf(':');
+                            if (colonIndex > 0) {
+                                inputHost = value.substring(0, colonIndex);
                             }
-                        } catch (NumberFormatException ex) {
-                            throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
+                            String portStr = value.substring(colonIndex + 1);
+                            long realValue;
+                            try {
+                                realValue = Long.valueOf(portStr);
+                                if (realValue < 0 || realValue > 65535) {
+                                    throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                                }
+                            } catch (NumberFormatException ex) {
+                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Port is not a number. Must be a number in the 0 - 65535 range.");
+                            }
+                            inputPort = (int) realValue;
                         }
                         host = inputHost;
                         port = inputPort;
@@ -590,10 +605,10 @@ public final class EspressoOptions {
     @Option(help = "Load a Java programming language agent for the given jar file. \\n" +
                     "Keys represent the jar path, values are the corresponding agent options.\\n" +
                     "Agents are not fully implemented yet.", //
-                    category = OptionCategory.INTERNAL, //
+                    category = OptionCategory.USER, //
                     stability = OptionStability.EXPERIMENTAL, //
-                    usageSyntax = "<agent>") //
-    public static final OptionKey<String> JavaAgent = new OptionKey<>("");
+                    usageSyntax = "<agent>=<agentOptions>") //
+    public static final OptionKey<OptionMap<String>> JavaAgent = OptionKey.mapOf(String.class);
 
     @Option(help = "Used internally to keep track of the command line arguments given to the vm in order to support VM.getRuntimeArguments().\\n" +
                     "Setting this option is the responsibility of the context creator if such support is required.\\n" +
@@ -611,17 +626,24 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
+                    "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
 
-    @Option(help = "Enables java agents. Support is currently very limited.", //
+    @Option(help = "Enables native JVMTI agents. Support is currently very limited.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+    public static final OptionKey<Boolean> EnableNativeAgents = new OptionKey<>(false);
 
     @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
                     category = OptionCategory.EXPERT, //
@@ -640,17 +662,16 @@ public final class EspressoOptions {
         JAVA,
     }
 
-    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode",
-                    new Function<String, JImageMode>() {
-                        @Override
-                        public JImageMode apply(String s) {
-                            try {
-                                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
-                            }
-                        }
-                    });
+    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode", new Function<String, JImageMode>() {
+        @Override
+        public JImageMode apply(String s) {
+            try {
+                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
+            }
+        }
+    });
 
     @Option(help = "Selects the jimage reader.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
@@ -667,6 +688,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
+
+    @Option(help = "Enables the JVMCI API inside the context.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
 
     public enum GuestFieldOffsetStrategyEnum {
         safety,
@@ -697,9 +724,64 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
 
-    // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
-    public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
-    public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+    public enum XShareOption {
+        auto,
+        on,
+        off,
+        dump
+    }
+
+    @Option(help = "Sets the class data sharing (CDS) mode.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "auto|on|off|dump") //
+    public static final OptionKey<XShareOption> CDS = new OptionKey<>(XShareOption.off);
+
+    @Option(help = "Overrides the default path to the (static) CDS archive.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<path>") //
+    public static final OptionKey<Path> SharedArchiveFile = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
+    @Option(help = "Sets the amount of time, in ms, various thread requests (such as 'Thread.getStackTrace()') will wait for when the requested thread is considered unresponsive w.r.t. espresso.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<duration in ms>") //
+    public static final OptionKey<Integer> ThreadRequestGracePeriod = new OptionKey<>(100);
+
+    public enum MemoryAccessOption {
+        allow,
+        warn,
+        debug,
+        deny,
+        defaultValue // undocumented sentinel value
+    }
+
+    @Option(help = "Allow or deny usage of unsupported API sun.misc.Unsafe", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "allow|warn|debug|deny") //
+    public static final OptionKey<MemoryAccessOption> SunMiscUnsafeMemoryAccess = new OptionKey<>(MemoryAccessOption.defaultValue);
+
+    @Option(help = "Enable advanced class redefinition.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableAdvancedRedefinition = new OptionKey<>(false);
+
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<depth>>") //
+    // HotSpot's MaxJavaStackTraceDepth is 1024 by default
+    public static final OptionKey<Integer> MaxJavaStackTraceDepth = new OptionKey<>(32);
+
+    /**
+     * Property used to force liveness analysis to also be applied by the interpreter. For testing
+     * purpose only. Use a host property rather than an option. An option would slow interpreter
+     * considerably.
+     */
+    public static final boolean LivenessAnalysisInInterpreter = booleanProperty("espresso.liveness.interpreter", false);
 
     // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
     public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);

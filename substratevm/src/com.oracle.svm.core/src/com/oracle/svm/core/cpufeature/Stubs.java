@@ -107,6 +107,9 @@ public final class Stubs {
             if (SHA256Node.class.equals(klass)) {
                 return SHA256Node.minFeaturesAMD64();
             }
+            if (SHA3Node.class.equals(klass)) {
+                return SHA3Node.minFeaturesAMD64();
+            }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAMD64();
             }

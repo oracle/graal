@@ -1,0 +1,352 @@
+[
+  {
+    "name" : "java.io.FileDescriptor",
+    "methods" : [
+        { "name" : "closeAll",
+          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is megamorphic.",
+          "parameterTypes" : [
+              "java.io.Closeable"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.net.SocketPermission",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.net.URL",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.Bits",
+    "justification" : "Bits are package private class used by direct buffers which uses Unsafe to access off heap memory.",
+    "allDeclaredMethods" : true
+  },
+  {
+    "name" : "java.nio.BufferCleaner$PhantomCleaner",
+    "methods" : [
+      { "name" : "clean" ,
+        "justification" : "Calls System.exit if a failure occurs during VM boot.",
+        "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer",
+    "justification" : "DirectByteBuffer uses Unsafe to allocate and initialize off heap memory.",
+    "allDeclaredMethods" : true,
+    "methods" : [
+        { "name" : "<init>",
+          "parameterTypes" : [
+            "int"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.ServiceLoader$LazyClassPathLookupIterator",
+    "methods" : [
+        { "name" : "parse" ,
+          "justification" : "Reads META-INF/services files from classpath.",
+          "parameterTypes" : [
+              "java.net.URL"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.FutureTask",
+    "methods" : [
+        { "name" : "cancel" ,
+          "justification" : "Interrups the executor threads to cancel execution of FutureTask.",
+          "parameterTypes" : [
+            "boolean"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ThreadPoolExecutor",
+    "methods" : [
+        { "name" : "tryTerminate" ,
+          "justification" : "Stops the thread pool threads on shutdown.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinPool",
+    "methods" : [
+      { "name" : "deregisterWorker" ,
+        "justification" : "Calls ForkJoinPool.tryTerminate but always with now=false",
+        "parameterTypes" : [
+          "java.util.concurrent.ForkJoinWorkerThread",
+          "java.lang.Throwable"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinWorkerThread",
+    "methods" : [
+        { "name":  "<init>",
+          "justification": "Used by java.util.concurrent.SynchronousQueue. We explicitly deny SynchronousQueue in languages code in PermissionsFeature."
+        },
+        { "name" : "run" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinTask",
+    "methods" : [
+        { "name" : "invoke" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.locks.LockSupport",
+    "allDeclaredMethods" : true,
+    "justification" : "The LockSupport uses sun.misc.Unsafe"
+  },
+  {
+    "name" : "sun.nio.fs.NativeBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "sun.nio.ch.SocketChannelImpl",
+    "methods" : [
+        { "name" : "toString" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.security.ProtectionDomain",
+    "methods" : [
+      { "name" : "toString" ,
+        "parameterTypes" : [],
+        "justification" : "Safe operation, calls SecurityManager and catches a SecurityException to determine if toString should print all permissions."
+      }
+    ]
+  },
+  {
+    "name" : "java.security.Provider",
+    "allDeclaredMethods": true
+  },
+  {
+    "name" : "java.security.Security$SecPropLoader",
+    "methods" : [
+      { "name" : "loadInclude" ,
+        "parameterTypes" : [
+          "java.lang.String"
+        ],
+        "justification" : "Internal method to read security configuration property files."
+      }
+    ],
+    "justification": "java.security.Provider is not used by Truffle."
+  },
+  {
+    "name" : "javax.security.auth.Subject$SecureSet",
+    "methods" : [
+        { "name" : "add" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "contains" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]}
+    ]
+  },
+  {
+    "name" : "javax.security.auth.Subject$SecureSet$1",
+    "methods" : [
+        { "name" : "next" ,
+          "parameterTypes" : [
+        ]},
+        { "name": "remove",
+          "parameterTypes": [
+        ]}
+    ]
+  },
+  {
+    "name" : "sun.security.provider.NativePRNG$RandomIO",
+    "methods" : [
+      { "name" : "implSetSeed" ,
+        "parameterTypes" : [
+          "byte[]"
+        ]}
+    ]
+  },
+  {
+    "name": "jdk.internal.logger.BootstrapLogger",
+    "allDeclaredMethods": true,
+    "justification" : "Internal JDK logging manipulating Logger hierarchy when it's initialized."
+  },
+  {
+    "name": "jdk.internal.logger.DefaultLoggerFinder",
+    "methods": [
+      {
+        "name": "getLogger",
+        "parameterTypes" : [
+          "java.lang.String",
+          "java.lang.Module"
+        ],
+        "justification" : "Lookups java.lang.System.Logger for module."
+      }
+    ]
+  },
+  {
+    "name": "java.util.logging.LogManager",
+    "methods" : [
+      {
+        "name" : "initializeGlobalHandlers",
+        "parameterTypes" : [
+        ],
+        "justification" : "Lazy loading of global LogHandlers."
+      },
+      {
+        "name": "ensureLogManagerInitialized",
+        "parameterTypes" : [
+        ],
+        "justification" : "Lazy initialization of LogManager, creating a root logger, setting initial levels."
+      }
+    ]
+  },
+  {
+    "name": "java.util.logging.LogManager$Cleaner",
+    "methods" : [
+      {
+        "name" : "<init>",
+        "justification" : "Thread subclass installed into Runtime.addedShutdownHook by LogManager."
+      }
+    ]
+  },
+  {
+    "name": "java.util.TimeZone",
+    "methods" : [
+      {
+        "name" : "setDefaultZone",
+        "parameterTypes" : [
+        ],
+        "justification" : "Reads system properties to initializes the default time zone."
+      }
+    ]
+  },
+  {
+    "name": "java.lang.runtime.ObjectMethods",
+    "methods":[
+      {
+        "name": "bootstrap",
+        "justification": "Bootstrap method for record's toString, hashCode and equals methods."
+      }
+    ]
+  },
+  {
+    "name": "java.lang.runtime.SwitchBootstraps",
+    "methods":[
+      {
+        "name": "typeSwitch",
+        "justification": "Bootstrap method for switch on a reference type."
+      },
+      {
+        "name": "enumSwitch",
+        "justification": "Bootstrap method for switch on enum constants."
+      }
+    ]
+  },
+  {
+    "name": "sun.reflect.annotation.AnnotationInvocationHandler",
+    "methods":[
+      {
+        "name": "invoke",
+        "justification": "Dynamic implementation of java.lang.annotation.Annotation."
+      }
+    ]
+  },
+  {
+    "name": "sun.reflect.annotation.AnnotationParser",
+    "methods":[
+      {
+        "name": "annotationForMap",
+        "parameterTypes" : [
+          "java.lang.Class",
+          "java.util.Map"
+        ],
+        "justification": "Dynamic implementation of java.lang.annotation.Annotation."
+      }
+    ]
+  },
+  {
+    "name": "java.math.BigInteger",
+    "methods": [
+      {
+        "name": "multiply",
+        "justification": "JDK 19 introduced parallelMultiply(BI) that shares its implementation with multiply(BI), which causes a spurious privileged call being found in the latter, so we explicitly deny parallelMultiply(BI) and allow multiply(BI) to avoid this false positive."
+      },
+      {
+        "name": "square",
+        "parameterTypes" : [],
+        "justification": "square() calls a method which has both serial and parallel implementations; however, it will always use the serial implementation."
+      }
+    ]
+  },
+  {
+    "name": "java.util.Arrays",
+    "methods": [
+      {
+        "name": "sort",
+        "justification": "In the JDK 17 Arrays#sort and Arrays#parallelSort share the same DualPivotQuicksort#sort(array,parallelism,low,high) implementation that uses ForkJoinPool for parallelism > 1. This causes a spurious privileged call being found in the Arrays#sort, so we allow Arrays#sort to avoid this false positive and keep Arrays#parallelSort denied."
+      }
+    ]
+  },
+  {
+    "name": "java.lang.ClassLoader",
+    "methods": [
+      {
+        "name": "getResourceAsStream",
+        "parameterTypes" : [
+          "java.lang.String"
+        ],
+        "justification": "In native-image available classes are statically configured."
+      }
+    ]
+  },
+  {
+    "name": "java.util.ResourceBundle",
+    "methods": [
+      {
+        "name": "loadBundle",
+        "justification": "In native-image resource bundles are statically configured."
+      }
+    ]
+  }
+]

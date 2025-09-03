@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Utf8;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,6 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4">Constant
  *      Pool</a>
  */
+@LibGraalSupport.HostedOnly
 public class Classfile {
 
     private final ResolvedJavaType type;

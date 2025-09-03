@@ -256,10 +256,8 @@ public class VisibilityTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void testPublicClassBridgeMethod() {
-        // GR-42882: public bridge method B1.run() for A3.run() no longer exposed.
-        // invokeRun(new B1(), A3.class);
-        Assert.assertFalse(INTEROP.isMemberExisting(asTruffleObject(new B1()), "run"));
+    public void testPublicClassBridgeMethod() throws InteropException {
+        invokeRun(new B1(), A3.class);
     }
 
     @Test

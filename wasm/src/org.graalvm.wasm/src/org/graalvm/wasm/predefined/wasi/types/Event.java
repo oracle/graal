@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** An event that occurred. */
 public final class Event {
@@ -59,49 +60,49 @@ public final class Event {
     public static final int BYTES = 32;
 
     /** Reads user-provided value that got attached to {@code subscription::userdata}. */
-    public static long readUserdata(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 0);
+    public static long readUserdata(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 0);
     }
 
     /** Writes user-provided value that got attached to {@code subscription::userdata}. */
-    public static void writeUserdata(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 0, value);
+    public static void writeUserdata(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 0, value);
     }
 
     /** Reads if non-zero, an error that occurred while processing the subscription request. */
-    public static Errno readError(Node node, WasmMemory memory, int address) {
-        return Errno.fromValue((short) memory.load_i32_16u(node, address + 8));
+    public static Errno readError(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Errno.fromValue((short) memoryLib.load_i32_16u(memory, node, address + 8));
     }
 
     /** Writes if non-zero, an error that occurred while processing the subscription request. */
-    public static void writeError(Node node, WasmMemory memory, int address, Errno value) {
-        memory.store_i32_16(node, address + 8, value.toValue());
+    public static void writeError(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Errno value) {
+        memoryLib.store_i32_16(memory, node, address + 8, value.toValue());
     }
 
     /** Reads the type of event that occured. */
-    public static Eventtype readType(Node node, WasmMemory memory, int address) {
-        return Eventtype.fromValue((byte) memory.load_i32_8u(node, address + 10));
+    public static Eventtype readType(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Eventtype.fromValue((byte) memoryLib.load_i32_8u(memory, node, address + 10));
     }
 
     /** Writes the type of event that occured. */
-    public static void writeType(Node node, WasmMemory memory, int address, Eventtype value) {
-        memory.store_i32_8(node, address + 10, value.toValue());
+    public static void writeType(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Eventtype value) {
+        memoryLib.store_i32_8(memory, node, address + 10, value.toValue());
     }
 
     /**
      * Reads the contents of the event, if it is an {@code eventtype::fd_read} or
      * {@code eventtype::fd_write}. {@code eventtype::clock} events ignore this field.
      */
-    public static int readFdReadwrite(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 16);
+    public static int readFdReadwrite(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 16);
     }
 
     /**
      * Writes the contents of the event, if it is an {@code eventtype::fd_read} or
      * {@code eventtype::fd_write}. {@code eventtype::clock} events ignore this field.
      */
-    public static void writeFdReadwrite(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 16, value);
+    public static void writeFdReadwrite(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 16, value);
     }
 
 }

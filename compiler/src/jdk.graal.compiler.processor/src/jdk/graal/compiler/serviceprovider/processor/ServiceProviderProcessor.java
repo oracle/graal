@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.serviceprovider.processor;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -52,8 +52,8 @@ import jdk.graal.compiler.processor.AbstractProcessor;
 public class ServiceProviderProcessor extends AbstractProcessor {
 
     private static final String SERVICE_PROVIDER_CLASS_NAME = "jdk.graal.compiler.serviceprovider.ServiceProvider";
-    private final Set<TypeElement> processed = new HashSet<>();
-    private final Map<TypeElement, String> serviceProviders = new HashMap<>();
+    private final Set<TypeElement> processed = new LinkedHashSet<>();
+    private final Map<TypeElement, String> serviceProviders = new LinkedHashMap<>();
 
     private boolean verifyAnnotation(TypeMirror serviceInterface, TypeElement serviceProvider) {
         if (!processingEnv.getTypeUtils().isSubtype(serviceProvider.asType(), serviceInterface)) {

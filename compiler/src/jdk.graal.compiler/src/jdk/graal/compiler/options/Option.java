@@ -40,20 +40,18 @@ import java.lang.annotation.Target;
 public @interface Option {
 
     /**
-     * Gets a help message for the option.
+     * Gets a help message for the option. Use a text block (or embedded newlines) for a multi-line
+     * help. The first line is the short help message and must end with a period or be followed by a
+     * blank line. This part of the help message is subject to line wrapping when printed.
      * <p>
-     * The first element of the array is the short help message. This part of the help message is
-     * subject to line wrapping when printed.
+     * The remaining lines contain a more detailed expansion of the help message and will be printed
+     * as is in a left-aligned block (i.e. leading spaces will be preserved).
      * <p>
-     * The remaining elements contain a more detailed expansion of the help message and will be
-     * printed as is in a left-aligned block (i.e. leading spaces will be preserved).
-     * <p>
-     * If there is only one element and it starts with {@code "file:"<path>}, then the help message
-     * is located in a file located by resolving {@code <path>} against the location of the package
-     * in which the option is declared. The first line in the file is the short help message as
-     * described above. The remaining lines are the help message expansion.
+     * If there is only one line, and it starts with {@code "file:"}, then the help message is
+     * located in a file located by resolving the path after {@code "file:"} against the location of
+     * the package in which the option is declared.
      */
-    String[] help();
+    String help();
 
     /**
      * The name of the option. By default, the name of the annotated field should be used.

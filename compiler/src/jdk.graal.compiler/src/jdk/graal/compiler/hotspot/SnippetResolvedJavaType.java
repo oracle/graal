@@ -24,13 +24,12 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -51,12 +50,13 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  *
  * {@link jdk.vm.ci.hotspot.HotSpotResolvedJavaType HotSpotResolvedJavaType} can't be used here
  * because the Graal classes may not be available in the host VM and even if they are, loading them
- * causes unnecessary class loading. The Substrate type system could be used but it is
- * implementation overkill for the purposes of libgraal.
+ * causes unnecessary class loading. The Substrate type system could be used, but it is
+ * implementation overkill for the purposes of libgraal. It would also introduce an unwanted
+ * dependency from the Graal compiler to SVM.
  */
 public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private final Class<?> javaClass;
-    private List<SnippetResolvedJavaMethod> methods;
+    private SnippetResolvedJavaMethod[] methods;
     private SnippetResolvedJavaType arrayOfType;
 
     public SnippetResolvedJavaType(Class<?> javaClass) {
@@ -68,20 +68,22 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         this.arrayOfType = arrayOfType;
     }
 
+    @LibGraalSupport.HostedOnly
     synchronized SnippetResolvedJavaMethod add(SnippetResolvedJavaMethod method) {
-        if (IS_IN_NATIVE_IMAGE) {
-            throw new InternalError("immutable");
-        }
         if (methods == null) {
-            methods = new ArrayList<>(1);
+            methods = new SnippetResolvedJavaMethod[]{method};
+            return method;
         }
-        // This in inefficient but is only use during image building for a small number of methods.
-        int index = methods.indexOf(method);
+        // This in inefficient but is only used while building
+        // libgraal for a small number of methods.
+        int index = Arrays.asList(methods).indexOf(method);
         if (index == -1) {
-            methods.add(method);
+            SnippetResolvedJavaMethod[] newMethods = Arrays.copyOf(methods, methods.length + 1);
+            newMethods[methods.length] = method;
+            methods = newMethods;
             return method;
         } else {
-            return methods.get(index);
+            return methods[index];
         }
     }
 
@@ -304,22 +306,22 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
-        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        GraalError.guarantee(!forceLink, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         if (methods == null) {
             return new ResolvedJavaMethod[0];
         }
-        return methods.toArray(new ResolvedJavaMethod[methods.size()]);
+        return methods.clone();
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

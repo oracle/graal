@@ -40,15 +40,23 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.ParameterizedEspressoType;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.ThreadState;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.VM;
 
 public class PolyglotTypeMappings {
@@ -97,8 +105,8 @@ public class PolyglotTypeMappings {
             EconomicMap<String, TypeConverter> temp = EconomicMap.create(converters.size());
             StaticObject bindingsLoader = context.getBindingsLoader();
 
-            Symbol<Symbol.Name> name = Symbol.Name.toGuest;
-            Symbol<Symbol.Signature> desc = Symbol.Signature.Object_Object;
+            Symbol<Name> name = Names.toGuest;
+            Symbol<Signature> desc = Signatures.Object_Object;
 
             // load the GuestTypeConversion interface for type checking
             Klass conversionInterface = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(GUEST_TYPE_CONVERSION_INTERFACE), bindingsLoader, StaticObject.NULL);
@@ -157,6 +165,16 @@ public class PolyglotTypeMappings {
         converters.put("long[]", new BuiltinArrayTypeConverter(meta._long_array));
         converters.put("float[]", new BuiltinArrayTypeConverter(meta._float_array));
         converters.put("double[]", new BuiltinArrayTypeConverter(meta._double_array));
+
+        // boxed primitives
+        converters.put("java.lang.Byte[]", new BuiltinArrayTypeConverter(meta.java_lang_Byte.array()));
+        converters.put("java.lang.Boolean[]", new BuiltinArrayTypeConverter(meta.java_lang_Boolean.array()));
+        converters.put("java.lang.Character[]", new BuiltinArrayTypeConverter(meta.java_lang_Character.array()));
+        converters.put("java.lang.Short[]", new BuiltinArrayTypeConverter(meta.java_lang_Short.array()));
+        converters.put("java.lang.Integer[]", new BuiltinArrayTypeConverter(meta.java_lang_Integer.array()));
+        converters.put("java.lang.Long[]", new BuiltinArrayTypeConverter(meta.java_lang_Long.array()));
+        converters.put("java.lang.Float[]", new BuiltinArrayTypeConverter(meta.java_lang_Float.array()));
+        converters.put("java.lang.Double[]", new BuiltinArrayTypeConverter(meta.java_lang_Double.array()));
 
         // String array type
         converters.put("java.lang.String[]", new BuiltinArrayTypeConverter(meta.java_lang_String_array));
@@ -245,10 +263,7 @@ public class PolyglotTypeMappings {
         if (interfaceMappings != null && interfaceMappings.contains(mapping)) {
             return true;
         }
-        if (typeConverterFunctions != null && typeConverterFunctions.containsKey(mapping)) {
-            return true;
-        }
-        return false;
+        return typeConverterFunctions != null && typeConverterFunctions.containsKey(mapping);
     }
 
     public ObjectKlass mapEspressoForeignCollection(String metaName) {
@@ -317,7 +332,7 @@ public class PolyglotTypeMappings {
     }
 
     public interface InternalTypeConverter {
-        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException;
+        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType targetType) throws UnsupportedTypeException;
     }
 
     public static class TypeConverterImpl implements TypeConverter {
@@ -330,23 +345,34 @@ public class PolyglotTypeMappings {
         }
 
         public Object convert(StaticObject foreign) {
-            return callNode.call(receiver, foreign);
+            Transition transition = Transition.transition(ThreadState.IN_ESPRESSO);
+            try {
+                return callNode.call(receiver, foreign);
+            } finally {
+                transition.restore();
+            }
         }
     }
 
     public static final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType targetType) throws UnsupportedTypeException {
             try {
                 Object result = interop.invokeMember(value, "orElse", StaticObject.NULL);
                 if (interop.isNull(result)) {
                     return (StaticObject) meta.java_util_Optional_EMPTY.get(meta.java_util_Optional.getStatics());
                 } else {
                     StaticObject guestOptional = toEspresso.getAllocator().createNew(meta.java_util_Optional);
-                    meta.java_util_Optional_value.setObject(guestOptional, toEspresso.execute(result, meta.java_lang_Object));
+                    EspressoType target = meta.java_lang_Object;
+                    if (targetType instanceof ParameterizedEspressoType parameterizedEspressoType) {
+                        target = parameterizedEspressoType.getTypeArguments()[0];
+                    }
+                    meta.java_util_Optional_value.setObject(guestOptional, toEspresso.execute(result, target));
                     return guestOptional;
                 }
+            } catch (UnsupportedTypeException e) {
+                throw new ClassCastException();
             } catch (InteropException e) {
                 throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to Optional", e);
             }
@@ -356,7 +382,7 @@ public class PolyglotTypeMappings {
     public static final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType targetType) throws UnsupportedTypeException {
             try {
                 // state required to reconstruct in guest
                 int scale = interop.asInt(interop.invokeMember(value, "scale"));
@@ -393,7 +419,7 @@ public class PolyglotTypeMappings {
         }
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType espressoType) throws UnsupportedTypeException {
             if (!interop.hasArrayElements(value)) {
                 boundaryThrow(value);
             }
@@ -414,11 +440,11 @@ public class PolyglotTypeMappings {
 
         public BuiltinExceptionTypeConverter(ObjectKlass klass) {
             this.exceptionKlass = klass;
-            this.messageConstructor = klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String, Klass.LookupMode.INSTANCE_ONLY);
+            this.messageConstructor = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String, Klass.LookupMode.INSTANCE_ONLY);
         }
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType espressoType) throws UnsupportedTypeException {
             if (!interop.isException(value)) {
                 throw UnsupportedTypeException.create(new Object[]{value},
                                 EspressoError.format("Could not cast foreign object to %s: %s", exceptionKlass.getNameAsString(), "foreign object is not an exception"));

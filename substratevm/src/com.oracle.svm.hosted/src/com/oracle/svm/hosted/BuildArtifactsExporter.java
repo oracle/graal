@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -38,6 +40,10 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
@@ -101,5 +107,31 @@ public class BuildArtifactsExporter {
             writer.println();
         });
         buildArtifacts.add(ArtifactType.BUILD_INFO, ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, false));
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    static class BuildArtifactsImpl implements BuildArtifacts {
+        private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
+
+        @Override
+        public void add(ArtifactType type, Path artifact) {
+            buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact);
+        }
+
+        @Override
+        public List<Path> get(ArtifactType type) {
+            VMError.guarantee(buildArtifacts.containsKey(type), "Artifact type is missing: %s", type);
+            return buildArtifacts.get(type);
+        }
+
+        @Override
+        public void forEach(BiConsumer<ArtifactType, List<Path>> action) {
+            buildArtifacts.forEach(action);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return buildArtifacts.isEmpty();
+        }
     }
 }

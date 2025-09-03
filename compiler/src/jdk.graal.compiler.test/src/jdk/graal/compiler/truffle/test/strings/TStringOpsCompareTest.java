@@ -89,10 +89,10 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
     }
 
     final byte[] arrayA;
-    final int offsetA;
+    final long offsetA;
     final int strideA;
     final byte[] arrayB;
-    final int offsetB;
+    final long offsetB;
     final int strideB;
     final int lengthCMP;
 
@@ -101,10 +101,10 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
                     byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
         super(ArrayRegionCompareToNode.class);
         this.arrayA = arrayA;
-        this.offsetA = offsetA;
+        this.offsetA = offsetA + byteArrayBaseOffset();
         this.strideA = strideA;
         this.arrayB = arrayB;
-        this.offsetB = offsetB;
+        this.offsetB = offsetB + byteArrayBaseOffset();
         this.strideB = strideB;
         this.lengthCMP = lengthCMP;
     }

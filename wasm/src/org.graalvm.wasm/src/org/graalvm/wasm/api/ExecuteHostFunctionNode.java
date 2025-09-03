@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -51,7 +52,6 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -69,7 +69,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 /**
  * Wrapper call target for executing imported host functions in the parent context.
  */
-public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
+public final class ExecuteHostFunctionNode extends RootNode {
+    private final WasmModule module;
     private final int functionTypeIndex;
     private final int functionIndex;
     private final BranchProfile errorBranch = BranchProfile.create();
@@ -78,7 +79,8 @@ public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
     @Child private InteropLibrary resultInterop;
 
     public ExecuteHostFunctionNode(WasmLanguage language, WasmModule module, WasmFunction fn) {
-        super(language, module);
+        super(language);
+        this.module = module;
         this.functionTypeIndex = fn.typeIndex();
         this.functionIndex = fn.index();
         this.functionInterop = InteropLibrary.getFactory().createDispatched(5);
@@ -101,12 +103,12 @@ public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
             Object executable = functionInstance.getImportedFunction();
             result = functionInterop.execute(executable, arguments);
 
-            int resultCount = module().symbolTable().functionTypeResultCount(functionTypeIndex);
+            int resultCount = module.symbolTable().functionTypeResultCount(functionTypeIndex);
             CompilerAsserts.partialEvaluationConstant(resultCount);
             if (resultCount == 0) {
                 return WasmConstant.VOID;
             } else if (resultCount == 1) {
-                byte resultType = module().symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
+                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
                 return convertResult(result, resultType);
             } else {
                 pushMultiValueResult(result, resultCount);
@@ -155,7 +157,7 @@ public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
             final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
             final Object[] objectMultiValueStack = multiValueStack.objectStack();
             for (int i = 0; i < resultCount; i++) {
-                byte resultType = module().symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {
@@ -229,8 +231,19 @@ public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
         return e.getMessage();
     }
 
+    // TODO: Do we need the 3 overrides below?
     @Override
-    public String builtinNodeName() {
-        return "execute";
+    public String getName() {
+        return "wasm-function:execute";
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
+
+    @Override
+    protected boolean isInstrumentable() {
+        return false;
     }
 }

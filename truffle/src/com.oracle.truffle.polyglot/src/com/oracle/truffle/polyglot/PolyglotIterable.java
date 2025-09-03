@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,17 +57,24 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.polyglot.PolyglotIterableFactory.CacheFactory.GetIteratorNodeGen;
+import org.graalvm.polyglot.Context;
 
 class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
     final Cache cache;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this iterable is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotIterable(Class<T> elementClass, Type elementType, Object iterable, PolyglotLanguageContext languageContext) {
         this.guestObject = iterable;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, iterable.getClass(), elementClass, elementType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @Override
@@ -214,7 +221,7 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary iterables,
                             @Cached PolyglotToHostNode toHost,
                             @Cached InlinedBranchProfile error) {

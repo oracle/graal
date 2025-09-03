@@ -235,8 +235,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -264,6 +262,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaMethod;
@@ -317,7 +318,7 @@ public class BciBlockMapping implements JavaMethodContext {
     protected static final int UNASSIGNED_ID = -1;
 
     private static final BitSet SHARED_EMPTY_BITSET = new BitSet();
-    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = Set.of();
+    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = CollectionsUtil.setOf();
 
     public static class BciBlock implements Cloneable {
 
@@ -417,7 +418,10 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (block.jsrData != null) {
                     block.jsrData = block.jsrData.copy();
                 }
-                block.successors = new ArrayList<>(successors);
+                block.successors = new ArrayList<>();
+                for (var sux : successors) {
+                    block.addSuccessor(sux);
+                }
                 block.loops = (BitSet) block.loops.clone();
                 return block;
             } catch (CloneNotSupportedException e) {
@@ -431,7 +435,10 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (block.jsrData != null) {
                     throw new PermanentBailoutException("Can not duplicate block with JSR data");
                 }
-                block.successors = new ArrayList<>(successors);
+                block.successors = new ArrayList<>();
+                for (var sux : successors) {
+                    block.addSuccessor(sux);
+                }
                 block.loops = new BitSet();
                 block.loopId = 0;
                 block.id = UNASSIGNED_ID;
@@ -915,6 +922,7 @@ public class BciBlockMapping implements JavaMethodContext {
                         blocksNotYetAssignedId++;
                     }
                     b.successors.set(i, dup);
+                    dup.predecessorCount++;
 
                     if (duplicates.get(b) != null) {
                         // Patch successor of own duplicate.
@@ -1018,7 +1026,7 @@ public class BciBlockMapping implements JavaMethodContext {
             return SHARED_EMPTY_BCIBLOCK_SET;
         }
 
-        Set<BciBlock> requestedBlockStarts = new HashSet<>();
+        Set<BciBlock> requestedBlockStarts = new EconomicHashSet<>();
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler h = exceptionHandlers[i];
@@ -1474,6 +1482,14 @@ public class BciBlockMapping implements JavaMethodContext {
         }
         debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
 
+        if (block.getJsrSuccessor() != null && scope.containsJSREntry(block.getJsrSuccessor())) {
+            /*
+             * Subroutine recursion is not supported; stop creating jsr alternatives. The actual
+             * handling happens when parsing the jsr bytecode. This permits it to be handled either
+             * as a compiler bailout or as an error at run time.
+             */
+            return;
+        }
         if (block.getJsrSuccessor() != null || !scope.isEmpty()) {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 BciBlock successor = block.getSuccessor(i);
@@ -1631,7 +1647,7 @@ public class BciBlockMapping implements JavaMethodContext {
             return "no blockmap";
         }
         StringBuilder sb = new StringBuilder();
-        Map<BciBlock, Integer> debugIds = new HashMap<>();
+        Map<BciBlock, Integer> debugIds = new EconomicHashMap<>();
         int[] nextDebugId = new int[]{-2};
         ToIntFunction<BciBlock> getId = b -> {
             int id = b.getId();

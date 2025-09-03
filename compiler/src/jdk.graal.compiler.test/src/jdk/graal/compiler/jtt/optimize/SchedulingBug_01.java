@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class SchedulingBug_01 extends JTTTest {
 
-    private static class VolatileBoxHolder {
+    private static final class VolatileBoxHolder {
         volatile Integer box;
     }
 

@@ -60,7 +60,7 @@ public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
                     continue;
                 }
                 StructuredGraph inlineGraph = context.getProviders().getReplacements().getInlineSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
-                                methodCallTargetNode.invoke().getInlineControl(), graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
+                                false, methodCallTargetNode.invoke().getInlineControl(), graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
                                 graph.allowAssumptions(), context.debug.getOptions());
                 if (inlineGraph != null) {
                     InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());

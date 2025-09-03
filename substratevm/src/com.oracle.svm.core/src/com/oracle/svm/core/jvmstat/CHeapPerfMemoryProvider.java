@@ -26,8 +26,8 @@ package com.oracle.svm.core.jvmstat;
 
 import java.nio.ByteBuffer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.memory.NativeMemory;
@@ -51,7 +51,7 @@ public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
     public void teardown() {
         if (memory.isNonNull()) {
             NativeMemory.free(memory);
-            memory = WordFactory.nullPointer();
+            memory = Word.nullPointer();
         }
     }
 }

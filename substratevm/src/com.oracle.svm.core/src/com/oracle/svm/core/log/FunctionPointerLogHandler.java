@@ -39,11 +39,16 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * A {@link LogHandler} that can use provided function pointers for each operation. If a function
  * pointer is missing, it forwards the operation to the delegate set in the constructor.
  */
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class FunctionPointerLogHandler implements LogHandlerExtension {
     private static final CGlobalData<CCharPointer> LOG_OPTION = CGlobalDataFactory.createCString("_log");
     private static final CGlobalData<CCharPointer> FATAL_LOG_OPTION = CGlobalDataFactory.createCString("_fatal_log");
@@ -146,23 +151,17 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
      *
      * @param optionString value of the {@code javaVMOption.optionString} field
      * @param extraInfo value of the {@code javaVMOption.extraInfo} field
-     * @return {@code true} iff the option was consumed by this method
      */
-    public static boolean parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
+    public static void parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
         if (LibC.strcmp(optionString, LOG_OPTION.get()) == 0) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FATAL_LOG_OPTION.get()) == 0) {
             handler(optionString).fatalLogFunctionPointer = (LogFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FLUSH_LOG_OPTION.get()) == 0) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FATAL_OPTION.get()) == 0) {
             handler(optionString).fatalErrorFunctionPointer = (VoidFunctionPointer) extraInfo;
-            return true;
         }
-        return false;
     }
 
     private static FunctionPointerLogHandler handler(CCharPointer optionString) {
@@ -179,11 +178,10 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
      */
     public static void afterParsingJniVMOptions() {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
-        if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
+        if (handler == null || !(handler instanceof FunctionPointerLogHandler fpHandler)) {
             return;
         }
 
-        FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
         if (fpHandler.logFunctionPointer.isNonNull()) {
             if (fpHandler.flushFunctionPointer.isNull()) {
                 throw new IllegalArgumentException("The _flush_log option cannot be null when _log is non-null");

@@ -25,35 +25,33 @@
 package com.oracle.svm.hosted;
 
 public class ByteFormattingUtil {
-    private static final double BYTES_TO_KiB = 1024d;
-    private static final double BYTES_TO_MiB = 1024d * 1024d;
-    private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
+    private static final double BYTES_TO_KB = 1000d;
+    private static final double BYTES_TO_MB = 1000d * 1000d;
+    private static final double BYTES_TO_GB = 1000d * 1000d * 1000d;
 
     public static String bytesToHuman(long bytes) {
-        return bytesToHuman("%4.2f", bytes);
-    }
-
-    public static String bytesToHuman(String format, long bytes) {
-        if (bytes < BYTES_TO_KiB) {
-            return String.format(format, (double) bytes) + "B";
-        } else if (bytes < BYTES_TO_MiB) {
-            return String.format(format, bytesToKiB(bytes)) + "kB";
-        } else if (bytes < BYTES_TO_GiB) {
-            return String.format(format, bytesToMiB(bytes)) + "MB";
+        assert bytes >= 0;
+        if (bytes < BYTES_TO_KB) {
+            return plainBytes(bytes, "B");
+        } else if (bytes < BYTES_TO_MB) {
+            return toHuman(bytes / BYTES_TO_KB, "kB");
+        } else if (bytes < BYTES_TO_GB) {
+            return toHuman(bytes / BYTES_TO_MB, "MB");
         } else {
-            return String.format(format, bytesToGiB(bytes)) + "GB";
+            return bytesToHumanGB(bytes);
         }
     }
 
-    static double bytesToKiB(long bytes) {
-        return bytes / BYTES_TO_KiB;
+    public static String bytesToHumanGB(long bytes) {
+        return toHuman(bytes / BYTES_TO_GB, "GB");
     }
 
-    static double bytesToGiB(long bytes) {
-        return bytes / BYTES_TO_GiB;
+    private static String toHuman(double value, String unit) {
+        return "%.2f%s".formatted(value, unit);
     }
 
-    static double bytesToMiB(long bytes) {
-        return bytes / BYTES_TO_MiB;
+    private static String plainBytes(long value, String unit) {
+        assert 0 <= value && value < BYTES_TO_KB;
+        return "%d%s".formatted(value, unit);
     }
 }

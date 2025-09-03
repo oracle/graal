@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.processor;
 
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_INTEROP_LIBRARY;
@@ -79,13 +78,13 @@ public class StructsProcessor extends AbstractProcessor {
 
     // Imports
     private static final String IMPORT_BYTEBUFFER = "java.nio.ByteBuffer";
-    private static final String IMPORT_JNI_ENV = "com.oracle.truffle.espresso.jni.JniEnv";
+    private static final String IMPORT_JNI_HANDLES = "com.oracle.truffle.espresso.jni.JNIHandles";
     private static final String IMPORT_RAW_POINTER = "com.oracle.truffle.espresso.ffi.RawPointer";
 
     // Classes
     private static final String TRUFFLE_OBJECT = "TruffleObject";
     private static final String INTEROP_LIBRARY = "InteropLibrary";
-    private static final String JNI_ENV_CLASS = "JniEnv";
+    private static final String JNI_HANDLES_CLASS = "JNIHandles";
     private static final String MEMBER_OFFSET_GETTER_CLASS = "MemberOffsetGetter";
     private static final String NATIVE_MEMBER_OFFSET_GETTER_CLASS = "NativeMemberOffsetGetter";
     private static final String JAVA_MEMBER_OFFSET_GETTER_CLASS = "JavaMemberOffsetGetter";
@@ -94,8 +93,10 @@ public class StructsProcessor extends AbstractProcessor {
     private static final String STRUCTS_CLASS = "Structs";
 
     // Methods
-    private static final String GET_INFO = "getInfo";
+    private static final String GET_STRUCT_SIZE = "getStructSize";
     private static final String GET_OFFSET = "getOffset";
+    private static final String GET_START_BIT = "getStartBit";
+    private static final String GET_END_BIT = "getEndBit";
     private static final String GET = "get";
     private static final String PUT = "put";
     private static final String GET_UNCACHED = "getUncached";
@@ -105,7 +106,7 @@ public class StructsProcessor extends AbstractProcessor {
 
     // Arguments
     private static final String VALUE = "valueToPut";
-    private static final String JNI_ENV_ARG = "jni";
+    private static final String JNI_HANDLES_ARG = "handles";
     private static final String PTR = "pointer";
     private static final String MEMBER_OFFSET_GETTER_ARG = "offsetGetter";
     private static final String MEMBER_INFO_PTR = "memberInfoPtr";
@@ -230,7 +231,7 @@ public class StructsProcessor extends AbstractProcessor {
             nativeTypes.add(NativeType.valueOf(type.getSimpleName().toString()));
         }
 
-        String className = ProcessorUtils.removeUnderscores(strName); // Replace '_j' with 'J'
+        String className = removeUnderscores(strName); // Replace '_j' with 'J'
         // Generate code
         String source = generateStruct(strName, members, nativeTypes, length, className);
         // Commit and write to files.
@@ -256,7 +257,7 @@ public class StructsProcessor extends AbstractProcessor {
                         .inPackage(STRUCTS_PACKAGE) //
                         .withImportGroup(Collections.singletonList(IMPORT_BYTEBUFFER)) //
                         .withImportGroup(Collections.singletonList(IMPORT_TRUFFLE_OBJECT)) //
-                        .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_ENV, IMPORT_RAW_POINTER));
+                        .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_HANDLES, IMPORT_RAW_POINTER));
 
         String wrapperName = className + WRAPPER;
 
@@ -267,13 +268,12 @@ public class StructsProcessor extends AbstractProcessor {
                         .withSuperClass(STRUCT_STORAGE_CLASS + "<" + className + "." + wrapperName + ">");
 
         // Generate the fields:
-        // - One to store the struct size
         // - One per member to store their offsets
-        generateFields(struct, members);
+        generateFields(struct, members, typesList, length);
 
         // Generate the constructor.
         // Use passed MemberOffsetGetter.
-        generateConstructor(struct, strName, members, className);
+        generateConstructor(struct, strName, members, typesList, length, className);
 
         // Generate the wrapper structure that will access the native struct java-like.
         // It simply wraps a byte buffer around the pointer, and uses offsets in parent class to
@@ -286,20 +286,32 @@ public class StructsProcessor extends AbstractProcessor {
         return structFile.build();
     }
 
-    private static void generateFields(ClassBuilder struct, List<String> members) {
-        for (String member : members) {
+    private static void generateFields(ClassBuilder struct, List<String> members, List<NativeType> typesList, int length) {
+        for (int i = 0; i < length; i++) {
+            String member = members.get(i);
+            NativeType type = typesList.get(i);
             struct.withField(new FieldBuilder("int", member).withQualifiers(new ModifierBuilder().asFinal()));
+            if (type == NativeType.BITFIELD_INT) {
+                struct.withField(new FieldBuilder("byte", member + "StartBit").withQualifiers(new ModifierBuilder().asFinal()));
+                struct.withField(new FieldBuilder("byte", member + "EndBit").withQualifiers(new ModifierBuilder().asFinal()));
+            }
         }
     }
 
-    private static void generateConstructor(ClassBuilder struct, String strName, List<String> members, String className) {
+    private static void generateConstructor(ClassBuilder struct, String strName, List<String> members, List<NativeType> typesList, int length, String className) {
         MethodBuilder constructor = new MethodBuilder(className) //
                         .withParams(argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)) //
                         .asConstructor();
 
-        constructor.addBodyLine("super(", call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{stringify(strName)}), ");");
-        for (String member : members) {
+        constructor.addBodyLine("super(", call(MEMBER_OFFSET_GETTER_ARG, GET_STRUCT_SIZE, new String[]{stringify(strName)}), ");");
+        for (int i = 0; i < length; i++) {
+            String member = members.get(i);
+            NativeType type = typesList.get(i);
             constructor.addBodyLine(assignment(member, "(int) " + call(MEMBER_OFFSET_GETTER_ARG, GET_OFFSET, new String[]{stringify(strName), stringify(member)})));
+            if (type == NativeType.BITFIELD_INT) {
+                constructor.addBodyLine(assignment(member + "StartBit", "(byte) " + call(MEMBER_OFFSET_GETTER_ARG, GET_START_BIT, new String[]{stringify(strName), stringify(member)})));
+                constructor.addBodyLine(assignment(member + "EndBit", "(byte) " + call(MEMBER_OFFSET_GETTER_ARG, GET_END_BIT, new String[]{stringify(strName), stringify(member)})));
+            }
         }
 
         struct.withMethod(constructor);
@@ -312,8 +324,8 @@ public class StructsProcessor extends AbstractProcessor {
 
         MethodBuilder wrapperConstructor = new MethodBuilder(wrapperName) //
                         .asConstructor() //
-                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)) //
-                        .addBodyLine(call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE}), ';');
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine(call(null, "super", new String[]{JNI_HANDLES_ARG, PTR, STRUCT_SIZE}), ';');
         wrapper.withMethod(wrapperConstructor);
 
         for (int i = 0; i < length; i++) {
@@ -326,12 +338,17 @@ public class StructsProcessor extends AbstractProcessor {
 
             MethodBuilder getter = new MethodBuilder(methodName) //
                             .withModifiers(new ModifierBuilder().asPublic()) //
-                            .withReturnType(argType) //
-                            .addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
+                            .withReturnType(argType);
             MethodBuilder setter = new MethodBuilder(methodName) //
                             .withModifiers(new ModifierBuilder().asPublic()) //
-                            .withParams(argument(argType, VALUE)) //
-                            .addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
+                            .withParams(argument(argType, VALUE));
+            if (type == NativeType.BITFIELD_INT) {
+                getter.addBodyLine("return ", call(null, GET + callSuffix, new String[]{member, member + "StartBit", member + "EndBit"}), ';');
+                setter.addBodyLine(call(null, PUT + callSuffix, new String[]{member, member + "StartBit", member + "EndBit", VALUE}), ';');
+            } else {
+                getter.addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
+                setter.addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
+            }
             wrapper.withMethod(getter);
             wrapper.withMethod(setter);
         }
@@ -344,8 +361,8 @@ public class StructsProcessor extends AbstractProcessor {
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic()) //
                         .withReturnType(wrapperClass) //
-                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)) //
-                        .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_ENV_ARG, PTR}), ';');
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_HANDLES_ARG, PTR}), ';');
         struct.withMethod(wrapMethod);
     }
 
@@ -354,13 +371,13 @@ public class StructsProcessor extends AbstractProcessor {
                         .withCopyright() //
                         .inPackage(STRUCTS_PACKAGE) //
                         .withImportGroup(Arrays.asList(IMPORT_INTEROP_LIBRARY, IMPORT_TRUFFLE_OBJECT)) //
-                        .withImportGroup(Collections.singletonList(IMPORT_JNI_ENV));
+                        .withImportGroup(Collections.singletonList(IMPORT_JNI_HANDLES));
 
         ClassBuilder structCollector = new ClassBuilder(STRUCTS_CLASS) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal());
 
         generateCollectorFieldDeclaration(structCollector, structs);
-        generateColectorConstructor(structCollector, structs);
+        generateCollectorConstructor(structCollector, structs);
 
         structCollectorFile.withClass(structCollector);
         return structCollectorFile.build();
@@ -372,11 +389,11 @@ public class StructsProcessor extends AbstractProcessor {
         }
     }
 
-    private static void generateColectorConstructor(ClassBuilder collector, List<String> structs) {
+    private static void generateCollectorConstructor(ClassBuilder collector, List<String> structs) {
         MethodBuilder constructor = new MethodBuilder(STRUCTS_CLASS) //
                         .asConstructor() //
                         .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)) //
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)) //
                         .addBodyLine(INTEROP_LIBRARY, ' ', assignment(LIBRARY, call(INTEROP_LIBRARY, GET_UNCACHED, EMPTY_ARGS))) //
                         .addBodyLine(MEMBER_OFFSET_GETTER_CLASS, ' ', assignment(MEMBER_OFFSET_GETTER_ARG,
                                         "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET})));
@@ -395,62 +412,42 @@ public class StructsProcessor extends AbstractProcessor {
             constructor.addBodyLine(assignment(decapitalize(MEMBER_INFO), "new " + call(null, MEMBER_INFO, new String[]{MEMBER_OFFSET_GETTER_ARG})));
             structs.remove(MEMBER_INFO);
             constructor.addBodyLine(assignment(MEMBER_OFFSET_GETTER_ARG, "new " + call(null, JAVA_MEMBER_OFFSET_GETTER_CLASS,
-                            new String[]{JNI_ENV_ARG, MEMBER_INFO_PTR, "this"})));
+                            new String[]{JNI_HANDLES_ARG, MEMBER_INFO_PTR, "this"})));
         }
     }
 
     private static String nativeTypeToMethodSuffix(NativeType type) {
-        switch (type) {
-            case BOOLEAN:
-                return "Boolean";
-            case BYTE:
-                return "Byte";
-            case CHAR:
-                return "Char";
-            case SHORT:
-                return "Short";
-            case INT:
-                return "Int";
-            case LONG:
-                return "Long";
-            case FLOAT:
-                return "Float";
-            case DOUBLE:
-                return "Double";
-            case OBJECT:
-                return "Object";
-            case POINTER:
-                return "Pointer";
-            default:
-                return "";
-        }
+        return switch (type) {
+            case VOID -> "";
+            case BOOLEAN -> "Boolean";
+            case BYTE -> "Byte";
+            case CHAR -> "Char";
+            case SHORT -> "Short";
+            case INT -> "Int";
+            case LONG -> "Long";
+            case FLOAT -> "Float";
+            case DOUBLE -> "Double";
+            case OBJECT -> "Object";
+            case POINTER -> "Pointer";
+            case BITFIELD_INT -> "BitFieldInt";
+        };
     }
 
     private static String nativeTypeToArgType(NativeType type) {
-        switch (type) {
-            case BOOLEAN:
-                return "boolean";
-            case BYTE:
-                return "byte";
-            case CHAR:
-                return "char";
-            case SHORT:
-                return "short";
-            case INT:
-                return "int";
-            case LONG:
-                return "long";
-            case FLOAT:
-                return "float";
-            case DOUBLE:
-                return "double";
-            case OBJECT:
-                return "StaticObject";
-            case POINTER:
-                return "TruffleObject";
-            default:
-                return "";
-        }
+        return switch (type) {
+            case VOID -> "";
+            case BOOLEAN -> "boolean";
+            case BYTE -> "byte";
+            case CHAR -> "char";
+            case SHORT -> "short";
+            case INT -> "int";
+            case LONG -> "long";
+            case FLOAT -> "float";
+            case DOUBLE -> "double";
+            case OBJECT -> "StaticObject";
+            case POINTER -> "TruffleObject";
+            case BITFIELD_INT -> "int";
+        };
     }
 
 }

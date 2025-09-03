@@ -1,0 +1,17 @@
+[[rule]]
+files = "FutureDefaultsOptions.java"
+all = [
+    "vojin.jovanovic@oracle.com",
+    "christian.wirth@oracle.com"
+]
+any = [
+]
+[[rule]]
+files = "ClassLoaderSupport.java"
+all = [
+    "david.nestorovic@oracle.com",
+    "ivan.ristovic@oracle.com",
+    "paul.woegerer@oracle.com"
+]
+any = [
+]

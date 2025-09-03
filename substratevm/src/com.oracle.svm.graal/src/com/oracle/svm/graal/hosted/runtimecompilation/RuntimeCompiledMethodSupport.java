@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
@@ -72,7 +73,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -200,7 +201,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         @Override
-        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+        public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();
         }
 
@@ -360,7 +361,7 @@ public class RuntimeCompiledMethodSupport {
              * We cannot fold simulated values during initial before-analysis graph creation;
              * however, this runs after analysis has completed.
              */
-            return readValue((AnalysisField) field, receiver, true);
+            return readValue((AnalysisField) field, receiver, true, false);
         }
     }
 
@@ -377,6 +378,7 @@ public class RuntimeCompiledMethodSupport {
      */
     @SuppressWarnings("javadoc")
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+        public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
         private final ImageHeapScanner heapScanner;
         /**
@@ -386,7 +388,7 @@ public class RuntimeCompiledMethodSupport {
         private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
-            super(architecture);
+            super(architecture, null, RUNTIME_NODE_CLASS_MAP);
             this.heapScanner = heapScanner;
             this.locationIdentityCache = new ConcurrentHashMap<>();
         }
@@ -499,7 +501,7 @@ public class RuntimeCompiledMethodSupport {
      * Removes {@link DeoptEntryNode}s, {@link DeoptProxyAnchorNode}s, and {@link DeoptProxyNode}s
      * which are determined to be unnecessary after the runtime compilation methods are optimized.
      */
-    private static class RemoveUnneededDeoptSupport extends Phase {
+    private static final class RemoveUnneededDeoptSupport extends Phase {
         enum RemovalDecision {
             KEEP,
             PROXIFY,
@@ -545,7 +547,7 @@ public class RuntimeCompiledMethodSupport {
             }
         }
 
-        RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
+        static RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
             RemovalDecision cached = decisionCache.get(node);
             if (cached != null) {
                 return cached;

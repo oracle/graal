@@ -171,7 +171,7 @@ public class LIRCompilerBackend {
                  * LIRGeneration may have changed the CFG, so in case a schedule is needed afterward
                  * we make sure it will be recomputed.
                  */
-                graph.clearLastSchedule();
+                graph.clearLastCFG();
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
@@ -218,7 +218,7 @@ public class LIRCompilerBackend {
                     CompilationResultBuilderFactory factory,
                     EntryPointDecorator entryPointDecorator) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        try (DebugCloseable a = EmitCode.start(debug); DebugContext.CompilerPhaseScope cps = debug.enterCompilerPhase("Emit code");) {
+        try (DebugCloseable a = EmitCode.start(debug); DebugContext.CompilerPhaseScope cps = debug.enterCompilerPhase("Emit code", null)) {
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
 
             FrameMap frameMap = lirGenRes.getFrameMap();
@@ -235,7 +235,7 @@ public class LIRCompilerBackend {
                 compilationResult.setSpeculationLog(speculationLog);
             }
             crb.finish();
-            if (debug.isCountEnabled()) {
+            if (debug.areCountersEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
                 JavaKind[] kindValues = JavaKind.values();
                 CounterKey[] dms = new CounterKey[kindValues.length];

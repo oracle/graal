@@ -193,6 +193,56 @@ public final class GCUtils {
         }
     }
 
+    /**
+     * Simulates garbage collection load by allocating memory until the specified portion of the
+     * heap is utilized. This is useful for unit tests that require stress testing or simulating
+     * high memory usage.
+     * <p>
+     * The method will allocate memory blocks and periodically invoke the garbage collector and
+     * finalizer until the specified heap usage threshold is reached.
+     * </p>
+     *
+     * @param heapLoadFactor the fraction of the maximum heap size to be utilized. Must be within
+     *            the (0, 0.8] interval.
+     * @throws IllegalArgumentException if {@code targetHeapUsage} is not within the valid range (0,
+     *             0.8].
+     * @throws OutOfMemoryError if the JVM runs out of memory during allocation.
+     */
+    public static void generateGcPressure(double heapLoadFactor) {
+        if (heapLoadFactor <= 0 || heapLoadFactor > 0.8) {
+            throw new IllegalArgumentException("HeapPercentage must be in (0, 0.8> interval.");
+        }
+        long maxSize = (long) (Runtime.getRuntime().maxMemory() * heapLoadFactor);
+        int blockSize = 100_000;
+        List<byte[]> blocks = new ArrayList<>();
+        long currentSize = 0;
+        for (int i = 0; currentSize < maxSize; i++) {
+            try {
+                System.gc();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                System.runFinalization();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                currentSize += blockSize;
+                blocks.add(new byte[blockSize]);
+                blockSize = (int) (blockSize * 1.3);
+            } catch (OutOfMemoryError oom) {
+                blockSize >>>= 1;
+            }
+            if (i % 10 == 0) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
+
     private static ReachabilityAnalyser<?> selectAnalyser() {
         if (ImageInfo.inImageCode() || OSUtils.isWindows()) {
             // In the native-image, the heap dump to slow to be used.

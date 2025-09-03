@@ -2,6 +2,16 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 25.0.0
+
+* Added support for bounded quantifiers in DFA matchers in boolean match mode. Nested bounded quantifiers and some interplay with lookarounds remain unsupported.
+* Added support for Truffle Source Options. Options embedded into the regex source string are now deprecated, but flags remain as they are, i.e. the expected source format changes from `options/regex/flags` to `/regex/flags`. See `RegexOptions` for details.
+* Added a new option `ForceLinearExecution`, which causes a bailout on all regexes that TRegex cannot execute in linear time.
+
+## Version 24.2.0
+
+* Implemented the [Regular Expression Pattern Modifiers](https://github.com/tc39/proposal-regexp-modifiers) proposal for ECMAScript regular expressions.
+
 ## Version 24.0.0
 
 * Added support for atomic groups and possessive quantifiers in Python regular expressions.

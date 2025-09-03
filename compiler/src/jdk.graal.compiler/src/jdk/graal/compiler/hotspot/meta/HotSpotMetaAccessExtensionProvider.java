@@ -30,18 +30,15 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
     private final ConstantReflectionProvider constantReflection;
-    private final ResolvedJavaType jlClassType;
 
-    public HotSpotMetaAccessExtensionProvider(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public HotSpotMetaAccessExtensionProvider(ConstantReflectionProvider constantReflection) {
         this.constantReflection = constantReflection;
-        this.jlClassType = metaAccess.lookupJavaType(Class.class);
     }
 
     @Override
@@ -80,7 +77,7 @@ public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionPr
         ResolvedJavaType type = constantReflection.asJavaType(base);
         // check that it's indeed a j.l.Class when we get a result since constant reflection will
         // also return a type if the constant wraps a ResolvedJavaType
-        if (type == null || !objectConstant.getType().equals(jlClassType)) {
+        if (type == null || !objectConstant.getType().getName().equals("Ljava/lang/Class;")) {
             return null;
         }
         for (ResolvedJavaField field : type.getStaticFields()) {

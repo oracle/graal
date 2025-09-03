@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,21 +30,21 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.Value;
 
 /**
- * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER} and
- * {@link HotspotOpcode#TO_KLASS_POINTER} operations.
+ * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER},
+ * {@link HotspotOpcode#FROM_COMPRESSED_POINTER} and {@link HotspotOpcode#TO_KLASS_POINTER}
+ * operations.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class PointerCastNode extends FloatingNode implements Canonicalizable, LIRLowerable, Node.ValueNumberable {

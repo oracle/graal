@@ -44,8 +44,11 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements Glob
         super(field, field.getType());
     }
 
+    /**
+     * Filter the incoming type state based on the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         if (isPrimitiveFlow) {
             if (!update.isPrimitive()) {
                 /*
@@ -75,21 +78,39 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements Glob
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (!setSaturated()) {
-            return;
+        if (bb.isClosed(declaredType)) {
+            /*
+             * We stop saturation propagation to the field flow and instead use the upper limit
+             * type, i.e., the field declared type, as a safe approximation, but only if the type is
+             * closed. For open types we simply propagate the saturation.
+             */
+            if (!setSaturated()) {
+                return;
+            }
+            /* Swap out this flow with its declared type flow. */
+            swapOut(bb, declaredType.getTypeFlow(bb, true));
+        } else {
+            /* Propagate the saturation stamp through the filter flow. */
+            super.onInputSaturated(bb, input);
         }
-        /* Swap out this flow with its declared type flow. */
-        swapOut(bb, declaredType.getTypeFlow(bb, true));
     }
 
     @Override
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
-        swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
+        if (bb.isClosed(declaredType)) {
+            swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
+        } else {
+            super.notifyUseOfSaturation(bb, use);
+        }
     }
 
     @Override
     protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
-        swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
+        if (bb.isClosed(declaredType)) {
+            swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
+        } else {
+            super.notifyObserverOfSaturation(bb, observer);
+        }
     }
 
     @Override

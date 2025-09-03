@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
@@ -259,7 +260,11 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                     // (formalParam, callerContext) -> (actualParam, calleeContext)
                     // Note: the callerContext is an implicit property of the current InvokeTypeFlow
                     // clone
-                    actualParam.addUse(bb, formalParam);
+                    if (actualParam.addUse(bb, formalParam)) {
+                        if (i == 0 && !isStatic) {
+                            maybeSaturateFormalReceiver(bb, actualParam, formalParam);
+                        }
+                    }
                 }
             }
         }
@@ -272,6 +277,24 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
          */
         if (!calleeFlows.isStub()) {
             bb.analysisPolicy().registerAsImplementationInvoked(this, calleeFlows.getMethod());
+        }
+
+        if (calleeFlows.getMethod().isDelayed()) {
+            saturateForOpenTypeWorld(bb);
+        }
+    }
+
+    /*
+     * In the open type world we always propagate saturation of the actual receiver to the formal
+     * receiver, even after the saturated invoke was replaced by the context insensitive variant.
+     * So, if we are linking the receiver of a context insensitive invoke we immediately notify the
+     * formal receiver of saturation.
+     */
+    private void maybeSaturateFormalReceiver(PointsToAnalysis bb, TypeFlow<?> actualParam, TypeFlow<?> formalParam) {
+        if (!bb.getHostVM().isClosedTypeWorld() && this.isContextInsensitive()) {
+            AnalysisError.guarantee(actualParam instanceof AllInstantiatedTypeFlow && formalParam instanceof FormalReceiverTypeFlow);
+            /* The actualParam is not technically saturated, but we treat it as such. */
+            actualParam.notifyUseOfSaturation(bb, formalParam);
         }
     }
 
@@ -406,5 +429,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     public MultiMethodKey getCallerMultiMethodKey() {
         return callerMultiMethodKey;
+    }
+
+    /**
+     * Saturates the actual return of the invoke type flow to ensure that the type state represents
+     * all the types that could exist in the open world.
+     */
+    public void saturateForOpenTypeWorld(PointsToAnalysis bb) {
+        if (actualReturn != null) {
+            actualReturn.enableFlow(bb);
+            actualReturn.onSaturated(bb);
+        }
     }
 }

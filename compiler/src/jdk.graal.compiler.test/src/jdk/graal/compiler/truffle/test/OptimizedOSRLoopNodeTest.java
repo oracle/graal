@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,17 +67,17 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 @RunWith(Theories.class)
 public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
-    @DataPoint public static final OSRLoopFactory DEFAULT = (threshold, repeating) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
+    @DataPoint public static final OSRLoopFactory DEFAULT = (_, repeating) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
 
     private int osrThreshold;
     private Context context;
@@ -134,7 +134,6 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertCompiled(rootNode.getOSRTarget());
     }
 
-    @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
         setupContext("engine.SingleTierCompilationThreshold", "3");
@@ -327,15 +326,15 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @Theory
     public void testThreadSafety(OSRLoopFactory factory) {
         int threshold = osrThreshold;
-        IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
+        IntStream.generate(() -> 10).limit(10).parallel().forEach(_ -> {
             TestRootNode rootNode = TestRootNode.create(osrThreshold, factory, new TestRepeatingNode());
-            IntStream.generate(() -> threshold).limit(10).parallel().forEach(k -> executeNoCallTarget(rootNode, threshold + 1));
+            IntStream.generate(() -> threshold).limit(10).parallel().forEach(_ -> executeNoCallTarget(rootNode, threshold + 1));
             waitForCompiled(rootNode.getOSRTarget());
         });
 
-        IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
+        IntStream.generate(() -> 10).limit(10).parallel().forEach(_ -> {
             TestRootNode rootNode = TestRootNode.create(osrThreshold, factory, new TestRepeatingNode());
-            IntStream.generate(() -> threshold).limit(10).parallel().forEach(k -> executeNoCallTarget(rootNode, threshold));
+            IntStream.generate(() -> threshold).limit(10).parallel().forEach(_ -> executeNoCallTarget(rootNode, threshold));
             waitForCompiled(rootNode.getOSRTarget());
         });
     }
@@ -487,7 +486,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertNotCompiled(rootNode.getOSRTarget());
     }
 
-    private static class CustomInnerLoopRepeatingNode extends TestRepeatingNode {
+    private static final class CustomInnerLoopRepeatingNode extends TestRepeatingNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
@@ -611,7 +610,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     }
 
-    private static class TestOSRStackTraceFromAbove extends TestOSRStackTrace {
+    private static final class TestOSRStackTraceFromAbove extends TestOSRStackTrace {
 
         @Child DirectCallNode callNode;
 

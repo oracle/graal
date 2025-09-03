@@ -32,7 +32,7 @@ import sys
 
 import gdb
 
-logfile = os.environ.get('gdbdebughelperstest_logfile', 'debug_helper.log')
+logfile = os.environ.get('gdb_logfile', 'debug_helper.log')
 logging.basicConfig(filename=logfile,
                     format='%(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
 logger = logging.getLogger('[DebugTest]')
@@ -45,7 +45,9 @@ string_rexp = re.compile(r'(null|".*")')
 boolean_rexp = re.compile(r"(true|false)")
 array_rexp = re.compile(r'.+\[\d+]\s*=\s*{.*}')
 args_rexp = re.compile(r'.*\(.*\)\s*\((?P<args>.*)\)')
-hex_rexp = re.compile(r"[\da-fA-F]+")
+hex_pattern = r"[\da-fA-F]+"
+hex_rexp = re.compile(hex_pattern)
+value_pattern = r"[a-zA-Z0-9$_<> ]+"
 
 
 def gdb_execute(command: str) -> str:
@@ -100,7 +102,7 @@ def gdb_advanced_print(var: str, output_format: str = None) -> str:
 
 def gdb_set_breakpoint(location: str) -> None:
     logger.info(f"Setting breakpoint at: {location}")
-    gdb_execute(f"break {location}")
+    gdb.Breakpoint(location)
 
 
 def gdb_set_param(name: str, value: str) -> None:
@@ -116,6 +118,11 @@ def gdb_get_param(name: str) -> str:
 def gdb_delete_breakpoints() -> None:
     logger.info("Deleting all breakpoints")
     gdb_execute("delete breakpoints")
+
+
+def gdb_disable_breakpoints() -> None:
+    logger.info("Disabling all breakpoints")
+    gdb_execute("disable breakpoints")
 
 
 def gdb_run() -> None:

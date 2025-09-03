@@ -36,9 +36,9 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -55,6 +55,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
@@ -65,8 +66,8 @@ public class HeapDumpSupportImpl extends HeapDumping {
     private boolean outOfMemoryHeapDumpAttempted;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
-        this.writer = new HeapDumpWriter(metadata);
+    public HeapDumpSupportImpl() {
+        this.writer = new HeapDumpWriter();
         this.heapDumpOperation = new HeapDumpOperation();
     }
 
@@ -81,7 +82,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
     @Override
     public void teardownDumpHeapOnOutOfMemoryError() {
         UntrackedNullableNativeMemory.free(outOfMemoryHeapDumpPath);
-        outOfMemoryHeapDumpPath = WordFactory.nullPointer();
+        outOfMemoryHeapDumpPath = Word.nullPointer();
     }
 
     @Override
@@ -118,10 +119,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
         try {
             Log.log().string("Dumping heap to ").string(path).string(" ...").newline();
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();
             if (dumpHeap(fd, false)) {
                 long fileSize = getFileSupport().size(fd);
-                long elapsedMs = System.currentTimeMillis() - start;
+                long elapsedMs = TimeUtils.millisSinceNanos(start);
                 long seconds = elapsedMs / TimeUtils.millisPerSecond;
                 long ms = elapsedMs % TimeUtils.millisPerSecond;
                 Log.log().string("Heap dump file created [").signed(fileSize).string(" bytes in ").signed(seconds).character('.').signed(ms).string(" secs]").newline();
@@ -132,8 +133,13 @@ public class HeapDumpSupportImpl extends HeapDumping {
     }
 
     @Override
-    public void dumpHeap(String filename, boolean gcBefore) throws IOException {
-        RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+    public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
+        if (!RawFileOperationSupport.isPresent()) {
+            throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
+        }
+
+        FileCreationMode creationMode = overwrite ? FileCreationMode.CREATE_OR_REPLACE : FileCreationMode.CREATE;
+        RawFileDescriptor fd = getFileSupport().create(filename, creationMode, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
             throw new IOException("Could not create the heap dump file: " + filename);
         }
@@ -148,7 +154,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
     private boolean dumpHeap(RawFileDescriptor fd, boolean gcBefore) {
         int size = SizeOf.get(HeapDumpVMOperationData.class);
         HeapDumpVMOperationData data = StackValue.get(size);
-        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
         data.setGCBefore(gcBefore);
         data.setRawFileDescriptor(fd);
         heapDumpOperation.enqueue(data);
@@ -195,13 +201,16 @@ public class HeapDumpSupportImpl extends HeapDumping {
         }
 
         @Override
-        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         protected void operate(NativeVMOperationData d) {
             HeapDumpVMOperationData data = (HeapDumpVMOperationData) d;
             if (data.getGCBefore()) {
                 Heap.getHeap().getGC().collectCompletely(GCCause.HeapDump);
             }
+            dumpHeap(data);
+        }
 
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
+        private void dumpHeap(HeapDumpVMOperationData data) {
             try {
                 boolean success = writer.dumpHeap(data.getRawFileDescriptor());
                 data.setSuccess(success);

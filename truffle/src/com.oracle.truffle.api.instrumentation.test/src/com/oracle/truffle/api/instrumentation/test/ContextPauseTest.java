@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,8 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -193,6 +196,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             if (stop.get()) {
                                 throw new RuntimeException(TEST_EXECUTION_STOPPED);
                             }
+                            Thread.yield();
                         },
                         (context, pauseLatch) -> {
                             try {
@@ -223,6 +227,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             if (stop.get()) {
                                 throw new RuntimeException(TEST_EXECUTION_STOPPED);
                             }
+                            Thread.yield();
                         },
                         (context, pauseLatch) -> {
                             context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
@@ -277,6 +282,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             try {
                                 while (true) {
                                     context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
+                                    Thread.yield();
                                 }
                             } catch (PolyglotException e) {
                                 if (!e.isCancelled()) {
@@ -317,6 +323,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             try {
                                 while (true) {
                                     context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
+                                    Thread.yield();
                                 }
                             } catch (PolyglotException e) {
                                 if (!e.isCancelled()) {
@@ -368,7 +375,8 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
     public void testPauseManyThreads() throws ExecutionException, InterruptedException, IOException {
         int nThreads = Runtime.getRuntime().availableProcessors() + 1;
         ExecutorService executorService = threadPool(nThreads, vthreads);
-        Engine.Builder engineBuilder = Engine.newBuilder().allowExperimentalOptions(true).option("engine.SynchronousThreadLocalActionMaxWait", "1");
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        Engine.Builder engineBuilder = Engine.newBuilder().allowExperimentalOptions(true).option("engine.SynchronousThreadLocalActionMaxWait", "1").out(outputStream).err(outputStream);
         if (TruffleTestAssumptions.isOptimizingRuntime()) {
             engineBuilder.option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false");
         }
@@ -435,8 +443,8 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
             future.get();
             /*
              * First execution immediately deopts, so we need to repeat it. The code needs to be
-             * compiled in order to cause pinning from the truffle thread local handshakes stub
-             * calls.
+             * compiled in order to cause pinning due to the truffle thread local handshake stub
+             * calls in case virtual threads are used.
              */
             looping.set(true);
             executorService.submit(() -> {
@@ -453,7 +461,9 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
             }
             Assert.assertFalse(pauseFuture1.isCancelled());
             // The one thread executing context1 is now paused
-            // Execute the same code in context2 in availableProcessors (nThreads - 1) threads
+            /*
+             * Execute the same code in context2 in availableProcessors (nThreads - 1) threads.
+             */
             for (int i = 1; i < nThreads; i++) {
                 executorService.submit(() -> {
                     context2Loop.execute(looping);
@@ -470,10 +480,17 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                 //
             }
             /*
-             * Since the total number of threads is availableProcessors + 1 and all cause pinning,
+             * Since the total number of the threads that cause pinning is availableProcessors + 1,
              * the synchronous pause thread local action may not reach the synchronization point in
-             * case virtual threads are used and is automatically cancelled. Also, the timeout is
-             * pretty small (one second) so the cancellation might occur even for platform threads.
+             * case virtual threads are used and is automatically cancelled. The reason for not
+             * reaching the synchronization point is that when availableProcessors of these threads
+             * are pinned and waiting for the start sync of the pause thread local action using
+             * LockSupport.parkNanos (or already paused in case of the already paused context1
+             * thread), the (availableProcessors + 1)-th thread cannot run because the parallelism
+             * of the default virtual thread scheduler is only availableProcessors and none of the
+             * "parked" threads, though waiting, can be compensated for due to the pinning. Also,
+             * the timeout for the pause thread local action sync is pretty small (one second) so
+             * the cancellation might occur even for platform threads in case some unusual slowdown.
              */
             boolean pause2Cancelled = pauseFuture2.isCancelled();
             // If context2 pausing is cancelled, new thread in context2 should not be paused even
@@ -491,12 +508,15 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
             looping.set(false);
             resumeLatch.await();
             resumeLastLatch.await();
+            if (pause2Cancelled) {
+                MatcherAssert.assertThat(outputStream.toString(), CoreMatchers.containsString("did not reach the synchronous ThreadLocalAction com.oracle.truffle.polyglot.PauseThreadLocalAction"));
+            }
             /*
              * In case somebody turns on compilation tracing, they might notice an extra deopt
              * before the test ends. It is caused by the fact that the last task does not get to
              * execute the loop body because looping is already false at that point. That results in
-             * a different return value which in turn causes transfer to interpreter. In any case,
-             * it does not affect the test.
+             * a different return value type which in turn causes transfer to interpreter. In any
+             * case, it does not affect the test.
              */
         } finally {
             executorService.shutdownNow();

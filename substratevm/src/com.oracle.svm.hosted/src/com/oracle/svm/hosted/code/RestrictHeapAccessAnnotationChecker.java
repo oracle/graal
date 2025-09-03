@@ -29,9 +29,6 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.Map;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -42,6 +39,10 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl.RestrictionInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.options.Option;
 
 public final class RestrictHeapAccessAnnotationChecker {
 
@@ -137,17 +138,17 @@ public final class RestrictHeapAccessAnnotationChecker {
                     message += "Restricted method: '" + first.getMethod().format("%h.%n(%p)") + "' calls '" +
                                     last.getMethod().format("%h.%n(%p)") + "' that violates restriction " + violatedAccess + ".";
                     if (Options.PrintRestrictHeapAccessPath.getValue()) {
-                        message += "\n" + "  [Path:";
+                        message += System.lineSeparator() + "  [Path:";
                         for (RestrictionInfo element : allocationList) {
                             if (element != first) { // first element has no caller
-                                message += "\n" + "    " + element.getInvocationStackTraceElement().toString();
+                                message += System.lineSeparator() + "    " + element.getInvocationStackTraceElement().toString();
                             }
                         }
                         final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(last.getMethod());
                         if (allocationStackTraceElement != null) {
-                            message += "\n" + "    " + allocationStackTraceElement.toString();
+                            message += System.lineSeparator() + "    " + allocationStackTraceElement.toString();
                         } else {
-                            message += "\n" + "    " + last.getMethod().format("%H.%n(%p)");
+                            message += System.lineSeparator() + "    " + last.getMethod().format("%H.%n(%p)");
                         }
                         message += "]";
                     }

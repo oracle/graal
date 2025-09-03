@@ -440,7 +440,7 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
     }
 
     @SuppressWarnings("serial")
-    private static class MyInstrumentException extends RuntimeException {
+    private static final class MyInstrumentException extends RuntimeException {
     }
 
 }

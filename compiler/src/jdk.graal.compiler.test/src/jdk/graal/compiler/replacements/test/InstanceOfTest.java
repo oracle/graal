@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.IfNode;
@@ -38,8 +40,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
-import org.junit.Test;
-
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
@@ -125,7 +126,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Test
     public void test5() {
-        Map<?, ?> map = new HashMap<>();
+        Map<?, ?> map = new EconomicHashMap<>();
         test("isMap", profile(), map);
         test("isMap", profile(HashMap.class), map);
         test("isMap", profile(TreeMap.class, HashMap.class), map);
@@ -138,7 +139,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Test
     public void test6() {
-        Map<?, ?> map = new HashMap<>();
+        Map<?, ?> map = new EconomicHashMap<>();
         test("isMapInt", profile(), map);
         test("isMapInt", profile(HashMap.class), map);
         test("isMapInt", profile(TreeMap.class, HashMap.class), map);
@@ -440,18 +441,22 @@ public class InstanceOfTest extends TypeCheckTest {
         test("conditionalInstantiation", 1);
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyObject(Thread thread) {
         return thread != null && ((Object) thread).getClass() == Object.class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyObjectArray(Thread[] threads) {
         return threads != null && ((Object[]) threads).getClass() == Object[].class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyString(Thread thread) {
         return thread != null && ((Object) thread).getClass() == String.class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyStringArray(Thread[] threads) {
         return threads != null && ((Object[]) threads).getClass() == String[].class;
     }
@@ -485,10 +490,9 @@ public class InstanceOfTest extends TypeCheckTest {
         assertDeepEquals(value, ret.result().asJavaConstant().asBoxedPrimitive());
     }
 
-    @SuppressWarnings("try")
     protected StructuredGraph buildGraph(final String snippet) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("InstanceOfTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+        try (DebugContext.Scope _ = debug.scope("InstanceOfTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
             compile(graph.method(), graph);
             debug.dump(DebugContext.BASIC_LEVEL, graph, snippet);

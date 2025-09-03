@@ -53,13 +53,13 @@ public abstract class AbstractImage {
         /* IMAGE_LAYER mimics a SHARED_LIBRARY. */
         IMAGE_LAYER(false, true) {
             @Override
-            public String getFilenameSuffix() {
+            protected String getFilenameSuffix() {
                 return ".so";
             }
         },
         SHARED_LIBRARY(false) {
             @Override
-            public String getFilenameSuffix() {
+            protected String getFilenameSuffix() {
                 return switch (ObjectFile.getNativeFormat()) {
                     case ELF -> ".so";
                     case MACH_O -> ".dylib";
@@ -85,7 +85,11 @@ public abstract class AbstractImage {
             mainEntryPointName = executable ? "main" : "run_main";
         }
 
-        public String getFilenameSuffix() {
+        public final String getOutputFilename(String imageName) {
+            return imageName + getFilenameSuffix();
+        }
+
+        protected String getFilenameSuffix() {
             return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
         }
     }

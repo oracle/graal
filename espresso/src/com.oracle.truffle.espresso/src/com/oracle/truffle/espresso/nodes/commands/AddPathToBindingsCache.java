@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.commands;
 
 import com.oracle.truffle.api.interop.InteropException;
@@ -29,10 +28,13 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.ThreadState;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class AddPathToBindingsCache {
     static final String NEW_FILE = "<init>/(Ljava/lang/String;)V";
@@ -62,13 +64,18 @@ public final class AddPathToBindingsCache {
         addUrl = DirectCallNode.create(doLookup(loader.getKlass(), ADD_URL, lookup).getCallTargetForceInit());
     }
 
-    public void execute(StaticObject path) {
-        StaticObject file = fileKlass.allocateInstance();
-        newFile.call(file, path);
+    public void execute(StaticObject path, EspressoNode location) {
+        Transition transition = Transition.transition(ThreadState.IN_ESPRESSO, location);
+        try {
+            StaticObject file = fileKlass.allocateInstance();
+            newFile.call(file, path);
 
-        Object uri = toUri.call(file);
-        Object url = toUrl.call(uri);
-        addUrl.call(loader, url);
+            Object uri = toUri.call(file);
+            Object url = toUrl.call(uri);
+            addUrl.call(loader, url);
+        } finally {
+            transition.restore(location);
+        }
     }
 
     private static Method doLookup(Klass klass, String key, LookupDeclaredMethod lookup) {

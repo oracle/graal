@@ -87,7 +87,7 @@ public class CAnnotationProcessor {
     public NativeCodeInfo process(CAnnotationProcessorCache cache) {
         InfoTreeBuilder constructor = new InfoTreeBuilder(nativeLibs, codeCtx);
         codeInfo = constructor.construct();
-        if (nativeLibs.getErrors().size() > 0) {
+        if (!nativeLibs.getErrors().isEmpty()) {
             return codeInfo;
         }
 
@@ -99,7 +99,7 @@ public class CAnnotationProcessor {
              */
             writer = new QueryCodeWriter(queryCodeDirectory);
             Path queryFile = writer.write(codeInfo);
-            if (nativeLibs.getErrors().size() > 0) {
+            if (!nativeLibs.getErrors().isEmpty()) {
                 return codeInfo;
             }
             assert Files.exists(queryFile);
@@ -110,12 +110,12 @@ public class CAnnotationProcessor {
             }
             Path binary = compileQueryCode(queryFile);
             DeadlockWatchdog.singleton().recordActivity();
-            if (nativeLibs.getErrors().size() > 0) {
+            if (!nativeLibs.getErrors().isEmpty()) {
                 return codeInfo;
             }
 
             makeQuery(cache, binary.toString());
-            if (nativeLibs.getErrors().size() > 0) {
+            if (!nativeLibs.getErrors().isEmpty()) {
                 return codeInfo;
             }
         }
@@ -159,8 +159,7 @@ public class CAnnotationProcessor {
         }
         String fileName = fileNamePath.toString();
         Path binary = tempDirectory.resolve(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
-        ArrayList<String> options = new ArrayList<>();
-        options.addAll(codeCtx.getDirectives().getOptions());
+        ArrayList<String> options = new ArrayList<>(codeCtx.getDirectives().getOptions());
         if (Platform.includedIn(Platform.LINUX.class)) {
             options.addAll(HostedLibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
         }
@@ -187,7 +186,7 @@ public class CAnnotationProcessor {
                         elements.add(writer.getElementForLineNumber(lineNumber));
                         elements.add("C file contents around line " + lineNumber + ":");
                         for (int i = Math.max(lineNumber - 1, 1); i <= lineNumber + 1; i++) {
-                            elements.add(queryFile.toString() + ":" + i + ": " + writer.getLine(i));
+                            elements.add(queryFile + ":" + i + ": " + writer.getLine(i));
                         }
                     } catch (NumberFormatException ex) {
                         /* Ignore if not a valid number. */

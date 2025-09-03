@@ -95,8 +95,8 @@ final class EnumSwitchPlugin implements NodePlugin {
          * that end up in the same class or in the JDK.
          */
         EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
-        method.ensureGraphParsed(feature.bb);
-        Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(method);
+        method.ensureGraphParsed(feature.getBigBang());
+        Boolean methodSafeForExecution = feature.isMethodsSafeForExecution(method);
         assert methodSafeForExecution != null : "after-parsing hook not executed for method " + method.format("%H.%n(%p)");
         if (!methodSafeForExecution.booleanValue()) {
             return false;
@@ -121,9 +121,9 @@ final class EnumSwitchPlugin implements NodePlugin {
 @AutomaticallyRegisteredFeature
 final class EnumSwitchFeature implements InternalFeature {
 
-    BigBang bb;
+    private BigBang bb;
 
-    final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
+    private ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
@@ -142,10 +142,19 @@ final class EnumSwitchFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         bb = null;
+        methodsSafeForExecution = null;
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new EnumSwitchPlugin(reason));
+    }
+
+    Boolean isMethodsSafeForExecution(AnalysisMethod method) {
+        return methodsSafeForExecution.get(method);
+    }
+
+    public BigBang getBigBang() {
+        return bb;
     }
 }

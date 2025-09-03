@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap.dump;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,7 +38,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -45,14 +46,24 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.TypeIDs;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
 import com.oracle.svm.core.util.coder.Pack200Coder;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.
@@ -82,7 +93,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * |----------------------------|
  * | information per field      |
  * |----------------------------|
- * | u1 type             |
+ * | u1 type                    |
  * | uv fieldNameIndex          |
  * | uv location                |
  * |----------------------------|
@@ -95,9 +106,9 @@ import jdk.graal.compiler.api.replacements.Fold;
  * |----------------------------|
  * </pre>
  */
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class HeapDumpMetadata {
     private final ComputeHubDataVisitor computeHubDataVisitor;
-    @UnknownObjectField(availability = AfterCompilation.class) private byte[] data;
 
     private int fieldNameCount;
     private int classInfoCount;
@@ -110,97 +121,135 @@ public class HeapDumpMetadata {
         computeHubDataVisitor = new ComputeHubDataVisitor();
     }
 
-    @Fold
     public static HeapDumpMetadata singleton() {
         return ImageSingletons.lookup(HeapDumpMetadata.class);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(byte[] value) {
-        this.data = value;
     }
 
     public boolean initialize() {
         assert classInfos.isNull() && fieldInfoTable.isNull() && fieldNameTable.isNull();
 
-        Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(data));
-        Pointer end = start.add(data.length);
+        HeapDumpEncodedData[] encodedDataArray = HeapDumpEncodedData.layeredSingletons();
 
         ByteStream stream = StackValue.get(ByteStream.class);
-        ByteStreamAccess.initialize(stream, start);
 
-        /* Read the header. */
-        int totalFieldCount = NativeCoder.readInt(stream);
-        int classCount = NativeCoder.readInt(stream);
-        fieldNameCount = NativeCoder.readInt(stream);
-        int maxTypeId = Pack200Coder.readUVAsInt(stream);
-        classInfoCount = maxTypeId + 1;
+        int totalFieldCount = 0;
+        int totalFieldNameCount = 0;
+
+        /*
+         * First read all encoded data arrays to determine how large of data structures to allocate.
+         */
+        for (HeapDumpEncodedData encodedData : encodedDataArray) {
+            byte[] data = encodedData.data;
+
+            Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(data));
+            ByteStreamAccess.initialize(stream, start);
+
+            /* Read the header. */
+            totalFieldCount += NativeCoder.readInt(stream);
+            NativeCoder.readInt(stream); // class count
+            totalFieldNameCount += NativeCoder.readInt(stream);
+        }
+        fieldNameCount = totalFieldNameCount;
+        /* Allocating a contiguous array may be a problem with class unloading, see GR-68380. */
+        classInfoCount = TypeIDs.singleton().getNumTypeIds();
 
         /*
          * Precompute a few small data structures so that the heap dumping code can access the
          * encoded data more efficiently. At first, we allocate some memory for those data
          * structures so that we can abort right away in case that an allocation fails.
          */
-        UnsignedWord classInfosSize = WordFactory.unsigned(classInfoCount).multiply(SizeOf.get(ClassInfo.class));
+        UnsignedWord classInfosSize = Word.unsigned(classInfoCount).multiply(SizeOf.get(ClassInfo.class));
         classInfos = NullableNativeMemory.calloc(classInfosSize, NmtCategory.HeapDump);
         if (classInfos.isNull()) {
             return false;
         }
 
-        UnsignedWord fieldStartsSize = WordFactory.unsigned(totalFieldCount).multiply(SizeOf.get(FieldInfoPointer.class));
+        UnsignedWord fieldStartsSize = Word.unsigned(totalFieldCount).multiply(SizeOf.get(FieldInfoPointer.class));
         fieldInfoTable = NullableNativeMemory.calloc(fieldStartsSize, NmtCategory.HeapDump);
         if (fieldInfoTable.isNull()) {
             return false;
         }
 
-        UnsignedWord fieldNameTableSize = WordFactory.unsigned(fieldNameCount).multiply(SizeOf.get(FieldNamePointer.class));
+        UnsignedWord fieldNameTableSize = Word.unsigned(fieldNameCount).multiply(SizeOf.get(FieldNamePointer.class));
         fieldNameTable = NullableNativeMemory.calloc(fieldNameTableSize, NmtCategory.HeapDump);
         if (fieldNameTable.isNull()) {
             return false;
         }
 
-        /* Read the classes and fields. */
-        int fieldIndex = 0;
-        for (int i = 0; i < classCount; i++) {
-            int typeId = Pack200Coder.readUVAsInt(stream);
+        /*
+         * Next write the metadata from all data arrays into the data structures.
+         */
+        int fieldNameTableStartIdx = 0;
+        for (HeapDumpEncodedData encodedData : encodedDataArray) {
+            byte[] data = encodedData.data;
 
-            ClassInfo classInfo = getClassInfo(typeId);
+            /* Re-initialize the stream. */
+            Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(data));
+            ByteStreamAccess.initialize(stream, start);
 
-            int numInstanceFields = Pack200Coder.readUVAsInt(stream);
-            classInfo.setInstanceFieldCount(numInstanceFields);
+            /* Re-read the header. */
+            NativeCoder.readInt(stream); // field count
+            int classCount = NativeCoder.readInt(stream);
+            int currentFieldNameCount = NativeCoder.readInt(stream);
 
-            int numStaticFields = Pack200Coder.readUVAsInt(stream);
-            classInfo.setStaticFieldCount(numStaticFields);
+            /* Read the classes and fields. */
+            int fieldIndex = 0;
+            for (int i = 0; i < classCount; i++) {
+                int typeId = Pack200Coder.readUVAsInt(stream);
 
-            classInfo.setInstanceFields(fieldInfoTable.addressOf(fieldIndex));
-            for (int j = 0; j < numInstanceFields; j++) {
-                Pointer fieldInfo = (Pointer) fieldInfoTable.addressOf(fieldIndex);
-                fieldInfo.writeWord(0, stream.getPosition());
-                FieldInfoAccess.skipFieldInfo(stream);
-                fieldIndex++;
+                ClassInfo classInfo = getClassInfo(typeId);
+
+                int numInstanceFields = Pack200Coder.readUVAsInt(stream);
+                classInfo.setInstanceFieldCount(numInstanceFields);
+
+                int numStaticFields = Pack200Coder.readUVAsInt(stream);
+                classInfo.setStaticFieldCount(numStaticFields);
+
+                classInfo.setInstanceFields(fieldInfoTable.addressOf(fieldIndex));
+                for (int j = 0; j < numInstanceFields; j++) {
+                    Pointer fieldInfo = (Pointer) fieldInfoTable.addressOf(fieldIndex);
+                    fieldInfo.writeWord(0, stream.getPosition());
+                    FieldInfoAccess.skipFieldInfo(stream);
+                    fieldIndex++;
+                }
+
+                classInfo.setStaticFields(fieldInfoTable.addressOf(fieldIndex));
+                for (int j = 0; j < numStaticFields; j++) {
+                    Pointer fieldInfo = (Pointer) fieldInfoTable.addressOf(fieldIndex);
+                    fieldInfo.writeWord(0, stream.getPosition());
+                    FieldInfoAccess.skipFieldInfo(stream);
+                    fieldIndex++;
+                }
             }
 
-            classInfo.setStaticFields(fieldInfoTable.addressOf(fieldIndex));
-            for (int j = 0; j < numStaticFields; j++) {
-                Pointer fieldInfo = (Pointer) fieldInfoTable.addressOf(fieldIndex);
-                fieldInfo.writeWord(0, stream.getPosition());
-                FieldInfoAccess.skipFieldInfo(stream);
-                fieldIndex++;
+            /* Fill the symbol table. */
+            for (int i = fieldNameTableStartIdx; i < currentFieldNameCount + fieldNameTableStartIdx; i++) {
+                Pointer fieldName = (Pointer) fieldNameTable.addressOf(i);
+                fieldName.writeWord(0, stream.getPosition());
+                int length = Pack200Coder.readUVAsInt(stream);
+                stream.setPosition(stream.getPosition().add(length));
             }
+            fieldNameTableStartIdx += currentFieldNameCount;
+            Pointer end = start.add(data.length);
+            assert stream.getPosition().equal(end);
         }
-
-        /* Fill the symbol table. */
-        for (int i = 0; i < fieldNameCount; i++) {
-            Pointer fieldName = (Pointer) fieldNameTable.addressOf(i);
-            fieldName.writeWord(0, stream.getPosition());
-            int length = Pack200Coder.readUVAsInt(stream);
-            stream.setPosition(stream.getPosition().add(length));
-        }
-        assert stream.getPosition().equal(end);
 
         /* Store the DynamicHubs in their corresponding ClassInfo structs. */
         computeHubDataVisitor.initialize();
         Heap.getHeap().walkImageHeapObjects(computeHubDataVisitor);
+        Metaspace.singleton().walkObjects(computeHubDataVisitor);
+
+        /*
+         * Classes that are loaded at runtime don't have any declared fields at the moment. This
+         * needs to be changed once GR-60069 is merged.
+         */
+        for (int i = TypeIDs.singleton().getFirstRuntimeTypeId(); i < classInfoCount; i++) {
+            ClassInfo classInfo = getClassInfo(i);
+            if (ClassInfoAccess.isValid(classInfo)) {
+                classInfo.setStaticFieldCount(0);
+                classInfo.setInstanceFieldCount(0);
+            }
+        }
 
         /* Compute the size of the instance fields per class. */
         for (int i = 0; i < classInfoCount; i++) {
@@ -217,13 +266,13 @@ public class HeapDumpMetadata {
      */
     public void teardown() {
         NullableNativeMemory.free(classInfos);
-        classInfos = WordFactory.nullPointer();
+        classInfos = Word.nullPointer();
 
         NullableNativeMemory.free(fieldInfoTable);
-        fieldInfoTable = WordFactory.nullPointer();
+        fieldInfoTable = Word.nullPointer();
 
         NullableNativeMemory.free(fieldNameTable);
-        fieldNameTable = WordFactory.nullPointer();
+        fieldNameTable = Word.nullPointer();
     }
 
     public int getClassInfoCount() {
@@ -232,14 +281,14 @@ public class HeapDumpMetadata {
 
     public ClassInfo getClassInfo(Class<?> clazz) {
         if (clazz == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return getClassInfo(DynamicHub.fromClass(clazz));
     }
 
     public ClassInfo getClassInfo(DynamicHub hub) {
         if (hub == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return getClassInfo(hub.getTypeID());
     }
@@ -426,7 +475,7 @@ public class HeapDumpMetadata {
         FieldName read();
     }
 
-    private static class ComputeHubDataVisitor implements ObjectVisitor {
+    private static final class ComputeHubDataVisitor implements ObjectVisitor {
         private int classSerialNum;
 
         public void initialize() {
@@ -434,15 +483,36 @@ public class HeapDumpMetadata {
         }
 
         @Override
-        public boolean visitObject(Object o) {
-            if (o instanceof DynamicHub hub) {
+        public void visitObject(Object o) {
+            if (o instanceof DynamicHub hub && hub.isLoaded()) {
                 ClassInfo classInfo = HeapDumpMetadata.singleton().getClassInfo(hub.getTypeID());
                 assert classInfo.getHub() == null;
                 classInfo.setHub(hub);
                 classInfo.setSerialNum(++classSerialNum);
                 classInfo.setInstanceFieldsDumpSize(-1);
             }
-            return true;
+        }
+    }
+
+    public static class HeapDumpEncodedData implements MultiLayeredImageSingleton, UnsavedSingleton {
+        @UnknownObjectField(availability = AfterCompilation.class) private byte[] data;
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        private static HeapDumpEncodedData currentLayer() {
+            return LayeredImageSingletonSupport.singleton().lookup(HeapDumpEncodedData.class, false, true);
+        }
+
+        private static HeapDumpEncodedData[] layeredSingletons() {
+            return MultiLayeredImageSingleton.getAllLayers(HeapDumpEncodedData.class);
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public static void setData(byte[] value) {
+            HeapDumpEncodedData.currentLayer().data = value;
         }
     }
 }

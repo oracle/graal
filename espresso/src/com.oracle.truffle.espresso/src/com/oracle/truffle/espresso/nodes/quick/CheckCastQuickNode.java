@@ -24,12 +24,14 @@ package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class CheckCastQuickNode extends QuickNode {
@@ -62,6 +64,11 @@ public final class CheckCastQuickNode extends QuickNode {
 
     @TruffleBoundary
     private String getExceptionMessage(BytecodeNode root, StaticObject receiver) {
-        return receiver.getKlass().getType() + " cannot be cast to: " + typeToCheck.getType() + " in context " + root.getMethod().toString();
+        Klass receiverKlass = receiver.getKlass();
+        StringBuilder sb = new StringBuilder();
+        sb.append("class ").append(receiverKlass.getExternalName()).append(" cannot be cast to ").append(typeToCheck.getExternalName());
+        EspressoContext context = root.getMethod().getContext();
+        ClassRegistry.appendModuleAndLoadersDetails(context.getClassLoadingEnv(), receiverKlass, typeToCheck, sb, context);
+        return sb.toString();
     }
 }

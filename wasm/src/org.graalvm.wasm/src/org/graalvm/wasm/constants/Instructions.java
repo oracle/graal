@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -602,7 +602,29 @@ public final class Instructions {
     public static final int VECTOR_F32X4_DEMOTE_F64X2_ZERO = 0x5E;
     public static final int VECTOR_F64X2_PROMOTE_LOW_F32X4 = 0x5F;
 
-    private static String[] decodingTable = new String[256];
+    // Relaxed SIMD
+    public static final int VECTOR_I8X16_RELAXED_SWIZZLE = 0x100;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F32X4_S = 0x101;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F32X4_U = 0x102;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO = 0x103;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO = 0x104;
+    public static final int VECTOR_F32X4_RELAXED_MADD = 0x105;
+    public static final int VECTOR_F32X4_RELAXED_NMADD = 0x106;
+    public static final int VECTOR_F64X2_RELAXED_MADD = 0x107;
+    public static final int VECTOR_F64X2_RELAXED_NMADD = 0x108;
+    public static final int VECTOR_I8X16_RELAXED_LANESELECT = 0x109;
+    public static final int VECTOR_I16X8_RELAXED_LANESELECT = 0x10A;
+    public static final int VECTOR_I32X4_RELAXED_LANESELECT = 0x10B;
+    public static final int VECTOR_I64X2_RELAXED_LANESELECT = 0x10C;
+    public static final int VECTOR_F32X4_RELAXED_MIN = 0x10D;
+    public static final int VECTOR_F32X4_RELAXED_MAX = 0x10E;
+    public static final int VECTOR_F64X2_RELAXED_MIN = 0x10F;
+    public static final int VECTOR_F64X2_RELAXED_MAX = 0x110;
+    public static final int VECTOR_I16X8_RELAXED_Q15MULR_S = 0x111;
+    public static final int VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S = 0x112;
+    public static final int VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S = 0x113;
+
+    private static final String[] DECODING_TABLE = new String[256];
 
     private Instructions() {
     }
@@ -618,7 +640,10 @@ public final class Instructions {
                                     representation.startsWith("local") || representation.startsWith("global")) {
                         representation = representation.replaceFirst("_", ".");
                     }
-                    decodingTable[code] = representation;
+                    if (representation.startsWith("atomic") || representation.startsWith("vector")) {
+                        continue;
+                    }
+                    DECODING_TABLE[code] = representation;
                 }
             }
         } catch (IllegalAccessException e) {
@@ -636,7 +661,7 @@ public final class Instructions {
                 result.append("   ");
             }
             final int opcode = Byte.toUnsignedInt(instructions[i]);
-            String representation = decodingTable[opcode];
+            String representation = DECODING_TABLE[opcode];
             result.append(String.format("%03d", opcode)).append(" ").append(representation).append("\n");
         }
         return result.toString();

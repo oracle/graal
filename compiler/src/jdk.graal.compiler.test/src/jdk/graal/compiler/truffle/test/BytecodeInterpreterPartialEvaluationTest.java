@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -644,7 +644,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     @Override
     protected OptionValues getGraalOptions() {
-        return new OptionValues(super.getGraalOptions(), DebugOptions.Count, "", DebugOptions.Time, "");
+        return new OptionValues(super.getGraalOptions(), DebugOptions.Counters, "", DebugOptions.Timers, "");
     }
 
     public abstract static class Inst {
@@ -808,7 +808,6 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     }
 
     @Test
-    @SuppressWarnings("try")
     public void simpleSwitchProgram() {
         byte[] bytecodes = new byte[]{
                         /* 0: */Bytecode.CONST,
@@ -831,7 +830,6 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     }
 
     @Test
-    @SuppressWarnings("try")
     public void loopSwitchProgram() {
         byte[] bytecodes = new byte[]{
                         /* 0: */Bytecode.CONST,

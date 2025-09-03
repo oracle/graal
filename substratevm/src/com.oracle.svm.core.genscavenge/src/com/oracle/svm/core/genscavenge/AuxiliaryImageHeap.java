@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public interface AuxiliaryImageHeap {
     @Fold
@@ -46,10 +47,10 @@ public interface AuxiliaryImageHeap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean containsObject(Pointer address);
 
-    boolean walkObjects(ObjectVisitor visitor);
+    void walkObjects(ObjectVisitor visitor);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
+    void walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 
     ImageHeapInfo getImageHeapInfo();
 }

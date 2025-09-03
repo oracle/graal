@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -39,10 +40,12 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
@@ -82,14 +85,15 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
 
     @ExportMessage
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
-        return getScopeSlowPath(frame != null ? frame.materialize() : null);
+        return getScopeSlowPath(frame != null ? frame.materialize() : null, getMethod(), getBci(frame));
     }
 
     @TruffleBoundary
-    private Object getScopeSlowPath(MaterializedFrame frame) {
-        // construct the current scope with valid local variables information
-        Method method = getMethodVersion().getMethod();
-        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getBci(frame));
+    private static Object getScopeSlowPath(MaterializedFrame frame, Method method, int bci) {
+        // NOTE: this might be called while the thread is not entered into the context so
+        // don't use things like a LanguageReference
+        // Construct the current scope with valid local variables information
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(bci);
         boolean allParamsIncluded = checkLocals(liveLocals, method);
         if (!allParamsIncluded) {
             ArrayList<Local> constructedLiveLocals = new ArrayList<>();
@@ -103,25 +107,24 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             int localCount = hasReceiver ? 1 : 0;
             localCount += method.getParameterCount();
 
-            Utf8ConstantTable utf8Constants = method.getLanguage().getUtf8ConstantTable();
             int startslot = 0;
-
             if (hasReceiver) {
                 // include 'this' and method arguments if not already included
                 if (!slotToLocal.containsKey(startslot)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 0xffff, 0));
+                    constructedLiveLocals.add(new Local(Names.thiz, method.getDeclaringKlass().getType(), null, 0, 0xffff, 0));
                 } else {
                     constructedLiveLocals.add(slotToLocal.get(startslot));
                 }
                 slotToLocal.remove(startslot);
                 startslot++;
             }
-            Symbol<Symbol.Type>[] parsedSignature = method.getParsedSignature();
+            Symbol<Type>[] parsedSignature = method.getParsedSignature();
             // include method parameters if not already included
             for (int i = startslot; i < localCount; i++) {
-                Symbol<Symbol.Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
+                Symbol<Type> paramType = hasReceiver ? SignatureSymbols.parameterType(parsedSignature, i - 1) : SignatureSymbols.parameterType(parsedSignature, i);
                 if (!slotToLocal.containsKey(i)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("arg_" + i)), utf8Constants.getOrCreate(paramType), 0, 0xffff, i));
+                    Symbol<Name> localName = method.getLanguage().getNames().getOrCreate(ByteSequence.create("arg_" + i));
+                    constructedLiveLocals.add(new Local(localName, paramType, null, 0, 0xffff, i));
                     slotToLocal.remove(i);
                 }
             }
@@ -158,4 +161,6 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
     public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.RootBodyTag.class;
     }
+
+    public abstract void prepareForInstrumentation(Set<Class<?>> tags);
 }

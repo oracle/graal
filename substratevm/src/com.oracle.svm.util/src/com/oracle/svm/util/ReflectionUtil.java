@@ -30,6 +30,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
@@ -62,8 +63,12 @@ public final class ReflectionUtil {
     }
 
     public static Class<?> lookupClass(boolean optional, String className) {
+        return lookupClass(optional, className, ReflectionUtil.class.getClassLoader());
+    }
+
+    public static Class<?> lookupClass(boolean optional, String className, ClassLoader loader) {
         try {
-            return Class.forName(className, false, ReflectionUtil.class.getClassLoader());
+            return Class.forName(className, false, loader);
         } catch (ClassNotFoundException ex) {
             if (optional) {
                 return null;
@@ -82,7 +87,7 @@ public final class ReflectionUtil {
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
-        } catch (ReflectiveOperationException ex) {
+        } catch (ReflectiveOperationException | LinkageError ex) {
             if (optional) {
                 return null;
             }
@@ -118,7 +123,7 @@ public final class ReflectionUtil {
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
-        } catch (ReflectiveOperationException ex) {
+        } catch (ReflectiveOperationException | LinkageError ex) {
             if (optional) {
                 return null;
             }
@@ -233,5 +238,19 @@ public final class ReflectionUtil {
 
     public static void writeStaticField(Class<?> declaringClass, String fieldName, Object value) {
         writeField(declaringClass, fieldName, null, value);
+    }
+
+    /**
+     * Counts the number of superclasses as returned by {@link Class#getSuperclass()}.
+     * {@link java.lang.Object} and all primitive types are at depth 0 and all interfaces are at
+     * depth 1.
+     */
+    public static int getClassHierarchyDepth(Class<?> clazz) {
+        Objects.requireNonNull(clazz, "Must accept a non-null class argument");
+        int depth = 0;
+        for (var cur = clazz.getSuperclass(); cur != null; cur = cur.getSuperclass()) {
+            depth += 1;
+        }
+        return depth;
     }
 }

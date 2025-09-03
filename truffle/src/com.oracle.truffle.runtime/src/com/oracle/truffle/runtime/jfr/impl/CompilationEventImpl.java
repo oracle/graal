@@ -79,6 +79,8 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
 
     @Label("Tier") @Description("The Tier of the Truffle Compiler") public int truffleTier;
 
+    @Label("Compilation Id") @Description("The VM Id of the Compilation") public String compilationId;
+
     private transient CompilationFailureEventImpl failure;
 
     @Override
@@ -146,6 +148,11 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     @Override
     public void setPartialEvaluationTime(long time) {
         this.peTime = time;
+    }
+
+    @Override
+    public void setCompilationId(String id) {
+        this.compilationId = id;
     }
 
     @Override

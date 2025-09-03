@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -50,10 +54,6 @@ import com.oracle.truffle.regex.tregex.util.TruffleReadOnlyIntArray;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class AbstractRegexObject implements TruffleObject {

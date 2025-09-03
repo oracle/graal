@@ -154,8 +154,8 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
             public void lower(SnippetCounterNode counter, LoweringTool tool) {
                 StructuredGraph graph = counter.graph();
-                Arguments args = new Arguments(add, graph.getGuardsStage(), tool.getLoweringStage());
-                args.addConst("counter", counter.getCounter());
+                Arguments args = new Arguments(add, graph, tool.getLoweringStage());
+                args.add("counter", counter.getCounter());
                 args.add("increment", counter.getIncrement());
 
                 template(tool, counter, args).instantiate(tool.getMetaAccess(), counter, DEFAULT_REPLACER, args);

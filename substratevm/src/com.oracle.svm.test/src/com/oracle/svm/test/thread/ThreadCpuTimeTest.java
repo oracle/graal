@@ -83,7 +83,7 @@ public class ThreadCpuTimeTest {
         return thread.getId();
     }
 
-    private class ThreadCpuTimeRunnable implements Runnable {
+    private final class ThreadCpuTimeRunnable implements Runnable {
         @Override
         public void run() {
             try {

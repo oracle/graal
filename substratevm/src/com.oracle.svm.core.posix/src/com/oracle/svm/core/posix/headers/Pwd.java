@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -55,7 +54,7 @@ public class Pwd {
     }
 
     @CPointerTo(passwd.class)
-    public interface passwdPointer extends Pointer {
+    public interface passwdPointer extends PointerBase {
         passwd read();
     }
 

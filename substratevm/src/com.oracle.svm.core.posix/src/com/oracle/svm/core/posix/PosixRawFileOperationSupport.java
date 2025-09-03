@@ -27,6 +27,8 @@ package com.oracle.svm.core.posix;
 import java.io.File;
 import java.nio.ByteOrder;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,16 +37,13 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
@@ -58,9 +57,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public CCharPointer allocateCPath(String path) {
         byte[] data = path.getBytes();
-        CCharPointer filename = UntrackedNullableNativeMemory.malloc(WordFactory.unsigned(data.length + 1));
+        CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         for (int i = 0; i < data.length; i++) {
@@ -82,6 +81,11 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
         int flags = parseMode(creationMode) | parseMode(accessMode);
         return open0(cPath, flags);
+    }
+
+    @Override
+    public String getTempDirectory() {
+        return SystemPropertiesSupport.singleton().getInitialProperty("java.io.tmpdir");
     }
 
     @Override
@@ -107,7 +111,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
         int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
-        return WordFactory.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
+        return Word.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -137,14 +141,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public long position(RawFileDescriptor fd) {
         int posixFd = getPosixFileDescriptor(fd);
-        return Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(0), Unistd.SEEK_CUR()).rawValue();
+        return Unistd.NoTransitions.lseek(posixFd, Word.signed(0), Unistd.SEEK_CUR()).rawValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean seek(RawFileDescriptor fd, long position) {
         int posixFd = getPosixFileDescriptor(fd);
-        SignedWord newPos = Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(position), Unistd.SEEK_SET());
+        SignedWord newPos = Unistd.NoTransitions.lseek(posixFd, Word.signed(position), Unistd.SEEK_SET());
         return position == newPos.rawValue();
     }
 
@@ -152,35 +156,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public boolean write(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
         int posixFd = getPosixFileDescriptor(fd);
-
-        Pointer position = data;
-        UnsignedWord remaining = size;
-        while (remaining.aboveThan(0)) {
-            SignedWord writtenBytes = Unistd.NoTransitions.write(posixFd, position, remaining);
-            if (writtenBytes.equal(-1)) {
-                if (LibC.errno() == Errno.EINTR()) {
-                    // Retry the write if it was interrupted before any bytes were written.
-                    continue;
-                }
-                return false;
-            }
-            position = position.add((UnsignedWord) writtenBytes);
-            remaining = remaining.subtract((UnsignedWord) writtenBytes);
-        }
-        return true;
+        return PosixUtils.writeUninterruptibly(posixFd, data, size);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize) {
         int posixFd = getPosixFileDescriptor(fd);
-
-        SignedWord readBytes;
-        do {
-            readBytes = Unistd.NoTransitions.read(posixFd, buffer, bufferSize);
-        } while (readBytes.equal(-1) && LibC.errno() == Errno.EINTR());
-
-        return readBytes.rawValue();
+        return PosixUtils.readUninterruptibly(posixFd, buffer, bufferSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

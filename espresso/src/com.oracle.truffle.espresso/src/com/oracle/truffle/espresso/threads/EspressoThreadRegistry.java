@@ -36,7 +36,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -294,7 +295,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 meta.java_lang_ThreadGroup_add.invokeDirectVirtual(effectiveThreadGroup, guestThread);
             }
 
-            getThreadAccess().setState(guestThread, State.RUNNABLE.value);
+            getThreadAccess().initializeState(guestThread, ThreadState.DefaultStates.DEFAULT_ATTACH_THREAD_STATE);
 
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
@@ -332,7 +333,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                         /* group */ mainThreadGroup,
                         /* name */ meta.toGuestString("main"));
 
-        getThreadAccess().setState(mainThread, State.RUNNABLE.value);
+        getThreadAccess().initializeState(mainThread, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
 
         mainThreadCreated = true;
         logger.fine(() -> {
@@ -342,16 +343,26 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         });
     }
 
+    /**
+     * Notifies us that the main thread will go back to being out of Espresso's control. Set its
+     * state to the default attach state, which means it will be considered in native going forward.
+     */
+    public void reportMainAsInNative() {
+        if (getMainThread() != null) {
+            getThreadAccess().setState(getMainThread(), ThreadState.DefaultStates.DEFAULT_ATTACH_THREAD_STATE);
+        }
+    }
+
     private void createMainThreadGroup(Meta meta) {
         assert mainThreadGroup == null;
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
+        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Names._init_, Signatures._void) // private
                         // ThreadGroup()
                         .invokeDirectSpecial(systemThreadGroup);
 
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
+                        .lookupDeclaredMethod(Names._init_, Signatures._void_ThreadGroup_String) //
                         .invokeDirectSpecial(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));
@@ -483,7 +494,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         synchronized (activeThreadLock) {
             // see ThreadService::find_deadlocks_at_safepoint
             // in share/services/threadService.cpp
-            ThreadsAccess threadAccess = getThreadAccess();
+            ThreadAccess threadAccess = getThreadAccess();
             StaticObject[] threads = activeThreads();
             for (StaticObject thread : threads) {
                 if (!threadAccess.isVirtualOrCarrierThread(thread)) {

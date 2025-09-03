@@ -24,29 +24,35 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Field;
+import static com.oracle.svm.hosted.option.RuntimeOptionFeature.registerOptionAsRead;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.FatalErrorState;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class SubstrateDiagnosticFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(FatalErrorState.class, new FatalErrorState());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(FatalErrorState.class, new FatalErrorState());
 
-        // Ensure that the diagnostic thunks are initialized.
-        DiagnosticThunkRegistry.singleton();
+            // Ensure that the diagnostic thunks are initialized.
+            DiagnosticThunkRegistry.singleton();
+        }
     }
 
     @Override
@@ -58,13 +64,4 @@ class SubstrateDiagnosticFeature implements InternalFeature {
         registerOptionAsRead(accessImpl, SubstrateDiagnostics.Options.class, SubstrateDiagnostics.Options.ImplicitExceptionWithoutStacktraceIsFatal.getName());
     }
 
-    private static void registerOptionAsRead(BeforeAnalysisAccessImpl accessImpl, Class<?> clazz, String fieldName) {
-        try {
-            Field javaField = clazz.getField(fieldName);
-            AnalysisField analysisField = accessImpl.getMetaAccess().lookupJavaField(javaField);
-            accessImpl.registerAsRead(analysisField, "it is a runtime option field");
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
 }

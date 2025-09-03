@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,17 @@
  */
 package org.graalvm.wasm.test.options;
 
+import java.util.List;
+
 public final class WasmTestOptions {
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty("wasmtest.watToWasmExecutable");
     public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
     public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
+    public static final List<String> DISABLED_TESTS = List.of(System.getProperty("wasmtest.disabledTests", "").split(","));
     public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
     public static final String STORE_CONSTANTS_POLICY = System.getProperty("wasmtest.storeConstantsPolicy");
     public static final String OFFICIAL_TESTS_DIR = System.getProperty("wasmtest.officialTestsDir");
+    public static final String OFFICIAL_TESTS_CONTEXT_OPTIONS = System.getProperty("wasmtest.officialTestsContextOptions");
     public static final boolean OFFICIAL_TESTS_RUN_ALL = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsRunAll"));
     public static final boolean OFFICIAL_TESTS_LOG = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsLog"));
     public static final boolean SHARED_ENGINE = Boolean.parseBoolean(System.getProperty("wasmtest.sharedEngine"));

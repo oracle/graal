@@ -27,13 +27,15 @@ package com.oracle.graal.pointsto.flow;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * A local use of AllInstantiatedFlow that can have a predicate.
  */
-public class LocalAllInstantiatedFlow extends TypeFlow<AnalysisType> {
+public class LocalAllInstantiatedFlow extends TypeFlow<BytecodePosition> {
 
-    public LocalAllInstantiatedFlow(AnalysisType declaredType) {
-        super(declaredType, declaredType);
+    public LocalAllInstantiatedFlow(BytecodePosition position, AnalysisType declaredType) {
+        super(position, declaredType);
     }
 
     private LocalAllInstantiatedFlow(MethodFlowsGraph methodFlows, LocalAllInstantiatedFlow original) {
@@ -41,7 +43,7 @@ public class LocalAllInstantiatedFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public TypeFlow<AnalysisType> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new LocalAllInstantiatedFlow(methodFlows, this);
     }
 }

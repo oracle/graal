@@ -29,7 +29,6 @@ import static com.oracle.svm.core.RegisterDumper.dumpReg;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -40,15 +39,21 @@ import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.mcontext_linux_aarch64_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 @Platforms(Platform.LINUX_AARCH64_BASE.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Disallowed.class)
 class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     AArch64LinuxUContextRegisterDumper() {
-        VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER));
         VMError.guarantee(AArch64.r28.equals(AArch64ReservedRegisters.THREAD_REGISTER));
     }
 
@@ -95,27 +100,27 @@ class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_aarch64().regs();
-        return WordFactory.pointer(regs.read(27));
+        return Word.pointer(regs.read(27));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_aarch64().regs();
-        return WordFactory.pointer(regs.read(28));
+        return Word.pointer(regs.read(28));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
-        return WordFactory.pointer(sigcontext.sp());
+        return Word.pointer(sigcontext.sp());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
-        return WordFactory.pointer(sigcontext.pc());
+        return Word.pointer(sigcontext.pc());
     }
 }

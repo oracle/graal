@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases.common;
 import java.util.List;
 import java.util.Optional;
 
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -49,7 +50,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
-
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -202,6 +202,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
         }
     }
 
+    @SuppressWarnings("try")
     protected void replaceWithTrappingVersion(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation,
                     LowTierContext context) {
         StructuredGraph graph = deopt.graph();
@@ -210,8 +211,10 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
         DeoptimizingFixedWithNextNode trappingVersionNode = null;
         trappingVersionNode = tryReplaceExisting(graph, nonTrappingContinuation, trappingContinuation, condition, ifNode, deopt, deoptReasonAndAction, deoptSpeculation, context);
         if (trappingVersionNode == null) {
-            // Need to add a null check node.
-            trappingVersionNode = createImplicitNode(graph, condition, deoptReasonAndAction, deoptSpeculation);
+            try (DebugCloseable closable = ifNode.withNodeSourcePosition()) {
+                // Need to add a null check node.
+                trappingVersionNode = createImplicitNode(graph, condition, deoptReasonAndAction, deoptSpeculation);
+            }
             graph.replaceSplit(ifNode, trappingVersionNode, nonTrappingContinuation);
             graph.getOptimizationLog().report(getClass(), "NullCheckInsertion", ifNode);
         }

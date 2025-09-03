@@ -40,11 +40,7 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
 
     // Checkstyle: stop field name check
 
-    // truffle.api.frame
-    public final ResolvedJavaType FrameDescriptor = lookupTypeCached("com.oracle.truffle.api.frame.FrameDescriptor");
-
     // truffle.api.impl
-    public final ResolvedJavaType FrameWithoutBoxing = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");
     public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
     public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", lookupType(Object[].class));
 
@@ -53,6 +49,11 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaMethod CompilerDirectives_transferToInterpreter = findMethod(CompilerDirectives, "transferToInterpreter");
     public final ResolvedJavaMethod CompilerDirectives_transferToInterpreterAndInvalidate = findMethod(CompilerDirectives, "transferToInterpreterAndInvalidate");
     public final ResolvedJavaMethod CompilerDirectives_inInterpreter = findMethod(CompilerDirectives, "inInterpreter");
+    public final ResolvedJavaMethod CompilerDirectives_hasNextTier = findMethod(CompilerDirectives, "hasNextTier");
+    public final ResolvedJavaType TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
+    public final ResolvedJavaType BytecodeInterpreterSwitch = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch");
+    public final ResolvedJavaType BytecodeInterpreterSwitchBoundary = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary");
+    public final ResolvedJavaType InliningCutoff = lookupType("com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff");
 
     public final ResolvedJavaType HostCompilerDirectives = lookupTypeCached("com.oracle.truffle.api.HostCompilerDirectives");
     public final ResolvedJavaMethod HostCompilerDirectives_inInterpreterFastPath = findMethod(HostCompilerDirectives, "inInterpreterFastPath");
@@ -77,9 +78,12 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
         return method.equals(HostCompilerDirectives_inInterpreterFastPath);
     }
 
+    public boolean isHasNextTier(ResolvedJavaMethod method) {
+        return method.equals(CompilerDirectives_hasNextTier);
+    }
+
     /**
-     * Determines if {@code method} is a method is a transferToInterpreter method from
-     * CompilerDirectives.
+     * Determines if {@code method} is a transferToInterpreter method from CompilerDirectives.
      */
     public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
         return method.equals(CompilerDirectives_transferToInterpreter) || method.equals(CompilerDirectives_transferToInterpreterAndInvalidate);

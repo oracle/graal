@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class BC_putfield_01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         private int field;
     }
 

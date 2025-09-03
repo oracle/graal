@@ -69,7 +69,7 @@ public class InputMethodTest {
         assertNull(m.getBytecodes().get(2).getInlined());
         assertNull(m.getBytecodes().get(6).getInlined());
 
-        m = new InputMethod(g, "name", "shortName", -1, LocationCache.createMethod(null, null, bytecode));
+        m = new InputMethod(g, "name", "shortName", -1, LocationCache.createMethod("fakeMethod", "FakeClass", bytecode));
 
         assertEquals(7, m.getBytecodes().size());
 

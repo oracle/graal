@@ -757,6 +757,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             }
         }
         builder.end(); // of
+
+        builder.string(String.valueOf(!model.isDynamicDispatch() && model.isDynamicDispatchEnabled()));
+
         builder.end(); // superCall
         builder.end(); // statement
 
@@ -864,8 +867,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
     private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods) {
         CodeTreeBuilder builder;
-        CodeExecutableElement reflectionGenericDispatch = GeneratorUtils.override(types.LibraryFactory, "genericDispatch", //
-                        "originalLib", "receiver", "message", "args", "offset");
+        CodeExecutableElement reflectionGenericDispatch = GeneratorUtils.override(types.LibraryFactory, "genericDispatch", new String[]{"originalLib", "receiver", "message", "args", "offset"});
         reflectionGenericDispatch.getParameters().set(0, new CodeVariableElement(types.Library, "originalLib"));
         reflectionGenericDispatch.getModifiers().remove(ABSTRACT);
         builder = reflectionGenericDispatch.createBuilder();

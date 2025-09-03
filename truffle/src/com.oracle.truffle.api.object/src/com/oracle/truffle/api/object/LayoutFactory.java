@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,25 +40,48 @@
  */
 package com.oracle.truffle.api.object;
 
-/**
- * Implementation class.
- *
- * @since 0.8 or earlier
- * @deprecated Implementation detail.
- */
-@SuppressWarnings("deprecation")
-@Deprecated(since = "22.2")
-public interface LayoutFactory {
+import java.lang.invoke.MethodHandles.Lookup;
 
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    Property createProperty(Object id, Location location, int flags);
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
-    /** @since 22.2 */
-    default Shape createShape(@SuppressWarnings("unused") Object arg0) {
-        throw new UnsupportedOperationException();
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+
+@SuppressWarnings("static-method")
+final class LayoutFactory {
+
+    void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
+        LayoutImpl.registerLayoutClass(subclass, layoutLookup);
     }
 
-    /** @since 0.8 or earlier */
-    int getPriority();
+    LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
+        return LayoutImpl.createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
+    }
+
+    Shape createShape(Class<? extends DynamicObject> layoutClass,
+                    int implicitCastFlags,
+                    Object dynamicType,
+                    Object sharedData,
+                    int shapeFlags,
+                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
+                    Assumption singleContextAssumption,
+                    Lookup layoutLookup) {
+
+        CompilerAsserts.neverPartOfCompilation();
+        LayoutImpl impl = createLayout(layoutClass, layoutLookup, implicitCastFlags);
+        Shape shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
+
+        if (constantProperties != null) {
+            var cursor = constantProperties.getEntries();
+            while (cursor.advance()) {
+                Object key = cursor.getKey();
+                Object value = cursor.getValue().getLeft();
+                int flags = cursor.getValue().getRight();
+                shape = shape.addProperty(new PropertyImpl(key, new ExtLocations.ConstantLocation(value), flags));
+            }
+        }
+
+        return shape;
+    }
 }

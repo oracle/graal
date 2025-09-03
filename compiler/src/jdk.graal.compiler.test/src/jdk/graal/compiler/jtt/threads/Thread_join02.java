@@ -38,7 +38,7 @@ public class Thread_join02 extends JTTTest {
 
     @Rule public TestRule timeout = createTimeoutSeconds(20);
 
-    private static class TestClass implements Runnable {
+    private static final class TestClass implements Runnable {
         @Override
         public void run() {
             try {

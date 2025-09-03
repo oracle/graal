@@ -37,6 +37,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
@@ -141,18 +142,28 @@ public final class LambdaUtils {
         return isLambdaClassName(name) && lambdaMatcher(name).find();
     }
 
-    private static String createStableLambdaName(ResolvedJavaType lambdaType, List<JavaMethod> targetMethods) {
+    private static String createStableLambdaName(ResolvedJavaType lambdaType, List<JavaMethod> invokedMethods) {
         final String lambdaName = lambdaType.getName();
         assert lambdaMatcher(lambdaName).find() : "Stable name should be created for lambda types: " + lambdaName;
 
         Matcher m = lambdaMatcher(lambdaName);
+        /* Generate lambda signature by hashing its composing parts. */
         StringBuilder sb = new StringBuilder();
-        targetMethods.forEach((targetMethod) -> sb.append(targetMethod.format("%H.%n(%P)%R")));
-        // Take parameter types of constructor into consideration, see GR-52837
+        /* Append invoked methods. */
+        for (JavaMethod method : invokedMethods) {
+            sb.append(method.format("%H.%n(%P)%R"));
+        }
+        /* Append constructor parameter types. */
         for (JavaMethod ctor : lambdaType.getDeclaredConstructors()) {
             sb.append(ctor.format("%P"));
         }
-        return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + Digest.digestAsHex(sb.toString()) + ";"));
+        /* Append implemented interfaces. */
+        for (ResolvedJavaType iface : lambdaType.getInterfaces()) {
+            sb.append(iface.toJavaName());
+        }
+        String signature = Digest.digestAsHex(sb.toString());
+        GraalError.guarantee(signature.length() == 32, "Expecting a 32 digits long hex value.");
+        return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + signature + ";"));
     }
 
     private static Matcher lambdaMatcher(String value) {

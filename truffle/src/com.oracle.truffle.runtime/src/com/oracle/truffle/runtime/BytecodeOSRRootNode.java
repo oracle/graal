@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,6 @@
  */
 package com.oracle.truffle.runtime;
 
-import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.graalvm.nativeimage.ImageInfo;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -53,6 +47,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.Node;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final long target;
@@ -67,9 +62,6 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
         this.interpreterState = interpreterState;
         this.seenMaterializedFrame = materializeCalled(frameDescriptor);
         this.entryTagsCache = entryTagsCache;
-
-        // Support for deprecated frame transfer: GR-38296
-        this.usesDeprecatedFrameTransfer = checkUsesDeprecatedFrameTransfer(bytecodeOSRNode.getClass());
     }
 
     private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
@@ -100,15 +92,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             // required to prevent the materialized frame from getting out of sync during OSR.
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
-            if (usesDeprecatedFrameTransfer) { // Support for deprecated frame transfer: GR-38296
-                int intTarget = (int) target;
-                if (intTarget != target) {
-                    throw CompilerDirectives.shouldNotReachHere("long target cannot be used with deprecated frame transfer");
-                }
-                osrNode.copyIntoOSRFrame(frame, parentFrame, intTarget);
-            } else {
-                osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
-            }
+            osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
             try {
                 return osrNode.executeOSR(frame, target, interpreterState);
             } finally {
@@ -124,50 +108,13 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     @Override
     public String toString() {
-        return loopNode.toString() + "<OSR@" + target + ">";
-    }
-
-    // GR-38296
-    /* Deprecated frame transfer handling below */
-
-    private static final Map<Class<?>, Boolean> usesDeprecatedTransferClasses = new ConcurrentHashMap<>();
-
-    private final boolean usesDeprecatedFrameTransfer;
-
-    /**
-     * Detects usage of deprecated frame transfer, and directs the frame transfer path accordingly
-     * later. When removing the support for this deprecation, constructs used and paths related are
-     * marked with the comment "Support for deprecated frame transfer" and a reference to GR-38296.
-     */
-    private static boolean usesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
-        try {
-            Method m = osrNodeClass.getMethod("copyIntoOSRFrame", VirtualFrame.class, VirtualFrame.class, int.class);
-            return m.getDeclaringClass() != BytecodeOSRNode.class;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
-    private static boolean checkUsesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
-        if (ImageInfo.inImageRuntimeCode()) {
-            // this must have been pre-computed
-            return usesDeprecatedTransferClasses.get(osrNodeClass);
-        } else {
-            return usesDeprecatedTransferClasses.computeIfAbsent(osrNodeClass, BytecodeOSRRootNode::usesDeprecatedFrameTransfer);
-        }
+        return ((Node) loopNode).getRootNode().toString() + "<OSR@" + target + ">";
     }
 
     // Called by truffle feature to initialize the map at build time.
     @SuppressWarnings("unused")
     private static boolean initializeClassUsingDeprecatedFrameTransfer(Class<?> subType) {
-        if (subType.isInterface()) {
-            return false;
-        }
-        if (usesDeprecatedTransferClasses.containsKey(subType)) {
-            return false;
-        }
-        // Eagerly initialize result.
-        usesDeprecatedTransferClasses.put(subType, usesDeprecatedFrameTransfer(subType));
+        // empty method implementation for backward-compatibility with SVM: GR-65788
         return true;
     }
 

@@ -54,7 +54,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -65,6 +64,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
@@ -72,9 +72,13 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
@@ -90,14 +94,15 @@ public class JavaMainWrapper {
      */
     public static final CGlobalData<CEntryPointCreateIsolateParameters> MAIN_ISOLATE_PARAMETERS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CEntryPointCreateIsolateParameters.class));
 
-    static {
-        /* WordFactory.boxFactory is initialized by the static initializer of Word. */
-        Word.ensureInitialized();
-    }
-    private static UnsignedWord argvLength = WordFactory.zero();
+    private static UnsignedWord argvLength = Word.zero();
 
+    /**
+     * In a layered build the {@link JavaMainSupport} is installed in the last layer. However, code
+     * that uses it may be compiled as part of the base layer, e.g., such as
+     * {@link CEntryPointSnippets}.
+     */
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
     public static class JavaMainSupport {
-
         private final MethodHandle javaMainHandle;
         private final MethodHandle javaMainClassCtorHandle;
         final String javaMainClassName;
@@ -109,30 +114,22 @@ public class JavaMainWrapper {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public JavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-            if (instanceMainMethodSupported()) {
-                javaMainMethod.setAccessible(true);
-                int mods = javaMainMethod.getModifiers();
-                this.mainNonstatic = !Modifier.isStatic(mods);
-                this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
-                MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
-                MethodHandle ctorHandle = null;
-                if (mainNonstatic) {
-                    // Instance main
-                    try {
-                        Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainMethod.getDeclaringClass());
-                        ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
-                    } catch (ReflectionUtil.ReflectionUtilError ex) {
-                        throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainMethod.getDeclaringClass()));
-                    }
+            int mods = javaMainMethod.getModifiers();
+            this.mainNonstatic = !Modifier.isStatic(mods);
+            this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
+            MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
+            MethodHandle ctorHandle = null;
+            if (mainNonstatic) {
+                // Instance main
+                try {
+                    Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainMethod.getDeclaringClass());
+                    ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
+                } catch (ReflectionUtil.ReflectionUtilError ex) {
+                    throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainMethod.getDeclaringClass()));
                 }
-                this.javaMainHandle = mainHandle;
-                this.javaMainClassCtorHandle = ctorHandle;
-            } else {
-                this.mainNonstatic = false;
-                this.mainWithoutArgs = false;
-                this.javaMainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
-                this.javaMainClassCtorHandle = null;
             }
+            this.javaMainHandle = mainHandle;
+            this.javaMainClassCtorHandle = ctorHandle;
             this.javaMainClassName = javaMainMethod.getDeclaringClass().getName();
         }
 
@@ -162,7 +159,6 @@ public class JavaMainWrapper {
             }
             return Collections.emptyList();
         }
-
     }
 
     public static void invokeMain(String[] args) throws Throwable {
@@ -191,19 +187,6 @@ public class JavaMainWrapper {
         }
     }
 
-    /**
-     * Determines whether instance main methodes are enabled. See JDK-8306112: Implementation of JEP
-     * 445: Unnamed Classes and Instance Main Methods (Preview).
-     */
-    public static boolean instanceMainMethodSupported() {
-        var previewFeature = ReflectionUtil.lookupClass(true, "jdk.internal.misc.PreviewFeatures");
-        try {
-            return previewFeature != null && (Boolean) previewFeature.getDeclaredMethod("isEnabled").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static int runCore() {
         return runCore0();
@@ -222,6 +205,11 @@ public class JavaMainWrapper {
                  * the startup hooks after setting all option values.
                  */
                 VMRuntime.initialize();
+            }
+
+            if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
+                printVmInfo();
+                return 0;
             }
 
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
@@ -254,7 +242,7 @@ public class JavaMainWrapper {
 
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static void runShutdown() {
-        ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks can't be executed during shutdown.");
+        RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
         runShutdown0();
     }
 
@@ -327,7 +315,7 @@ public class JavaMainWrapper {
         MAIN_ISOLATE_PARAMETERS.get().setArgc(argc);
         MAIN_ISOLATE_PARAMETERS.get().setArgv(argv);
         long stackSize = SubstrateOptions.StackSize.getHostedValue();
-        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), WordFactory.nullPointer(), (int) stackSize);
+        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), Word.nullPointer(), (int) stackSize);
         if (osThreadHandle.isNull()) {
             CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
             return 1;
@@ -347,7 +335,7 @@ public class JavaMainWrapper {
 
     private static final CGlobalData<CFunctionPointer> RUN_MAIN_ROUTINE = CGlobalDataFactory.forSymbol("__svm_JavaMainWrapper_runMainRoutine");
 
-    private static class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
+    private static final class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             if (!ImageSingletons.contains(JavaMainSupport.class)) {
@@ -363,7 +351,7 @@ public class JavaMainWrapper {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     static WordBase runMainRoutine(PointerBase data) {
         int exitStatus = doRun(MAIN_ISOLATE_PARAMETERS.get().getArgc(), MAIN_ISOLATE_PARAMETERS.get().getArgv());
-        return WordFactory.signed(exitStatus);
+        return Word.signed(exitStatus);
     }
 
     private static boolean isArgumentBlockSupported() {
@@ -398,13 +386,13 @@ public class JavaMainWrapper {
 
         CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
         CCharPointer firstArgPos = args.getArgv().read(0);
-        if (argvLength.equal(WordFactory.zero())) {
+        if (argvLength.equal(Word.zero())) {
             // Get char* to last program argument
             CCharPointer lastArgPos = args.getArgv().read(args.getArgc() - 1);
             // Determine the length of the last program argument
             UnsignedWord lastArgLength = SubstrateUtil.strlen(lastArgPos);
             // Determine maximum C string length that can be stored in the program argument part
-            argvLength = WordFactory.unsigned(lastArgPos.rawValue()).add(lastArgLength).subtract(WordFactory.unsigned(firstArgPos.rawValue()));
+            argvLength = Word.unsigned(lastArgPos.rawValue()).add(lastArgLength).subtract(Word.unsigned(firstArgPos.rawValue()));
         }
         return Math.toIntExact(argvLength.rawValue());
     }
@@ -419,7 +407,7 @@ public class JavaMainWrapper {
             CCharPointer arg0Pointer = arg0Pin.get();
             UnsignedWord arg0Length = SubstrateUtil.strlen(arg0Pointer);
 
-            UnsignedWord origLength = WordFactory.unsigned(getCRuntimeArgumentBlockLength());
+            UnsignedWord origLength = Word.unsigned(getCRuntimeArgumentBlockLength());
             UnsignedWord newArgLength = origLength;
             if (arg0Length.add(1).belowThan(origLength)) {
                 newArgLength = arg0Length.add(1);
@@ -444,7 +432,13 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
-    private static class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
+    private static void printVmInfo() {
+        VM vm = ImageSingletons.lookup(VM.class);
+        System.out.println(vm.formattedVmVersion);
+        System.out.println(vm.formattedJdkVersion);
+    }
+
+    private static final class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create the main Isolate.");
 

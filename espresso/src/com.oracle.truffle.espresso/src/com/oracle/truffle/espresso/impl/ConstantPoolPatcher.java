@@ -22,21 +22,36 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static java.util.Map.entry;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.LanguageFilter;
+import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
 
 public class ConstantPoolPatcher {
+    private static final Map<Symbol<Type>, Patcher> patches = Map.ofEntries(
+                    entry(EspressoSymbols.Types.java_nio_file_FileSystems_DefaultFileSystemHolder,
+                                    new MethodPatcher(EspressoLibsFilter.INSTANCE, (ctx) -> ctx.getTruffleIO().sun_nio_fs_DefaultFileSystemProvider_instance))
+    //
+    );
+
     public static void getDirectInnerAnonymousClassNames(Symbol<Name> fileSystemName, byte[] bytes, Set<Symbol<Name>> innerNames, EspressoContext context)
-                    throws ClassFormatError {
+                    throws ParserException.ClassFormatError {
         ClassfileStream stream = new ClassfileStream(bytes, null);
         // skip magic and version - 8 bytes
         stream.skip(8);
@@ -88,7 +103,7 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new ClassFormatError();
+                    throw new ParserException.ClassFormatError("Unexpected tag: " + tag);
             }
             i++;
         }
@@ -114,7 +129,7 @@ public class ConstantPoolPatcher {
         return '0' <= c && c <= '9';
     }
 
-    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Name>, Symbol<Name>> rules, EspressoContext context) throws ClassFormatError {
+    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Name>, Symbol<Name>> rules, EspressoContext context) throws ParserException.ClassFormatError {
         byte[] result = Arrays.copyOf(bytes, bytes.length);
         ClassfileStream stream = new ClassfileStream(bytes, null);
 
@@ -194,10 +209,71 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new ClassFormatError();
+                    throw new ParserException.ClassFormatError("Unexpected tag: " + tag);
             }
             i++;
         }
         return result;
+    }
+
+    public static boolean shouldPatchPool(Symbol<Type> type, EspressoContext ctx) {
+        Patcher patcher = patches.get(type);
+        if (patcher == null) {
+            return false;
+        }
+        return patcher.validFor(ctx);
+    }
+
+    public static void patchConstantPool(EspressoContext ctx, Symbol<Type> type, RuntimeConstantPool pool) {
+        Patcher patcher = patches.get(type);
+        if (patcher == null || !patcher.validFor(ctx)) {
+            return;
+        }
+        for (int i = 0; i < pool.length(); i++) {
+            if (patcher.shouldApply(ctx, pool, i)) {
+                patcher.apply(ctx, pool, i);
+            }
+        }
+    }
+
+    private interface Patcher {
+        boolean validFor(EspressoContext ctx);
+
+        boolean shouldApply(EspressoContext ctx, RuntimeConstantPool pool, int index);
+
+        void apply(EspressoContext ctx, RuntimeConstantPool pool, int index);
+    }
+
+    private static final class MethodPatcher implements Patcher {
+        private final LanguageFilter filter;
+        private final Function<EspressoContext, Method> method;
+
+        MethodPatcher(LanguageFilter filter, Function<EspressoContext, Method> method) {
+            this.filter = filter;
+            this.method = method;
+        }
+
+        @Override
+        public boolean validFor(EspressoContext ctx) {
+            return filter.isValidFor(ctx.getLanguage());
+        }
+
+        @Override
+        public boolean shouldApply(EspressoContext ctx, RuntimeConstantPool pool, int index) {
+            if (pool.tagAt(index) == ConstantPool.Tag.METHOD_REF) {
+                Method m = method.apply(ctx);
+                if (pool.memberClassName(index) == m.getDeclaringKlass().getName() &&
+                                pool.methodName(index) == m.getName()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public void apply(EspressoContext ctx, RuntimeConstantPool pool, int index) {
+            assert shouldApply(ctx, pool, index);
+            pool.preResolveMethod(method.apply(ctx), index);
+        }
     }
 }

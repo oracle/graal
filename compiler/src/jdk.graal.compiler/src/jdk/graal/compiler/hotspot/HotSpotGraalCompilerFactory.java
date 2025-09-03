@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,14 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.PrintStream;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -46,7 +46,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
@@ -94,11 +93,11 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public void onSelection() {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             // When instantiating a JVMCI runtime in the libgraal heap there's no
             // point in delaying HotSpotGraalRuntime initialization as it
             // is very fast (it's compiled and does no class loading) and will
-            // usually be done immediately after this call anyway (i.e. in a
+            // usually happen immediately after this call anyway (i.e. in a
             // Graal-as-JIT configuration).
             initialize();
             initialized = true;
@@ -122,14 +121,10 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         }
         initializeGraalCompilePolicyFields(options);
         isGraalPredicate = compileGraalWithC1Only ? new IsGraalPredicate() : null;
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            // Triggers initialization of all option descriptors
-            Options.CompileGraalWithC1Only.getName();
-        }
     }
 
     private static void initializeGraalCompilePolicyFields(OptionValues options) {
-        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !IS_IN_NATIVE_IMAGE;
+        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !LibGraalSupport.inLibGraalRuntime();
         String optionValue = Options.GraalCompileOnly.getValue(options);
         if (optionValue != null) {
             MethodFilter filter = MethodFilter.parse(optionValue);
@@ -188,7 +183,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         if (isGraalPredicate != null) {
             isGraalPredicate.onCompilerConfigurationFactorySelection(hsRuntime, factory);
         }
-        HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory);
+        HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory, null);
         // Only the HotSpotGraalRuntime associated with the compiler created via
         // jdk.vm.ci.runtime.JVMCIRuntime.getCompiler() is registered for receiving
         // VM events.
@@ -200,7 +195,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
      * Exit the VM now if {@code jdk.internal.misc.Unsafe} is not accessible.
      */
     private void checkUnsafeAccess(HotSpotJVMCIRuntime hsRuntime) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             // Access checks were performed when building libgraal.
             return;
         }
@@ -227,17 +222,19 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
      *            by this method
      * @param runtime the JVMCI runtime on which the {@link HotSpotGraalRuntime} is built
      * @param compilerConfigurationFactory factory for the {@link CompilerConfiguration}
+     * @param replaySupport replay compilation support if this is a recording or replaying compiler
      */
     @SuppressWarnings("try")
-    public static HotSpotGraalCompiler createCompiler(String runtimeNameQualifier, JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory) {
+    public static HotSpotGraalCompiler createCompiler(String runtimeNameQualifier, JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory,
+                    ReplayCompilationSupport replaySupport) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(runtimeNameQualifier, jvmciRuntime, compilerConfigurationFactory, options);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(runtimeNameQualifier, jvmciRuntime, compilerConfigurationFactory, options, replaySupport);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime, graalRuntime.getOptions());
         }
     }
 
-    static boolean shouldExclude(HotSpotResolvedJavaMethod method) {
+    public static boolean shouldExclude(HotSpotResolvedJavaMethod method) {
         if (graalCompileOnlyFilter != null) {
             String javaClassName = method.getDeclaringClass().toJavaName();
             String name = method.getName();

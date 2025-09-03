@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,12 @@
 ;;
 (module
   (type $binary_func (func (param i32 i32) (result i32)))
-  (global $function_base (export "function-base") i32 (i32.const 0))
-  (global $runtime_function_offset (export "runtime-function-offset") i32 (i32.const 0))
-  (global $lib_function_offset (export "lib-function-offset") i32 (i32.const 1))
+  (import "runtime-globals" "function-base" (global $function_base i32))
+  (import "runtime-globals" "runtime-function-offset" (global $runtime_function_offset i32))
+  (import "runtime-globals" "lib-function-offset" (global $lib_function_offset i32))
+  (export "function-base" (global $function_base))
+  (export "runtime-function-offset" (global $runtime_function_offset))
+  (export "lib-function-offset" (global $lib_function_offset))
   (table (export "function-table") 6 6 funcref)
   (func $max (export "max") (type $binary_func) (param $x i32) (param $y i32) (result i32)
     (select (local.get $x)

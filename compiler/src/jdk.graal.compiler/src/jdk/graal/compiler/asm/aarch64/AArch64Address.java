@@ -309,7 +309,11 @@ public final class AArch64Address extends AbstractAddress {
      * @param bitMemoryTransferSize Memory operation size.
      */
     public static AArch64Address createPCLiteralAddress(int bitMemoryTransferSize) {
-        return new AArch64Address(bitMemoryTransferSize, zr, zr, 0, false, null, AddressingMode.PC_LITERAL);
+        return createPCLiteralAddress(bitMemoryTransferSize, 0);
+    }
+
+    public static AArch64Address createPCLiteralAddress(int bitMemoryTransferSize, int immediate) {
+        return new AArch64Address(bitMemoryTransferSize, zr, zr, immediate, false, null, AddressingMode.PC_LITERAL);
     }
 
     /**

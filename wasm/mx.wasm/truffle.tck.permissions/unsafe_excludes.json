@@ -1,0 +1,573 @@
+[
+    {
+        "name" : "org.graalvm.wasm.memory.UnsafeWasmMemory",
+        "methods" : [
+            {
+                "name" : "getBufferAddress",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "grow",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_f32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_f64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_8s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_16s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_8s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_16s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_32s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i128",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_f32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_f64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i128",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "initialize",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "fill",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyFrom",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "duplicate",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyFromStream",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyToStream",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyToBuffer",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }
+        ]
+    }, {
+        "name" : "org.graalvm.wasm.memory.NativeWasmMemory",
+        "methods" : [
+            {
+                "name" : "allocate",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "reallocate",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_f32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_f64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_8s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_16s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_8s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_16s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_32s",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "load_i128",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_f32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_f64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i32_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i64_32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "store_i128",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_load_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i32_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_8",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_16",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_store_i64_32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_add_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_sub_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_and_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_or_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xor_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i32",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_8u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_16u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64_32u",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "atomic_rmw_xchg_i64",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "duplicate",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "initialize",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "fill",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyFrom",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "free",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyFromStream",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyToStream",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "copyToBuffer",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }
+        ]
+    }, {
+        "name" : "org.graalvm.wasm.memory.UnsafeUtilities",
+        "methods" : [
+            {
+                "name" : "compareAndExchangeByte",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "compareAndExchangeShort",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "compareAndExchangeInt",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "compareAndExchangeLong",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }
+        ]
+    }
+]

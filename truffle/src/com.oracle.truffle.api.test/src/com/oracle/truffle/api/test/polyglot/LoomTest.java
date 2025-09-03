@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -75,6 +76,7 @@ public class LoomTest extends AbstractPolyglotTest {
     }
 
     @Test
+    @Ignore("GR-68675")
     public void testManyVirtualThreads() throws Throwable {
         Assume.assumeTrue(canCreateVirtualThreads() && !TruffleOptions.AOT);
 

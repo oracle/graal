@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,12 +82,12 @@ class BufferAddressTransformer implements FieldValueTransformer {
         }
         VMError.guarantee(bufferBase.getClass().isArray(), "Buffer is not backed by an array: buffer %s of %s, address %s", buffer, buffer.getClass(), hostedAddress);
 
-        int hostedBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(bufferBase.getClass());
+        long hostedBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(bufferBase.getClass());
         int hostedIndexScale = Unsafe.getUnsafe().arrayIndexScale(bufferBase.getClass());
 
         ObjectLayout layout = ImageSingletons.lookup(ObjectLayout.class);
         JavaKind kind = JavaKind.fromJavaClass(bufferBase.getClass().getComponentType());
-        int runtimeBaseOffset = layout.getArrayBaseOffset(kind);
+        long runtimeBaseOffset = layout.getArrayBaseOffset(kind);
         int runtimeIndexScale = layout.getArrayIndexScale(kind);
 
         VMError.guarantee(hostedIndexScale == runtimeIndexScale, "Currently the hosted and runtime array index scale is always the same, so we do not need to transform");

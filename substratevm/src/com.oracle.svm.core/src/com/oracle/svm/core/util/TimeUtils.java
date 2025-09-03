@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.util;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.log.Log;
+
+import jdk.graal.compiler.word.Word;
 
 public class TimeUtils {
 
@@ -69,8 +71,19 @@ public class TimeUtils {
     }
 
     /** Nanoseconds since a previous {@link System#nanoTime()} call. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long nanoSecondsSince(long startNanos) {
-        return (System.nanoTime() - startNanos);
+        return System.nanoTime() - startNanos;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long millisSinceNanos(long startNanos) {
+        return millisSinceNanos(System.nanoTime(), startNanos);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long millisSinceNanos(long nowNanos, long startNanos) {
+        return roundNanosToMillis(nowNanos - startNanos);
     }
 
     /**
@@ -105,6 +118,7 @@ public class TimeUtils {
     }
 
     /** Round the number of nanoseconds to milliseconds. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long roundNanosToMillis(long nanos) {
         return roundedDivide(nanos, nanosPerMilli);
     }
@@ -120,6 +134,7 @@ public class TimeUtils {
     }
 
     /* Divide, rounding to the nearest long. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long roundedDivide(long numerator, long denominator) {
         final long halfStep = denominator / 2L;
         final long addition = addOrMaxValue(numerator, halfStep);
@@ -135,7 +150,7 @@ public class TimeUtils {
 
     /** Weight a nanosecond value by a percentage between 0 and 100. */
     public static long weightedNanos(int percent, long nanos) {
-        final UnsignedWord unweightedNanos = WordFactory.unsigned(nanos);
+        final UnsignedWord unweightedNanos = Word.unsigned(nanos);
         return unweightedNanos.unsignedDivide(100).multiply(percent).rawValue();
     }
 
@@ -170,35 +185,12 @@ public class TimeUtils {
         return r;
     }
 
-    /** Have I looped for too long? If so, complain, but reset the wait. */
-    public static long doNotLoopTooLong(long startNanos, long loopNanos, long warningNanos, String message) {
-        long result = loopNanos;
-        final long waitedNanos = TimeUtils.nanoSecondsSince(loopNanos);
-        if ((0 < warningNanos) && TimeUtils.nanoTimeLessThan(warningNanos, waitedNanos)) {
-            Log.log().string("[TimeUtils.doNotLoopTooLong:")
-                            .string("  startNanos: ").signed(startNanos)
-                            .string("  warningNanos: ").signed(warningNanos).string(" < ").string(" waitedNanos: ").signed(waitedNanos)
-                            .string("  reason: ").string(message)
-                            .string("]").newline();
-            result = System.nanoTime();
-        }
-        return result;
-    }
-
-    /** Have I taken too long? Returns true if I have, false otherwise. */
-    public static boolean maybeFatallyTooLong(long startNanos, long failureNanos, String reason) {
-        if (0 < failureNanos) {
-            /* If a promptness limit was set. */
-            final long nanosSinceStart = TimeUtils.nanoSecondsSince(startNanos);
-            if (TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart)) {
-                /* If the promptness limit was exceeded. */
-                Log.log().string("[TimeUtils.maybeFatallyTooLong:")
-                                .string("  startNanos: ").signed(startNanos)
-                                .string("  failureNanos: ").signed(failureNanos).string(" < nanosSinceStart: ").signed(nanosSinceStart)
-                                .string("  reason: ").string(reason).string("]").newline();
-                return true;
-            }
-        }
-        return false;
+    /**
+     * For measuring elapsed time, {@link System#nanoTime()} should be used because
+     * {@link System#currentTimeMillis()} is affected by adjustment of the system time.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 }

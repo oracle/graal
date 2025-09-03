@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.util.coder;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -49,7 +49,7 @@ public class NativeCoder {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord readU8(Pointer ptr) {
-        return WordFactory.unsigned(ptr.readLong(0));
+        return Word.unsigned(ptr.readLong(0));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -88,12 +87,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
         this.members = new LinkedHashMap<>();
         AnnotationType annotationType = AnnotationType.getInstance(type);
         annotationType.members().forEach((memberName, memberAccessor) -> {
-            AnnotationMemberValue memberValue;
-            try {
-                memberValue = AnnotationMemberValue.from(annotationType.memberTypes().get(memberName), memberAccessor.invoke(annotation));
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new AnnotationMetadata.AnnotationExtractionError(annotation, e);
-            }
+            AnnotationMemberValue memberValue = AnnotationMemberValue.getMemberValue(annotation, memberName, memberAccessor, annotationType);
             Object memberDefault = annotationType.memberDefaults().get(memberName);
             if (!memberValue.equals(memberDefault)) {
                 members.put(memberName, memberValue);

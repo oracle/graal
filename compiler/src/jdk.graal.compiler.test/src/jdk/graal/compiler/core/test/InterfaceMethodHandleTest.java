@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,28 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.classfile.ClassFile.ACC_PRIVATE;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import jdk.graal.compiler.api.test.ExportingClassLoader;
+import org.junit.Test;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public final class InterfaceMethodHandleTest extends GraalCompilerTest {
+public final class InterfaceMethodHandleTest extends GraalCompilerTest implements CustomizedBytecodePattern {
     private static final MethodHandle INTERFACE_HANDLE_M;
     private static final MethodHandle INTERFACE_HANDLE_M2;
 
@@ -99,7 +104,7 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest {
 
     @Test
     public void testInvokeInterface02() throws Exception {
-        test("invokeInterfaceHandle", loader.findClass(NAME).getDeclaredConstructor().newInstance());
+        test("invokeInterfaceHandle", getClass(NAME).getDeclaredConstructor().newInstance());
     }
 
     public static Object invokeInterfaceHandle2(I o, int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) throws Throwable {
@@ -138,84 +143,22 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest {
 
     private static final String BASENAME = InterfaceMethodHandleTest.class.getName();
     private static final String NAME = BASENAME + "_B";
-    private final AsmLoader loader;
 
-    public InterfaceMethodHandleTest() {
-        loader = new AsmLoader(UnbalancedMonitorsTest.class.getClassLoader());
-    }
-
-    static class Gen implements Opcodes {
-        /**
-         * Construct a type which claims to implement {@link I} but with incorrect access on
-         * {@link I#m} so that an exception must be thrown.
-         */
-        public static byte[] bytesForB() {
-
-            ClassWriter cw = new ClassWriter(0);
-            MethodVisitor mv;
-            String jvmName = NAME.replace('.', '/');
-            cw.visit(52, ACC_SUPER | ACC_PUBLIC, jvmName, null, "java/lang/Object", new String[]{BASENAME.replace('.', '/') + "$I"});
-
-            mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
-            mv.visitCode();
-            Label l0 = new Label();
-            mv.visitLabel(l0);
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-            mv.visitInsn(RETURN);
-            Label l1 = new Label();
-            mv.visitLabel(l1);
-            mv.visitMaxs(1, 1);
-            mv.visitEnd();
-
-            mv = cw.visitMethod(ACC_PRIVATE, "m", "()I", null, null);
-            mv.visitCode();
-            l0 = new Label();
-            mv.visitLabel(l0);
-            mv.visitInsn(ICONST_0);
-            mv.visitInsn(IRETURN);
-            l1 = new Label();
-            mv.visitLabel(l1);
-            mv.visitMaxs(1, 1);
-            mv.visitEnd();
-
-            cw.visitEnd();
-
-            mv = cw.visitMethod(ACC_PRIVATE, "m2", "(IIIIIIIIII)I", null, null);
-            mv.visitCode();
-            l0 = new Label();
-            mv.visitLabel(l0);
-            mv.visitInsn(ICONST_0);
-            mv.visitInsn(IRETURN);
-            l1 = new Label();
-            mv.visitLabel(l1);
-            mv.visitMaxs(1, 11);
-            mv.visitEnd();
-
-            cw.visitEnd();
-
-            return cw.toByteArray();
-        }
-    }
-
-    public static class AsmLoader extends ExportingClassLoader {
-        Class<?> loaded;
-
-        public AsmLoader(ClassLoader parent) {
-            super(parent);
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            if (name.equals(NAME)) {
-                if (loaded != null) {
-                    return loaded;
-                }
-                byte[] bytes = Gen.bytesForB();
-                return (loaded = defineClass(name, bytes, 0, bytes.length));
-            } else {
-                return super.findClass(name);
-            }
-        }
+    @Override
+    public byte[] generateClass(String className) {
+        // @formatter:off
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withInterfaceSymbols(cd(I.class))
+                        .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                        .return_())
+                        .withMethodBody("m", MethodTypeDesc.of(CD_int), ACC_PRIVATE, b -> b
+                                        .iconst_0()
+                                        .ireturn())
+                        .withMethodBody("m2", MethodTypeDesc.of(CD_int, CD_int, CD_int, CD_int, CD_int, CD_int, CD_int, CD_int, CD_int, CD_int, CD_int), ACC_PRIVATE, b -> b
+                                        .iconst_0()
+                                        .ireturn()));
+        // @formatter:on
     }
 }

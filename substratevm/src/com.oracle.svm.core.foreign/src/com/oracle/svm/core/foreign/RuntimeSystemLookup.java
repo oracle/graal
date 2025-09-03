@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,29 @@
  */
 package com.oracle.svm.core.foreign;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 
-import com.oracle.svm.core.OS;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+
+import jdk.graal.compiler.word.Word;
+import jdk.internal.foreign.Utils;
 
 /**
  * Separated from {@link Target_jdk_internal_foreign_SystemLookup} to allow (forced) runtime
@@ -41,7 +57,7 @@ public final class RuntimeSystemLookup {
     static final SymbolLookup INSTANCE = makeSystemLookup();
 
     public static SymbolLookup makeSystemLookup() {
-        if (OS.WINDOWS.isCurrent()) {
+        if (Platform.includedIn(WINDOWS.class)) {
             /*
              * Windows support has some subtleties: one would ideally load ucrtbase.dll, but some
              * old installs might not have it, in which case msvcrt.dll should be loaded instead. If
@@ -56,13 +72,60 @@ public final class RuntimeSystemLookup {
             Path msvcrt = system32.resolve("msvcrt.dll");
             boolean useUCRT = Files.exists(ucrtbase);
             Path stdLib = useUCRT ? ucrtbase : msvcrt;
-            return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of(stdLib));
+
+            SymbolLookup lookup = Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of(stdLib));
+            if (useUCRT) {
+                // use a fallback lookup to look up inline functions
+                Function<String, Optional<MemorySegment>> fallbackLookup = name -> {
+                    Pointer ptr = getWindowsFallbackSymbol(name);
+                    if (ptr.isNonNull()) {
+                        return Optional.of(MemorySegment.ofAddress(ptr.rawValue()));
+                    }
+                    return Optional.empty();
+                };
+                final SymbolLookup finalLookup = lookup;
+                lookup = name -> {
+                    Objects.requireNonNull(name);
+                    if (Utils.containsNullChars(name)) {
+                        return Optional.empty();
+                    }
+                    return finalLookup.find(name).or(() -> fallbackLookup.apply(name));
+                };
+            }
+
+            return lookup;
+        } else if (Platform.includedIn(DARWIN.class)) {
+            return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of("/usr/lib/libSystem.B.dylib"));
         } else {
             /*
              * This list of libraries was obtained by examining the dependencies of libsystemlookup,
              * which is a native library included with the JDK.
              */
             return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of("libc.so.6", "libm.so.6", "libdl.so.2"));
+        }
+    }
+
+    /**
+     * Returns the function pointer of the requested symbol specified with
+     * {@link Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols}. See also file
+     * 'com.oracle.svm.native.libchelper/src/syslookup.c'.
+     */
+    @Platforms(WINDOWS.class)
+    @CLibrary(value = "libchelper", requireStatic = true)
+    @CFunction(value = "__svm_get_syslookup_func", transition = Transition.NO_TRANSITION)
+    public static native Pointer getSyslookupFunc(int i, int nExpected);
+
+    @Platforms(WINDOWS.class)
+    private static Pointer getWindowsFallbackSymbol(String name) {
+        try {
+            assert Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols.class.isEnum();
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Enum value = Enum.valueOf(SubstrateUtil.cast(Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols.class, Class.class), name);
+            Pointer func = getSyslookupFunc(value.ordinal(), Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols.class.getEnumConstants().length);
+            assert func.isNonNull() : "Function pointer for " + value.name() + " is NULL but shouldn't.";
+            return func;
+        } catch (IllegalArgumentException e) {
+            return Word.nullPointer();
         }
     }
 }

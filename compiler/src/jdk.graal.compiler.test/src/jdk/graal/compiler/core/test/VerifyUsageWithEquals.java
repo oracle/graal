@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import java.util.Objects;
+
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NodeView;
@@ -36,7 +39,8 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.phases.VerifyPhase;
-
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -49,7 +53,8 @@ import jdk.vm.ci.meta.Signature;
 /**
  * For certain types, object identity should not be used for object equality check. This phase
  * checks the correct usage of the given type. Equality checks with == or != (except null checks)
- * results in an {@link AssertionError}.
+ * results in an {@link AssertionError}. Optionally, a singleton value with which == and != checks
+ * are allowed as an exception may be provided.
  */
 public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
 
@@ -63,9 +68,34 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
      */
     private final Class<?> restrictedClass;
 
+    /**
+     * The value besides {@code null} for which equality checks with == or != are allowed.
+     */
+    private final Object safeSingletonValue;
+
     public VerifyUsageWithEquals(Class<?> restrictedClass) {
+        checkRestrictedClass(restrictedClass);
         this.restrictedClass = restrictedClass;
-        assert !restrictedClass.isInterface() || isTrustedInterface(restrictedClass);
+        this.safeSingletonValue = null;
+    }
+
+    /**
+     * Constructs a verifier to check that object identity is not used for equality checks except
+     * with {@code null} and the given singleton value.
+     *
+     * @param restrictedClass the class for which equality checks are restricted
+     * @param singletonValue the non-null value for which equality checks with == or != are allowed
+     *            as an exception
+     */
+    public <T> VerifyUsageWithEquals(Class<T> restrictedClass, T singletonValue) {
+        checkRestrictedClass(restrictedClass);
+        this.restrictedClass = restrictedClass;
+        Objects.requireNonNull(singletonValue);
+        this.safeSingletonValue = singletonValue;
+    }
+
+    private static void checkRestrictedClass(Class<?> restrictedClass) {
+        assert !restrictedClass.isInterface() || isTrustedInterface(restrictedClass) : "the restricted class must not be an untrusted interface";
     }
 
     private static final Class<?>[] trustedInterfaceTypes = {JavaType.class, JavaField.class, JavaMethod.class};
@@ -85,27 +115,43 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
     private boolean isAssignableToRestrictedType(ValueNode node, MetaAccessProvider metaAccess) {
         if (node.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
             ResolvedJavaType restrictedType = metaAccess.lookupJavaType(restrictedClass);
-            ResolvedJavaType nodeType = StampTool.typeOrNull(node);
-            if (nodeType == null && node instanceof LoadFieldNode) {
-                nodeType = (ResolvedJavaType) ((LoadFieldNode) node).field().getType();
+            JavaType nodeType = StampTool.typeOrNull(node);
+            if (nodeType == null && node instanceof LoadFieldNode load) {
+                nodeType = load.field().getType();
             }
-            if (nodeType == null && node instanceof Invoke) {
-                ResolvedJavaMethod target = ((Invoke) node).callTarget().targetMethod();
-                nodeType = (ResolvedJavaType) target.getSignature().getReturnType(target.getDeclaringClass());
+            if (nodeType == null && node instanceof Invoke invoke) {
+                ResolvedJavaMethod target = invoke.callTarget().targetMethod();
+                nodeType = target.getSignature().getReturnType(target.getDeclaringClass());
             }
-            if (nodeType == null && node instanceof UncheckedInterfaceProvider) {
-                nodeType = StampTool.typeOrNull(((UncheckedInterfaceProvider) node).uncheckedStamp());
+            if (nodeType == null && node instanceof UncheckedInterfaceProvider uip) {
+                nodeType = StampTool.typeOrNull(uip.uncheckedStamp());
             }
 
-            if (nodeType != null && restrictedType.isAssignableFrom(nodeType)) {
-                return true;
-            }
+            return nodeType instanceof ResolvedJavaType resolved && restrictedType.isAssignableFrom(resolved);
         }
         return false;
     }
 
+    private boolean isSafeConstant(ValueNode node, ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection) {
+        return isNullConstant(node) || isSafeSingletonValue(node, constantReflection, snippetReflection);
+    }
+
     private static boolean isNullConstant(ValueNode node) {
         return node.isConstant() && node.isNullConstant();
+    }
+
+    private boolean isSafeSingletonValue(ValueNode node, ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection) {
+        if (safeSingletonValue == null) {
+            return false;
+        }
+        JavaConstant javaConstant = node.asJavaConstant();
+        if (node instanceof LoadFieldNode loadField && loadField.isStatic() && loadField.field().isFinal()) {
+            javaConstant = constantReflection.readFieldValue(loadField.field(), null);
+        }
+        if (javaConstant == null) {
+            return false;
+        }
+        return safeSingletonValue == snippetReflection.asObject(Object.class, javaConstant);
     }
 
     private static boolean isEqualsMethod(ResolvedJavaMethod method) {
@@ -114,9 +160,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
             if (sig.getReturnKind() == JavaKind.Boolean) {
                 if (sig.getParameterCount(false) == 1) {
                     ResolvedJavaType ptype = (ResolvedJavaType) sig.getParameterType(0, method.getDeclaringClass());
-                    if (ptype.isJavaLangObject()) {
-                        return true;
-                    }
+                    return ptype.isJavaLangObject();
 
                 }
             }
@@ -129,15 +173,14 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
     }
 
     /**
-     * Checks whether the type of {@code x} is assignable to the restricted type and that {@code y}
-     * is not a null constant.
+     * Checks whether the type of {@code x} or {@code y} is assignable to the restricted type and
+     * that {@code x} and {@code y} are not safe constants.
      */
-    private boolean isIllegalUsage(ResolvedJavaMethod method, ValueNode x, ValueNode y, MetaAccessProvider metaAccess) {
-        if (isAssignableToRestrictedType(x, metaAccess) && !isNullConstant(y)) {
-            if (isEqualsMethod(method) && isThisParameter(x) || isThisParameter(y)) {
-                return false;
-            }
-            return true;
+    private boolean isIllegalUsage(ResolvedJavaMethod method, ValueNode x, ValueNode y, CoreProviders context) {
+        if ((isAssignableToRestrictedType(x, context.getMetaAccess()) || isAssignableToRestrictedType(y, context.getMetaAccess())) &&
+                        !isSafeConstant(x, context.getConstantReflection(), context.getSnippetReflection()) &&
+                        !isSafeConstant(y, context.getConstantReflection(), context.getSnippetReflection())) {
+            return !isEqualsMethod(method) || (!isThisParameter(x) && !isThisParameter(y));
         }
         return false;
     }
@@ -151,7 +194,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
 
             if (restrictedType.isAssignableFrom(method.getDeclaringClass())) {
                 // Allow violation in methods of the restricted type itself and its subclasses.
-            } else if (isIllegalUsage(method, cn.getX(), cn.getY(), context.getMetaAccess()) || isIllegalUsage(method, cn.getY(), cn.getX(), context.getMetaAccess())) {
+            } else if (isIllegalUsage(method, cn.getX(), cn.getY(), context)) {
                 throw new VerificationError("Verification of " + restrictedClass.getName() + " usage failed: Comparing " + cn.getX() + " and " + cn.getY() + " in " + method +
                                 " must use .equals() for object equality, not '==' or '!='");
             }

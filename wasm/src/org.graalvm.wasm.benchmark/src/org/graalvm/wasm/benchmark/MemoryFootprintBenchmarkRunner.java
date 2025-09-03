@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,7 @@ public class MemoryFootprintBenchmarkRunner {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("--list")) {
-            System.out.println(WasmResource.getResourceIndex(String.format("/%s/%s", BENCHCASES_TYPE, BENCHCASES_RESOURCE)));
+            System.out.println(WasmResource.getResourceIndex(MemoryFootprintBenchmarkRunner.class, String.format("/%s/%s", BENCHCASES_TYPE, BENCHCASES_RESOURCE)));
             return;
         }
 
@@ -117,13 +117,14 @@ public class MemoryFootprintBenchmarkRunner {
         }
 
         for (final String caseSpec : Arrays.copyOfRange(args, offset, args.length)) {
-            final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
+            final WasmCase benchmarkCase = collectFileCase(MemoryFootprintBenchmarkRunner.class, BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.allowExperimentalOptions(true);
             contextBuilder.option("wasm.Builtins", "go");
             contextBuilder.option("wasm.MemoryOverheadMode", "true");
+            contextBuilder.option("wasm.EvalReturnsInstance", "true");
 
             final List<Double> results = new ArrayList<>();
 

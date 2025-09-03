@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -42,16 +43,16 @@ import jdk.graal.compiler.options.OptionValues;
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
     @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime. Serial GC only.", type = OptionType.User)//
-    public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive", SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive", SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Percentage of total collection time that should be spent on young generation collections. Serial GC with collection policy 'BySpaceAndTime' only.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy). Serial GC only.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Maximum number of survivor spaces. Serial GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(null, SerialGCOptions::serialGCOnly) {
+    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption) {
         @Override
         public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
             Integer value = (Integer) values.get(this);
@@ -67,66 +68,85 @@ public final class SerialGCOptions {
     };
 
     @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation. Serial GC only.", type = OptionType.Expert) //
-    public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
                     "for which a soft reference will keep its referent alive after its last access. Serial GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
-    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
-    public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify the heap during a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyDuringGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyDuringGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify the heap after doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyAfterGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyAfterGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify all object references if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyReferences = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyReferences = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify that object references point into valid heap chunks if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyReferencesPointIntoValidChunk = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyReferencesPointIntoValidChunk = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify write barriers. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Trace heap chunks during collections, if +VerboseGC. Serial GC only.", type = OptionType.Debug) //
-    public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
-    /* Option should be renamed, see GR-53798. */
-    @Option(help = "Ignore the maximum heap size while in VM-internal code.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    @Option(help = "Ignore the maximum heap size while in VM-internal code. Serial GC only.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMInternalCode = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
+
+    @Option(help = "Determines whether to always (if true) or never (if false) outline write barrier code to a separate function, " +
+                    "trading reduced image size for (potentially) worse performance. Serial GC only.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> OutlineWriteBarriers = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
-        @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
+        @Option(help = "Collect old generation by compacting in-place instead of copying. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(false, SerialGCOptions::validateCompactingOldGen);
 
-        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently. Serial GC only.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
+    }
+
+    public static class DeprecatedOptions {
+        @Option(help = "Ignore the maximum heap size while in VM-internal code. Serial GC only.", type = OptionType.Expert, deprecated = true, deprecationMessage = "Please use the option 'IgnoreMaxHeapSizeWhileInVMInternalCode' instead.")//
+        public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                IgnoreMaxHeapSizeWhileInVMInternalCode.update(values, newValue);
+            }
+        };
     }
 
     private SerialGCOptions() {
     }
 
-    private static void serialGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.useSerialGC()) {
+    private static void validateSerialHostedOption(HostedOptionKey<?> optionKey) {
+        if (optionKey.hasBeenSet() && !SubstrateOptions.useSerialGC()) {
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+        }
+    }
+
+    private static void validateSerialRuntimeOption(RuntimeOptionKey<?> optionKey) {
+        if (optionKey.hasBeenSet() && !SubstrateOptions.useSerialGC()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
@@ -135,7 +155,7 @@ public final class SerialGCOptions {
         if (!compactingOldGen.getValue()) {
             return;
         }
-        serialGCOnly(compactingOldGen);
+        validateSerialHostedOption(compactingOldGen);
         if (!useRememberedSet()) {
             throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                             SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -59,7 +59,7 @@ public final class WindowsVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected OSThreadId getCurrentOSThreadId() {
-        return WordFactory.unsigned(Process.NoTransitions.GetCurrentThreadId());
+        return Word.unsigned(Process.NoTransitions.GetCurrentThreadId());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

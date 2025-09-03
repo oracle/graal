@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,24 @@
  */
 package jdk.graal.compiler.core.test.jfr;
 
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
 import java.io.IOException;
-import java.lang.reflect.Constructor;
+import java.lang.classfile.Annotation;
+import java.lang.classfile.AnnotationElement;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.test.AddExports;
 import jdk.jfr.Event;
@@ -69,9 +75,9 @@ public class TestGetEventWriter extends SubprocessTest {
         }
         // Make sure EventWriterFactory can be accessed.
         try {
-            Class.forName("jdk.jfr.internal.event.EventWriterFactory");
+            Class.forName("jdk.jfr.internal.event.EventWriter");
         } catch (ClassNotFoundException e) {
-            throw new AssertionError("Not able to access jdk.jfr.internal.event.EventWriterFactory class", e);
+            throw new AssertionError("Not able to access jdk.jfr.internal.event.EventWriter class", e);
         }
     }
 
@@ -120,14 +126,14 @@ public class TestGetEventWriter extends SubprocessTest {
     // attempts to resolve and link against EventWriterFactory. This user implementation
     // is not blessed for linkage.
     public void testNonEvent() throws Throwable {
-        testEvent("Non", "java/lang/Object", null, "commit", false);
+        testEvent("Non", "java.lang.Object", null, "commit", false);
     }
 
     // The user has defined a class which overrides and implements the "commit()V"
     // method declared final in jdk.jfr.Event.
     // This user implementation is not blessed for linkage.
     public void testRegisteredTrueEvent() throws Throwable {
-        testEvent("Registered", "jdk/jfr/Event", true, "commit", false);
+        testEvent("Registered", "jdk.jfr.Event", true, "commit", false);
     }
 
     // The user has defined a class which overrides and implements the "commit()V"
@@ -139,14 +145,14 @@ public class TestGetEventWriter extends SubprocessTest {
     // such a class throws an IllegalArgumentException. The user-defined
     // "commit()V" method is still not blessed for linkage, even after registration.
     public void testRegisteredFalseEvent() throws Throwable {
-        testEvent("Registered", "jdk/jfr/Event", false, "commit", false);
+        testEvent("Registered", "jdk.jfr.Event", false, "commit", false);
     }
 
     // The user has implemented another method, "myCommit()V", not an override nor
     // overload. that attempts to resolve and link EventWriterFactory. This will fail,
     // because "myCommit()V" is not blessed for linkage.
     public void testMyCommitRegisteredTrue() throws Throwable {
-        testEvent("MyCommit", "jdk/jfr/Event", true, "myCommit", false);
+        testEvent("MyCommit", "jdk.jfr.Event", true, "myCommit", false);
     }
 
     // The user has implemented another method, "myCommit()V", not an override,
@@ -155,14 +161,14 @@ public class TestGetEventWriter extends SubprocessTest {
     // the class is not excluded wholesale from the JFR system.
     // Invoking the real "commit()V", installed by the framework, is OK.
     public void testMyCommitRegisteredFalse() throws Throwable {
-        testEvent("MyCommit", "jdk/jfr/Event", false, "myCommit", false);
+        testEvent("MyCommit", "jdk.jfr.Event", false, "myCommit", false);
     }
 
     // Events located in the boot class loader can create a static
     // commit-method to emit events. It must not be used by code
     // outside of the boot class loader.
     public void testStaticCommit() throws Throwable {
-        testEvent("StaticCommit", "jdk/jfr/Event", null, "commit", true);
+        testEvent("StaticCommit", "jdk.jfr.Event", null, "commit", true);
     }
 
     private void testEvent(String name, String superClass, Boolean isRegistered, String commitName, boolean isStatic) throws Throwable {
@@ -202,78 +208,59 @@ public class TestGetEventWriter extends SubprocessTest {
      * }
      */
     // @formatter:on
-    Runnable newEventObject(String superClass, Boolean isRegistered, String commitName, boolean isStatic, String className)
+    Runnable newEventObject(String superClassName, Boolean isRegistered, String commitName, boolean isStatic, String className)
                     throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        String[] interfaces = {"java/lang/Runnable"};
-        cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, className.replace('.', '/'), null, superClass, interfaces);
-
-        if (isRegistered != null) {
-            AnnotationVisitor registered = cw.visitAnnotation("Ljdk/jfr/Registered;", true);
-            registered.visit("value", isRegistered);
-            registered.visitEnd();
-        }
-
-        // constructor
-        MethodVisitor constructor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-        constructor.visitCode();
-        constructor.visitVarInsn(Opcodes.ALOAD, 0);
-        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, superClass, "<init>", "()V", false);
-        constructor.visitInsn(Opcodes.RETURN);
-        constructor.visitMaxs(0, 0);
-        constructor.visitEnd();
-
-        int commitAccess = Opcodes.ACC_PUBLIC;
-        if (isStatic) {
-            commitAccess |= Opcodes.ACC_STATIC;
-        }
-        MethodVisitor commit = cw.visitMethod(commitAccess, commitName, "()V", null, null);
-        commit.visitCode();
-        commit.visitInsn(Opcodes.LCONST_1);
-        commit.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/jfr/internal/event/EventWriterFactory", "getEventWriter", "(J)Ljdk/jfr/internal/event/EventWriter;", false);
-        commit.visitInsn(Opcodes.RETURN);
-        commit.visitMaxs(0, 0);
-        commit.visitEnd();
-
-        MethodVisitor run = cw.visitMethod(Opcodes.ACC_PUBLIC, "run", "()V", null, null);
-        run.visitCode();
-        if (isStatic) {
-            run.visitMethodInsn(Opcodes.INVOKESTATIC, className.replace('.', '/'), commitName, "()V", false);
-        } else {
-            run.visitVarInsn(Opcodes.ALOAD, 0);
-            run.visitMethodInsn(Opcodes.INVOKEVIRTUAL, className.replace('.', '/'), commitName, "()V", false);
-        }
-        run.visitInsn(Opcodes.RETURN);
-        run.visitMaxs(0, 0);
-        run.visitEnd();
-
-        cw.visitEnd();
-
-        byte[] bytes = cw.toByteArray();
-        BytesClassLoader bc = new BytesClassLoader(bytes, className);
-        Class<?> clazz = bc.loadClass(className);
-        Constructor<?> cons = clazz.getConstructor();
-
-        Runnable event = (Runnable) cons.newInstance();
-        return event;
+        return (Runnable) new CustomizedClass(superClassName, isRegistered, commitName, isStatic).getClass(className).getConstructor().newInstance();
     }
 
-    private static class BytesClassLoader extends ClassLoader {
-        private final byte[] bytes;
-        private final String className;
+    static class CustomizedClass implements CustomizedBytecodePattern {
 
-        BytesClassLoader(byte[] bytes, String name) {
-            this.bytes = bytes;
-            this.className = name;
+        private String superClassName;
+        private Boolean isRegistered;
+        private String commitName;
+        private boolean isStatic;
+
+        CustomizedClass(String superClassName, Boolean isRegistered, String commitName, boolean isStatic) {
+            this.superClassName = superClassName;
+            this.isRegistered = isRegistered;
+            this.commitName = commitName;
+            this.isStatic = isStatic;
         }
 
         @Override
-        public Class<?> loadClass(String name) throws ClassNotFoundException {
-            if (name.equals(className)) {
-                return defineClass(name, bytes, 0, bytes.length);
-            } else {
-                return super.loadClass(name);
-            }
+        public byte[] generateClass(String className) {
+            ClassDesc thisClass = ClassDesc.of(className);
+            ClassDesc superClass = ClassDesc.of(superClassName);
+
+            // @formatter:off
+            return ClassFile.of().build(thisClass, classBuilder -> {
+                if (isRegistered != null) {
+                    classBuilder.with(RuntimeVisibleAnnotationsAttribute.of(Annotation.of(ClassDesc.of("jdk.jfr.Registered"),
+                                    AnnotationElement.ofBoolean("value", isRegistered))));
+                }
+
+                classBuilder
+                                .withSuperclass(superClass)
+                                .withInterfaceSymbols(cd(Runnable.class))
+                                .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                                .aload(0)
+                                                .invokespecial(superClass, INIT_NAME, MTD_void)
+                                                .return_())
+                                .withMethodBody(commitName, MTD_void, isStatic ? ACC_PUBLIC_STATIC : ACC_PUBLIC, b -> b
+                                                .invokestatic(ClassDesc.of("jdk.jfr.internal.event.EventWriter"), "getEventWriter",
+                                                                MethodTypeDesc.of(ClassDesc.of("jdk.jfr.internal.event.EventWriter")))
+                                                .pop()
+                                                .return_())
+                                .withMethodBody("run", MTD_void, ACC_PUBLIC, b -> {
+                                    if (isStatic) {
+                                        b.invokestatic(thisClass, commitName, MTD_void);
+                                    } else {
+                                        b.aload(0).invokevirtual(thisClass, commitName, MTD_void);
+                                    }
+                                    b.return_();
+                                });
+            });
+            // @formatter:on
         }
     }
 }

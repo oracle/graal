@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,29 +26,27 @@
 package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.JavaVMOperation;
 
 import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
 public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class) && RuntimeCompilation.isEnabled();
+        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
+        if (RuntimeCompilation.isEnabled()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
+        }
     }
 }
 
@@ -67,20 +66,6 @@ class DumpRuntimeCompilation implements Signal.Handler {
 
     @Override
     public void handle(Signal arg0) {
-        DumpRuntimeCompiledMethodsOperation vmOp = new DumpRuntimeCompiledMethodsOperation();
-        vmOp.enqueue();
-    }
-
-    private static class DumpRuntimeCompiledMethodsOperation extends JavaVMOperation {
-        DumpRuntimeCompiledMethodsOperation() {
-            super(VMOperationInfos.get(DumpRuntimeCompiledMethodsOperation.class, "Dump runtime compiled methods", SystemEffect.SAFEPOINT));
-        }
-
-        @Override
-        protected void operate() {
-            Log log = Log.log();
-            SubstrateDiagnostics.dumpRuntimeCompilation(log);
-            log.flush();
-        }
+        DumpRuntimeCompilationSupport.dump();
     }
 }

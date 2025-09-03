@@ -39,7 +39,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.graal.compiler.core.GraalServiceThread;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.CSVUtil;
 import jdk.graal.compiler.debug.GraalError;
@@ -53,7 +53,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 //JaCoCo Exclude
 
@@ -62,20 +61,16 @@ import jdk.vm.ci.services.Services;
  * infrastructure is enabled by specifying either the GenericDynamicCounters or
  * BenchmarkDynamicCounters option.
  * <p>
- *
  * The counters are kept in a special area allocated for each native JavaThread object, and the
  * number of counters is configured using {@code -XX:JVMCICounterSize=value}.
  * {@code -XX:+/-JVMCICountersExcludeCompiler} configures whether to exclude compiler threads
  * (defaults to true).
- *
+ * <p>
  * The subsystems that use the logging need to have their own options to turn on the counters, and
  * insert DynamicCounterNodes when they're enabled.
- *
+ * <p>
  * Counters will be displayed as a rate (per second) if their group name starts with "~", otherwise
  * they will be displayed as a total number.
- *
- * See <a href="BenchmarkDynamicCountersHelp.txt">here</a> for a detailed example of how to use
- * benchmark counters.
  */
 public class BenchmarkCounters {
 
@@ -87,7 +82,35 @@ public class BenchmarkCounters {
         @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
         public static final OptionKey<Integer> TimedDynamicCounters = new OptionKey<>(-1);
 
-        @Option(help = "file:doc-files/BenchmarkDynamicCountersHelp.txt", type = OptionType.Debug)
+        @Option(help = """
+                       Turn on the benchmark counters.
+                       The format of this option is:
+
+                         (err|out),start pattern,end pattern
+
+                       Start counting when the start pattern matches on the given stream and stop when the end pattern occurs.
+                       You can use "~" to match 1 or more digits.
+                       Examples:
+
+                         err, starting =====, PASSED in
+                         out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:
+
+                       The first pattern matches DaCapo output and the second matches SPECjvm2008 output.
+
+                       As a more detailed example, here are the options to use for getting statistics
+                       about allocations within the DaCapo pmd benchmark:
+
+                         -XX:JVMCICounterSize=<value> -XX:-JVMCICountersExcludeCompiler \\
+                         -Djdk.graal.BenchmarkDynamicCounters="err, starting ====, PASSED in " \\
+                         -Djdk.graal.ProfileAllocations=true
+
+                       The JVMCICounterSize value depends on the granularity of the profiling -
+                       10000 should be sufficient. Omit JVMCICountersExcludeCompiler to exclude
+                       counting allocations on the compiler threads.
+                       The counters can be further configured by the ProfileAllocationsContext option.
+
+                       We highly recommend the use of -Djdk.graal.AbortOnBenchmarkCounterOverflow=true to
+                       detect counter overflows eagerly.""", type = OptionType.Debug)
         public static final OptionKey<String> BenchmarkDynamicCounters = new OptionKey<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
         public static final OptionKey<Boolean> DynamicCountersPrintGroupSeparator = new OptionKey<>(true);
@@ -99,7 +122,10 @@ public class BenchmarkCounters {
         public static final OptionKey<Boolean> BenchmarkCountersDumpDynamic = new OptionKey<>(true);
         @Option(help = "Dump static counters", type = OptionType.Debug)
         public static final OptionKey<Boolean> BenchmarkCountersDumpStatic = new OptionKey<>(false);
-        @Option(help = "file:doc-files/AbortOnBenchmarkCounterOverflowHelp.txt", type = OptionType.Debug)
+        @Option(help = """
+                       Abort VM with SIGILL if benchmark counters controlled by the (Generic|Timed|Benchmark)DynamicCounters option overflow.
+                       WARNING: No descriptive error message will be printed! In
+                       case of an overflow, manual inspection of the emitted code is required.""", type = OptionType.Debug)
         public static final OptionKey<Boolean> AbortOnBenchmarkCounterOverflow = new OptionKey<>(false);
         @Option(help = "Use a cutoff to print only most significant counters.", type = OptionType.Debug)
         public static final OptionKey<Boolean> BenchmarkCounterPrintingCutoff = new OptionKey<>(true);
@@ -465,10 +491,10 @@ public class BenchmarkCounters {
             enabled = true;
         }
         if (Options.TimedDynamicCounters.getValue(options) > 0) {
-            if (Services.IS_IN_NATIVE_IMAGE) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 throw new GraalError("Use of %s is only supported in jargraal", Options.TimedDynamicCounters.getName());
             }
-            Thread thread = new GraalServiceThread(BenchmarkCounters.class.getSimpleName(), new Runnable() {
+            Thread thread = new Thread(new Runnable() {
                 long lastTime = System.nanoTime();
 
                 @Override
@@ -486,6 +512,7 @@ public class BenchmarkCounters {
                     }
                 }
             });
+            thread.setName(BenchmarkCounters.class.getSimpleName());
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();

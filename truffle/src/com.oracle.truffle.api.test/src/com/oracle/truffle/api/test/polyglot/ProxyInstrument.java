@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.api.test.polyglot;
 import java.util.function.Consumer;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument.Initialize;
@@ -132,6 +134,14 @@ public class ProxyInstrument extends TruffleInstrument {
 
     public static ProxyInstrument getCurrent() {
         return delegate;
+    }
+
+    public static TruffleInstrument.Env findEnv(Context c) {
+        return findEnv(c.getEngine());
+    }
+
+    public static TruffleInstrument.Env findEnv(Engine e) {
+        return e.getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
     }
 
 }

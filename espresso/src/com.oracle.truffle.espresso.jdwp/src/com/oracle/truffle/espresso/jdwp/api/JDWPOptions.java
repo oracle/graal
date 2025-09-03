@@ -28,11 +28,11 @@ package com.oracle.truffle.espresso.jdwp.api;
 public final class JDWPOptions {
     public final String transport;
     public final String host;
-    public final String port;
+    public final int port;
     public final boolean server;
     public final boolean suspend;
 
-    public JDWPOptions(String transport, String host, String port, boolean server, boolean suspend) {
+    public JDWPOptions(String transport, String host, int port, boolean server, boolean suspend) {
         this.transport = transport;
         this.host = host;
         this.port = port;

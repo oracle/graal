@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,21 +61,23 @@ public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return environGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return environGet(getContext(), memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int environGet(WasmMemory memory, int envInitialPointer, int bufInitialPointer) {
+    private int environGet(WasmContext context, WasmMemory memory, int envInitialPointer, int bufInitialPointer) {
         int bufPointer = bufInitialPointer;
         int envPointer = envInitialPointer;
-        final Map<String, String> env = getContext().environment().getEnvironment();
+        final Map<String, String> env = context.environment().getEnvironment();
         for (final Map.Entry<String, String> entry : env.entrySet()) {
-            memory.store_i32(this, envPointer, bufPointer);
+            memoryLib.store_i32(memory, this, envPointer, bufPointer);
             envPointer += 4;
             bufPointer += memory.writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
-            memory.store_i32_8(this, bufPointer, (byte) 0);
+            memoryLib.store_i32_8(memory, this, bufPointer, (byte) 0);
             ++bufPointer;
         }
 

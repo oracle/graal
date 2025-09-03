@@ -62,7 +62,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * GR-51603 Once this snippet logic reaches a steady-state merge with {@link TypeSnippets}.
  */
-public final class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippets {
+public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
     protected static SubstrateIntrinsics.Any typeEqualitySnippet(
@@ -156,7 +156,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
     }
 
     @DuplicatedInNativeCode
-    private static SubstrateIntrinsics.Any classTypeCheck(
+    protected static SubstrateIntrinsics.Any classTypeCheck(
                     int typeID,
                     int typeIDDepth,
                     DynamicHub checkedHub,
@@ -179,7 +179,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
     }
 
     @DuplicatedInNativeCode
-    private static SubstrateIntrinsics.Any interfaceTypeCheck(
+    protected static SubstrateIntrinsics.Any interfaceTypeCheck(
                     int typeID,
                     DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
@@ -200,9 +200,10 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
         return falseValue;
     }
 
-    @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new OpenTypeWorldSnippets(options, providers, lowerings);
+    public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Providers providers) {
+        lowerings.put(InstanceOfNode.class, new InstanceOfLowering(options, providers));
+        lowerings.put(InstanceOfDynamicNode.class, new InstanceOfDynamicLowering(options, providers));
+        lowerings.put(ClassIsAssignableFromNode.class, new ClassIsAssignableFromLowering(options, providers));
     }
 
     final SnippetTemplate.SnippetInfo instanceOf;
@@ -210,17 +211,14 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
     final SnippetTemplate.SnippetInfo typeEquality;
     final SnippetTemplate.SnippetInfo assignableTypeCheck;
 
-    private OpenTypeWorldSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    @SuppressWarnings("this-escape")
+    protected OpenTypeWorldSnippets(OptionValues options, Providers providers) {
         super(options, providers);
 
         this.instanceOf = snippet(providers, OpenTypeWorldSnippets.class, "instanceOfSnippet");
         this.instanceOfDynamic = snippet(providers, OpenTypeWorldSnippets.class, "instanceOfDynamicSnippet");
         this.typeEquality = snippet(providers, OpenTypeWorldSnippets.class, "typeEqualitySnippet");
         this.assignableTypeCheck = snippet(providers, OpenTypeWorldSnippets.class, "classIsAssignableFromSnippet");
-
-        lowerings.put(InstanceOfNode.class, new InstanceOfLowering(options, providers));
-        lowerings.put(InstanceOfDynamicNode.class, new InstanceOfDynamicLowering(options, providers));
-        lowerings.put(ClassIsAssignableFromNode.class, new ClassIsAssignableFromLowering(options, providers));
     }
 
     protected class InstanceOfLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
@@ -244,26 +242,30 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
             SharedType type = (SharedType) typeReference.getType();
             DynamicHub hub = type.getHub();
 
+            SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(typeEquality, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args = new SnippetTemplate.Arguments(typeEquality, node.graph(), tool.getLoweringStage());
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 args.add("exactType", hub);
-                return args;
-
             } else {
-                assert type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph().getGuardsStage(), tool.getLoweringStage());
-                args.add("object", node.getValue());
-                args.add("trueValue", replacer.trueValue);
-                args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
-                args.addConst("typeID", hub.getTypeID());
-                args.addConst("typeIDDepth", hub.getTypeIDDepth());
-                return args;
+                args = makeArgumentsForInexactType(replacer, tool, node, type, hub);
             }
+            return args;
+        }
+
+        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
+            assert type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
+            args.add("object", node.getValue());
+            args.add("trueValue", replacer.trueValue);
+            args.add("falseValue", replacer.falseValue);
+            args.add("allowsNull", node.allowsNull());
+            args.add("typeID", hub.getTypeID());
+            args.add("typeIDDepth", hub.getTypeIDDepth());
+            return args;
         }
     }
 
@@ -286,21 +288,21 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
             InstanceOfDynamicNode node = (InstanceOfDynamicNode) replacer.instanceOf;
 
             if (node.isExact()) {
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(typeEquality, node.graph().getGuardsStage(), tool.getLoweringStage());
+                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(typeEquality, node.graph(), tool.getLoweringStage());
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 args.add("exactType", node.getMirrorOrHub());
                 return args;
 
             } else {
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
+                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfDynamic, node.graph(), tool.getLoweringStage());
                 args.add("type", node.getMirrorOrHub());
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 return args;
             }
         }
@@ -324,7 +326,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
         protected SnippetTemplate.Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
             ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) replacer.instanceOf;
 
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(assignableTypeCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(assignableTypeCheck, node.graph(), tool.getLoweringStage());
             args.add("type", node.getThisClass());
             args.add("checkedHub", node.getOtherClass());
             args.add("trueValue", replacer.trueValue);

@@ -113,7 +113,7 @@ class LibFFIContext {
         }
     }
 
-    private class NativeEnvSupplier implements Supplier<NativeEnv> {
+    private final class NativeEnvSupplier implements Supplier<NativeEnv> {
 
         @Override
         public NativeEnv get() {

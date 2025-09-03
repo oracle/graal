@@ -68,6 +68,8 @@ import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -75,6 +77,8 @@ import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.NotLinkException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -120,6 +124,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileStoreInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.interop.InteropException;
@@ -1177,6 +1182,101 @@ public class TruffleFileTest {
         }
     }
 
+    @Test
+    public void testFileStoreInfo() {
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestFileStoreInfoLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestFileStoreInfoLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile cwd = env.getCurrentWorkingDirectory();
+            FileStoreInfo fsInfo = cwd.getFileStoreInfo();
+            Path path = Path.of(cwd.getAbsoluteFile().getPath());
+            FileStore fileStore = Files.getFileStore(path);
+            assertEquals(fileStore.getTotalSpace(), fsInfo.getTotalSpace());
+            // Unallocated space may change after retrieval; use a weak assertion to account for
+            // fluctuations.
+            assertInTolerance(fileStore.getUnallocatedSpace(), fsInfo.getUnallocatedSpace());
+            // Unallocated space may change after retrieval; use a weak assertion to account for
+            // fluctuations.
+            assertInTolerance(fileStore.getUsableSpace(), fsInfo.getUsableSpace());
+            assertEquals(fileStore.getBlockSize(), fsInfo.getBlockSize());
+            assertEquals(fileStore.isReadOnly(), fsInfo.isReadOnly());
+            return null;
+        }
+
+        /**
+         * Asserts that the {@code actual} value is within 10% of the {@code expected} value. This
+         * method computes a tolerance range of 10% around the expected value and verifies that the
+         * actual value falls within that range (inclusive).
+         */
+        private static void assertInTolerance(long expected, long actual) {
+            long delta = expected / 10;
+            long lowerBound = expected - delta;
+            long upperBound = expected + delta;
+            assertTrue(lowerBound <= actual);
+            assertTrue(upperBound >= actual);
+        }
+    }
+
+    @Test
+    public void testCorrectExceptions() {
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newDefaultFileSystem()).build();
+        try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(context, TestCorrectExceptions.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestCorrectExceptions extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile tmp = env.createTempDirectory(null, "exceptions-test");
+            try {
+                TruffleFile folder = tmp.resolve("folder");
+                folder.createDirectories();
+                TruffleFile file = tmp.resolve("file");
+                file.createFile();
+                TruffleFile nonExistent = tmp.resolve("non-existent");
+                boolean linkSupported;
+                try {
+                    tmp.resolve("link").createSymbolicLink(file);
+                    linkSupported = true;
+                } catch (UnsupportedOperationException unsupported) {
+                    linkSupported = false;
+                }
+                assertFails(() -> {
+                    file.createFile();
+                    return true;
+                }, FileAlreadyExistsException.class);
+                assertFails(() -> {
+                    nonExistent.delete();
+                    return true;
+                }, NoSuchFileException.class);
+                assertFails(() -> {
+                    file.list();
+                    return true;
+                }, NotDirectoryException.class);
+                if (linkSupported) {
+                    assertFails(() -> {
+                        file.readSymbolicLink();
+                        return true;
+                    }, NotLinkException.class);
+                }
+            } finally {
+                delete(tmp);
+            }
+            return null;
+        }
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
@@ -1186,6 +1286,15 @@ public class TruffleFileTest {
             }
         }
         Files.delete(path);
+    }
+
+    private static void delete(TruffleFile file) throws IOException {
+        if (file.isDirectory()) {
+            for (TruffleFile child : file.list()) {
+                delete(child);
+            }
+        }
+        file.delete();
     }
 
     private static Type erase(Type type) {
@@ -1440,6 +1549,31 @@ public class TruffleFileTest {
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreTotalSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreUnallocatedSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreUsableSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) {
             throw fail();
         }
 

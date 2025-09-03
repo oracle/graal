@@ -42,9 +42,9 @@ public final class SourceLocationUtils {
      * @param line the line number
      * @return location object
      */
-    public static Location createLocation(FileObject f, int line) {
+    private static Location createLocation(FileObject f, int line) {
         String spec = f.getPath() + ":" + line;
-        return new Location(spec, FileKey.fromFile(f), line, null, -1, -1);
+        return new Location(spec, FileKey.fromFile(f), line, -1, -1, null, -1, -1);
     }
 
     public static Collection<Location> atLine(List<Location> searchIn, int line) {

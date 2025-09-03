@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
@@ -69,10 +69,10 @@ import jdk.vm.ci.meta.Value;
  * Returns the number of positive bytes.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/59ac7039d3ace0ec481742c3a10c81f1675e12da/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5482-L5551",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5819-L5888",
           sha1 = "ce54a7cf2fcfe7ccb8f6604c038887fc1c4ebce1")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4967-L5133",
-          sha1 = "3b4e6edb4372e8babb009763c2d05961348dd723")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0ad919c1e54895b000b58f6a1b54d79f76970845/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L8086-L8253",
+          sha1 = "803904ac6a69bbec4cc84a3281a9ca2515cdfeeb")
 // @formatter:on
 @Opcode("AARCH64_COUNT_POSITIVES")
 public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
@@ -108,8 +108,8 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
                         r5.asValue(),
                         r6.asValue(),
                         r7.asValue(),
-                        // r8 and r9 are scratch registers
-                        r10.asValue(),
+                        // r8 and r9 are scratch registers on HotSpot, r9/r10 on SubstrateVM
+                        r11.asValue(),
                         v0.asValue(),
                         v1.asValue(),
                         v2.asValue(),
@@ -217,7 +217,7 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
         Register tmp3 = r5;
         Register tmp4 = r6;
         Register tmp5 = r7;
-        Register tmp6 = r10;
+        Register tmp6 = r11;
 
         Register vtmp0 = v0;
         Register vtmp1 = v1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.HotSpotNodeLIRBuilder;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -103,7 +102,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
         Stub stub = result.getStub();
         if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
             assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
-            Register[] savedRegisters = getGen().getRegisterConfig().getAllocatableRegisters().toArray();
+            Register[] savedRegisters = getGen().getRegisterConfig().getAllocatableRegisters().toArray(Register[]::new);
             AArch64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(savedRegisters);
             result.setSaveOnEntry(saveOp);
         }
@@ -129,7 +128,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
+        InvokeKind invokeKind = callTarget.invokeKind();
         if (invokeKind.isIndirect()) {
             append(new AArch64HotSpotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, getGen().config));
         } else {

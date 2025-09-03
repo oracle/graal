@@ -1,4 +1,4 @@
-          Product License  - GraalVM Community Edition
+          Product License - GraalVM Community Edition
 
 This is a release of GraalVM Community Edition. GraalVM Community Edition
 consists of multiple modules. The software as a whole, as well as the JVMCI 
@@ -6,7 +6,7 @@ and VisualVM modules, are released under version 2 of the GNU General Public
 License with the “Classpath” Exception. 
 The text of the foregoing licenses is reproduced below.
   
-Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
 
 ===========================================================================
 

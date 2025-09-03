@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
@@ -90,7 +90,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         SubstrateRegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
 
         Register frameRegister = registerConfig.getFrameRegister();
-        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters().asList());
+        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters());
         List<Register> calleeSavedXMMRegisters = new ArrayList<>();
         List<Register> calleeSavedMaskRegisters = new ArrayList<>();
 
@@ -262,7 +262,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      * "Control-flow exception" to indicate that a CPU feature is statically available and no
      * further dynamic feature checks are needed.
      */
-    private static class StaticFeatureException extends Exception {
+    private static final class StaticFeatureException extends Exception {
         static final long serialVersionUID = -1;
     }
 
@@ -455,16 +455,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             AMD64Address address = getFeatureMapAddress();
             int mask = RuntimeCPUFeatureCheckImpl.instance().computeFeatureMask(EnumSet.of(feature));
             GraalError.guarantee(mask != 0, "Mask must not be 0 for features %s", feature);
-            asm.testAndJcc(getSize(), address, mask, AMD64Assembler.ConditionFlag.NotEqual, falseLabel, false, null);
-            return falseLabel;
-        }
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        private AMD64BaseAssembler.OperandSize getSize() {
             Class<?> fieldType = RuntimeCPUFeatureCheckImpl.getMaskField().getType();
-            Class<?> expectedType = int.class;
-            GraalError.guarantee(expectedType.equals(fieldType), "Expected %s field, got %s", expectedType, fieldType);
-            return DWORD;
+            GraalError.guarantee(int.class.equals(fieldType), "Expected int field, got %s", fieldType);
+            AMD64MIOp.TEST.emit(asm, DWORD, address, mask, false);
+            asm.jcc(AMD64Assembler.ConditionFlag.NotEqual, falseLabel);
+            return falseLabel;
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -490,7 +485,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             if (SubstrateUtil.HOSTED) {
                 /*
                  * AOT compilation during image generation happens before the image heap objects are
-                 * layouted. So the offset of the constant is not known yet during compilation time,
+                 * laid out. So the offset of the constant is not known yet during compilation time,
                  * and instead needs to be patched in later. We annotate the machine code with the
                  * constant that needs to be patched in.
                  */

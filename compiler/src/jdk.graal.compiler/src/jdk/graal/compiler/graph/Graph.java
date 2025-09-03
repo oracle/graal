@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import jdk.graal.compiler.graph.Node.NodeInsertionStackTrace;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -83,6 +84,13 @@ public class Graph implements EventCounter {
      */
     public final boolean verifyGraphs;
     public final boolean verifyGraphEdges;
+    public final boolean verifyKillCFGUnusedNodes;
+
+    /**
+     * Cached actual value of {@link GraalOptions#TrackNodeInsertion} to avoid expensive map lookup
+     * every time a node is registered.
+     */
+    public final boolean trackNodeInsertion;
 
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
@@ -200,11 +208,7 @@ public class Graph implements EventCounter {
 
     @Override
     public String eventCounterToString() {
-        return toString() + " eventCounter=" + eventCounter;
-    }
-
-    public int getEventCounter() {
-        return eventCounter;
+        return this + " eventCounter=" + eventCounter;
     }
 
     public int getCompressions() {
@@ -278,6 +282,7 @@ public class Graph implements EventCounter {
      */
     public void getDebugProperties(Map<Object, Object> properties) {
         properties.put("graph", toString());
+        properties.put("nodeIdCount", nodeIdCount());
     }
 
     /**
@@ -317,8 +322,8 @@ public class Graph implements EventCounter {
      */
     public Graph(String name, OptionValues options, DebugContext debug, boolean trackNodeSourcePosition) {
         nodes = new Node[INITIAL_NODES_SIZE];
-        iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
-        iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
+        iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
+        iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
         this.name = name;
         this.options = options;
         this.trackNodeSourcePosition = trackNodeSourcePosition || trackNodeSourcePositionDefault(options, debug);
@@ -332,6 +337,9 @@ public class Graph implements EventCounter {
 
         verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
         verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
+        verifyKillCFGUnusedNodes = GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options);
+
+        trackNodeInsertion = TrackNodeInsertion.getValue(options);
     }
 
     int extractOriginalNodeId(Node node) {
@@ -632,7 +640,7 @@ public class Graph implements EventCounter {
 
     }
 
-    private AddInputsFilter addInputsFilter = new AddInputsFilter();
+    private final AddInputsFilter addInputsFilter = new AddInputsFilter();
 
     private <T extends Node> void addInputs(T node, NodePredicate predicate) {
         if (predicate == null) {
@@ -671,6 +679,11 @@ public class Graph implements EventCounter {
          * A node's input is changed.
          */
         INPUT_CHANGED,
+
+        /**
+         * A node's control flow edge (i.e., predecessor or any successor) has changed.
+         */
+        CONTROL_FLOW_CHANGED,
 
         /**
          * A node's {@linkplain Node#usages() usages} count dropped to zero.
@@ -740,6 +753,9 @@ public class Graph implements EventCounter {
          */
         final void event(NodeEvent e, Node node) {
             switch (e) {
+                case CONTROL_FLOW_CHANGED:
+                    controlFlowChanged(node);
+                    break;
                 case INPUT_CHANGED:
                     inputChanged(node);
                     break;
@@ -776,7 +792,17 @@ public class Graph implements EventCounter {
         }
 
         /**
-         * Notifies this listener about a change in a node's inputs.
+         * Notifies this listener about a change in a node's control flow edges, i.e., its
+         * predecessor or any of its successor edges.
+         *
+         * @param node a node who has had its predecessor or one of its successors changed
+         */
+        public void controlFlowChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener about a change in a node's inputs (successor or predecessor edges
+         * not included).
          *
          * @param node a node who has had one of its inputs changed
          */
@@ -969,7 +995,6 @@ public class Graph implements EventCounter {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends Node> T findDuplicate(T node) {
         return findDuplicate(node, null);
     }
@@ -1040,8 +1065,7 @@ public class Graph implements EventCounter {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Mark) {
-                Mark other = (Mark) obj;
+            if (obj instanceof Mark other) {
                 return other.getValue() == getValue() && other.getGraph() == getGraph();
             }
             return false;
@@ -1249,7 +1273,7 @@ public class Graph implements EventCounter {
          */
         iterableNodesFirst.set(iterableId, start);
         if (start == null) {
-            iterableNodesLast.set(iterableId, start);
+            iterableNodesLast.set(iterableId, null);
         }
         return start;
     }
@@ -1316,7 +1340,7 @@ public class Graph implements EventCounter {
         if (currentNodeSourcePosition != null && trackNodeSourcePosition()) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
         }
-        if (TrackNodeInsertion.getValue(getOptions()) && node.getInsertionPosition() == null) {
+        if (trackNodeInsertion && node.getInsertionPosition() == null) {
             node.setInsertionPosition(new NodeInsertionStackTrace());
         }
 
@@ -1393,9 +1417,7 @@ public class Graph implements EventCounter {
                 try {
                     try {
                         assert node.verify(verifyInputs);
-                    } catch (AssertionError t) {
-                        throw new GraalError(t);
-                    } catch (RuntimeException t) {
+                    } catch (AssertionError | RuntimeException t) {
                         throw new GraalError(t);
                     }
                 } catch (GraalError e) {

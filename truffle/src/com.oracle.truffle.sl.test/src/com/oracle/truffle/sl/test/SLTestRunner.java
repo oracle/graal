@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -145,6 +145,11 @@ public class SLTestRunner extends ParentRunner<TestCase> {
         String[] optionsList = suite.options();
         for (int i = 0; i < optionsList.length; i += 2) {
             options.put(optionsList[i], optionsList[i + 1]);
+        }
+        if (TruffleTestAssumptions.isOptimizingRuntime() && c == SLTestSuiteBytecodeUncached.class) {
+            // The uncached interpreter compiles to a deopt. Disable compilation because compilation
+            // tests can time out due to lack of progress.
+            options.put("engine.Compilation", "false");
         }
 
         Class<?> testCaseDirectory = c;

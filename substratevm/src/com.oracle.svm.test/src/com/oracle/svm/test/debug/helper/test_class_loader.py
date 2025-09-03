@@ -47,7 +47,10 @@ class TestClassLoader(unittest.TestCase):
     def test_instanceMethod_named_classloader(self):
         gdb_set_breakpoint("com.oracle.svm.test.missing.classes.TestClass::instanceMethod")
         gdb_continue()  # named classloader is called first in test code
-        self.assertRegex(gdb_output("this"), rf'testClassLoader_{hex_rexp.pattern}::com\.oracle\.svm\.test\.missing\.classes\.TestClass = {{instanceField = null}}')
+        exec_string = gdb_output("this")
+        self.assertTrue(exec_string.startswith("testClassLoader_"), f"GDB output: '{exec_string}'")  # check for correct class loader
+        self.assertIn("::com.oracle.svm.test.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
+        self.assertIn("instanceField = null", exec_string)
         gdb_output("$other=(('java.lang.Object' *)this)")
         self.assertIn("null", gdb_advanced_print("$other.instanceField"))  # force a typecast
 
@@ -55,7 +58,10 @@ class TestClassLoader(unittest.TestCase):
         gdb_set_breakpoint("com.oracle.svm.test.missing.classes.TestClass::instanceMethod")
         gdb_continue()  # skip named classloader
         gdb_continue()  # unnamed classloader is called second in test code
-        self.assertRegex(gdb_output("this"), rf'URLClassLoader_{hex_rexp.pattern}::com\.oracle\.svm\.test\.missing\.classes\.TestClass = {{instanceField = null}}')
+        exec_string = gdb_output("this")
+        self.assertTrue(exec_string.startswith("URLClassLoader_"), f"GDB output: '{exec_string}'")  # check for correct class loader
+        self.assertIn("::com.oracle.svm.test.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
+        self.assertIn("instanceField = null", exec_string)
         gdb_output("$other=(('java.lang.Object' *)this)")
         self.assertIn("null", gdb_advanced_print("$other.instanceField"))  # force a typecast
 
@@ -66,6 +72,7 @@ class TestClassloaderObjUtils(unittest.TestCase):
         self.maxDiff = None
         set_up_test()
         set_up_gdb_debughelpers()
+        self.svm_util = SVMUtil()
 
     def tearDown(self):
         gdb_delete_breakpoints()
@@ -76,8 +83,8 @@ class TestClassloaderObjUtils(unittest.TestCase):
         gdb_run()
         this = gdb.parse_and_eval('this')  # type = com.oracle.svm.test.missing.classes.TestClass -> testClassLoader
         field = gdb.parse_and_eval('this.instanceField')  # instanceField is null
-        self.assertRegex(SVMUtil.get_classloader_namespace(this), f'testClassLoader_{hex_rexp.pattern}')
-        self.assertEqual(SVMUtil.get_classloader_namespace(field), "")
+        self.assertRegex(self.svm_util.get_classloader_namespace(this), f'testClassLoader_{hex_rexp.pattern}')
+        self.assertEqual(self.svm_util.get_classloader_namespace(field), "")
 
 
 # redirect unittest output to terminal

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import static com.oracle.truffle.espresso.analysis.BlockIterator.BlockProcessResult.DONE;
@@ -38,7 +37,7 @@ import com.oracle.truffle.espresso.analysis.BlockIteratorClosure;
 import com.oracle.truffle.espresso.analysis.BlockLogger;
 import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
 /**

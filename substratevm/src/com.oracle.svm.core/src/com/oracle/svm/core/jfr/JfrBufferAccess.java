@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -50,7 +50,7 @@ public final class JfrBufferAccess {
 
     @Fold
     public static UnsignedWord getHeaderSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBuffer.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
+        return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBuffer.class), Word.unsigned(ConfigurationValues.getTarget().wordSize));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -66,7 +66,7 @@ public final class JfrBufferAccess {
         if (result.isNonNull()) {
             result.setSize(dataSize);
             result.setBufferType(bufferType);
-            result.setNode(WordFactory.nullPointer());
+            result.setNode(Word.nullPointer());
             result.setFlags(NO_FLAGS);
             reinitialize(result);
         }

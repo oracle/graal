@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,17 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This enum encapsulates AArch64 instructions which perform permutations.
@@ -100,6 +104,64 @@ public enum AArch64PermuteOp {
                     throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
             }
 
+        }
+    }
+
+    public static class ASIMDPermuteOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDPermuteOp> TYPE = LIRInstructionClass.create(ASIMDPermuteOp.class);
+
+        @Def protected AllocatableValue result;
+        @Alive protected AllocatableValue source;
+        @Use protected AllocatableValue indices;
+        @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue xtmp1;
+        @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue xtmp2;
+
+        public ASIMDPermuteOp(LIRGeneratorTool tool, AllocatableValue result, AllocatableValue source, AllocatableValue indices) {
+            super(TYPE);
+            this.result = result;
+            this.source = source;
+            this.indices = indices;
+            AArch64Kind eKind = ((AArch64Kind) result.getPlatformKind()).getScalar();
+            this.xtmp1 = eKind == AArch64Kind.BYTE ? Value.ILLEGAL : tool.newVariable(LIRKind.value(AArch64Kind.V128_BYTE));
+            this.xtmp2 = eKind == AArch64Kind.BYTE ? Value.ILLEGAL : tool.newVariable(LIRKind.value(AArch64Kind.V128_BYTE));
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            AArch64Kind vKind = (AArch64Kind) result.getPlatformKind();
+            AArch64Kind eKind = vKind.getScalar();
+            ASIMDSize vSize = ASIMDSize.fromVectorKind(vKind);
+            Register xtmp1Reg = xtmp1.equals(Value.ILLEGAL) ? Register.None : asRegister(xtmp1);
+            Register xtmp2Reg = xtmp2.equals(Value.ILLEGAL) ? Register.None : asRegister(xtmp2);
+            Register currentIdxReg = asRegister(indices);
+            // Since NEON only supports byte look up, we repeatedly convert a 2W-bit look up into
+            // W-bit look up by transforming a 2W-bit index with value v into a pair of W-bit
+            // indices v * 2, v * 2 + 1 until we reach the element width equal to Byte.SIZE
+            if (eKind.getSizeInBytes() == AArch64Kind.QWORD.getSizeInBytes()) {
+                masm.neon.shlVVI(vSize, ElementSize.DoubleWord, xtmp1Reg, currentIdxReg, 1);
+                masm.neon.moveVV(vSize, xtmp2Reg, xtmp1Reg);
+                masm.neon.orrVI(vSize, ElementSize.Word, xtmp2Reg, 1);
+                masm.neon.shlVVI(vSize, ElementSize.DoubleWord, xtmp2Reg, xtmp2Reg, Integer.SIZE);
+                masm.neon.orrVVV(vSize, xtmp1Reg, xtmp1Reg, xtmp2Reg);
+                currentIdxReg = xtmp1Reg;
+                eKind = AArch64Kind.DWORD;
+            }
+            if (eKind.getSizeInBytes() == AArch64Kind.DWORD.getSizeInBytes()) {
+                masm.neon.shlVVI(vSize, ElementSize.Word, xtmp1Reg, currentIdxReg, 1);
+                masm.neon.shlVVI(vSize, ElementSize.Word, xtmp2Reg, xtmp1Reg, Short.SIZE);
+                masm.neon.orrVVV(vSize, xtmp1Reg, xtmp1Reg, xtmp2Reg);
+                masm.neon.orrVI(vSize, ElementSize.Word, xtmp1Reg, 1 << Short.SIZE);
+                currentIdxReg = xtmp1Reg;
+                eKind = AArch64Kind.WORD;
+            }
+            if (eKind.getSizeInBytes() == AArch64Kind.WORD.getSizeInBytes()) {
+                masm.neon.shlVVI(vSize, ElementSize.HalfWord, xtmp1Reg, currentIdxReg, 1);
+                masm.neon.shlVVI(vSize, ElementSize.HalfWord, xtmp2Reg, xtmp1Reg, Byte.SIZE);
+                masm.neon.orrVVV(vSize, xtmp1Reg, xtmp1Reg, xtmp2Reg);
+                masm.neon.orrVI(vSize, ElementSize.HalfWord, xtmp1Reg, 1 << Byte.SIZE);
+                currentIdxReg = xtmp1Reg;
+            }
+            masm.neon.tblVVV(vSize, asRegister(result), asRegister(source), currentIdxReg);
         }
     }
 }

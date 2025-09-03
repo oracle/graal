@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.Arrays;
+
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticStamp;
@@ -75,7 +76,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     protected final BinaryOp<OP> getOp(ValueNode forX, ValueNode forY) {
         ArithmeticOpTable table = getArithmeticOpTable(forX);
-        assert table.equals(getArithmeticOpTable(forY));
+        assert table.equals(getArithmeticOpTable(forY)) : Assertions.errorMessage("Invalid table ops", forX, table, forY, getArithmeticOpTable(forY));
         return getOp(table);
     }
 

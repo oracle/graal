@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ final class TStringUnsafe {
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
     private static final long javaStringHashFieldOffset;
+    private static final long javaStringHashIsZeroFieldOffset;
 
     static final boolean COMPACT_STRINGS_ENABLED;
 
@@ -75,10 +76,12 @@ final class TStringUnsafe {
         Field valueField = getStringDeclaredField("value");
         Field coderField = getStringDeclaredField("coder");
         Field hashField = getStringDeclaredField("hash");
+        Field hashIsZeroField = getStringDeclaredField("hashIsZero");
         Field compactStringsField = getStringDeclaredField("COMPACT_STRINGS");
         javaStringValueFieldOffset = getObjectFieldOffset(valueField);
         javaStringCoderFieldOffset = getObjectFieldOffset(coderField);
         javaStringHashFieldOffset = getObjectFieldOffset(hashField);
+        javaStringHashIsZeroFieldOffset = getObjectFieldOffset(hashIsZeroField);
         COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(getStaticFieldBase(compactStringsField), getStaticFieldOffset(compactStringsField));
     }
 
@@ -121,6 +124,18 @@ final class TStringUnsafe {
         }
     }
 
+    static int byteArrayBaseOffset() {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
+
+    static int charArrayBaseOffset() {
+        return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+    }
+
+    static int intArrayBaseOffset() {
+        return Unsafe.ARRAY_INT_BASE_OFFSET;
+    }
+
     static byte[] getJavaStringArray(String str) {
         assert JAVA_SPEC > 8;
         Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
@@ -130,6 +145,22 @@ final class TStringUnsafe {
 
     static int getJavaStringStride(String s) {
         return UNSAFE.getByte(s, javaStringCoderFieldOffset);
+    }
+
+    static int getJavaStringHash(String s) {
+        return UNSAFE.getInt(s, javaStringHashFieldOffset);
+    }
+
+    static boolean getJavaStringHashIsZero(String s) {
+        return UNSAFE.getBoolean(s, javaStringHashIsZeroFieldOffset);
+    }
+
+    static int getJavaStringHashMasked(String s) {
+        int hash = getJavaStringHash(s);
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, hash == 0 && getJavaStringHashIsZero(s))) {
+            return TruffleString.HashCodeNode.maskZero(hash);
+        }
+        return hash;
     }
 
     @TruffleBoundary
@@ -142,12 +173,12 @@ final class TStringUnsafe {
     }
 
     @TruffleBoundary
-    static String createJavaString(byte[] bytes, int stride) {
+    static String createJavaString(byte[] bytes, int stride, int hash) {
         if (stride < (COMPACT_STRINGS_ENABLED ? 0 : 1) || stride > 1) {
             throw new IllegalArgumentException("illegal stride!");
         }
         String ret = allocateJavaString();
-        UNSAFE.putInt(ret, javaStringHashFieldOffset, 0);
+        UNSAFE.putInt(ret, javaStringHashFieldOffset, hash);
         UNSAFE.putByte(ret, javaStringCoderFieldOffset, (byte) stride);
         UNSAFE.putObjectVolatile(ret, javaStringValueFieldOffset, bytes);
         assert checkUnsafeStringResult(bytes, stride, ret);
@@ -164,19 +195,19 @@ final class TStringUnsafe {
         return new String(chars).equals(ret);
     }
 
-    static byte getByte(Object array, long byteOffset) {
+    static byte getByte(byte[] array, long byteOffset) {
         return UNSAFE.getByte(array, byteOffset);
     }
 
-    static char getChar(Object array, long byteOffset) {
+    static char getChar(byte[] array, long byteOffset) {
         return UNSAFE.getChar(array, byteOffset);
     }
 
-    static int getInt(Object array, long byteOffset) {
+    static int getInt(byte[] array, long byteOffset) {
         return UNSAFE.getInt(array, byteOffset);
     }
 
-    static long getLong(Object array, long byteOffset) {
+    static long getLong(byte[] array, long byteOffset) {
         return UNSAFE.getLong(array, byteOffset);
     }
 
@@ -193,6 +224,6 @@ final class TStringUnsafe {
     }
 
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {
-        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetDst, byteLength);
+        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, byteArrayBaseOffset() + offsetDst, byteLength);
     }
 }

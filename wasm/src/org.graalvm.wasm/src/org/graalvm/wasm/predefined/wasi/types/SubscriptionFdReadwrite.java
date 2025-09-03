@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /**
  * The contents of a {@code subscription} when type is type is {@code eventtype::fd_read} or
@@ -62,15 +63,15 @@ public final class SubscriptionFdReadwrite {
     public static final int BYTES = 4;
 
     /** Reads the file descriptor on which to wait for it to become ready for reading or writing. */
-    public static int readFileDescriptor(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 0);
+    public static int readFileDescriptor(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 0);
     }
 
     /**
      * Writes the file descriptor on which to wait for it to become ready for reading or writing.
      */
-    public static void writeFileDescriptor(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 0, value);
+    public static void writeFileDescriptor(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 0, value);
     }
 
 }

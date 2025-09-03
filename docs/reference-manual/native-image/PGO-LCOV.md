@@ -9,7 +9,7 @@ permalink: /reference-manual/native-image/optimizations-and-performance/PGO/LCOV
 
 Here you will learn how to analyze PGO profiles with the aid of LCOV-based tooling.
 
-Profile-Guided Optimizations (PGO) help you maximize the performance of your native application.
+Profile-Guided Optimization (PGO) helps you maximize the performance of your native application.
 As part of the PGO process, you create an instrumented binary and run a workload on it to generate
 a PGO profile file that you can then feed back into the build process to generate an optimized binary
 of your application.
@@ -44,11 +44,11 @@ native-image -cp . GameOfLife -o gameoflife-instrumented --pgo-instrument -H:+Un
 The report, in the form of a `.info` trace file, is then generated along with the profile after
 running the instrumented application.
 In the similar fashion to profiling, one can additionally customize the destination of the generated
-info file via the `-XX:ProfilesLCOVTraceFile` option.
+info file via the `-XX:ProfilesLCOVFile` option.
 For example:
 
 ```bash
-./gameoflife-instrumented -XX:ProfilesLCOVTraceFile=gameoflife-coverage.info
+./gameoflife-instrumented -XX:ProfilesLCOVFile=gameoflife-coverage.info
 ```
 
 The generated LCOV trace file provides the coverage information at method-level, i.e., whether a

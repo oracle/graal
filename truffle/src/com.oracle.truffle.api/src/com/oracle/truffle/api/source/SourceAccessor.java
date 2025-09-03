@@ -46,6 +46,7 @@ import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -58,6 +59,7 @@ final class SourceAccessor extends Accessor {
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
 
     private SourceAccessor() {
     }
@@ -104,6 +106,11 @@ final class SourceAccessor extends Accessor {
             Source copy = source.copy();
             copy.cachedPolyglotSource = source.cachedPolyglotSource;
             return copy;
+        }
+
+        @Override
+        public Map<String, String> getSourceOptions(Source source) {
+            return source.getOptions();
         }
 
         @Override
@@ -171,6 +178,11 @@ final class SourceAccessor extends Accessor {
                     Source.SOURCES.add(((SourceImpl) s));
                 }
             }
+        }
+
+        @Override
+        public URI getOriginalURI(Source source) {
+            return source.getOriginalURI();
         }
     }
 }

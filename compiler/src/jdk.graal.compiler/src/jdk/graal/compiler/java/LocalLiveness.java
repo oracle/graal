@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,10 @@ import static jdk.graal.compiler.bytecode.Bytecodes.RET;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.function.IntConsumer;
 
+import jdk.graal.compiler.bytecode.Bytecodes;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
@@ -185,7 +188,13 @@ public abstract class LocalLiveness {
 
     void computeLiveness(DebugContext debug, BytecodeStream stream) {
         for (BciBlock block : blocks) {
-            computeLocalLiveness(stream, block);
+            if (!block.isInstructionBlock()) {
+                continue;
+            }
+
+            stream.setBCI(block.startBci);
+            int blockId = block.getId();
+            computeLocalLiveness(stream, block, localIdx -> loadOne(blockId, localIdx), localIdx -> storeOne(blockId, localIdx));
         }
 
         boolean changed;
@@ -326,124 +335,84 @@ public abstract class LocalLiveness {
      */
     protected abstract void storeOne(int blockID, int local);
 
-    private void computeLocalLiveness(BytecodeStream stream, BciBlock block) {
-        if (!block.isInstructionBlock()) {
-            return;
-        }
-        int blockID = block.getId();
-        int localIndex;
-        stream.setBCI(block.startBci);
+    /**
+     * A general method to help compute the liveness of the locals at the current position of the
+     * {@link BytecodeStream}. The method walks the block forward, marks the liveness of each local
+     * as it encounters a bytecode that interacts with it. The details on how the marking happens
+     * depend on the functions {@code load} and {@code store} provided by the caller.
+     *
+     * @param stream The bytecode stream
+     * @param block The block corresponding to the current position of {@code stream}
+     * @param load The action to take when encounter an instruction that loads from a local slot
+     * @param store The action to take when encounter an instruction that stores into a local slot
+     */
+    static void computeLocalLiveness(BytecodeStream stream, BciBlock block, IntConsumer load, IntConsumer store) {
+        GraalError.guarantee(block.isInstructionBlock(), "must be an instruction block %s", block);
+        GraalError.guarantee(stream.currentBCI() >= block.getStartBci(), "invalid stream position");
         while (stream.currentBCI() <= block.getEndBci()) {
-            switch (stream.currentBC()) {
-                case LLOAD:
-                case DLOAD:
-                    loadTwo(blockID, stream.readLocalIndex());
-                    break;
-                case LLOAD_0:
-                case DLOAD_0:
-                    loadTwo(blockID, 0);
-                    break;
-                case LLOAD_1:
-                case DLOAD_1:
-                    loadTwo(blockID, 1);
-                    break;
-                case LLOAD_2:
-                case DLOAD_2:
-                    loadTwo(blockID, 2);
-                    break;
-                case LLOAD_3:
-                case DLOAD_3:
-                    loadTwo(blockID, 3);
-                    break;
-                case IINC:
-                    localIndex = stream.readLocalIndex();
-                    loadOne(blockID, localIndex);
-                    storeOne(blockID, localIndex);
-                    break;
-                case ILOAD:
-                case FLOAD:
-                case ALOAD:
-                case RET:
-                    loadOne(blockID, stream.readLocalIndex());
-                    break;
-                case ILOAD_0:
-                case FLOAD_0:
-                case ALOAD_0:
-                    loadOne(blockID, 0);
-                    break;
-                case ILOAD_1:
-                case FLOAD_1:
-                case ALOAD_1:
-                    loadOne(blockID, 1);
-                    break;
-                case ILOAD_2:
-                case FLOAD_2:
-                case ALOAD_2:
-                    loadOne(blockID, 2);
-                    break;
-                case ILOAD_3:
-                case FLOAD_3:
-                case ALOAD_3:
-                    loadOne(blockID, 3);
-                    break;
+            int bc = stream.currentBC();
+            switch (bc) {
+                case LLOAD, DLOAD -> {
+                    int idx = stream.readLocalIndex();
+                    load.accept(idx);
+                    load.accept(idx + 1);
+                }
+                case LLOAD_0, DLOAD_0 -> {
+                    load.accept(0);
+                    load.accept(1);
+                }
+                case LLOAD_1, DLOAD_1 -> {
+                    load.accept(1);
+                    load.accept(2);
+                }
+                case LLOAD_2, DLOAD_2 -> {
+                    load.accept(2);
+                    load.accept(3);
+                }
+                case LLOAD_3, DLOAD_3 -> {
+                    load.accept(3);
+                    load.accept(4);
+                }
+                case IINC -> {
+                    int idx = stream.readLocalIndex();
+                    load.accept(idx);
+                    store.accept(idx);
+                }
+                case ILOAD, FLOAD, ALOAD, RET -> load.accept(stream.readLocalIndex());
+                case ILOAD_0, FLOAD_0, ALOAD_0 -> load.accept(0);
+                case ILOAD_1, FLOAD_1, ALOAD_1 -> load.accept(1);
+                case ILOAD_2, FLOAD_2, ALOAD_2 -> load.accept(2);
+                case ILOAD_3, FLOAD_3, ALOAD_3 -> load.accept(3);
 
-                case LSTORE:
-                case DSTORE:
-                    storeTwo(blockID, stream.readLocalIndex());
-                    break;
-                case LSTORE_0:
-                case DSTORE_0:
-                    storeTwo(blockID, 0);
-                    break;
-                case LSTORE_1:
-                case DSTORE_1:
-                    storeTwo(blockID, 1);
-                    break;
-                case LSTORE_2:
-                case DSTORE_2:
-                    storeTwo(blockID, 2);
-                    break;
-                case LSTORE_3:
-                case DSTORE_3:
-                    storeTwo(blockID, 3);
-                    break;
-                case ISTORE:
-                case FSTORE:
-                case ASTORE:
-                    storeOne(blockID, stream.readLocalIndex());
-                    break;
-                case ISTORE_0:
-                case FSTORE_0:
-                case ASTORE_0:
-                    storeOne(blockID, 0);
-                    break;
-                case ISTORE_1:
-                case FSTORE_1:
-                case ASTORE_1:
-                    storeOne(blockID, 1);
-                    break;
-                case ISTORE_2:
-                case FSTORE_2:
-                case ASTORE_2:
-                    storeOne(blockID, 2);
-                    break;
-                case ISTORE_3:
-                case FSTORE_3:
-                case ASTORE_3:
-                    storeOne(blockID, 3);
-                    break;
+                case LSTORE, DSTORE -> {
+                    int idx = stream.readLocalIndex();
+                    store.accept(idx);
+                    store.accept(idx + 1);
+                }
+                case LSTORE_0, DSTORE_0 -> {
+                    store.accept(0);
+                    store.accept(1);
+                }
+                case LSTORE_1, DSTORE_1 -> {
+                    store.accept(1);
+                    store.accept(2);
+                }
+                case LSTORE_2, DSTORE_2 -> {
+                    store.accept(2);
+                    store.accept(3);
+                }
+                case LSTORE_3, DSTORE_3 -> {
+                    store.accept(3);
+                    store.accept(4);
+                }
+                case ISTORE, FSTORE, ASTORE -> store.accept(stream.readLocalIndex());
+                case ISTORE_0, FSTORE_0, ASTORE_0 -> store.accept(0);
+                case ISTORE_1, FSTORE_1, ASTORE_1 -> store.accept(1);
+                case ISTORE_2, FSTORE_2, ASTORE_2 -> store.accept(2);
+                case ISTORE_3, FSTORE_3, ASTORE_3 -> store.accept(3);
+                default -> GraalError.guarantee(!Bytecodes.isLoad(bc) && !Bytecodes.isStore(bc), "missing handling of opcode %s", Bytecodes.nameOf(bc));
             }
             stream.next();
         }
-    }
-
-    private void loadTwo(int blockID, int local) {
-        loadOne(blockID, local);
-        loadOne(blockID, local + 1);
-    }
-
-    private void storeTwo(int blockID, int local) {
-        storeOne(blockID, local);
-        storeOne(blockID, local + 1);
     }
 }

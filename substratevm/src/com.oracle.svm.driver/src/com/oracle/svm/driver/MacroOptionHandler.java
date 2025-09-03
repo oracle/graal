@@ -98,6 +98,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         enabledOption.forEachPropertyValue(config,
+                        "ProvidedHostedOptions", nativeImage.apiOptionHandler::injectKnownHostedOption, NativeImage.MANY_SPACES_REGEX);
+        enabledOption.forEachPropertyValue(config,
                         "ImageProvidedJars", entry -> nativeImage.addImageProvidedJars(Path.of(entry)), PATH_SEPARATOR_REGEX);
         enabledOption.forEachPropertyValue(config,
                         "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Path.of(entry)), PATH_SEPARATOR_REGEX);

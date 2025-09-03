@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -403,9 +403,9 @@ abstract class SerializeArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3", guards = "serialize.isSerializable(arg)")
+        @Specialization(guards = "serialize.isSerializable(arg)")
         void doSerializable(Object arg, NativeArgumentBuffer buffer,
-                        @CachedLibrary("arg") SerializableLibrary serialize) {
+                        @CachedLibrary(limit = "4") SerializableLibrary serialize) {
             BufferSlice b = new BufferSlice(buffer, buffer.position(), type.size);
             try {
                 serialize.serialize(arg, b);
@@ -422,22 +422,22 @@ abstract class SerializeArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3", guards = "interop.isPointer(arg)", rewriteOn = UnsupportedMessageException.class)
+        @Specialization(guards = "interop.isPointer(arg)", rewriteOn = UnsupportedMessageException.class)
         void putPointer(Object arg, NativeArgumentBuffer buffer,
-                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+                        @Shared @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException {
             buffer.putPointerKeepalive(arg, interop.asPointer(arg), type.size);
         }
 
-        @Specialization(limit = "3", guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
+        @Specialization(guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
         void putNull(@SuppressWarnings("unused") Object arg, NativeArgumentBuffer buffer,
-                        @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
+                        @SuppressWarnings("unused") @Shared @CachedLibrary(limit = "3") InteropLibrary interop) {
             buffer.putPointer(0, type.size);
         }
 
-        @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
+        @Specialization(replaces = {"putPointer", "putNull"})
         static void putGeneric(Object arg, NativeArgumentBuffer buffer,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Shared @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Bind Node node,
                         @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
@@ -483,28 +483,28 @@ abstract class SerializeArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3", guards = "interop.isPointer(value)", rewriteOn = UnsupportedMessageException.class)
+        @Specialization(guards = "interop.isPointer(value)", rewriteOn = UnsupportedMessageException.class)
         void putPointer(Object value, NativeArgumentBuffer buffer,
-                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+                        @Shared @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException {
             buffer.putPointerKeepalive(value, interop.asPointer(value), type.size);
         }
 
-        @Specialization(limit = "3", guards = {"!interop.isPointer(value)", "interop.isString(value)"}, rewriteOn = UnsupportedMessageException.class)
+        @Specialization(guards = {"!interop.isPointer(value)", "interop.isString(value)"}, rewriteOn = UnsupportedMessageException.class)
         void putString(Object value, NativeArgumentBuffer buffer,
-                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+                        @Shared @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException {
             buffer.putObject(TypeTag.STRING, interop.asString(value), type.size);
         }
 
-        @Specialization(limit = "3", guards = {"!interop.isPointer(value)", "!interop.isString(value)", "interop.isNull(value)"})
+        @Specialization(guards = {"!interop.isPointer(value)", "!interop.isString(value)", "interop.isNull(value)"})
         void putNull(@SuppressWarnings("unused") Object value, NativeArgumentBuffer buffer,
-                        @SuppressWarnings("unused") @CachedLibrary("value") InteropLibrary interop) {
+                        @SuppressWarnings("unused") @Shared @CachedLibrary(limit = "3") InteropLibrary interop) {
             buffer.putPointer(0, type.size);
         }
 
-        @Specialization(limit = "3", replaces = {"putPointer", "putString", "putNull"})
+        @Specialization(replaces = {"putPointer", "putString", "putNull"})
         static void putGeneric(Object value, NativeArgumentBuffer buffer,
-                        @CachedLibrary("value") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Shared @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Bind Node node,
                         @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
@@ -555,9 +555,9 @@ abstract class SerializeArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         void putObject(Object value, NativeArgumentBuffer buffer,
-                        @CachedLibrary("value") InteropLibrary interop) {
+                        @CachedLibrary(limit = "3") InteropLibrary interop) {
             if (interop.isNull(value)) {
                 buffer.putPointer(0L, type.size);
             } else {

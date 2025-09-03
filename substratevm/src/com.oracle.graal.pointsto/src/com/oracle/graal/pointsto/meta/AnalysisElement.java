@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -47,8 +46,10 @@ import com.oracle.graal.pointsto.ObjectScanner.MethodParsing;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -56,6 +57,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class AnalysisElement implements AnnotatedElement {
+
+    protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisElement.class, Object.class, "trackAcrossLayers");
+    /**
+     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
+     */
+    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
+    protected final boolean enableTrackAcrossLayers;
+
+    protected AnalysisElement(boolean enableTrackAcrossLayers) {
+        this.enableTrackAcrossLayers = enableTrackAcrossLayers;
+    }
 
     public abstract AnnotatedElement getWrapped();
 
@@ -112,7 +125,22 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public abstract boolean isReachable();
 
-    protected abstract void onReachable();
+    protected abstract void onReachable(Object reason);
+
+    public void registerAsTrackedAcrossLayers(Object reason) {
+        if (enableTrackAcrossLayers && !isTrackedAcrossLayers()) {
+            AtomicUtils.atomicSetAndRun(this, reason, trackAcrossLayersUpdater, () -> onTrackedAcrossLayers(reason));
+        }
+    }
+
+    /**
+     * Indicates we need this information to be saved in the layer archive file.
+     */
+    public boolean isTrackedAcrossLayers() {
+        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
+    }
+
+    protected abstract void onTrackedAcrossLayers(Object reason);
 
     /** Return true if reachability handlers should be executed for this element. */
     public boolean isTriggered() {
@@ -281,8 +309,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
             while (!reasonStack.isEmpty()) {
                 boolean expanded;
                 Object top = reasonStack.peekLast();
-                if (top instanceof CompoundReason) {
-                    CompoundReason compoundReason = (CompoundReason) top;
+                if (top instanceof CompoundReason compoundReason) {
                     if (compoundReason.isFirst()) {
                         compoundReason.storeCurrentIndent(indent);
                     }
@@ -350,27 +377,24 @@ public abstract class AnalysisElement implements AnnotatedElement {
             if (current instanceof String) {
                 reasonStr = "str: " + current;
 
-            } else if (current instanceof AnalysisMethod) {
-                AnalysisMethod method = (AnalysisMethod) current;
-                reasonStr = "at " + method.format("%f method %H.%n(%p)") + ", " + methodReasonStr(method);
-                expanded = methodReason((AnalysisMethod) current);
+            } else if (current instanceof AnalysisMethod method) {
+                reasonStr = "at " + method.format("%f method %H.%n(%p)") + " " + methodReasonStr(method);
+                expanded = methodReason(method);
 
-            } else if (current instanceof AnalysisField) {
-                AnalysisField field = (AnalysisField) current;
+            } else if (current instanceof AnalysisField field) {
                 reasonStr = "field " + field.format("%H.%n") + " " + fieldReasonStr(field);
                 expanded = fieldReason(field);
 
-            } else if (current instanceof AnalysisType) {
-                AnalysisType type = (AnalysisType) current;
-                reasonStr = "type " + (type).toJavaName() + " " + typeReasonStr(type);
+            } else if (current instanceof AnalysisType type) {
+                reasonStr = "type " + type.toJavaName() + " " + typeReasonStr(type);
                 expanded = typeReason(type);
 
-            } else if (current instanceof ResolvedJavaMethod) {
-                reasonStr = ((ResolvedJavaMethod) current).format("%f method %H.%n");
+            } else if (current instanceof ResolvedJavaMethod method) {
+                reasonStr = method.format("%f method %H.%n");
 
             } else if (current instanceof ResolvedJavaField field) {
-                /**
-                 * In {@link AnalysisUniverse#lookupAllowUnresolved(JavaField}} we may register a
+                /*
+                 * In {@code AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is
@@ -380,26 +404,23 @@ public abstract class AnalysisElement implements AnnotatedElement {
                 if (analysisField != null) {
                     return processReason(analysisField, prefix);
                 } else {
-                    reasonStr = "field " + ((ResolvedJavaField) current).format("%H.%n");
+                    reasonStr = "field " + field.format("%H.%n");
                 }
 
             } else if (current instanceof ResolvedJavaType) {
                 reasonStr = "type " + ((ResolvedJavaType) current).getName();
 
-            } else if (current instanceof BytecodePosition) {
-                BytecodePosition position = (BytecodePosition) current;
+            } else if (current instanceof BytecodePosition position) {
                 ResolvedJavaMethod method = position.getMethod();
                 reasonStr = "at " + method.format("%f") + " method " + method.asStackTraceElement(position.getBCI()) + ", " + methodReasonStr(method);
                 expanded = methodReason(position.getMethod());
 
-            } else if (current instanceof MethodParsing) {
-                MethodParsing methodParsing = (MethodParsing) current;
+            } else if (current instanceof MethodParsing methodParsing) {
                 AnalysisMethod method = methodParsing.getMethod();
                 reasonStr = "at " + method.format("%f method %H.%n(%p)") + ", " + methodReasonStr(method);
                 expanded = methodReason(methodParsing.getMethod());
 
-            } else if (current instanceof ObjectScanner.ScanReason) {
-                ObjectScanner.ScanReason scanReason = (ObjectScanner.ScanReason) current;
+            } else if (current instanceof ObjectScanner.ScanReason scanReason) {
                 reasonStr = scanReason.toString(bb);
                 expanded = maybeExpandReasonStack(scanReason.getPrevious());
 
@@ -419,6 +440,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
         private boolean typeReason(AnalysisType type) {
             if (type.isInstantiated()) {
                 return maybeExpandReasonStack(type.getInstantiatedReason());
+            } else if (type.isAnySubtypeInstantiated()) {
+                return maybeExpandReasonStack(type.getAnyInstantiatedSubtype());
             } else {
                 return maybeExpandReasonStack(type.getReachableReason());
             }
@@ -427,6 +450,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
         private static String typeReasonStr(AnalysisType type) {
             if (type.isInstantiated()) {
                 return "is marked as instantiated";
+            } else if (type.isAnySubtypeInstantiated()) {
+                return "has a subtype marked as instantiated";
             }
             return "is reachable";
         }
@@ -461,8 +486,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         private boolean methodReason(ResolvedJavaMethod method) {
-            if (method instanceof AnalysisMethod) {
-                AnalysisMethod aMethod = (AnalysisMethod) method;
+            if (method instanceof AnalysisMethod aMethod) {
                 if (aMethod.isSimplyImplementationInvoked()) {
                     if (aMethod.isStatic()) {
                         return maybeExpandReasonStack(aMethod.getImplementationInvokedReason());
@@ -494,29 +518,28 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         private static String methodReasonStr(ResolvedJavaMethod method) {
-            if (method instanceof AnalysisMethod) {
-                AnalysisMethod aMethod = (AnalysisMethod) method;
+            if (method instanceof AnalysisMethod aMethod) {
                 if (aMethod.isSimplyImplementationInvoked()) {
                     if (aMethod.isStatic()) {
-                        return "implementation invoked";
+                        return "is implementation invoked";
                     } else {
                         /* For virtual methods we follow back type reachability. */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isAbstract() ||
                                         (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
-                        return "implementation invoked";
+                        return "is implementation invoked";
                     }
                 } else if (aMethod.isInlined()) {
                     if (aMethod.isStatic()) {
-                        return "inlined";
+                        return "is inlined";
                     } else {
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isAbstract() ||
                                         (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
-                        return "inlined";
+                        return "is inlined";
                     }
                 } else if (aMethod.isIntrinsicMethod()) {
-                    return "intrinsified";
+                    return "is intrinsified";
                 }
             }
             return "<no available reason>";

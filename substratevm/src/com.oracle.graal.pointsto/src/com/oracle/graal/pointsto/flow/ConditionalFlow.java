@@ -69,36 +69,49 @@ public class ConditionalFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
+        /*
+         * GR-58387: This could stop the propagation of saturation, so it can be problematic for
+         * open-world analysis.
+         */
+        addState(bb, TypeState.forEmpty());
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        addState(bb, condition.getState());
+        addState(bb, TypeState.forEmpty());
     }
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        /* If the condition is already saturated, merge both inputs. */
-        super.addState(bb, TypeState.forUnion(bb, trueValue.getState(), falseValue.getState()));
+        addState(bb, TypeState.forEmpty());
     }
 
+    /**
+     * Depending on the state of the condition, return none, one, or both of the true/false inputs.
+     */
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
+        TypeState trueState = trueValue.getOutputState(bb);
+        TypeState falseState = falseValue.getOutputState(bb);
         if (condition.isSaturated()) {
             /* If the condition is already saturated, merge both inputs. */
-            return super.addState(bb, TypeState.forUnion(bb, trueValue.getState(), falseValue.getState()));
+            return TypeState.forUnion(bb, trueState, falseState);
         }
-        var conditionValue = condition.getState();
+        var conditionValue = condition.getOutputState(bb);
         if (conditionValue.isEmpty()) {
             /* If the condition is empty, do not produce any output yet. */
-            return false;
+            return TypeState.forEmpty();
         }
         if (conditionValue instanceof PrimitiveTypeState prim) {
             var canBeTrue = prim.canBeTrue();
             var canBeFalse = prim.canBeFalse();
             if (canBeTrue && !canBeFalse) {
-                return super.addState(bb, trueValue.getState());
+                return trueState;
             } else if (!canBeTrue && canBeFalse) {
-                return super.addState(bb, falseValue.getState());
+                return falseState;
             }
-            return super.addState(bb, TypeState.forUnion(bb, trueValue.getState(), falseValue.getState()));
+            return TypeState.forUnion(bb, trueState, falseState);
         }
         throw AnalysisError.shouldNotReachHere("Unexpected non-primitive type state of the condition: " + conditionValue + ", at flow " + this);
     }

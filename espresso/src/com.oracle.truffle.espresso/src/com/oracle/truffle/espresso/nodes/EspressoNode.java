@@ -26,18 +26,18 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StringTable;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -56,19 +56,19 @@ public abstract class EspressoNode extends Node implements ContextAccess {
 
     @Override
     @Idempotent
-    public final Names getNames() {
+    public final NameSymbols getNames() {
         return getLanguage().getNames();
     }
 
     @Override
     @Idempotent
-    public final Types getTypes() {
+    public final TypeSymbols getTypes() {
         return getLanguage().getTypes();
     }
 
     @Override
     @Idempotent
-    public final Signatures getSignatures() {
+    public final SignatureSymbols getSignatures() {
         return getLanguage().getSignatures();
     }
 
@@ -84,7 +84,7 @@ public abstract class EspressoNode extends Node implements ContextAccess {
     }
 
     @Override
-    public final ThreadsAccess getThreadAccess() {
+    public final ThreadAccess getThreadAccess() {
         return getContext().getThreadAccess();
     }
 

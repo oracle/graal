@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTableRef;
 
 /**
  * A representation of a method.
@@ -149,19 +151,29 @@ public interface MethodRef {
     Object invokeMethodSpecial(Object... args);
 
     /**
+     * Invokes an interface method with input arguments. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodInterface(Object... args);
+
+    /**
+     * Invokes an instance method in a non-virtual fashion with input arguments. Overridden methods
+     * that would normally be called when invoking from Java source code using the self object is
+     * not invoked. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodNonVirtual(Object... args);
+
+    /**
      * Determines if the declaring class has a source file attribute.
      *
      * @return true if a source file attribute is present, false otherwise
      */
     boolean hasSourceFileAttribute();
-
-    /**
-     * Determines if the code index is located in the source file on the last line of this method.
-     *
-     * @param codeIndex
-     * @return true if last line, false otherwise
-     */
-    boolean isLastLine(long codeIndex);
 
     /**
      * Returns the klass that declares this method.
@@ -196,14 +208,14 @@ public interface MethodRef {
      *
      * @param requestId the ID for the request that set the breakpoint
      */
-    void removedMethodHook(int requestId);
+    void removeMethodHook(int requestId);
 
     /**
      * Remove a method hook with the given hook on this method.
      *
      * @param hook the method hook
      */
-    void removedMethodHook(MethodHook hook);
+    void removeMethodHook(MethodHook hook);
 
     /**
      * Determines if there are any breakpoints set on this method.
@@ -212,22 +224,14 @@ public interface MethodRef {
      */
     boolean hasActiveHook();
 
-    /**
-     * Determine if this method is obsolete. A method is obsolete if it has been replaced by a
-     * non-equivalent method using the RedefineClasses command. The original and redefined methods
-     * are considered equivalent if their bytecodes are the same except for indices into the
-     * constant pool and the referenced constants are equal.
-     *
-     * @return true if the method is obsolete
-     */
-    boolean isObsolete();
+    void disposeHooks();
 
     /**
      * Returns the last bci of the method.
      *
      * @return last bci
      */
-    long getLastBCI();
+    int getLastBCI();
 
     /**
      * Determines if the method is a constructor.
@@ -242,4 +246,11 @@ public interface MethodRef {
      * @return true if the method is a static initializer
      */
     boolean isClassInitializer();
+
+    /**
+     * Determines if this method was removed by redefinition.
+     *
+     * @return true if removed
+     */
+    boolean isRemovedByRedefinition();
 }

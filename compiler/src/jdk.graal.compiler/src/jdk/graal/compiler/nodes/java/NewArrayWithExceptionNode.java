@@ -69,6 +69,7 @@ public class NewArrayWithExceptionNode extends AllocateWithExceptionNode {
         return elementType;
     }
 
+    @Override
     public boolean fillContents() {
         return fillContents;
     }

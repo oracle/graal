@@ -29,10 +29,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.lang.reflect.Method;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
@@ -40,6 +36,10 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -55,15 +55,18 @@ public class SnippetRuntime {
      * sequence.
      */
     private static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignJdkCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_SINH = findForeignJdkCall(UnaryOperation.SINH.foreignCallSignature.getName(), Math.class, "sinh", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignJdkCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignJdkCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_TANH = findForeignJdkCall(UnaryOperation.TANH.foreignCallSignature.getName(), Math.class, "tanh", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignJdkCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignJdkCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignJdkCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", NO_SIDE_EFFECT, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_CBRT = findForeignJdkCall(UnaryOperation.CBRT.foreignCallSignature.getName(), Math.class, "cbrt", NO_SIDE_EFFECT, true, true);
 
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_COS, ARITHMETIC_TAN,
-                    ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_SINH, ARITHMETIC_COS,
+                    ARITHMETIC_TAN, ARITHMETIC_TANH, ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW, ARITHMETIC_CBRT};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);

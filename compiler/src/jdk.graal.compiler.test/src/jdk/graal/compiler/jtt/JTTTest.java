@@ -30,11 +30,13 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Formatter;
 import java.util.ListIterator;
 import java.util.Optional;
 import java.util.Set;
+
+import org.junit.Assert;
+import org.junit.AssumptionViolatedException;
 
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.phases.fuzzing.AbstractCompilationPlan;
@@ -56,9 +58,7 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.junit.Assert;
-import org.junit.AssumptionViolatedException;
-
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -80,7 +80,6 @@ public class JTTTest extends GraalCompilerTest {
     public static final class DummyTestClass {
     }
 
-    protected static final Set<DeoptimizationReason> EMPTY = Collections.<DeoptimizationReason> emptySet();
     /**
      * The arguments which, if non-null, will replace the Locals in the test method's graph.
      */
@@ -134,7 +133,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(OptionValues options, String name, Object... args) {
-        runTest(options, EMPTY, name, args);
+        runTest(options, CollectionsUtil.setOf(), name, args);
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
@@ -191,7 +190,7 @@ public class JTTTest extends GraalCompilerTest {
      * to the usual compilation using {@link GraalCompilerTest#testAgainstExpected}.
      */
     @Override
-    protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
             testAgainstExpectedWithFuzzedCompilationPlan(options, method, expect, shouldNotDeopt, receiver, args);
         } else {
@@ -367,7 +366,7 @@ public class JTTTest extends GraalCompilerTest {
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
+        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY) || fuzzedSuites == null) {
             return super.createSuites(opts);
         }
         fuzzedSuites.getHighTier().appendPhase(new TestPhase() {

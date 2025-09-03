@@ -26,8 +26,7 @@ package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 
-import org.graalvm.word.WordFactory;
-
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
@@ -47,7 +46,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
     @Override
     public Word cardTableAddress() {
-        return WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+        return Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
     }
 
     @Override
@@ -78,12 +77,24 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
             this.lowerer = new SerialWriteBarrierLowerer(factory);
 
             HotSpotSerialWriteBarrierSnippets receiver = new HotSpotSerialWriteBarrierSnippets();
-            serialImpreciseWriteBarrier = snippet(providers,
-                            SerialWriteBarrierSnippets.class,
-                            "serialImpreciseWriteBarrier",
-                            null,
-                            receiver,
-                            GC_CARD_LOCATION);
+
+            if (Assertions.assertionsEnabled()) {
+                serialImpreciseWriteBarrier = snippet(providers,
+                                SerialWriteBarrierSnippets.class,
+                                "serialImpreciseWriteBarrier",
+                                null,
+                                receiver,
+                                GC_CARD_LOCATION,
+                                getClassComponentTypeLocation(providers.getMetaAccess()));
+            } else {
+                serialImpreciseWriteBarrier = snippet(providers,
+                                SerialWriteBarrierSnippets.class,
+                                "serialImpreciseWriteBarrier",
+                                null,
+                                receiver,
+                                GC_CARD_LOCATION);
+            }
+
             serialPreciseWriteBarrier = snippet(providers,
                             SerialWriteBarrierSnippets.class,
                             "serialPreciseWriteBarrier",

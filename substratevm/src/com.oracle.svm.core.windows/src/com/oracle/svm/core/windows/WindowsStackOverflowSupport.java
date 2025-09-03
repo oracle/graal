@@ -29,13 +29,19 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 
+import jdk.graal.compiler.word.Word;
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 final class WindowsStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
@@ -43,14 +49,14 @@ final class WindowsStackOverflowSupport implements StackOverflowCheck.PlatformSu
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
         int sizeOfMInfo = SizeOf.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
         MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(sizeOfMInfo);
-        MemoryAPI.VirtualQuery(minfo, minfo, WordFactory.unsigned(sizeOfMInfo));
+        MemoryAPI.VirtualQuery(minfo, minfo, Word.unsigned(sizeOfMInfo));
         Pointer bottom = (Pointer) minfo.AllocationBase();
         stackEndPtr.write(bottom);
         UnsignedWord stackSize = minfo.RegionSize();
 
         /* Add up the sizes of all the regions with the same AllocationBase. */
         while (true) {
-            MemoryAPI.VirtualQuery(bottom.add(stackSize), minfo, WordFactory.unsigned(sizeOfMInfo));
+            MemoryAPI.VirtualQuery(bottom.add(stackSize), minfo, Word.unsigned(sizeOfMInfo));
             if (bottom.equal(minfo.AllocationBase())) {
                 stackSize = stackSize.add(minfo.RegionSize());
             } else {

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.memory;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -50,14 +50,14 @@ class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
          * Some libc implementations may return a nullptr when the size is 0. We use a minimum size
          * of 1 to ensure that we always get a unique pointer if the allocation succeeds.
          */
-        UnsignedWord allocationSize = UnsignedUtils.max(size, WordFactory.unsigned(1));
+        UnsignedWord allocationSize = UnsignedUtils.max(size, Word.unsigned(1));
         return libc().malloc(allocationSize);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T calloc(UnsignedWord size) {
-        return libc().calloc(WordFactory.unsigned(1), size);
+        return libc().calloc(Word.unsigned(1), size);
     }
 
     @Override

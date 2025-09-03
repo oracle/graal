@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,20 +46,10 @@ import org.graalvm.collections.EconomicMap;
 /**
  * Represents the result of parsing debug information.
  */
-public class DebugParseUnit {
-    private final DebugData rootData;
-    private final EconomicMap<Integer, DebugData> entries;
-
-    public DebugParseUnit(DebugData rootData, EconomicMap<Integer, DebugData> entries) {
-        this.rootData = rootData;
-        this.entries = entries;
-    }
-
-    public DebugData rootData() {
-        return rootData;
-    }
-
-    public EconomicMap<Integer, DebugData> entries() {
-        return entries;
-    }
+public record DebugParseUnit(
+                DebugData rootData,
+                EconomicMap<Integer, DebugData> entries,
+                EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable,
+                int entryOffset,
+                int compilationUnitOffset) {
 }

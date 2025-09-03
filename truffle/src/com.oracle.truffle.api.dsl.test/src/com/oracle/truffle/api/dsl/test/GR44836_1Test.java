@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,7 +105,7 @@ public class GR44836_1Test {
 
         @Specialization
         static String s3(int arg0,
-                        @Bind("this") Node inlineTarget,
+                        @Bind Node inlineTarget,
                         // make sure we need a specialization data class
                         @Cached InnerCachedNode innerCached0,
                         @Cached InnerCachedNode innerCached1,

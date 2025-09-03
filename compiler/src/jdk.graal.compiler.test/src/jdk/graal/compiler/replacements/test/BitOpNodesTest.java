@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.NodeView;
@@ -34,11 +38,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
@@ -71,32 +70,6 @@ public class BitOpNodesTest extends GraalCompilerTest {
             // Even though there are AArch64 intrinsics for bitCount, they do
             // not use BitCountNode.
             return false;
-        }
-    }
-
-    /**
-     * Determines if the current VM context supports intrinsics for the {@code numberOfLeadingZeros}
-     * methods in {@link Integer} and {@link Long}.
-     */
-    public static boolean isNumberLeadingZerosIntrinsicSupported(Architecture arch) {
-        if (arch instanceof AMD64) {
-            AMD64 amd64 = (AMD64) arch;
-            return amd64.getFeatures().contains(AMD64.CPUFeature.LZCNT) && amd64.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction);
-        } else {
-            return arch instanceof AArch64;
-        }
-    }
-
-    /**
-     * Determines if the current VM context supports intrinsics for the
-     * {@code numberOfTrailingZeros} methods in {@link Integer} and {@link Long}.
-     */
-    public static boolean isNumberTrailingZerosIntrinsicSupported(Architecture arch) {
-        if (arch instanceof AMD64) {
-            AMD64 amd64 = (AMD64) arch;
-            return amd64.getFeatures().contains(AMD64.CPUFeature.BMI1) && amd64.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
-        } else {
-            return arch instanceof AArch64;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -66,5 +65,10 @@ public final class AArch64LoadMethodPointerConstantOp extends AArch64LIRInstruct
     @Override
     public Constant getConstant() {
         return constant;
+    }
+
+    @Override
+    public boolean canRematerializeToStack() {
+        return false;
     }
 }

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.annotation.ElementType;
@@ -37,8 +36,8 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredic
  * Does nothing if specified for something that is neither marked as {@link EspressoSubstitutions}
  * or {@link Substitution}.
  * <p>
- * Substitution that are marked as {@link Substitution#isTrivial()} are considered to have an
- * implicit {@link InlineInBytecode} annotation.
+ * Substitution that are marked as {@link SubstitutionFlag#IsTrivial trivial} are considered to have
+ * an implicit {@link InlineInBytecode} annotation.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE, ElementType.METHOD})

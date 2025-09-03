@@ -26,21 +26,37 @@
 package jdk.graal.compiler.hotspot.replacements.arraycopy;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates.findMethod;
 
+import org.graalvm.word.LocationIdentity;
+
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
-
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaKind;
 
 public class HotSpotArraycopySnippets extends ArrayCopySnippets {
@@ -53,7 +69,7 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     Word getSuperCheckOffset(KlassPointer destElemKlass) {
-        return WordFactory.signed(destElemKlass.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION));
+        return Word.signed(destElemKlass.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION));
     }
 
     @Override
@@ -107,7 +123,8 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     @Override
-    protected void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+    protected void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
+                    boolean exceptionSeen) {
         counters.genericArraycopyDifferentTypeCounter.inc();
         counters.genericArraycopyDifferentTypeCopiedCounter.add(length);
         int copiedElements = GenericArrayCopyCallNode.genericArraycopy(src, srcPos, dest, destPos, length);
@@ -117,7 +134,49 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
              * elements (xor'd with -1).
              */
             copiedElements ^= -1;
-            System.arraycopy(src, srcPos + copiedElements, dest, destPos + copiedElements, length - copiedElements);
+            if (exceptionSeen) {
+                HotSpotArrayCopyCallWithExceptionNode.arraycopyWithException(src, srcPos + copiedElements, dest, destPos + copiedElements, length - copiedElements, elementKind);
+            } else {
+                System.arraycopy(src, srcPos + copiedElements, dest, destPos + copiedElements, length - copiedElements);
+            }
         }
+    }
+
+    @Override
+    protected void doFailingArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, Counters counters) {
+        // Call System.arraycopy but have an exception edge for the call.
+        HotSpotArrayCopyCallWithExceptionNode.arraycopyWithException(src, srcPos, dest, destPos, length, elementKind);
+    }
+
+    @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
+    public static final class HotSpotArrayCopyCallWithExceptionNode extends BasicArrayCopyNode implements Lowerable {
+        public static final NodeClass<HotSpotArrayCopyCallWithExceptionNode> TYPE = NodeClass.create(HotSpotArrayCopyCallWithExceptionNode.class);
+
+        public HotSpotArrayCopyCallWithExceptionNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind) {
+            super(TYPE, src, srcPos, dest, destPos, length, elementKind);
+        }
+
+        @Override
+        public void lower(LoweringTool tool) {
+            // Based on SubstrateGenericArrayCopyCallNode.
+            if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
+                StructuredGraph graph = graph();
+                ValueNode[] args = new ValueNode[]{getSource(), getSourcePosition(), getDestination(), getDestinationPosition(), getLength()};
+                var returnStamp = StampPair.create(StampFactory.forVoid(), StampFactory.forVoid());
+                var target = findMethod(tool.getMetaAccess(), System.class, "arraycopy");
+                var signature = target.getSignature().toParameterTypes(null);
+                var callType = HotSpotCallingConventionType.JavaCall;
+                var invokeKind = CallTargetNode.InvokeKind.Static;
+                CallTargetNode ct = graph.add(new HotSpotDirectCallTargetNode(args, returnStamp, signature, target, callType, invokeKind));
+
+                InvokeWithExceptionNode call = graph.add(new InvokeWithExceptionNode(ct, null, bci()));
+                call.setStateAfter(stateAfter());
+                call.setStateDuring(stateDuring());
+                graph.replaceWithExceptionSplit(this, call);
+            }
+        }
+
+        @NodeIntrinsic
+        public static native int arraycopyWithException(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind);
     }
 }

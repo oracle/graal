@@ -224,11 +224,11 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         return s;
     }
 
-    private static class StringBuilderCodeWriter extends AbstractCodeWriter {
+    public static class StringBuilderCodeWriter extends AbstractCodeWriter {
 
         private final CharArrayWriter charWriter;
 
-        StringBuilderCodeWriter() {
+        public StringBuilderCodeWriter() {
             this.charWriter = new CharArrayWriter();
             this.writer = charWriter;
         }

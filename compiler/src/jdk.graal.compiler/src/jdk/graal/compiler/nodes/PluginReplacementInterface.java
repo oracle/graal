@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.nodes;
 
-import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.spi.Replacements;
 
 /**
  * Interface for nodes responsible for {@linkplain GraphBuilderContext#shouldDeferPlugin deferring}
@@ -36,5 +36,5 @@ public interface PluginReplacementInterface extends FixedNodeInterface {
     /**
      * Replaces this node by applying the stored plugin.
      */
-    boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection);
+    boolean replace(GraphBuilderContext b, Replacements injection);
 }

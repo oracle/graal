@@ -32,7 +32,7 @@ import jdk.graal.compiler.jtt.JTTTest;
 
 public class Object_clone02 extends JTTTest {
 
-    private static class TestClass implements Cloneable {
+    private static final class TestClass implements Cloneable {
         @SuppressWarnings("unused")
         private boolean tryClone(int i) throws CloneNotSupportedException {
             return this == this.clone();

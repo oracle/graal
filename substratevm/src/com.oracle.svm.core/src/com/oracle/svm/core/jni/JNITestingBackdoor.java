@@ -44,7 +44,7 @@ public final class JNITestingBackdoor {
     }
 
     public static long getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
-        return JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic).rawValue();
+        return JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic).rawValue();
     }
 
     public static int getThreadLocalOwnedMonitorsCount() {

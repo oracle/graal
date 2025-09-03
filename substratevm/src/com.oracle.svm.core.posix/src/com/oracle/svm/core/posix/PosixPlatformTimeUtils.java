@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.StackValue;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -36,10 +37,11 @@ public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
 
     @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
+    @Uninterruptible(reason = "Must not migrate platform threads when executing on a virtual thread.")
     public SecondsNanos javaTimeSystemUTC() {
         Time.timespec ts = StackValue.get(Time.timespec.class);
         int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
         PosixUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
-        return new SecondsNanos(ts.tv_sec(), ts.tv_nsec());
+        return allocateSecondsNanosInterruptibly(ts.tv_sec(), ts.tv_nsec());
     }
 }

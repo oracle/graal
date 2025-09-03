@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir.alloc;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -32,7 +33,6 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInsertionBuffer;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.MoveFactory;
@@ -40,21 +40,21 @@ import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
 import jdk.graal.compiler.lir.util.RegisterMap;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
 
 public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
-        RegisterArray calleeSaveRegisters = lirGenRes.getRegisterConfig().getCalleeSaveRegisters();
+        List<Register> calleeSaveRegisters = lirGenRes.getRegisterConfig().getCalleeSaveRegisters();
         if (calleeSaveRegisters == null || calleeSaveRegisters.size() == 0) {
             return;
         }
         LIR lir = lirGenRes.getLIR();
-        RegisterMap<Variable> savedRegisters = saveAtEntry(lir, context.lirGen, lirGenRes, calleeSaveRegisters, target.arch);
+        RegisterMap<AllocatableValue> savedRegisters = saveAtEntry(lir, context.lirGen, lirGenRes, calleeSaveRegisters, target.arch);
 
         for (int blockId : lir.getBlocks()) {
             if (LIR.isBlockDeleted(blockId)) {
@@ -67,7 +67,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         }
     }
 
-    private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, RegisterArray calleeSaveRegisters, Architecture arch) {
+    private static RegisterMap<AllocatableValue> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, List<Register> calleeSaveRegisters, Architecture arch) {
         BasicBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(startBlock);
         int insertionIndex = lirGenRes.getFirstInsertPosition();
@@ -76,12 +76,15 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         StandardOp.LabelOp entry = (StandardOp.LabelOp) instructions.get(insertionIndex - 1);
         RegisterValue[] savedRegisterValues = new RegisterValue[calleeSaveRegisters.size()];
         int savedRegisterValueIndex = 0;
-        RegisterMap<Variable> saveMap = new RegisterMap<>(arch);
+        List<Register> allocatables = lirGenRes.getRegisterConfig().getAllocatableRegisters();
+        RegisterMap<AllocatableValue> saveMap = new RegisterMap<>(arch);
         for (Register register : calleeSaveRegisters) {
-            PlatformKind registerPlatformKind = arch.getLargestStorableKind(register.getRegisterCategory());
+            PlatformKind registerPlatformKind = lirGenRes.getRegisterConfig().getCalleeSaveRegisterStorageKind(arch, register);
             LIRKind lirKind = LIRKind.value(registerPlatformKind);
             RegisterValue registerValue = register.asValue(lirKind);
-            Variable saveVariable = lirGen.newVariable(lirKind);
+            // Force a non-allocatable register to be saved to a stack slot
+            // so as to avoid unnecessary register pressure.
+            AllocatableValue saveVariable = allocatables.contains(registerValue.getRegister()) ? lirGen.newVariable(lirKind) : lirGenRes.getFrameMapBuilder().allocateSpillSlot(lirKind);
             LIRInstruction save = lirGen.getSpillMoveFactory().createMove(saveVariable, registerValue);
             buffer.append(insertionIndex, save);
             save.setComment(lirGenRes, "SaveCalleeSavedRegisters: saveAtEntry");
@@ -93,14 +96,14 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         return saveMap;
     }
 
-    private static void restoreAtExit(LIR lir, MoveFactory moveFactory, LIRGenerationResult lirGenRes, RegisterMap<Variable> calleeSaveRegisters, BasicBlock<?> block) {
+    private static void restoreAtExit(LIR lir, MoveFactory moveFactory, LIRGenerationResult lirGenRes, RegisterMap<AllocatableValue> calleeSaveRegisters, BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int insertionIndex = instructions.size() - 1;
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
         buffer.init(instructions);
         LIRInstruction lirInstruction = instructions.get(insertionIndex);
         assert lirInstruction instanceof StandardOp.BlockEndOp : lirInstruction;
-        calleeSaveRegisters.forEach((Register register, Variable saved) -> {
+        calleeSaveRegisters.forEach((Register register, AllocatableValue saved) -> {
             LIRInstruction restore = moveFactory.createMove(register.asValue(saved.getValueKind()), saved);
             buffer.append(insertionIndex, restore);
             restore.setComment(lirGenRes, "SaveCalleeSavedRegisters: restoreAtExit");

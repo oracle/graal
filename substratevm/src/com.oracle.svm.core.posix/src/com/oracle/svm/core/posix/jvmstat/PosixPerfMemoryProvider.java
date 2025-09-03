@@ -40,6 +40,7 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
 
 import java.nio.ByteBuffer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -48,16 +49,14 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
@@ -98,7 +97,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * null on failure. A return value of null will ultimately disable the shared memory feature.
      */
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L1015-L1082")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1015-L1082")
     public ByteBuffer create() {
         assert backingFilePath == null;
 
@@ -129,7 +128,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             return null;
         }
 
-        Pointer mapAddress = Mman.mmap(WordFactory.nullPointer(), WordFactory.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
+        Pointer mapAddress = Mman.mmap(Word.nullPointer(), Word.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
 
         int result = Unistd.NoTransitions.close(fd);
         assert result != -1;
@@ -143,7 +142,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         backingFilePath = filePath;
 
         /* Clear the shared memory region. */
-        LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
+        LibC.memset(mapAddress, Word.signed(0), Word.unsigned(size));
         return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
     }
 
@@ -276,7 +275,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
          * memory accesses if we don't.
          */
         RawFileOperationSupport fs = RawFileOperationSupport.nativeByteOrder();
-        RawFileDescriptor rawFd = WordFactory.signed(fd);
+        RawFileDescriptor rawFd = Word.signed(fd);
         int pageSize = NumUtil.safeToInt(VirtualMemoryProvider.get().getGranularity().rawValue());
 
         boolean success = true;
@@ -378,7 +377,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isDirectorySecure(CCharPointer directory) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableLstat(directory, buf);
+        int result = PosixStat.restartableLstat(directory, buf);
         if (result == -1) {
             return false;
         }
@@ -393,7 +392,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L249-L260")
     private static boolean isDirFdSecure(int dirFd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(dirFd, buf);
+        int result = PosixStat.restartableFstat(dirFd, buf);
         if (result == -1) {
             return false;
         }
@@ -403,7 +402,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L408-L429")
     private static boolean isFileSecure(int fd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(fd, buf);
+        int result = PosixStat.restartableFstat(fd, buf);
         if (result == -1) {
             return false;
         }
@@ -507,27 +506,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     private static int restartableFtruncate(int fd, int size) {
         int result;
         do {
-            result = Unistd.NoTransitions.ftruncate(fd, WordFactory.signed(size));
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableFstat(int fd, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.fstat(fd, buf);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableLstat(CCharPointer directory, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.lstat(directory, buf);
+            result = Unistd.NoTransitions.ftruncate(fd, Word.signed(size));
         } while (result == -1 && LibC.errno() == Errno.EINTR());
 
         return result;
@@ -560,7 +539,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 }
 
 @AutomaticallyRegisteredFeature
-@Platforms({LINUX.class, Platform.DARWIN.class})
 class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -571,11 +549,4 @@ class PosixPerfMemoryFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PerfMemoryProvider.class, new PosixPerfMemoryProvider());
     }
-}
-
-@TargetClass(className = "jdk.internal.vm.VMSupport")
-final class Target_jdk_internal_vm_VMSupport {
-
-    @Alias
-    public static native String getVMTemporaryDirectory();
 }

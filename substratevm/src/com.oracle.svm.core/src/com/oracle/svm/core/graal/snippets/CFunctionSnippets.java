@@ -47,8 +47,12 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.CPrologueData;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -128,9 +132,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     @Snippet
     private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-            Safepoint.transitionNativeToJava(true);
+            ThreadStatusTransition.fromNativeToJava(true);
         } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-            Safepoint.transitionVMToJava(true);
+            ThreadStatusTransition.fromVMToJava(true);
         } else {
             ReplacementsUtil.staticAssert(false, "Unexpected thread status");
         }
@@ -178,8 +182,8 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 public SnippetTemplate get() {
                     int newThreadStatus = node.getNewThreadStatus();
                     assert StatusSupport.isValidStatus(newThreadStatus);
-                    Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
-                    args.addConst("newThreadStatus", newThreadStatus);
+                    Arguments args = new Arguments(prologue, node.graph(), tool.getLoweringStage());
+                    args.add("newThreadStatus", newThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
                 }
@@ -209,8 +213,8 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 public SnippetTemplate get() {
                     int oldThreadStatus = node.getOldThreadStatus();
                     assert StatusSupport.isValidStatus(oldThreadStatus);
-                    Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
-                    args.addConst("oldThreadStatus", oldThreadStatus);
+                    Arguments args = new Arguments(epilogue, node.graph(), tool.getLoweringStage());
+                    args.add("oldThreadStatus", oldThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
                 }
@@ -276,14 +280,21 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 }
 
+/**
+ * {@link CFunctionSnippets} may only be used for code that cannot be deoptimized. Otherwise,
+ * deoptimization could destroy stack allocated {@link JavaFrameAnchor} structs when rewriting the
+ * stack.
+ */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {
-
     @Override
     @SuppressWarnings("unused")
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        new CFunctionSnippets(options, providers, lowerings);
+        if (hosted) {
+            new CFunctionSnippets(options, providers, lowerings);
+        }
     }
 }

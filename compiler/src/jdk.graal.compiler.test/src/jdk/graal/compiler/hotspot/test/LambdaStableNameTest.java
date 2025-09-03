@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,36 +26,58 @@
 package jdk.graal.compiler.hotspot.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
+import java.util.function.Function;
 
 import org.junit.Test;
-import org.objectweb.asm.Type;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class LambdaStableNameTest {
+
     @Test
     public void checkStableLamdaNameForRunnableAndAutoCloseable() {
         String s = "a string";
-        Runnable r = s::hashCode;
-        ResolvedJavaType rType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(r.getClass());
+        Runnable r0 = s::hashCode;
+        String r0Name = getLambdaName(r0.getClass());
 
-        String name = LambdaUtils.findStableLambdaName(rType);
-        assertLambdaName(name);
+        Runnable r1 = s::hashCode;
+        String r1Name = getLambdaName(r1.getClass());
+
+        assertEquals("The two stable lambda names should the same as they reference the same method and implement the same interface", r0Name, r1Name);
 
         AutoCloseable ac = s::hashCode;
-        ResolvedJavaType acType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(ac.getClass());
-        String acName = LambdaUtils.findStableLambdaName(acType);
-        assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
+        String acName = getLambdaName(ac.getClass());
 
-        String myName = Type.getInternalName(getClass());
-        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x605511206480068bfd9e0bafd4f79e22;", name);
+        assertNotEquals("The two stable lambda names should not be the same as they reference the same method but implement different interfaces", r0Name, acName);
+
+        String myName = getClass().getName().replace('.', '/');
+        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x59cf38d78b5471f8ea57f1c28b37039c;", r0Name);
+
+        Function<String, Integer> f0 = (str) -> str.hashCode();
+        String f0Name = getLambdaName(f0.getClass());
+
+        interface ValueTransformer<L, R> extends Function<L, R> {
+        }
+
+        ValueTransformer<String, Integer> f1 = (str) -> str.hashCode();
+        String f1Name = getLambdaName(f1.getClass());
+
+        assertNotEquals("The two stable lambda names should not be the same as they reference the same method but implement different interfaces", f0Name, f1Name);
+    }
+
+    private static String getLambdaName(Class<?> clazz) {
+        ResolvedJavaType type = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(clazz);
+        String name = LambdaUtils.findStableLambdaName(type);
+        assertLambdaName(name);
+        return name;
     }
 
     private static void assertLambdaName(String name) {

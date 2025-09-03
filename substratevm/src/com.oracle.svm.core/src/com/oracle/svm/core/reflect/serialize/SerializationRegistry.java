@@ -25,10 +25,10 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
+import com.oracle.svm.core.hub.DynamicHub;
+
 public interface SerializationRegistry {
+    boolean isRegisteredForSerialization0(DynamicHub dynamicHub);
 
-    boolean isRegisteredForSerialization(Class<?> cl);
-
-    Object getSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass);
-
+    Object getSerializationConstructorAccessor0(Class<?> declaringClass, Class<?> targetConstructorClass);
 }

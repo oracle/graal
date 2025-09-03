@@ -12,20 +12,21 @@ By default, a native executable produced by Native Image supports logging via th
 
 ## Default Logging Configuration
 
-The default logging configuration in a native executable is based on the `logging.properties` file found in the JDK.
+The default logging configuration in a native executable is based on the _logging.properties_ file found in the JDK.
 This file configures a `java.util.logging.ConsoleHandler` which will only show messages at the `INFO` level and above.
-Custom logging configuration can be loaded either at build time or at runtime as described below.
+Custom logging configuration can be loaded either at build time or at run time as described below.
 
 If you require additional logging handlers, you must register the corresponding classes for reflection.
-For example, if you use `java.util.logging.FileHandler` then provide the following reflection configuration:
+For example, if you use `java.util.logging.FileHandler`, then provide the following reflection configuration in the _META-INF/native-image/reachability-metadata.json_ file:
 ```json
 {
     "name" : "java.util.logging.FileHandler",
     "methods" : [
-      { "name" : "<init>", "parameterTypes" : [] },
+      { "name" : "<init>", "parameterTypes" : [] }
     ]
   }
 ```
+
 For more details, see [Reflection Support](../ReachabilityMetadata.md#reflection).
 
 The usage of the logger is shown in the following example:
@@ -64,7 +65,7 @@ The usage of the logger is shown in the following example:
     WARNING: Danger, Will Robinson! [Wed May 18 17:22:40 BST 2022]
     ```
 
-    In this case, the _logging.properties_ file needs to be available for runtime processing so it must be included into the _reachability-metadata.json_ file under the _META-INF/native-image/<group-id>_ folder. 
+    In this case, the _logging.properties_ file must be available for runtime processing and therefore needs to be registered in the _META-INF/native-image/reachability-metadata.json_ file.
     For more details on how to do this, see [Use of Resources in a Native Executable](../ReachabilityMetadata.md#resources).
 
 ### Related Documentation

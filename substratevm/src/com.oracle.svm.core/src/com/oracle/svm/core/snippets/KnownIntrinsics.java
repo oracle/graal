@@ -42,6 +42,12 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
+     * Returns the value of the code base, which is the address which
+     * {@linkplain com.oracle.svm.core.meta.MethodOffset method offsets} are relative to.
+     */
+    public static native Pointer codeBase();
+
+    /**
      * Returns the hub of the given object.
      */
     public static native DynamicHub readHub(Object obj);
@@ -82,6 +88,11 @@ public class KnownIntrinsics {
      *
      * Note that this is very dangerous. You have to know what you are doing. The parameters are not
      * checked for correctness in any way.
+     *
+     * Consider that invoking a method or stub this way can result in a missing return address and
+     * therefore an unwalkable stack when the return address is expected to be pushed by the caller
+     * (such as on AMD64). On other platforms, we set the link register here which the callee will
+     * push on the stack (such as on AArch64).
      */
     public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
 
@@ -117,4 +128,10 @@ public class KnownIntrinsics {
      * the static analysis, and without the check that the class is already initialized.
      */
     public static native Object unvalidatedAllocateInstance(Class<?> hub);
+
+    /**
+     * Like {@link java.lang.reflect.Array#newInstance(Class, int)} but without the checks that the
+     * array of the desired class is registered for reflection.
+     */
+    public static native Object unvalidatedNewArray(Class<?> componentType, int length) throws NegativeArraySizeException;
 }

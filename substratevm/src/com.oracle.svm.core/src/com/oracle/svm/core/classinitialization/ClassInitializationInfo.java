@@ -32,12 +32,12 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -45,12 +45,13 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
- * {@link #slowPath(ClassInitializationInfo, DynamicHub)} implementation} of class initialization
+ * {@link #slowPath(ClassInitializationInfo, DynamicHub) implementation} of class initialization
  * according to the Java VM specification.
  * <p>
  * The information is not directly stored in {@link DynamicHub} because 1) the class initialization
@@ -230,6 +231,27 @@ public final class ClassInitializationInfo {
         this.slowPathRequired = true;
         this.initLock = new ReentrantLock();
         this.hasInitializer = classInitializer != null;
+    }
+
+    public ClassInitializationInfo(boolean typeReachedTracked) {
+        assert RuntimeClassLoading.isSupported();
+
+        this.classInitializer = null;
+        this.hasInitializer = true;
+
+        // GR-59739: Needs a new state "Loaded".
+        this.initState = InitState.Linked;
+        this.typeReached = typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
+        this.slowPathRequired = true;
+        this.initLock = new ReentrantLock();
+    }
+
+    public InitState getInitState() {
+        return initState;
+    }
+
+    public boolean isSlowPathRequired() {
+        return slowPathRequired;
     }
 
     public boolean hasInitializer() {
@@ -542,7 +564,7 @@ public final class ClassInitializationInfo {
             if (initState == InitState.FullyInitialized) {
                 this.slowPathRequired = false;
             }
-            this.initThread = WordFactory.nullPointer();
+            this.initThread = Word.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
             Unsafe.getUnsafe().storeFence();
 

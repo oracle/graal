@@ -40,6 +40,9 @@
  */
 package org.graalvm.nativeimage.hosted;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -84,6 +87,34 @@ public final class RuntimeForeignAccess {
      */
     public static void registerForUpcall(Object desc, Object... options) {
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
+    }
+
+    /**
+     * Registers a specific static method (denoted by a method handle) as a fast upcall target. This
+     * will create a specialized upcall stub that will invoke only the specified method, which is
+     * much faster than using {@link #registerForUpcall(Object, Object...)}).
+     * <p>
+     * The provided method handle must be a direct method handle. Those are most commonly created
+     * using {@link java.lang.invoke.MethodHandles.Lookup#findStatic(Class, String, MethodType)}.
+     * However, a strict requirement is that it must be possible to create a non-empty descriptor
+     * for the method handle using {@link MethodHandle#describeConstable()}. The denoted static
+     * method will also be registered for reflective access since run-time code will also create a
+     * method handle to denoted static method.
+     * </p>
+     * <p>
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
+     * </p>
+     *
+     * @param target A direct method handle denoting a static method.
+     * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
+     * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
+     *
+     * @since 24.2
+     */
+    public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, desc, options);
     }
 
     private RuntimeForeignAccess() {

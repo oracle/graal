@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,25 +28,21 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
-import java.security.AccessControlContext;
 import java.security.CodeSource;
 import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.Policy;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,14 +53,12 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.thread.Target_java_lang_ThreadLocal;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,87 +68,6 @@ import sun.security.util.SecurityConstants;
 /*
  * All security checks are disabled.
  */
-
-@TargetClass(java.security.AccessController.class)
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-@SuppressWarnings({"unused"})
-final class Target_java_security_AccessController {
-
-    @Substitute
-    @SuppressWarnings("deprecation")
-    static AccessControlContext getStackAccessControlContext() {
-        if (!CEntryPointSnippets.isIsolateInitialized()) {
-            /*
-             * If isolate still isn't initialized, we can assume that we are so early in the JDK
-             * initialization that any attempt at stalk walk will fail as not even the basic
-             * PrintWriter/Logging is available yet. This manifested when
-             * UseDedicatedVMOperationThread hosted option was set, triggering a runtime crash.
-             */
-            return null;
-        }
-        return StackAccessControlContextVisitor.getFromStack();
-    }
-
-    @Substitute
-    static AccessControlContext getInheritedAccessControlContext() {
-        return SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class).inheritedAccessControlContext;
-    }
-
-    @Substitute
-    private static ProtectionDomain getProtectionDomain(final Class<?> caller) {
-        return caller.getProtectionDomain();
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        PrivilegedStack.push(context, caller);
-        try {
-            return action.run();
-        } finally {
-            PrivilegedStack.pop();
-        }
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        PrivilegedStack.push(context, caller);
-        try {
-            return action.run();
-        } finally {
-            PrivilegedStack.pop();
-        }
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation")
-    static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
-
-        if (context != null && context.equals(AccessControllerUtil.DISALLOWED_CONTEXT_MARKER)) {
-            VMError.shouldNotReachHere("Non-allowed AccessControlContext that was replaced with a blank one at build time was invoked without being reinitialized at run time.\n" +
-                            "This might be an indicator of improper build time initialization, or of a non-compatible JDK version.\n" +
-                            "In order to fix this you can either:\n" +
-                            "    * Annotate the offending context's field with @RecomputeFieldValue\n" +
-                            "    * Implement a custom runtime accessor and annotate said field with @InjectAccessors\n" +
-                            "    * If this context originates from the JDK, and it doesn't leak sensitive info, you can allow it in 'AccessControlContextReplacerFeature.duringSetup'");
-        }
-
-        // check if caller is authorized to create context
-        if (System.getSecurityManager() != null) {
-            throw VMError.unsupportedFeature("SecurityManager isn't supported");
-        }
-        return context;
-    }
-}
 
 @TargetClass(SecurityManager.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -195,8 +108,8 @@ final class Target_java_security_Provider_ServiceKey {
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider {
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
-    private static Target_java_security_Provider_ServiceKey previousKey;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadLocalServiceKeyComputer.class) //
+    private static Target_java_lang_ThreadLocal previousKey;
 }
 
 @TargetClass(value = java.security.Provider.class, innerClass = "Service")
@@ -211,21 +124,44 @@ final class Target_java_security_Provider_Service {
     private Object constructorCache;
 }
 
+class ServiceKeyProvider {
+    static Object getNewServiceKey() {
+        Class<?> serviceKey = ReflectionUtil.lookupClass("java.security.Provider$ServiceKey");
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
+        return ReflectionUtil.newInstance(constructor, "", "", false);
+    }
+
+    /**
+     * Originally the thread local creates a new default service key each time. Here we always
+     * return the singleton default service key. This default key will be replaced with an actual
+     * key in {@code java.security.Provider.parseLegacy}
+     */
+    static Supplier<Object> getNewServiceKeySupplier() {
+        final Object singleton = ServiceKeyProvider.getNewServiceKey();
+        return () -> singleton;
+    }
+}
+
 @Platforms(Platform.HOSTED_ONLY.class)
 class ServiceKeyComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        try {
-            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
-            Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
-            return constructor.newInstance("", "", false);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return ServiceKeyProvider.getNewServiceKey();
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        // Originally the thread local creates a new default service key each time.
+        // Here we always return the singleton default service key. This default key
+        // will be replaced with an actual key in Provider.parseLegacy
+        return ThreadLocal.withInitial(ServiceKeyProvider.getNewServiceKeySupplier());
+    }
+}
+
+@Platforms(InternalPlatform.WINDOWS_BASE.class)
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider_Windows {
 
@@ -259,7 +195,7 @@ final class ProviderUtil {
             return;
         }
 
-        if (provider.name.equals("SunMSCAPI")) {
+        if ("SunMSCAPI".equals(provider.name)) {
             try {
                 System.loadLibrary("sunmscapi");
             } catch (Throwable ignored) {
@@ -307,26 +243,28 @@ class ProviderVerifierJavaHomeAccessors {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+17/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
+/**
+ * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
+ * SecurityServicesFeature at build time, for all registered providers. The cache is used by
+ * {@code javax.crypto.JceSecurity#canUseProvider} at run time to check whether a provider is
+ * properly signed and can be used by JCE. It does that via jar verification which we cannot
+ * support.
+ */
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
-
-    /*
-     * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
-     * build time, for all registered providers. The cache is used by JceSecurity.canUseProvider()
-     * at runtime to check whether a provider is properly signed and can be used by JCE. It does
-     * that via jar verification which we cannot support.
-     */
 
     // Checkstyle: stop
     @Alias //
     private static Object PROVIDER_VERIFIED;
     // Checkstyle: resume
 
-    // Map<Provider,?> of the providers we already have verified
-    // value == PROVIDER_VERIFIED is successfully verified
-    // value is failure cause Exception in error case
+    /*
+     * Map<Provider, ?> of providers that have already been verified. A value of PROVIDER_VERIFIED
+     * indicates successful verification. Otherwise, the value is the Exception that caused the
+     * verification to fail.
+     */
     @Alias //
     private static Map<Object, Object> verificationResults;
 
@@ -344,7 +282,6 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
         Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
         Object o = verificationResults.get(key);
@@ -353,49 +290,25 @@ final class Target_javax_crypto_JceSecurity {
         } else if (o != null) {
             return (Exception) o;
         }
-        /* End code block copied from original method. */
         /*
-         * If the verification result is not found in the verificationResults map JDK proceeds to
-         * verify it. That requires accessing the code base which we don't support. The substitution
-         * for getCodeBase() would be enough to take care of this too, but substituting
-         * getVerificationResult() allows for a better error message.
+         * If the verification result is not found in the verificationResults map, HotSpot will
+         * attempt to verify the provider. This requires accessing the code base, which isn't
+         * supported in Native Image, so we need to fail. We could either fail here or substitute
+         * getCodeBase() and fail there, but handling it here is a cleaner approach.
          */
-        throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
-                        "All providers must be registered and verified in the Native Image builder. ");
+        throw new SecurityException(
+                        "Attempted to verify a provider that was not registered at build time: " + p + ". " +
+                                        "All security providers must be registered and verified during native image generation. " +
+                                        "Try adding the option: -H:AdditionalSecurityProviders=" + p + " and rebuild the image.");
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper")
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 
     @Alias //
     Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, ReferenceQueue<Object> queue) {
-    }
-}
-
-class JceSecurityAccessor {
-    private static volatile SecureRandom RANDOM;
-
-    static SecureRandom get() {
-        SecureRandom result = RANDOM;
-        if (result == null) {
-            /* Lazy initialization on first access. */
-            result = initializeOnce();
-        }
-        return result;
-    }
-
-    private static synchronized SecureRandom initializeOnce() {
-        SecureRandom result = RANDOM;
-        if (result != null) {
-            /* Double-checked locking is OK because INSTANCE is volatile. */
-            return result;
-        }
-
-        result = new SecureRandom();
-        RANDOM = result;
-        return result;
     }
 }
 
@@ -432,38 +345,6 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
     }
 }
 
-@TargetClass(value = java.security.Policy.class, innerClass = "PolicyInfo")
-final class Target_java_security_Policy_PolicyInfo {
-}
-
-@TargetClass(java.security.Policy.class)
-final class Target_java_security_Policy {
-
-    @Delete //
-    private static Target_java_security_Policy_PolicyInfo policyInfo;
-
-    @Substitute
-    private static Policy getPolicyNoCheck() {
-        return AllPermissionsPolicy.SINGLETON;
-    }
-
-    @Substitute
-    private static boolean isSet() {
-        return true;
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private static void setPolicy(Policy p) {
-        /*
-         * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
-         * where an exception is silently ignored by an application and then necessary security
-         * checks are not in place.
-         */
-        throw VMError.shouldNotReachHere("Installing a Policy is not yet supported");
-    }
-}
-
 final class AllPermissionsPolicy extends Policy {
 
     static final Policy SINGLETON = new AllPermissionsPolicy();
@@ -496,51 +377,7 @@ final class AllPermissionsPolicy extends Policy {
     }
 }
 
-/**
- * This class is instantiated indirectly from the {@code Policy#getInstance} methods via the
- * {@link java.security.Security#getProviders security provider} abstractions. We could just
- * substitute the Policy.getInstance methods to return {@link AllPermissionsPolicy#SINGLETON}, this
- * version is more fool-proof in case someone manually registers security providers for reflective
- * instantiation.
- */
-@TargetClass(className = "sun.security.provider.PolicySpiFile")
-@SuppressWarnings({"unused", "static-method", "deprecation"})
-final class Target_sun_security_provider_PolicySpiFile {
-
-    @Substitute
-    private Target_sun_security_provider_PolicySpiFile(Policy.Parameters params) {
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private PermissionCollection engineGetPermissions(CodeSource codesource) {
-        return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private PermissionCollection engineGetPermissions(ProtectionDomain d) {
-        return AllPermissionsPolicy.SINGLETON.getPermissions(d);
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private boolean engineImplies(ProtectionDomain d, Permission p) {
-        return AllPermissionsPolicy.SINGLETON.implies(d, p);
-    }
-
-    @Substitute
-    private void engineRefresh() {
-        AllPermissionsPolicy.SINGLETON.refresh();
-    }
-}
-
-@Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
-@TargetClass(className = "sun.security.provider.PolicyFile")
-final class Target_sun_security_provider_PolicyFile {
-}
-
-@TargetClass(className = "sun.security.jca.ProviderConfig")
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 

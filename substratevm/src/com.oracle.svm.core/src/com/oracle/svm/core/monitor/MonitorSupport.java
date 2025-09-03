@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.monitor;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadStatus;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -112,4 +113,11 @@ public abstract class MonitorSupport {
      * state until the monitor has been successfully acquired.
      */
     public abstract int getParkedThreadStatus(Thread thread, boolean timed);
+
+    /**
+     * Ensures that all locking-related Java heap objects are allocated so that the given object can
+     * be used in {@code synchronized} statements and in calls to {@link Object#notify} and
+     * {@link Object#notifyAll} without triggering any locking-related Java heap allocations.
+     */
+    public abstract void ensureInitialized(Object obj);
 }

@@ -25,8 +25,8 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import java.io.File;
+import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -106,17 +106,27 @@ abstract class ProfilerCLI {
             return UNKNOWN;
         }
         StringBuilder b = new StringBuilder();
-        if (sourceSection.getSource().getPath() == null) {
-            b.append(sourceSection.getSource().getName());
-        } else {
-            Path pathAbsolute = Paths.get(sourceSection.getSource().getPath());
-            Path pathBase = new File("").getAbsoluteFile().toPath();
+        Source source = sourceSection.getSource();
+        URL url = source.getURL();
+        if (url != null && !"file".equals(url.getProtocol())) {
+            b.append(url.toExternalForm());
+        } else if (source.getPath() != null) {
             try {
+                /*
+                 * On Windows, getPath for a local file URL returns a path in the format
+                 * `/C:/Documents/`, which is not a valid file system path on Windows. Attempting to
+                 * parse this path using Path#of results in a failure. However, java.io.File
+                 * correctly handles this format by removing the invalid leading `/` character.
+                 */
+                Path pathAbsolute = new File(source.getPath()).toPath();
+                Path pathBase = new File("").getAbsoluteFile().toPath();
                 Path pathRelative = pathBase.relativize(pathAbsolute);
                 b.append(pathRelative.toFile());
             } catch (IllegalArgumentException e) {
-                b.append(sourceSection.getSource().getName());
+                b.append(source.getName());
             }
+        } else {
+            b.append(source.getName());
         }
 
         b.append("~").append(formatIndices(sourceSection, true));

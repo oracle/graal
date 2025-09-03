@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,6 +125,43 @@ public class DebugData {
      */
     public int asI32OrDefault(int attribute) {
         return asI32OrDefault(attribute, DebugUtil.DEFAULT_I32);
+    }
+
+    /**
+     * Converts the underlying attribute value to an integer. Interprets byte and short encodings as
+     * unsigned integer values.
+     * 
+     * @return the integer value or the given default value, if the attribute does not exist or the
+     *         value does not fit into an integer.
+     */
+    public int asU32OrDefault(int attribute, int defaultValue) {
+        final int index = attributeIndex(attribute);
+        if (index == -1) {
+            return defaultValue;
+        }
+        final int encoding = attributeEncoding(attributeInfo[index]);
+        final int value;
+        if (DataEncoding.isByte(encoding)) {
+            value = Byte.toUnsignedInt((byte) attributes[index]);
+        } else if (DataEncoding.isShort(encoding)) {
+            value = Short.toUnsignedInt((short) attributes[index]);
+        } else if (DataEncoding.isInt(encoding)) {
+            value = (int) attributes[index];
+        } else {
+            return defaultValue;
+        }
+        return value;
+    }
+
+    /**
+     * Converts the underlying attribute value to an integer. Interprets byte and short encodings as
+     * unsigned integer values.
+     *
+     * @return the integer value or {@link DebugUtil#DEFAULT_I32}, if the attribute does not exist
+     *         or the value does not fit into an integer.
+     */
+    public int asU32OrDefault(int attribute) {
+        return asU32OrDefault(attribute, DebugUtil.DEFAULT_I32);
     }
 
     /**

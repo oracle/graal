@@ -45,7 +45,7 @@ final class Target_java_util_Locale {
     private static native Locale initDefault();
 
     @SuppressWarnings("unused")
-    private static class DefaultLocaleAccessors {
+    private static final class DefaultLocaleAccessors {
         static Locale get() {
             if (Util_java_util_Locale.injectedDefaultLocale == null) {
                 Util_java_util_Locale.injectedDefaultLocale = Target_java_util_Locale.initDefault();

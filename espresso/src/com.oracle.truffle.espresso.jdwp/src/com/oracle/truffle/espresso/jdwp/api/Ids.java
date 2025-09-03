@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,24 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
-
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.oracle.truffle.api.TruffleLogger;
 
 /**
  * Class that keeps an ID representation of all entities when communicating with a debugger through
  * JDWP. Each entity will be assigned a unique ID. Only weak references are kept for entities.
  */
 public final class Ids<T> {
+    public static final int ID_SIZE = 8;
+    private static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
 
     private volatile long uniqueID = 1;
 
@@ -43,7 +47,7 @@ public final class Ids<T> {
      * All entities stored while communicating with the debugger. The array will be expanded
      * whenever an ID for a new entity is requested.
      */
-    private WeakReference<T>[] objects;
+    private volatile WeakReference<T>[] objects;
 
     /**
      * A special object representing the null value. This object must be passed on by the
@@ -51,11 +55,12 @@ public final class Ids<T> {
      */
     private final T nullObject;
 
-    public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
-
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
-    private DebuggerController controller;
+    private List<Object> pinnedObjects = new ArrayList<>();
+
+    private volatile boolean pinningState = false;
+    private TruffleLogger logger;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
@@ -84,8 +89,7 @@ public final class Ids<T> {
             }
         }
         // check the anonymous inner class map
-        if (object instanceof KlassRef) {
-            KlassRef klass = (KlassRef) object;
+        if (object instanceof KlassRef klass) {
             Long id = innerClassIDMap.get(klass.getNameAsString());
             if (id != null) {
                 // inject new klass under existing ID
@@ -155,52 +159,43 @@ public final class Ids<T> {
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
         log(() -> "Generating new ID: " + id + " for object: " + object);
-        if (object instanceof KlassRef) {
-            KlassRef klass = (KlassRef) object;
+        if (object instanceof KlassRef klass) {
             Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
             if (matcher.matches()) {
                 innerClassIDMap.put(klass.getNameAsString(), id);
             }
         }
+        // pin object when VM in suspended state
+        if (pinningState) {
+            pinnedObjects.add(object);
+        }
         return id;
-    }
-
-    public void replaceObject(T original, T replacement) {
-        int id = (int) getIdAsLong(original);
-        objects[id] = new WeakReference<>(replacement);
-        log(() -> "Replaced ID: " + id);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void updateId(KlassRef klass) {
-        // remove existing ID
-        removeId(klass);
-        Long theId = innerClassIDMap.get(klass.getNameAsString());
-        if (theId != null) {
-            // then inject klass under the new ID
-            objects[(int) (long) theId] = new WeakReference(klass);
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void removeId(KlassRef klass) {
-        int id = (int) getId(klass);
-        if (id > 0) {
-            objects[id] = new WeakReference<>(null);
-        }
     }
 
     public boolean checkRemoved(long refTypeId) {
         return innerClassIDMap.containsValue(refTypeId);
     }
 
-    public void injectController(DebuggerController control) {
-        this.controller = control;
+    private void log(Supplier<String> supplier) {
+        logger.finest(supplier);
     }
 
-    private void log(Supplier<String> supplier) {
-        if (controller != null) {
-            controller.finest(supplier);
+    public synchronized void pinAll() {
+        pinningState = true;
+        for (WeakReference<T> object : objects) {
+            Object toPin = object.get();
+            if (toPin != null) {
+                pinnedObjects.add(toPin);
+            }
         }
+    }
+
+    public synchronized void unpinAll() {
+        pinningState = false;
+        pinnedObjects.clear();
+    }
+
+    public void injectLogger(TruffleLogger truffleLogger) {
+        this.logger = truffleLogger;
     }
 }

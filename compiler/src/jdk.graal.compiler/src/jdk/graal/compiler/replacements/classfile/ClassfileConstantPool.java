@@ -29,14 +29,15 @@ import static jdk.graal.compiler.replacements.classfile.ClassfileConstant.CONSTA
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.List;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ClassRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ExecutableRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.FieldRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Primitive;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Utf8;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -45,6 +46,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
+@LibGraalSupport.HostedOnly
 class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     final ClassfileConstant[] entries;
@@ -177,6 +179,11 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
             throw new IllegalAccessError("illegal access linking method 'jdk.jfr.internal.event.EventWriterFactory.getEventWriter(long)'");
         }
         return result;
+    }
+
+    @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

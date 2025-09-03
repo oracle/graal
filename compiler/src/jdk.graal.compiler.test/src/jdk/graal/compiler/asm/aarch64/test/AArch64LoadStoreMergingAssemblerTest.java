@@ -25,6 +25,7 @@
  */
 package jdk.graal.compiler.asm.aarch64.test;
 
+import jdk.graal.compiler.core.aarch64.test.AArch64TestMacroAssembler;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -63,8 +64,8 @@ public class AArch64LoadStoreMergingAssemblerTest extends GraalTest {
 
         AArch64LoadStoreCodeGen() {
             TargetDescription target = JVMCI.getRuntime().getHostJVMCIBackend().getTarget();
-            masm1 = new AArch64MacroAssembler(target);
-            masm2 = new AArch64MacroAssembler(target);
+            masm1 = new AArch64TestMacroAssembler(target);
+            masm2 = new AArch64TestMacroAssembler(target);
         }
 
         void emitScaledImmLdr(int size, Register rt, Register base, int imm12) {

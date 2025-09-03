@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,20 @@ import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import org.junit.Assert;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -51,17 +63,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
-import org.junit.Assert;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -71,8 +73,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
 
-    private static final Set<String> WRAPPER_CLASSES = Set.of(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(), Integer.class.getName(),
-                    Long.class.getName(), Short.class.getName(), Double.class.getName());
+    private static final Set<String> WRAPPER_CLASSES = CollectionsUtil.setOf(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(),
+                    Integer.class.getName(), Long.class.getName(), Short.class.getName(), Double.class.getName());
 
     protected CompilationResult lastCompilationResult;
     DebugContext lastDebug;
@@ -287,7 +289,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         TruffleCompilationTask task = newTask();
         TruffleCompilerImpl compiler = getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-            try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
+            try (DebugContext.Scope _ = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
                 SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
                 if (speculationLog != null) {
                     speculationLog.collectFailedSpeculations();
@@ -298,15 +300,15 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
                 try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
-                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
-                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable));
+                                CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
+                    final TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                                     compiler.getOrCreateCompilerOptions(compilable),
                                     debug, compilable,
-                                    partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
-                    try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
+                    try (Graph.NodeEventScope _ = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
                         truffleTier.apply(context.graph, context);
                         lastCompiledGraph = context.graph;
                         return context.graph;
@@ -376,23 +378,6 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             }
         }
         return result;
-    }
-
-    /**
-     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
-     */
-    protected static boolean isByteBufferPartialEvaluationSupported() {
-        if (Runtime.version().feature() == 20) {
-            try {
-                Class.forName("jdk.internal.foreign.Scoped");
-                // Unsupported early access version.
-                return false;
-            } catch (ClassNotFoundException e) {
-                return true;
-            }
-        } else {
-            return Runtime.version().feature() == 17 || Runtime.version().feature() >= 21;
-        }
     }
 
     /**

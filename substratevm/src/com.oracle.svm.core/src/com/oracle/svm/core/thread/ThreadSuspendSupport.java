@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -58,6 +65,14 @@ import com.oracle.svm.core.util.VMError;
  * </ul>
  */
 public final class ThreadSuspendSupport {
+    /**
+     * The value is either {@code 0} (not suspended), or positive (suspended, possibly blocked on
+     * {@link #COND_SUSPEND}). This counter may only be modified while holding the
+     * {@link VMThreads#THREAD_MUTEX}.
+     */
+    private static final FastThreadLocalInt suspendedTL = FastThreadLocalFactory.createInt("ThreadSuspendSupport.suspended");
+    private static final VMCondition COND_SUSPEND = new VMCondition(VMThreads.THREAD_MUTEX);
+
     private ThreadSuspendSupport() {
     }
 
@@ -84,20 +99,39 @@ public final class ThreadSuspendSupport {
     private static void suspend(IsolateThread isolateThread) {
         VMThreads.guaranteeOwnsThreadMutex("Must own the THREAD_MUTEX to prevent races.");
 
-        int newValue = Safepoint.suspendedTL.get(isolateThread) + 1;
+        int newValue = suspendedTL.get(isolateThread) + 1;
         VMError.guarantee(newValue > 0, "Too many thread suspends.");
-        Safepoint.suspendedTL.set(isolateThread, newValue);
+        suspendedTL.set(isolateThread, newValue);
     }
 
     private static void resume(IsolateThread isolateThread) {
         VMThreads.guaranteeOwnsThreadMutex("Must own the THREAD_MUTEX to prevent races.");
 
-        int newValue = Safepoint.suspendedTL.get(isolateThread) - 1;
+        int newValue = suspendedTL.get(isolateThread) - 1;
         VMError.guarantee(newValue >= 0, "Only a suspended thread can be resumed.");
-        Safepoint.suspendedTL.set(isolateThread, newValue);
+        suspendedTL.set(isolateThread, newValue);
 
         if (newValue == 0) {
-            Safepoint.COND_SUSPEND.broadcast();
+            COND_SUSPEND.broadcast();
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isCurrentThreadSuspended() {
+        return isSuspended(CurrentIsolate.getCurrentThread());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isSuspended(IsolateThread thread) {
+        assert VMThreads.THREAD_MUTEX.isOwner() || thread == CurrentIsolate.getCurrentThread();
+        return suspendedTL.getVolatile(thread) > 0;
+    }
+
+    @Uninterruptible(reason = "Must not contain safepoint checks.")
+    public static void blockCurrentThreadIfSuspended() {
+        assert VMThreads.THREAD_MUTEX.isOwner();
+        while (ThreadSuspendSupport.isCurrentThreadSuspended()) {
+            COND_SUSPEND.blockNoTransition();
         }
     }
 

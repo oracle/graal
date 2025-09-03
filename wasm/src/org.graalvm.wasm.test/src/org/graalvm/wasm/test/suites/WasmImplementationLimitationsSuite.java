@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,12 @@
 
 package org.graalvm.wasm.test.suites;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -53,23 +59,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
-
 @RunWith(Parameterized.class)
 public class WasmImplementationLimitationsSuite {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() {
-        return Arrays.asList(
+        return Collections.singletonList(
                         stringCase("Table instance - initial size out of bounds",
-                                        "table instance size exceeds limit: 2147483648 should be <= 2147483647",
-                                        "(table $table1 2147483648 funcref)", Failure.Type.TRAP),
-                        stringCase("Memory instance - initial size out of bounds",
-                                        "memory instance size exceeds limit: 32768 should be <= 32767",
-                                        "(memory $memory1 32768)", Failure.Type.TRAP));
+                                        "table instance size exceeds limit: 2147483648 should be <= 10000000",
+                                        "(table $table1 2147483648 funcref)", Failure.Type.TRAP));
     }
 
     private final String expectedErrorMessage;
@@ -88,7 +85,7 @@ public class WasmImplementationLimitationsSuite {
         final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
-            context.eval(source).getMember("_main").execute();
+            context.eval(source).newInstance().getMember("exports").getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();
 

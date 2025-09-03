@@ -45,10 +45,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import com.oracle.truffle.api.RootCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -385,6 +388,63 @@ public class RootNodeTest {
         }
     }
 
+    static final class TestFindInstrumentableRootNode extends RootNode {
+
+        Node instrumentableNode;
+
+        TestFindInstrumentableRootNode(Node instrumentableNode) {
+            super(null);
+            this.instrumentableNode = instrumentableNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            assertStacks();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void assertStacks() {
+            Truffle.getRuntime().iterateFrames((e) -> {
+                if (e.getCallTarget() == getCallTarget()) {
+                    assertSame(instrumentableNode, e.getInstrumentableCallNode());
+                }
+                return e;
+            });
+
+            boolean found = false;
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(new Exception());
+            for (TruffleStackTraceElement e : stackTrace) {
+                if (e.getTarget() == getCallTarget()) {
+                    assertSame(instrumentableNode, e.getInstrumentableLocation());
+                    found = true;
+                }
+            }
+            assertTrue(found);
+        }
+
+        @Override
+        protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+            return instrumentableNode;
+        }
+
+    }
+
+    @Test
+    public void testGetInstrumentableNode() {
+        new TestFindInstrumentableRootNode(null).getCallTarget().call();
+        Node node = new Node() {
+        };
+        RootNode root = new TestFindInstrumentableRootNode(node);
+        root.insert(node);
+        root.getCallTarget().call();
+
+        node = new Node() {
+        };
+        RootNode invalidRoot = new TestFindInstrumentableRootNode(node);
+        assertThrows(AssertionError.class, () -> invalidRoot.getCallTarget().call());
+    }
+
     private static TruffleStackTraceElement getStackTraceElementFor(Throwable t, RootNode rootNode) {
         for (TruffleStackTraceElement stackTraceElement : TruffleStackTrace.getStackTrace(t)) {
             if (rootNode == stackTraceElement.getTarget().getRootNode()) {
@@ -624,4 +684,65 @@ public class RootNodeTest {
 
     }
 
+    @Test
+    public void testPrepareForCall() {
+        LazyInitializedRootNode root = new LazyInitializedRootNode();
+        assertEquals(false, root.execute(null));
+        RootCallTarget rootCallTarget = root.getCallTarget();
+        assertEquals(true, rootCallTarget.call());
+    }
+
+    static final class LazyInitializedRootNode extends RootNode {
+        private boolean isInitialized = false;
+
+        LazyInitializedRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return isInitialized;
+        }
+
+        @Override
+        protected void prepareForCall() {
+            isInitialized = true;
+        }
+    }
+
+    @Test
+    public void testPrepareForCallPreventCall() {
+        PreventCallWhenUninitializedRootNode root = new PreventCallWhenUninitializedRootNode();
+        assertEquals(false, root.execute(null));
+        root.initialize();
+        assertEquals(true, root.getCallTarget().call());
+
+        PreventCallWhenUninitializedRootNode root2 = new PreventCallWhenUninitializedRootNode();
+        assertEquals(false, root2.execute(null));
+        assertThrows(IllegalStateException.class, root2::getCallTarget);
+    }
+
+    static final class PreventCallWhenUninitializedRootNode extends RootNode {
+        private boolean isInitialized = false;
+
+        PreventCallWhenUninitializedRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return isInitialized;
+        }
+
+        public void initialize() {
+            isInitialized = true;
+        }
+
+        @Override
+        protected void prepareForCall() {
+            if (!isInitialized) {
+                throw new IllegalStateException("Root node is not ready to be used as a call target.");
+            }
+        }
+    }
 }

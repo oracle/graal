@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.thread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -39,7 +40,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -97,13 +97,13 @@ public final class PosixPlatformThreads extends PlatformThreads {
                 return false;
             }
 
-            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            UnsignedWord threadStackSize = Word.unsigned(stackSize);
             /* If there is a chosen stack size, use it as the stack size. */
-            if (threadStackSize.notEqual(WordFactory.zero())) {
+            if (threadStackSize.notEqual(Word.zero())) {
                 /* Make sure the chosen stack size is large enough. */
                 threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
                 /* Make sure the chosen stack size is a multiple of the system page size. */
-                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, Word.unsigned(Unistd.getpagesize()));
 
                 if (Pthread.pthread_attr_setstacksize(attributes, threadStackSize) != 0) {
                     return false;
@@ -213,25 +213,25 @@ public final class PosixPlatformThreads extends PlatformThreads {
         pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
         int status = Pthread.pthread_attr_init_no_transition(attributes);
         if (status != 0) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         try {
             status = Pthread.pthread_attr_setdetachstate_no_transition(attributes, Pthread.PTHREAD_CREATE_JOINABLE());
             if (status != 0) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
 
-            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            UnsignedWord threadStackSize = Word.unsigned(stackSize);
             /* If there is a chosen stack size, use it as the stack size. */
-            if (threadStackSize.notEqual(WordFactory.zero())) {
+            if (threadStackSize.notEqual(Word.zero())) {
                 /* Make sure the chosen stack size is large enough. */
                 threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
                 /* Make sure the chosen stack size is a multiple of the system page size. */
-                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.NoTransitions.getpagesize()));
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, Word.unsigned(Unistd.NoTransitions.getpagesize()));
 
                 status = Pthread.pthread_attr_setstacksize_no_transition(attributes, threadStackSize);
                 if (status != 0) {
-                    return WordFactory.nullPointer();
+                    return Word.nullPointer();
                 }
             }
 
@@ -239,7 +239,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
             status = Pthread.pthread_create_no_transition(newThread, attributes, threadRoutine, userData);
             if (status != 0) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
 
             return newThread.read();
@@ -259,7 +259,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ThreadLocalKey createUnmanagedThreadLocal() {
         Pthread.pthread_key_tPointer key = StackValue.get(Pthread.pthread_key_tPointer.class);
-        PosixUtils.checkStatusIs0(Pthread.pthread_key_create(key, WordFactory.nullPointer()), "pthread_key_create(key, keyDestructor): failed.");
+        PosixUtils.checkStatusIs0(Pthread.pthread_key_create(key, Word.nullPointer()), "pthread_key_create(key, keyDestructor): failed.");
         return (ThreadLocalKey) key.read();
     }
 
@@ -326,7 +326,7 @@ final class PosixParker extends Parker {
         relativeCond = (pthread_cond_t) memory.add(mutexSize);
         absoluteCond = (pthread_cond_t) memory.add(mutexSize).add(condSize);
 
-        final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
+        final Pthread.pthread_mutexattr_t mutexAttr = Word.nullPointer();
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initConditionWithRelativeTime(relativeCond), "relative-time condition variable initialization");
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initConditionWithAbsoluteTime(absoluteCond), "absolute-time condition variable initialization");
@@ -354,7 +354,7 @@ final class PosixParker extends Parker {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1662-L1738")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/os_posix.cpp#L1830-L1906")
     private void park0(boolean isAbsolute, long time) {
         int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
         if (status == Errno.EBUSY()) {
@@ -378,7 +378,7 @@ final class PosixParker extends Parker {
                     }
                     assert status == 0 || status == Errno.ETIMEDOUT();
                 } finally {
-                    currentCond = WordFactory.nullPointer();
+                    currentCond = Word.nullPointer();
                 }
             }
             event = 0;
@@ -393,7 +393,7 @@ final class PosixParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1740-L1763")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/os_posix.cpp#L1908-L1931")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
@@ -429,16 +429,16 @@ final class PosixParker extends Parker {
         /* The conditions and the mutex are allocated with a single malloc. */
         int status = Pthread.pthread_cond_destroy(relativeCond);
         assert status == 0;
-        relativeCond = WordFactory.nullPointer();
+        relativeCond = Word.nullPointer();
 
         status = Pthread.pthread_cond_destroy(absoluteCond);
         assert status == 0;
-        absoluteCond = WordFactory.nullPointer();
+        absoluteCond = Word.nullPointer();
 
         status = Pthread.pthread_mutex_destroy(mutex);
         assert status == 0;
         NativeMemory.free(mutex);
-        mutex = WordFactory.nullPointer();
+        mutex = Word.nullPointer();
     }
 }
 

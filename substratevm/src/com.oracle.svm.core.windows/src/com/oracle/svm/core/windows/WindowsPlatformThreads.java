@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -34,7 +33,6 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -51,9 +49,9 @@ import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
-@Platforms(Platform.WINDOWS.class)
 public final class WindowsPlatformThreads extends PlatformThreads {
     @Platforms(HOSTED_ONLY.class)
     WindowsPlatformThreads() {
@@ -84,7 +82,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     private boolean doStartThread0(Thread thread, int threadStackSize, int initFlag) {
         ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
         try {
-            WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, WordFactory.nullPointer());
+            WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, Word.nullPointer());
             if (osThreadHandle.isNull()) {
                 undoPrepareStartOnError(thread, startData);
                 return false;
@@ -106,8 +104,8 @@ public final class WindowsPlatformThreads extends PlatformThreads {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
 
-        WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(WordFactory.nullPointer(), stackSize,
-                        threadRoutine, userData, initFlag, WordFactory.nullPointer());
+        WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(Word.nullPointer(), stackSize,
+                        threadRoutine, userData, initFlag, Word.nullPointer());
         return (OSThreadHandle) osThreadHandle;
     }
 
@@ -122,7 +120,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         }
 
         // Since only an int is written, first clear word
-        threadExitStatus.write(WordFactory.zero());
+        threadExitStatus.write(Word.zero());
         return Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) != 0;
     }
 
@@ -131,7 +129,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     public ThreadLocalKey createUnmanagedThreadLocal() {
         int result = Process.NoTransitions.TlsAlloc();
         VMError.guarantee(result != Process.TLS_OUT_OF_INDEXES(), "TlsAlloc failed.");
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 
     @Override
@@ -180,7 +178,6 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
 class WindowsParker extends Parker {
     private static final long MAX_DWORD = (1L << 32) - 1;
 
@@ -192,7 +189,7 @@ class WindowsParker extends Parker {
     private WinBase.HANDLE eventHandle;
 
     WindowsParker() {
-        eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 1, 0, WordFactory.nullPointer());
+        eventHandle = SynchAPI.CreateEventA(Word.nullPointer(), 1, 0, Word.nullPointer());
         VMError.guarantee(eventHandle.rawValue() != 0, "CreateEventA failed");
     }
 
@@ -216,7 +213,7 @@ class WindowsParker extends Parker {
         if (time == 0) {
             millis = SynchAPI.INFINITE() & 0xFFFFFFFFL;
         } else if (isAbsolute) {
-            millis = time - System.currentTimeMillis();
+            millis = time - TimeUtils.currentTimeMillis();
             if (millis <= 0) {
                 /* Already elapsed. */
                 return;
@@ -276,7 +273,6 @@ class WindowsParker extends Parker {
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
-@Platforms(Platform.WINDOWS.class)
 class WindowsParkerFactory implements ParkerFactory {
     @Override
     public Parker acquire() {

@@ -55,7 +55,7 @@ public final class Arguments {
 
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
-    private static final String JAVA_AGENT = "java.JavaAgent";
+    public static final String JAVA_AGENT = "java.JavaAgent";
 
     /*
      * HotSpot comment:
@@ -73,10 +73,12 @@ public final class Arguments {
 
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
-                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    // `TieredStopAtLevel=0|1` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
-                    "HeapDumpOnOutOfMemoryError");
+                    "HeapDumpOnOutOfMemoryError",
+                    "UseJVMCICompiler",
+                    "EnableDynamicAgentLoading");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
@@ -93,6 +95,7 @@ public final class Arguments {
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         boolean printFlagsFinal = false;
+        String argumentError = null;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -125,7 +128,7 @@ public final class Arguments {
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-javaagent:")) {
                         String value = optionString.substring("-javaagent:".length());
-                        builder.option(JAVA_AGENT, value);
+                        handler.addJavaAgent(value);
                         handler.addModules("java.instrument");
                     } else if (optionString.startsWith("-agentlib:")) {
                         String[] split = splitEquals(optionString.substring("-agentlib:".length()));
@@ -180,6 +183,8 @@ public final class Arguments {
                         handler.addModules(optionString.substring("--add-modules=".length()));
                     } else if (optionString.startsWith("--enable-native-access=")) {
                         handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
+                    } else if (optionString.startsWith("--illegal-native-access=")) {
+                        builder.option("java.IllegalNativeAccess", optionString.substring("--illegal-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
                         builder.option("java.ModulePath", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {
@@ -214,8 +219,14 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if (optionString.startsWith("-Xshare:auto") || "-Xshare:off".equals(optionString)) {
-                        // ignore
+                    } else if ("-XX:TieredStopAtLevel=1".equals(optionString)) {
+                        builder.option("engine.Mode", "latency");
+                    } else if (optionString.startsWith("-Xshare:")) {
+                        String value = optionString.substring("-Xshare:".length());
+                        builder.option("java.CDS", value);
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
@@ -233,12 +244,16 @@ public final class Arguments {
                     }
                 }
             } catch (ArgumentException e) {
-                if (!ignoreUnrecognized) {
-                    // Failed to parse
-                    warn(e.getMessage());
-                    return JNI_ERR();
+                // Failed to parse
+                if (argumentError == null) {
+                    argumentError = e.getMessage();
                 }
             }
+        }
+
+        if (argumentError != null && !ignoreUnrecognized) {
+            warn(argumentError);
+            return JNI_ERR();
         }
 
         for (String xOption : xOptions) {

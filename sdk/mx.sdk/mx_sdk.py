@@ -46,10 +46,14 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_vm_ng
 import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
+import argparse
 import datetime
+import shutil
+import tempfile
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
 
@@ -133,7 +137,7 @@ graalvm_sdk_component = mx_sdk_vm.GraalVmJreComponent(
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_component)
 
-# SDK modules included the compiler is included
+# SDK modules included if the compiler (jargraal) is included
 graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Compiler',
@@ -143,7 +147,7 @@ graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS'],
+    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS', 'sdk:NATIVEIMAGE'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graal_sdk_compiler_component)
@@ -158,7 +162,7 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['sdkc'],
     jar_distributions=[],
-    boot_jars=['sdk:NATIVEIMAGE'],
+    boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL', 'sdk:WEBIMAGE_PREVIEW'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)
@@ -181,8 +185,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
     short_name='llp',
-    installable=True,
-    installable_id='llvm-toolchain',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
@@ -193,6 +195,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
+    mx_sdk_vm_ng.mx_register_dynamic_suite_constituents(register_project, register_distribution)
 
 
 def mx_post_parse_cmd_line(args):
@@ -259,6 +262,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    default_to_jvmci=default_to_jvmci)
 
 class GraalVMJDKConfig(mx.JDKConfig):
+
+    # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
+    # However, the Graal compiler is disabled by default and must be explicitly
+    # enabled using the -XX:+UseGraalJIT option.
+    libgraal_additional_vm_args = [
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+EnableJVMCI',
+        '-XX:+UseGraalJIT',
+        '-XX:-UnlockExperimentalVMOptions'
+    ]
     """
     A JDKConfig that configures the built GraalVM as a JDK config.
     """
@@ -268,11 +281,8 @@ class GraalVMJDKConfig(mx.JDKConfig):
             graalvm_home = default_jdk.home
             additional_vm_args = []
         elif GraalVMJDKConfig.is_libgraal_jdk(default_jdk.home):
-            # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
-            # However, the Graal compiler is disabled by default and must be explicitly enabled using the -XX:+UseJVMCICompiler option.
             graalvm_home = default_jdk.home
-            # GR-58388: Switch '-XX:+UseJVMCINativeLibrary' to '-XX:+UseGraalJIT'
-            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+            additional_vm_args = GraalVMJDKConfig.libgraal_additional_vm_args
         else:
             graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
             additional_vm_args = []
@@ -331,6 +341,10 @@ mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK
 def maven_deploy_public_repo_dir():
     return os.path.join(_suite.get_mx_output_dir(), 'public-maven-repo')
 
+@mx.command(_suite.name, 'maven-deploy-public-repo-dir')
+def print_maven_deploy_public_repo_dir(args):
+    print(maven_deploy_public_repo_dir())
+
 @mx.command(_suite.name, 'maven-deploy-public')
 def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
@@ -363,4 +377,49 @@ def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     mx.log(f'mx maven-deploy {" ".join(deploy_args)}')
     mx.maven_deploy(deploy_args)
     mx.log(f'Deployed Maven artefacts to {path}')
-    return path
+
+@mx.command(_suite.name, 'nativebridge-benchmark')
+def nativebridge_benchmark(args):
+    parser = argparse.ArgumentParser(prog='mx nativebridge-benchmark', description='Executes nativebridge benchmarks',
+                            usage='mx nativebridge-benchmark [--target-folder <folder> | --isolate-library <isolate-library> | mode+]')
+    parser.add_argument('--target-folder', help='Folder where the benchmark isolate library will be generated.', default=None)
+    parser.add_argument('--isolate-library', help='Use the given isolate library.', default=None)
+    parsed_args, args = parser.parse_known_args(args)
+
+    jdk = mx.get_jdk(tag='graalvm')
+    benchmark_dist = mx.distribution('NATIVEBRIDGE_BENCHMARK')
+    isolate_library = parsed_args.isolate_library if parsed_args.isolate_library else None
+    try:
+        if not isolate_library:
+            native_image_path = jdk.exe_path('native-image')
+            if not os.path.exists(native_image_path):
+                native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
+            if not os.path.exists(native_image_path):
+                mx.abort(f"No native-image installed in GraalVM {jdk.home}. Switch to an environment that has an installed native-image command.")
+
+            target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
+            target = os.path.join(target_dir, "bench")
+            native_image_args = mx.get_runtime_jvm_args(benchmark_dist, jdk=jdk) + [
+                '--shared',
+                '-o',
+                target
+            ]
+            mx.run([native_image_path] + native_image_args)
+            for n in os.listdir(target_dir):
+                _, ext = os.path.splitext(n)
+                if ext in ('.so', '.dylib', '.dll'):
+                    isolate_library = os.path.join(target_dir, n)
+                    break
+
+        launcher_project = mx.project('org.graalvm.nativebridge.launcher')
+        launcher = next(launcher_project.getArchivableResults(single=True))[0]
+        java_args = mx.get_runtime_jvm_args(benchmark_dist, jdk=jdk) + [
+            '--enable-native-access=ALL-UNNAMED',
+            'org.graalvm.nativebridge.benchmark.Main',
+            launcher,
+            isolate_library
+        ] + args
+        mx.run_java(java_args, jdk=jdk)
+    finally:
+        if not parsed_args.isolate_library and not parsed_args.target_folder:
+            shutil.rmtree(target_dir)

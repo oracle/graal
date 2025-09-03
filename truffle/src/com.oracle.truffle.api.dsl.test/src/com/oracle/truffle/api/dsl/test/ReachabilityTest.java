@@ -318,7 +318,7 @@ public class ReachabilityTest {
 
     @GenerateUncached
     abstract static class ReachabilityUncached1 extends ReachabilityUncached {
-        @Specialization
+        @Specialization(excludeForUncached = true)
         int doCached(@Cached("foo()") int cached) {
             return cached;
         }

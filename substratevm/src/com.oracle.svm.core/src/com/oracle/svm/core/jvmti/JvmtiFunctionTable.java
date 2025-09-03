@@ -63,6 +63,7 @@ public final class JvmtiFunctionTable {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void init(int offsetInBytes, CFunctionPointer functionPointer) {
         int index = bytesToWords(offsetInBytes);
+        assert readOnlyFunctionTable[index] == null;
         readOnlyFunctionTable[index] = functionPointer;
     }
 

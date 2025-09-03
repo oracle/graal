@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,14 @@
  */
 package org.graalvm.collections.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -144,4 +150,40 @@ public class EconomicMapImplTest {
         map.put(null, null);
     }
 
+    @Test
+    public void testInvalidIteratorRemove() {
+        EconomicMap<String, Integer> map = EconomicMap.create();
+        map.put("one", 1);
+        var iterator = map.getKeys().iterator();
+        assertThrows(IllegalStateException.class, iterator::remove);
+        assertNotNull(iterator.next());
+        iterator.remove();
+        assertThrows(IllegalStateException.class, iterator::remove);
+    }
+
+    @Test
+    public void testKeyIteratorNext() {
+        EconomicMap<String, Integer> map = EconomicMap.create();
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put("three", 3);
+        map.removeKey("two");
+        var iterator = map.getKeys().iterator();
+        assertEquals("one", iterator.next());
+        assertEquals("three", iterator.next());
+        assertThrows(NoSuchElementException.class, iterator::next);
+    }
+
+    @Test
+    public void testValueIteratorNext() {
+        EconomicMap<String, Integer> map = EconomicMap.create();
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put("three", null);
+        var iterator = map.getValues().iterator();
+        assertEquals((Object) 1, iterator.next());
+        assertEquals((Object) 2, iterator.next());
+        assertNull(iterator.next());
+        assertThrows(NoSuchElementException.class, iterator::next);
+    }
 }

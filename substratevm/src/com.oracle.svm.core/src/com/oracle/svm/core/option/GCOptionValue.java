@@ -26,13 +26,13 @@ package com.oracle.svm.core.option;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionsContainer;
 
 public enum GCOptionValue {
     SERIAL("serial"),
@@ -55,7 +55,7 @@ public enum GCOptionValue {
     public static synchronized Set<String> possibleValues() {
         if (supportedValues == null) {
             Set<String> values = new HashSet<>();
-            ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class);
+            Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(GCOptionValue.class.getClassLoader());
             SubstrateOptionsParser.collectOptions(optionDescriptors, optionDescriptor -> {
                 for (APIOption annotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
                     if (annotation.group().equals(SubstrateOptions.GCGroup.class)) {

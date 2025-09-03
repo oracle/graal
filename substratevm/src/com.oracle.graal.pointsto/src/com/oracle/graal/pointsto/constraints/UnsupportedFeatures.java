@@ -112,7 +112,7 @@ public class UnsupportedFeatures {
                     printStream.println();
                 }
                 if (!singleEntry) {
-                    if (entry.originalException != null && !(entry.originalException instanceof UnsupportedFeatureException)) {
+                    if (entry.originalException != null) {
                         printStream.print("Original exception that caused the problem: ");
                         entry.originalException.printStackTrace(printStream);
                     }
@@ -122,10 +122,11 @@ public class UnsupportedFeatures {
 
             String unsupportedFeaturesMessage;
             if (singleEntry) {
-                unsupportedFeaturesMessage = entries.get(0).message + "\nDetailed message:\n" + outputStream.toString();
-                throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entries.get(0).originalException);
+                Data entry = entries.getFirst();
+                unsupportedFeaturesMessage = entry.message + System.lineSeparator() + "Detailed message:" + System.lineSeparator() + outputStream;
+                throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entry.originalException);
             } else {
-                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
+                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + System.lineSeparator() + "Detailed message:" + System.lineSeparator() + outputStream;
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage);
             }
 

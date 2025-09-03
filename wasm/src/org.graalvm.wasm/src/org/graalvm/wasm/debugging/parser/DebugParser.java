@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,74 +82,33 @@ public class DebugParser {
         this.data = data;
     }
 
-    /**
-     * Reads a compilation unit and all its child entries based on a given unit offset.
-     * 
-     * @param debugInfoOffset the offset of the debug information in the custom data.
-     * @param unitOffset the unit offset.
-     * @return A {@link DebugParseUnit} or null, if the debug information is malformed.
-     */
-    @TruffleBoundary
-    public DebugParseUnit readEntries(int debugInfoOffset, int unitOffset) {
+    private boolean initializeAndCheckOffsets(int debugInfoOffset, int unitOffset) {
         final int infoOffset = DebugUtil.getInfoOffsetOrUndefined(data, debugInfoOffset);
         final int infoLength = DebugUtil.getInfoLengthOrUndefined(data, debugInfoOffset);
-        final int abbrevOffset = DebugUtil.getAbbrevOffsetOrUndefined(data, debugInfoOffset);
-        final int abbrevLength = DebugUtil.getAbbrevLengthOrUndefined(data, debugInfoOffset);
-        if (infoOffset == DebugUtil.UNDEFINED || infoLength == DebugUtil.UNDEFINED || abbrevOffset == DebugUtil.UNDEFINED || abbrevLength == DebugUtil.UNDEFINED) {
-            return null;
+        if (infoOffset == DebugUtil.UNDEFINED || infoLength == DebugUtil.UNDEFINED) {
+            return false;
         }
         if (unitOffset == 0) {
             offset = infoOffset;
         } else {
             offset = unitOffset;
         }
-        final int unitEndOffset = offset + infoLength;
+        endOffset = infoOffset + infoLength;
+        return offset < endOffset;
+    }
 
-        endOffset = unitEndOffset;
-        if (offset < unitEndOffset) {
-            int unitStartOffset = offset - infoOffset;
-            try {
-                // read header
-                if (is64Bit()) {
-                    return null;
-                }
+    @TruffleBoundary
+    public DebugData readCompilationUnitChildren(DebugParseUnit unit, int debugInfoOffset) {
+        final EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable = unit.abbreviationTable();
+        final EconomicMap<Integer, DebugData> entries = unit.entries();
+        final int compilationUnitOffset = unit.compilationUnitOffset();
 
-                final int unitLength = readInitialLength();
-                if (unitLength == -1) {
-                    // 64 bit length
-                    return null;
-                }
-                final int version = readUnsigned2();
-                if (version != SUPPORTED_VERSION) {
-                    // Unsupported version
-                    return null;
-                }
-
-                final int debugAbbrevOffset = read4();
-                if (Integer.compareUnsigned(debugAbbrevOffset, abbrevLength) >= 0) {
-                    // abbrev offset outside abbrev section
-                    return null;
-                }
-                // read address size
-                final int addressSize = read1();
-                if (addressSize != SUPPORTED_ADDRESS_LENGTH) {
-                    // unsupported address size
-                    return null;
-                }
-
-                endOffset = unitStartOffset + unitLength + UNIT_HEADER_LENGTH;
-
-                final EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable = readAbbrevSection(abbrevOffset + debugAbbrevOffset, abbrevLength);
-                final EconomicMap<Integer, DebugData> entries = EconomicMap.create();
-                final DebugData compilationUnit = readDebugEntry(abbreviationTable, debugInfoOffset, unitStartOffset, entries, true);
-                if (compilationUnit != null && Integer.compareUnsigned(endOffset, offset) == 0) {
-                    return new DebugParseUnit(compilationUnit, entries);
-                }
-            } catch (WasmDebugException e) {
-                return null;
-            }
+        offset = unit.entryOffset();
+        try {
+            return readDebugEntry(abbreviationTable, debugInfoOffset, compilationUnitOffset, entries, true);
+        } catch (WasmDebugException e) {
+            return null;
         }
-        return null;
     }
 
     /**
@@ -161,18 +120,7 @@ public class DebugParser {
      */
     @TruffleBoundary
     public int getNextCompilationUnitOffset(int debugInfoOffset, int unitOffset) {
-        final int infoOffset = DebugUtil.getInfoOffsetOrUndefined(data, debugInfoOffset);
-        final int infoLength = DebugUtil.getInfoLengthOrUndefined(data, debugInfoOffset);
-        if (infoOffset == DebugUtil.UNDEFINED || infoLength == DebugUtil.UNDEFINED) {
-            return -1;
-        }
-        offset = infoOffset;
-        endOffset = offset + infoLength;
-        if (unitOffset != 0) {
-            offset = unitOffset;
-        }
-
-        if (offset < endOffset) {
+        if (initializeAndCheckOffsets(debugInfoOffset, unitOffset)) {
             try {
                 if (is64Bit()) {
                     return -1;
@@ -195,21 +143,12 @@ public class DebugParser {
      */
     @TruffleBoundary
     public DebugParseUnit readCompilationUnit(int debugInfoOffset, int unitOffset) {
-        final int infoOffset = DebugUtil.getInfoOffsetOrUndefined(data, debugInfoOffset);
-        final int infoLength = DebugUtil.getInfoLengthOrUndefined(data, debugInfoOffset);
         final int abbrevOffset = DebugUtil.getAbbrevOffsetOrUndefined(data, debugInfoOffset);
         final int abbrevLength = DebugUtil.getAbbrevLengthOrUndefined(data, debugInfoOffset);
-        if (infoOffset == DebugUtil.UNDEFINED || infoLength == DebugUtil.UNDEFINED || abbrevOffset == DebugUtil.UNDEFINED || abbrevLength == DebugUtil.UNDEFINED) {
+        if (abbrevOffset == DebugUtil.UNDEFINED || abbrevLength == DebugUtil.UNDEFINED) {
             return null;
         }
-        offset = infoOffset;
-        final int unitEndOffset = offset + infoLength;
-        if (unitOffset != 0) {
-            offset = unitOffset;
-        }
-        endOffset = unitEndOffset;
-
-        if (offset < unitEndOffset) {
+        if (initializeAndCheckOffsets(debugInfoOffset, unitOffset)) {
             int unitStartOffset = offset;
             try {
                 // read header
@@ -244,9 +183,10 @@ public class DebugParser {
 
                 final EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable = readAbbrevSection(abbrevOffset + debugAbbrevOffset, abbrevLength);
                 final EconomicMap<Integer, DebugData> entries = EconomicMap.create();
+                final int entryOffset = offset;
                 final DebugData compilationUnit = readDebugEntry(abbreviationTable, debugInfoOffset, unitStartOffset, entries, false);
                 if (compilationUnit != null && compilationUnit.tag() == Tags.COMPILATION_UNIT) {
-                    return new DebugParseUnit(compilationUnit, entries);
+                    return new DebugParseUnit(compilationUnit, entries, abbreviationTable, entryOffset, unitStartOffset);
                 }
             } catch (WasmDebugException e) {
                 return null;
@@ -295,12 +235,11 @@ public class DebugParser {
         final int startOffset = offset;
         final int abbrevDeclarationIndex = readUnsignedInt();
         final AbbreviationDeclaration declaration = abbrevTable.get(abbrevDeclarationIndex);
-        final int infoOffset = DebugUtil.getInfoOffsetOrUndefined(data, debugInfoOffset);
-        if (declaration == null || infoOffset == DebugUtil.UNDEFINED) {
+        if (declaration == null) {
             // Malformed abbreviation table. Declaration not found
             return null;
         }
-        final int entryOffset = startOffset - infoOffset - compilationUnitOffset;
+        final int entryOffset = startOffset - compilationUnitOffset;
 
         final long[] attributeInfo = new long[declaration.attributeCount()];
         final Object[] attributes = new Object[declaration.attributeCount()];
@@ -549,8 +488,8 @@ public class DebugParser {
         if (state == null) {
             return null;
         }
-        final int sectionLength = debugLineOffset + state.length();
-        while (offset < sectionLength) {
+        final int sectionEndOffset = debugLineOffset + state.length();
+        while (offset < sectionEndOffset) {
             try {
                 final int opcode = readUnsigned1();
                 switch (opcode) {
@@ -566,6 +505,10 @@ public class DebugParser {
                                 break;
                             case Opcodes.LNE_SET_ADDRESS:
                                 final int address = read4();
+                                if (address == -1) {
+                                    // function was optimized away by the compiler
+                                    state.setIgnore();
+                                }
                                 state.setAddress(address);
                                 break;
                             case Opcodes.LNE_DEFINE_FILE:
@@ -662,19 +605,36 @@ public class DebugParser {
             read1();
         }
 
-        final List<String> paths = new ArrayList<>();
+        final Path cPath;
+        try {
+            cPath = Path.of(compilationPath);
+        } catch (InvalidPathException e) {
+            throw new WasmDebugException(e.getMessage());
+        }
+
+        final List<Path> paths = new ArrayList<>();
+        paths.add(cPath);
 
         // read included directories
         byte lastByte = peek1();
         while (lastByte != 0) {
-            paths.add(readString());
+            try {
+                final Path dirPath = Path.of(readString());
+                if (dirPath.isAbsolute()) {
+                    paths.add(dirPath);
+                } else {
+                    paths.add(cPath.resolve(dirPath));
+                }
+            } catch (InvalidPathException e) {
+                throw new WasmDebugException(e.getMessage());
+            }
             lastByte = peek1();
         }
         read1();
 
         final List<Path> filePaths = new ArrayList<>();
         try {
-            filePaths.add(Paths.get(compilationPath));
+            filePaths.add(cPath);
         } catch (InvalidPathException e) {
             throw new WasmDebugException(e.getMessage());
         }
@@ -686,12 +646,12 @@ public class DebugParser {
             readUnsignedInt();
             readUnsignedInt();
             lastByte = peek1();
-            final String containingPath = pathIndex == 0 ? compilationPath : paths.get(pathIndex - 1);
             try {
-                if (containingPath.startsWith(compilationPath)) {
-                    filePaths.add(Paths.get(containingPath, name));
+                final Path filePath = Paths.get(name);
+                if (filePath.isAbsolute()) {
+                    filePaths.add(filePath);
                 } else {
-                    filePaths.add(Paths.get(compilationPath, containingPath, name));
+                    filePaths.add(paths.get(pathIndex).resolve(filePath));
                 }
             } catch (InvalidPathException e) {
                 throw new WasmDebugException(e.getMessage());
@@ -871,16 +831,6 @@ public class DebugParser {
         } catch (WasmException e) {
             throw new WasmDebugException(e.getMessage());
         }
-    }
-
-    /**
-     * Reads two bytes as an unsigned int value from the internal byte array and advances the offset
-     * pointer.
-     * 
-     * @throws WasmDebugException if the data is beyond the current endOffset.
-     */
-    private int readUnsigned2() throws WasmDebugException {
-        return read2() & 0xffff;
     }
 
     /**

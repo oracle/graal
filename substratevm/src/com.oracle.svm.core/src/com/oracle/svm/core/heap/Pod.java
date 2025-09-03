@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -46,10 +45,17 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -57,6 +63,12 @@ import jdk.vm.ci.meta.JavaKind;
  * runtime and instances of which are allocated on the Java heap. The name <em>pod</em> refers to it
  * storing "plain old data" without further object-oriented features such as method dispatching or
  * type information, apart from having a Java superclass.
+ *
+ * Pods are {@link Hybrid} objects. All fields that are not inherited from an actual Java class are
+ * layouted in the array part of the hybrid object. For object fields, the GC will use the provided
+ * {@link #referenceMap} to keep all the object references up-to-date. However, be aware that it is
+ * necessary to manually emit the correct GC read/write barriers (for example via
+ * {@link BarrieredAccess}) whenever such an object field is accessed.
  *
  * @param <T> The interface of the {@linkplain #getFactory() factory} that allocates instances.
  */
@@ -272,6 +284,7 @@ public final class Pod<T> {
         }
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
     public static final class RuntimeSupport {
         @Fold
         public static boolean isPresent() {
@@ -324,7 +337,7 @@ public final class Pod<T> {
             }
         }
 
-        private final EconomicMap<PodSpec, PodInfo> pods = ImageHeapMap.create();
+        private final EconomicMap<PodSpec, PodInfo> pods = ImageHeapMap.create("pods");
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public RuntimeSupport() {

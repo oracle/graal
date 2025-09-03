@@ -428,7 +428,10 @@ public interface JvmtiInterface extends PointerBase {
     void setGetMethodModifiers(CFunctionPointer value);
 
     @CField
-    CFunctionPointer reserved67();
+    CFunctionPointer getClearAllFramePops();
+
+    @CField
+    void setClearAllFramePops(CFunctionPointer value);
 
     @CField
     CFunctionPointer getGetMaxLocals();

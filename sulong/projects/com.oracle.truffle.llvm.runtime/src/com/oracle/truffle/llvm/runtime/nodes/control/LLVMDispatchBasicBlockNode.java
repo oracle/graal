@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -100,7 +100,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
                 if (basicBlockIndex <= counters.previousBasicBlockIndex) {
                     TruffleSafepoint.poll(this);
                     counters.backEdgeCounter++;
-                    if (CompilerDirectives.inInterpreter() && osrMode == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    if (CompilerDirectives.inInterpreter() && osrMode == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                         ensureAllFrameSlotsInitialized(frame);
                         returnValue = BytecodeOSRNode.tryOSR(this, basicBlockIndex, counters, null, frame);
                         if (returnValue != null) {

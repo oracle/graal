@@ -25,11 +25,12 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
-import org.junit.Test;
 
 public class NegateCanonicalizationTest extends GraalCompilerTest {
 
@@ -49,7 +50,17 @@ public class NegateCanonicalizationTest extends GraalCompilerTest {
         return (x >> 63) >>> 63;
     }
 
-    private void checkNodes(String methodName) {
+    public static int negateNegate(int x) {
+        int var0 = -x;
+        int var1 = -(0 ^ var0);
+        return var1;
+    }
+
+    public static int negateNotDecrement(int x) {
+        return -~(x - 1);
+    }
+
+    private void checkNodesOnlyUnsignedRightShift(String methodName) {
         StructuredGraph graph = parseForCompile(getResolvedJavaMethod(methodName));
         createCanonicalizerPhase().apply(graph, getProviders());
         assertTrue(graph.getNodes().filter(NegateNode.class).count() == 0);
@@ -57,11 +68,19 @@ public class NegateCanonicalizationTest extends GraalCompilerTest {
         assertTrue(graph.getNodes().filter(UnsignedRightShiftNode.class).count() == 1);
     }
 
+    private void checkNodesNoNegate(String methodName) {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod(methodName));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(NegateNode.class).count() == 0);
+    }
+
     @Test
     public void testNegate() {
-        checkNodes("negateInt");
-        checkNodes("negateLong");
-        checkNodes("signExtractInt");
-        checkNodes("signExtractLong");
+        checkNodesOnlyUnsignedRightShift("negateInt");
+        checkNodesOnlyUnsignedRightShift("negateLong");
+        checkNodesOnlyUnsignedRightShift("signExtractInt");
+        checkNodesOnlyUnsignedRightShift("signExtractLong");
+        checkNodesNoNegate("negateNegate");
+        checkNodesNoNegate("negateNotDecrement");
     }
 }

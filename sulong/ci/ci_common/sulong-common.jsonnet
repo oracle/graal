@@ -80,26 +80,15 @@ local sulong_deps = common.deps.sulong;
   linux_aarch64:: linux_aarch64 + sulong_deps,
   darwin_amd64:: darwin_amd64 + sulong_deps,
   darwin_aarch64:: darwin_aarch64 + sulong_deps,
-  windows_amd64:: windows_amd64 + sulong_deps + {
-    local jdk = if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name,
-    packages+: common.devkits["windows-" + jdk].packages
-  },
+  windows_amd64:: windows_amd64 + sulong_deps + common.deps.windows_devkit,
 
   sulong_notifications:: {
     notify_groups:: ["sulong"],
   },
 
-  gate:: {
-    targets+: ["gate"],
-  },
-
-  daily:: $.sulong_notifications {
-    targets+: ["daily"],
-  },
-
-  weekly:: $.sulong_notifications {
-    targets+: ["weekly"],
-  },
+  post_merge:: $.sulong_notifications + common.frequencies.post_merge,
+  daily:: $.sulong_notifications + common.frequencies.daily,
+  weekly:: $.sulong_notifications + common.frequencies.weekly,
 
   mxCommand:: {
     extra_mx_args+:: [],
@@ -154,11 +143,14 @@ local sulong_deps = common.deps.sulong;
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + $.gateTags("style,fullbuild") + {
+  local strict_gate(tags) = $.gateTags(tags) + {
     extra_gate_args+:: ["--strict-mode"],
   },
 
-  coverage(builds):: $.llvmBundled + $.requireGMP + $.optionalGCC + $.mxGate + {
+  style:: common.deps.eclipse + strict_gate("style"),
+  fullbuild:: common.deps.jdt + common.deps.spotbugs + strict_gate("fullbuild"),
+
+  coverage(builds):: $.llvmBundled + $.requireGMP + $.mxGate + {
       local sameArchBuilds = std.filter(function(b) b.os == self.os && b.arch == self.arch, builds),
       local allTags = std.set(std.flattenArrays([b.gateTags for b in sameArchBuilds if std.objectHasAll(b, "gateTags")])),
       local coverageTags = std.setDiff(allTags, ["build", "build-all", "fullbuild", "style"]),
@@ -166,7 +158,7 @@ local sulong_deps = common.deps.sulong;
       skipPlatform:: coverageTags == [],
       gateTags:: ["build"] + coverageTags,
       # The Jacoco annotations interfere with partial evaluation. Use the DefaultTruffleRuntime to disable compilation just for the coverage runs.
-      extra_mx_args+: ["--no-jacoco-exclude-truffle", "-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
+      extra_mx_args+: ["-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
       extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       teardown+: [
         ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -184,22 +176,6 @@ local sulong_deps = common.deps.sulong;
 
   llvmBundled:: {},
 
-  requireGCC:: {
-    packages+: {
-      gcc: "==6.1.0",
-    },
-    downloads+: {
-      DRAGONEGG_GCC: { name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true },
-      DRAGONEGG_LLVM: { name: "clang+llvm", version: "3.2", platformspecific: true },
-    },
-  },
-
-  # like requireGCC, but only on linux/amd64, ignored otherwise
-  optionalGCC:: {
-    packages+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.packages else {},
-    downloads+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.downloads else {},
-  },
-
   requireGMP:: {
     packages+: if self.os == "darwin" && self.arch == "aarch64" then {
         libgmp: "==6.2.1",
@@ -209,8 +185,14 @@ local sulong_deps = common.deps.sulong;
   },
 } + {
 
-  [std.strReplace(name, "-", "_")]: common[name]
+  [std.strReplace(name, "-", "_")]: common[name] + { _jdkIsGraalVM:: false }
   for name in std.objectFieldsAll(common)
   if std.startsWith(name, "labsjdk")
+
+} + {
+
+  [name]: common[name] + { _jdkIsGraalVM:: true }
+  for name in std.objectFieldsAll(common)
+  if std.startsWith(name, "graalvm")
 
 }

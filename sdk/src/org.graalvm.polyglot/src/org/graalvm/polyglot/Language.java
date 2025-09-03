@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.polyglot;
 
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptor;
@@ -58,10 +59,16 @@ public final class Language {
 
     final AbstractLanguageDispatch dispatch;
     final Object receiver;
+    /**
+     * Strong reference to {@link Engine} to prevent it from being garbage collected and closed
+     * while {@link Language} is still reachable.
+     */
+    final Engine engine;
 
-    Language(AbstractLanguageDispatch dispatch, Object receiver) {
+    Language(AbstractLanguageDispatch dispatch, Object receiver, Engine engine) {
         this.dispatch = dispatch;
         this.receiver = receiver;
+        this.engine = Objects.requireNonNull(engine);
     }
 
     /**
@@ -128,6 +135,17 @@ public final class Language {
     }
 
     /**
+     * Returns the source options descriptors available for sources of this language.
+     *
+     * @see #getOptions()
+     * @see Source.Builder#option(String, String)
+     * @since 25.0
+     */
+    public OptionDescriptors getSourceOptions() {
+        return dispatch.getSourceOptions(receiver);
+    }
+
+    /**
      * Returns the default MIME type that is in use by a language. The default MIME type specifies
      * whether a source is loaded as character or binary based source by default. Returns
      * <code>null</code> if the language does not specify a default MIME type.
@@ -157,6 +175,32 @@ public final class Language {
      */
     public String getWebsite() {
         return dispatch.getWebsite(receiver);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
+    @Override
+    public int hashCode() {
+        return this.dispatch.hashCode(this.receiver);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
+    @Override
+    public boolean equals(Object obj) {
+        Object otherImpl;
+        if (obj instanceof Language) {
+            otherImpl = ((Language) obj).receiver;
+        } else {
+            return false;
+        }
+        return dispatch.equals(receiver, otherImpl);
     }
 
 }

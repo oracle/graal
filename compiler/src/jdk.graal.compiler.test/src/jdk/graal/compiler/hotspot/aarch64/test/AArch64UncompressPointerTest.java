@@ -29,6 +29,7 @@ package jdk.graal.compiler.hotspot.aarch64.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assume.assumeTrue;
 
+import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMacroAssembler;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,9 +58,9 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
     @Before
     public void setupEnvironment() {
         TargetDescription target = JVMCI.getRuntime().getHostJVMCIBackend().getTarget();
-        masm1 = new AArch64MacroAssembler(target);
-        masm2 = new AArch64MacroAssembler(target);
-        input = AArch64.r10;
+        masm1 = new AArch64HotSpotMacroAssembler(target, null, null);
+        masm2 = new AArch64HotSpotMacroAssembler(target, null, null);
+        input = AArch64.r12;
         result = AArch64.r11;
     }
 

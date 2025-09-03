@@ -35,7 +35,7 @@ public class Object_wait01 extends JTTTest {
 
     @Rule public TestRule timeout = createTimeoutSeconds(20);
 
-    private static class TestClass implements Runnable {
+    private static final class TestClass implements Runnable {
         @Override
         public void run() {
             int i = 0;

@@ -30,6 +30,9 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Map;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -55,10 +58,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -260,15 +259,15 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             } else {
                 throw shouldNotReachHereUnexpectedInput(node); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("x", node.getX());
             args.add("y", node.getY());
 
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
             boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
-            args.addConst("needsZeroCheck", needsZeroCheck);
+            args.add("needsZeroCheck", needsZeroCheck);
             if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
-                args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
+                args.add("needsBoundsCheck", needsSignedBoundsCheck);
             }
 
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

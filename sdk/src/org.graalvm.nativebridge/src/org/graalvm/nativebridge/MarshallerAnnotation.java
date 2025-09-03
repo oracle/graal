@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,8 +47,8 @@ import java.lang.annotation.Target;
 
 /**
  * Meta-annotation that marks an annotation to be used for marshaller lookup. An annotation intended
- * for {@link JNIConfig#lookupMarshaller(Class, Class[]) marshaller lookup} must be annotated by
- * this annotation.
+ * for {@link MarshallerConfig#lookupMarshaller(Class, Class[]) marshaller lookup} must be annotated
+ * by this annotation.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

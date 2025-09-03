@@ -26,11 +26,11 @@ package com.oracle.svm.core.posix.pthread;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -102,7 +102,7 @@ final class PthreadVMMutex extends VMMutex {
     @Override
     @Uninterruptible(reason = "Too early for safepoints.")
     public int initialize() {
-        return Pthread.pthread_mutex_init(getStructPointer(), WordFactory.nullPointer());
+        return Pthread.pthread_mutex_init(getStructPointer(), Word.nullPointer());
     }
 
     @Override
@@ -142,7 +142,7 @@ final class PthreadVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_unlock(getStructPointer()), "pthread_mutex_unlock");

@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.vm.ci.code.CodeUtil.K;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -127,7 +127,7 @@ public final class MarkStack {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Segment allocateSegment(Segment next) {
-        UnsignedWord size = WordFactory.unsigned(SEGMENT_SIZE);
+        UnsignedWord size = Word.unsigned(SEGMENT_SIZE);
         Segment segment = NullableNativeMemory.malloc(size, NmtCategory.GC);
         VMError.guarantee(segment.isNonNull(), "Could not allocate mark stack memory: malloc() returned null.");
         segment.setNext(next);
@@ -138,7 +138,7 @@ public final class MarkStack {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord getOffsetAtIndex(int index) {
         int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        return WordFactory.unsigned(index).multiply(refSize).add(SizeOf.unsigned(Segment.class));
+        return Word.unsigned(index).multiply(refSize).add(SizeOf.unsigned(Segment.class));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -146,7 +146,7 @@ public final class MarkStack {
         if (top.isNonNull()) {
             assert top.getNext().isNull();
             NullableNativeMemory.free(top);
-            top = WordFactory.nullPointer();
+            top = Word.nullPointer();
         }
     }
 }

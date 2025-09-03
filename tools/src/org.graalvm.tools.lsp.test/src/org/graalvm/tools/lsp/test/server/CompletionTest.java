@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -129,7 +130,7 @@ public class CompletionTest extends TruffleLSPTest {
         future.get();
 
         setTriggerCharacters();
-        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "missing IDENTIFIER");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 2, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());
@@ -166,6 +167,7 @@ public class CompletionTest extends TruffleLSPTest {
 
     @Test
     public void objectPropertyCompletionViaCoverageData() throws InterruptedException, ExecutionException {
+        assumeFalse("Bytecode DSL interpreter cannot identify locals associated with a node (GR-59649)", useBytecode);
         URI uri = createDummyFileUriForSL();
         Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
@@ -174,7 +176,7 @@ public class CompletionTest extends TruffleLSPTest {
         futureCoverage.get();
 
         setTriggerCharacters();
-        replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "missing IDENTIFIER");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 8, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());

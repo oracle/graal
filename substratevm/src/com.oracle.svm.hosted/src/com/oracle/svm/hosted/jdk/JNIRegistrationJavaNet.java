@@ -120,6 +120,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         RuntimeJNIAccess.register(constructor(a, "java.net.Inet6Address"));
         RuntimeJNIAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
         RuntimeJNIAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
+
+        /* Used by getEnhancedExceptionsAllowed() in net_util.c (JDK-8348986) */
+        RuntimeJNIAccess.register(fields(a, "jdk.internal.util.Exceptions", "enhancedNonSocketExceptionText"));
     }
 
     private static void registerNetworkInterfaceInit(DuringAnalysisAccess a) {

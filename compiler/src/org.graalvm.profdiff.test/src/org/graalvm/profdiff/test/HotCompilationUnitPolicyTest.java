@@ -35,6 +35,8 @@ import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.junit.Test;
 
+import jdk.graal.compiler.util.CollectionsUtil;
+
 public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
@@ -52,7 +54,7 @@ public class HotCompilationUnitPolicyTest {
         hotCompilationUnitPolicy.setHotMaxLimit(10);
         hotCompilationUnitPolicy.setHotPercentile(0.9);
 
-        Set<String> hotCompilationUnits = Set.of("foo2", "foo3", "bar1");
+        Set<String> hotCompilationUnits = CollectionsUtil.setOf("foo2", "foo3", "bar1");
         for (CompilationUnit compilationUnit : experiment.getCompilationUnits()) {
             assertEquals(hotCompilationUnits.contains(compilationUnit.getCompilationId()), compilationUnit.isHot());
         }

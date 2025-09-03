@@ -32,10 +32,9 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * Information on a class that can be looked up and accessed via JNI.
@@ -76,7 +75,7 @@ public final class JNIAccessibleClass {
     @Platforms(HOSTED_ONLY.class)
     public void addFieldIfAbsent(String name, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
-            fields = ImageHeapMap.create(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
+            fields = ImageHeapMap.createNonLayeredMap(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
         }
         if (!fields.containsKey(name)) {
             fields.put(name, mappingFunction.apply(name));
@@ -86,7 +85,7 @@ public final class JNIAccessibleClass {
     @Platforms(HOSTED_ONLY.class)
     public void addMethodIfAbsent(JNIAccessibleMethodDescriptor descriptor, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
-            methods = ImageHeapMap.create();
+            methods = ImageHeapMap.createNonLayeredMap();
         }
         if (!methods.containsKey(descriptor)) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
@@ -117,7 +116,7 @@ public final class JNIAccessibleClass {
         return method;
     }
 
-    String getInternalName() {
-        return MetaUtil.toInternalName(classObject.getName());
+    String getJNIName() {
+        return ClassNameSupport.reflectionNameToJNIName(classObject.getName());
     }
 }

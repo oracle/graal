@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,7 +162,7 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
         };
 
         StructuredGraph graph = partialEval(testRoot);
-        Assert.assertEquals(2, graph.getNodes(MethodCallTargetNode.TYPE).count());
+        Assert.assertEquals(1, graph.getNodes(MethodCallTargetNode.TYPE).count());
     }
 
     @Test

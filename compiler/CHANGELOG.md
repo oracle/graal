@@ -2,6 +2,26 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM for JDK 26 (Internal Version 26.0.0)
+* (GR-58163): Added support for recording and replaying JIT compilations. The `-Djdk.graal.RecordForReplay=*` option
+  serializes all compilations matching the pattern to JSON files, which contain the results of JVMCI calls. The
+  recorded compilations can be replayed with the `mx replaycomp` command. Truffle compilations are currently not
+  supported. See `docs/ReplayCompilation.md` for details.
+
+## GraalVM for JDK 25 (Internal Version 25.0.0)
+* (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building
+  libgraal has been moved into the compiler suite in a new `jdk.graal.compiler.libgraal` module
+  which has no dependency on Native Image internals. This
+  is required for Galahad CE where libgraal must be buildable from the Graal compiler sources in the OpenJDK
+  while using Native Image as an external tool.
+* (GR-59869) Implemented initial optimization of Java Vector API (JEP 338) operations.
+  Load, store, basic arithmetic, reduce, compare, and blend operations are transformed to efficient machine instructions where possible.
+  Coverage of more operations is planned for the future.
+  This optimization is experimental.
+  It is enabled by default and can be disabled by setting the `OptimizeVectorAPI` option to `false`.
+  Vector API operations are supported both on JIT and when building native images.
+  Native image builds must use the `--add-modules jdk.incubator.vector` and `-H:+VectorAPISupport` options to enable optimization.
+
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-57209): The default number of JVMCI threads is now the same as the number of C2 threads (`-XX:JVMCINativeLibraryThreadFraction=0.66`).
   This benefits the program warmup but could increase the maximum RSS.

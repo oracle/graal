@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,23 +26,22 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import jdk.graal.compiler.debug.DebugContext;
-
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ARRAY;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ENUM;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.HEADER;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INSTANCE;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INTERFACE;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.PRIMITIVE;
-
-public abstract class TypeEntry {
+public abstract sealed class TypeEntry permits StructureTypeEntry, PrimitiveTypeEntry, PointerToTypeEntry {
     /**
      * The name of this type.
      */
-    protected final String typeName;
+    private final String typeName;
+
+    /**
+     * The type signature of this type. This is a pointer to the underlying layout of the type.
+     */
+    protected long typeSignature;
+
+    /**
+     * The type signature for the compressed type. This points to the compressed layout which
+     * resolves oops to the actual address of an instances.
+     */
+    protected long typeSignatureForCompressed;
 
     /**
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
@@ -53,16 +52,35 @@ public abstract class TypeEntry {
     /**
      * The size of an occurrence of this type in bytes.
      */
-    protected final int size;
+    private final int size;
 
-    protected TypeEntry(String typeName, int size) {
+    protected TypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long typeSignatureForCompressed) {
         this.typeName = typeName;
         this.size = size;
-        this.classOffset = -1;
+        this.classOffset = classOffset;
+        this.typeSignature = typeSignature;
+        this.typeSignatureForCompressed = typeSignatureForCompressed;
+    }
+
+    public void seal() {
+        // nothing to do here
+    }
+
+    public long getTypeSignature() {
+        return typeSignature;
+    }
+
+    public long getTypeSignatureForCompressed() {
+        return typeSignatureForCompressed;
     }
 
     public long getClassOffset() {
         return classOffset;
+    }
+
+    public void setClassOffset(long classOffset) {
+        this.classOffset = classOffset;
     }
 
     public int getSize() {
@@ -73,59 +91,18 @@ public abstract class TypeEntry {
         return typeName;
     }
 
-    public abstract DebugTypeKind typeKind();
-
-    public boolean isPrimitive() {
-        return typeKind() == PRIMITIVE;
-    }
-
-    public boolean isHeader() {
-        return typeKind() == HEADER;
-    }
-
-    public boolean isArray() {
-        return typeKind() == ARRAY;
-    }
-
-    public boolean isInstance() {
-        return typeKind() == INSTANCE;
-    }
-
-    public boolean isInterface() {
-        return typeKind() == INTERFACE;
-    }
-
-    public boolean isEnum() {
-        return typeKind() == ENUM;
-    }
-
-    public boolean isForeign() {
-        return typeKind() == FOREIGN;
-    }
-
-    /**
-     * Test whether this entry is a class type, either an instance class, an interface type, an enum
-     * type or a foreign type. The test excludes primitive and array types and the header type.
-     *
-     * n.b. Foreign types are considered to be class types because they appear like interfaces or
-     * classes in the Java source and hence need to be modeled by a ClassEntry which can track
-     * properties of the java type. This also allows them to be decorated with properties that
-     * record details of the generated debug info. When it comes to encoding the model type as DWARF
-     * or PECOFF method {@link #isForeign()} may need to be called in order to allow foreign types
-     * ot be special cased.
-     *
-     * @return true if this entry is a class type otherwise false.
-     */
-    public boolean isClass() {
-        return isInstance() || isInterface() || isEnum() || isForeign();
-    }
-
-    public boolean isStructure() {
-        return isClass() || isHeader();
-    }
-
-    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
-        /* Record the location of the Class instance in the heap if there is one */
-        this.classOffset = debugTypeInfo.classOffset();
+    @Override
+    public String toString() {
+        String kind = switch (this) {
+            case PrimitiveTypeEntry p -> "Primitive";
+            case HeaderTypeEntry h -> "Header";
+            case ArrayTypeEntry a -> "Array";
+            case InterfaceClassEntry i -> "Interface";
+            case EnumClassEntry e -> "Enum";
+            case ForeignStructTypeEntry fs -> "ForeignStruct";
+            case PointerToTypeEntry fs -> "PointerTo";
+            case ClassEntry c -> "Instance";
+        };
+        return String.format("%sType(%s size=%d @%s)", kind, getTypeName(), getSize(), Long.toHexString(classOffset));
     }
 }

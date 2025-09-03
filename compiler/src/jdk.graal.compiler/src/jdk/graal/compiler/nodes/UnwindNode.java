@@ -58,4 +58,10 @@ public final class UnwindNode extends MemoryMapControlSinkNode implements Lowera
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
     }
+
+    public void setException(ValueNode exception) {
+        updateUsages(this.exception, exception);
+        this.exception = exception;
+    }
+
 }

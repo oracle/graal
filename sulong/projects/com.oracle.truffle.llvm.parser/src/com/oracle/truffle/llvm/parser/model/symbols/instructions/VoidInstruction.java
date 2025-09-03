@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class VoidInstruction extends Instruction {
+
+    protected VoidInstruction() {
+    }
+
+    protected VoidInstruction(MDLocation debugLocation) {
+        super(debugLocation);
+    }
 
     @Override
     public final Type getType() {

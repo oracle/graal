@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
+import org.graalvm.word.WordBase;
+
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 
@@ -31,6 +33,8 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.List;
 
 /**
  * The type interface which is both used in the hosted and substrate worlds.
@@ -46,6 +50,12 @@ public interface SharedType extends ResolvedJavaType {
     JavaKind getStorageKind();
 
     int getTypeID();
+
+    /**
+     * Returns true if this type is part of the word type hierarchy, i.e, implements
+     * {@link WordBase}.
+     */
+    boolean isWordType();
 
     @Override
     default ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
@@ -91,5 +101,13 @@ public interface SharedType extends ResolvedJavaType {
             return new AssumptionResult<>(implementations[0]);
         }
         return null;
+    }
+
+    @Override
+    default List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        /*
+         * Not needed on SubstrateVM for now.
+         */
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

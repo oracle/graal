@@ -50,6 +50,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -57,9 +58,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.CachedLegacyTestNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.NodeChildTest0NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.NodeChildTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.TestNonStaticSpecializationNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached10NodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached11NodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached12NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached1NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached3NodeGen;
@@ -67,6 +72,8 @@ import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached4Node
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached5NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached6NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached7NodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached8NodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached9NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial1NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial3NodeGen;
@@ -271,6 +278,135 @@ public class GenerateUncachedTest {
         assertEquals("s1", node.execute(42));
         assertEquals("s2", node.execute(42d));
         assertEquals("fallback", node.execute(42f));
+    }
+
+    @GenerateUncached
+    abstract static class Uncached8Node extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "v == cachedV", limit = "3", excludeForUncached = false)
+        static String s1(int v, @Cached("v") int cachedV) {
+            return "s1";
+        }
+
+        @Specialization
+        static String s2(int v) { // effectively unreachable for uncached
+            return "s2";
+        }
+
+    }
+
+    @Test
+    public void testUncached8() {
+        Uncached8Node node = Uncached8NodeGen.getUncached();
+        assertEquals("s1", node.execute(42));
+        assertEquals("s1", node.execute(44));
+        assertEquals("s1", node.execute(45));
+        assertEquals("s1", node.execute(46));
+    }
+
+    @GenerateUncached
+    abstract static class Uncached9Node extends Node {
+
+        abstract String execute();
+
+        static Assumption getAssumption() {
+            return Assumption.ALWAYS_VALID;
+        }
+
+        @Specialization(assumptions = "getAssumption()")
+        static String s0() {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0")
+        static String s1() throws ArithmeticException {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testUncached9() {
+        Uncached9Node node = Uncached9NodeGen.getUncached();
+        assertEquals("s0", node.execute());
+    }
+
+    @GenerateUncached
+    abstract static class Uncached10Node extends Node {
+
+        abstract String execute();
+
+        static Assumption getAssumption() {
+            return Assumption.NEVER_VALID;
+        }
+
+        @Specialization(assumptions = "getAssumption()")
+        static String s0() {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0")
+        static String s1() throws ArithmeticException {
+            return "s1";
+        }
+    }
+
+    @Test
+    public void testUncached10() {
+        Uncached10Node node = Uncached10NodeGen.getUncached();
+        assertEquals("s1", node.execute());
+    }
+
+    @GenerateUncached
+    abstract static class Uncached11Node extends Node {
+
+        abstract String execute();
+
+        @Specialization(excludeForUncached = true)
+        static String s0() {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0")
+        static String s1() {
+            return "s1";
+        }
+    }
+
+    @Test
+    public void testUncached11() {
+        Uncached11Node node = Uncached11NodeGen.getUncached();
+        assertEquals("s1", node.execute());
+    }
+
+    @GenerateUncached
+    abstract static class Uncached12Node extends Node {
+
+        abstract String execute(Object arg);
+
+        @Specialization
+        static String s0(int arg) {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0", excludeForUncached = true)
+        static String s1(int arg) {
+            return "s1";
+        }
+
+        // specialization to make AlwaysGenerateOnlySlowPath happy
+        @Specialization
+        static String s2(double b) {
+            return "s2";
+        }
+    }
+
+    @Test
+    public void testUncached12() {
+        Uncached12Node node = Uncached12NodeGen.getUncached();
+        assertEquals("s0", node.execute(42));
     }
 
     @GenerateUncached
@@ -482,8 +618,8 @@ public class GenerateUncachedTest {
         @Specialization
         static int f0(int v,
                         @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
-                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
-                                        "To resolve this specify the uncached or allowUncached attribute in @Cached.") //
+                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope. " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @Cached or exclude the specialization from @GenerateUncached using @Specialization(excludeForUncached=true).") //
                         @Cached("nonTrivialCache(v)") int cachedV) {
             return v;
         }
@@ -534,23 +670,6 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    abstract static class ErrorNode7 extends Node {
-
-        abstract Object execute(Object arg);
-
-        @ExpectError("Failed to generate code for @GenerateUncached: The specialization rewrites on exceptions and there is no specialization that replaces it. Add a replaces=\"s1\" class to specialization below to resolve this problem.")
-        @Specialization(rewriteOn = ArithmeticException.class)
-        static String s1(int v) {
-            return "s1";
-        }
-
-        @Specialization
-        static String s2(int v) {
-            return "s2";
-        }
-    }
-
-    @GenerateUncached
     abstract static class ErrorNonTrivialNode1 extends Node {
 
         abstract Object execute(Object arg);
@@ -558,8 +677,8 @@ public class GenerateUncachedTest {
         @Specialization
         static String s1(Object v,
                         @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
-                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
-                                        "To resolve this specify the uncached or allowUncached attribute in @Cached.")//
+                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope. " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @Cached or exclude the specialization from @GenerateUncached using @Specialization(excludeForUncached=true).") //
                         @Cached("foo(v)") Object cached) {
             return "s1";
         }
@@ -768,4 +887,57 @@ public class GenerateUncachedTest {
         assertEquals("s0", NodeChildTest1NodeGen.getUncached().execute(0, 0));
         assertEquals("s1", NodeChildTest1NodeGen.getUncached().execute(42, 42));
     }
+
+    @GenerateUncached
+    @GenerateInline(false)
+    abstract static class CachedLegacyTestNode extends Node {
+
+        abstract String execute();
+
+        @Specialization
+        static String s0(
+                        // actually a warning
+                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression%") //
+                        @Cached("create()") Assumption assumption) {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0")
+        static String s1() throws ArithmeticException {
+            return "s1";
+        }
+    }
+
+    @Test
+    public void testCachedLegacyTestNode() {
+        // still executable as the error is only a warning
+        assertEquals("s1", CachedLegacyTestNodeGen.getUncached().execute());
+    }
+
+    abstract static class WarningUnusedNode extends Node {
+
+        abstract String execute();
+
+        @ExpectError("The attribute excludeForUncached has no effect as the node is not configured for uncached generation.%")
+        @Specialization(excludeForUncached = true)
+        static String s0() {
+            return "s0";
+        }
+
+    }
+
+    @GenerateUncached
+    @ExpectError("All specializations were excluded for uncached. At least one specialization must remain included. " +
+                    "Set the excludeForUncached attribute to false for at least one specialization to resolve this problem.")
+    abstract static class ErrorAllExcludedNode extends Node {
+
+        abstract String execute();
+
+        @Specialization(excludeForUncached = true)
+        static String s0() {
+            return "s0";
+        }
+
+    }
+
 }

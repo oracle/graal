@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -44,7 +45,7 @@ public abstract class SLAssertFalseBuiltin extends SLBuiltinNode {
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (value) {
             CompilerDirectives.transferToInterpreter();
-            throw new SLAssertionError(message == null ? "" : toJavaStringNode.execute(message), this);
+            throw SLException.create(message == null ? "" : toJavaStringNode.execute(message), this);
         }
         return value;
     }

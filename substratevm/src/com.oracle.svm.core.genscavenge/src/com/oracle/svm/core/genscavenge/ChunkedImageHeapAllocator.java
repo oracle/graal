@@ -27,21 +27,14 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
-import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
-class ChunkedImageHeapAllocator {
-    /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
-    private static final ImageHeapPartition FILLERS_DUMMY_PARTITION = new FillerObjectDummyPartition();
+import jdk.graal.compiler.word.Word;
 
+class ChunkedImageHeapAllocator {
     abstract static class Chunk {
         private final long begin;
         private final long endOffset;
@@ -77,13 +70,20 @@ class ChunkedImageHeapAllocator {
     }
 
     static final class UnalignedChunk extends Chunk {
-        UnalignedChunk(long begin, long endOffset, boolean writable) {
+        private final long objectSize;
+
+        UnalignedChunk(long begin, long endOffset, boolean writable, long objectSize) {
             super(begin, endOffset, writable);
+            this.objectSize = objectSize;
         }
 
         @Override
         public long getTopOffset() {
             return getEndOffset();
+        }
+
+        public long getObjectSize() {
+            return objectSize;
         }
     }
 
@@ -110,35 +110,6 @@ class ChunkedImageHeapAllocator {
             return objStart;
         }
 
-        public boolean tryAlignTop(int multiple) {
-            long padding = computePadding(getTop(), multiple);
-            if (padding != 0 && padding < minimumObjectSize) {
-                /*
-                 * Cannot fit a filler object into the remaining padding space, so need to go up to
-                 * the next alignment multiple.
-                 */
-                padding = padding + multiple;
-            }
-            if (padding > getUnallocatedBytes()) {
-                return false;
-            }
-            allocateFiller(padding);
-            assert getTop() % multiple == 0;
-            return true;
-        }
-
-        private void allocateFiller(long size) {
-            if (size != 0) {
-                ImageHeapObject filler = imageHeap.addFillerObject(NumUtil.safeToInt(size));
-                if (filler == null) {
-                    throw VMError.shouldNotReachHere("Failed to leave enough space for a filler object: " + size + " byte remaining");
-                }
-                filler.setHeapPartition(FILLERS_DUMMY_PARTITION);
-                long location = allocate(filler, false);
-                filler.setOffsetInPartition(location);
-            }
-        }
-
         public List<ImageHeapObject> getObjects() {
             return objects;
         }
@@ -157,11 +128,9 @@ class ChunkedImageHeapAllocator {
         }
     }
 
-    private final ImageHeap imageHeap;
     private final int alignedChunkSize;
     private final int alignedChunkAlignment;
     private final int alignedChunkObjectsOffset;
-    private final int unalignedChunkObjectsOffset;
 
     private long position;
 
@@ -171,12 +140,10 @@ class ChunkedImageHeapAllocator {
 
     final int minimumObjectSize;
 
-    ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
-        this.imageHeap = imageHeap;
+    ChunkedImageHeapAllocator(long position) {
         this.alignedChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
         this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
-        this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 
         this.position = position;
 
@@ -188,18 +155,13 @@ class ChunkedImageHeapAllocator {
         return (currentAlignedChunk != null) ? currentAlignedChunk.getTop() : position;
     }
 
-    public void alignBetweenChunks(int multiple) {
-        assert currentAlignedChunk == null;
-        allocateRaw(computePadding(position, multiple));
-    }
-
     public long allocateUnalignedChunkForObject(ImageHeapObject obj, boolean writable) {
         assert currentAlignedChunk == null;
-        UnsignedWord objSize = WordFactory.unsigned(obj.getSize());
-        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
+        long objSize = obj.getSize();
+        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(Word.unsigned(objSize)).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
-        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable));
-        return chunkBegin + unalignedChunkObjectsOffset;
+        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable, objSize));
+        return chunkBegin + UnsignedUtils.safeToInt(UnalignedHeapChunk.calculateObjectStartOffset(Word.unsigned(objSize)));
     }
 
     public void maybeStartAlignedChunk() {
@@ -216,21 +178,17 @@ class ChunkedImageHeapAllocator {
         alignedChunks.add(currentAlignedChunk);
     }
 
+    private void alignBetweenChunks(int multiple) {
+        assert currentAlignedChunk == null;
+        allocateRaw(computePadding(position, multiple));
+    }
+
     public long getRemainingBytesInAlignedChunk() {
         return currentAlignedChunk.getUnallocatedBytes();
     }
 
     public long allocateObjectInAlignedChunk(ImageHeapObject obj, boolean writable) {
         return currentAlignedChunk.allocate(obj, writable);
-    }
-
-    public void alignInAlignedChunk(int multiple) {
-        if (!currentAlignedChunk.tryAlignTop(multiple)) {
-            startNewAlignedChunk();
-            if (!currentAlignedChunk.tryAlignTop(multiple)) {
-                throw VMError.shouldNotReachHere("Cannot align to " + multiple + " bytes within an aligned chunk's object area");
-            }
-        }
     }
 
     public void finishAlignedChunk() {
@@ -255,37 +213,5 @@ class ChunkedImageHeapAllocator {
     private static long computePadding(long offset, int alignment) {
         long remainder = offset % alignment;
         return (remainder == 0) ? 0 : (alignment - remainder);
-    }
-}
-
-/**
- * A pseudo-partition for filler objects, which does not really exist at runtime, in any statistics,
- * or otherwise. Necessary because like all other {@link ImageHeapObject}s, filler objects must be
- * assigned to a partition, the start offset of which is used to compute their absolute locations.
- * <p>
- * For filler objects in the middle of a partition (between genuine objects of that partition), it
- * would be acceptable to assign them to their enclosing partition. However, filler objects that are
- * inserted between partitions for alignment purposes are problematic because if they were assigned
- * to either partition, they would either be out of the partition's boundaries, or they would change
- * those boundaries, which would make them useless because that's exactly why they are needed there.
- */
-final class FillerObjectDummyPartition implements ImageHeapPartition {
-    /**
-     * Zero so that the partition-relative offsets of filler objects are always their absolute
-     * locations.
-     */
-    @Override
-    public long getStartOffset() {
-        return 0;
-    }
-
-    @Override
-    public String getName() {
-        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    public long getSize() {
-        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 }

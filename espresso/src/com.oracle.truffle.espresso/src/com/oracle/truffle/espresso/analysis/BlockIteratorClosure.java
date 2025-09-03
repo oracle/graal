@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis;
 
 import com.oracle.truffle.espresso.analysis.BlockIterator.BlockProcessResult;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 
 public abstract class BlockIteratorClosure {
     /**

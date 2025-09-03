@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -91,14 +91,6 @@ set(LLVM_AS "" CACHE STRING "LLVM bitcode assembler")
 set(LLVM_OPT "" CACHE STRING "LLVM opt tool")
 set(LLVM_OBJCOPY "" CACHE STRING "llvm-objcopy (for native object files like elf)")
 set(LLVM_CONFIG "" CACHE STRING "llvm-config utility for setting up library paths")
-set(DRAGONEGG "" CACHE STRING "DRAGONEGG plugin path")
-set(DRAGONEGG_GCC "" CACHE STRING "DRAGONEGG enabled gcc")
-set(DRAGONEGG_FC "" CACHE STRING "DRAGONEGG enabled Fortran compiler")
-set(DRAGONEGG_LLVM_LINK "" CACHE STRING "llvm-link compatible with the DRAGONEGG LLVM version")
-set(DRAGONEGG_LLVMAS "" CACHE STRING "llvm-as compatible with the DRAGONEGG LLVM version")
-# not set by default
-set(TOOLCHAIN_CLANG "" CACHE STRING "Toolchain Wrapper for clang used by the 'bitcode' variant")
-set(TOOLCHAIN_CLANGXX "" CACHE STRING "Toolchain Wrapper for clang++ used by the 'bitcode' variant")
 
 if(WIN32)
     # On Windows this defaults to 260 and produces a lot of warnings

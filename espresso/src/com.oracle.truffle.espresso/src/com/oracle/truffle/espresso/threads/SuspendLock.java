@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.threads;
 
 import com.oracle.truffle.api.ThreadLocalAction;
@@ -29,13 +28,13 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 public final class SuspendLock {
     private final Object handshakeLock = new Object() {
     };
-    private final ThreadsAccess access;
+    private final ThreadAccess access;
     private final StaticObject thread;
 
     private volatile boolean shouldSuspend;
     private volatile boolean threadSuspended;
 
-    public SuspendLock(ThreadsAccess access, StaticObject thread) {
+    public SuspendLock(ThreadAccess access, StaticObject thread) {
         this.access = access;
         this.thread = thread;
     }
@@ -95,11 +94,12 @@ public final class SuspendLock {
         boolean wasInterrupted = false;
         shouldSuspend = true;
         access.getContext().getEnv().submitThreadLocal(new Thread[]{access.getHost(thread)}, new SuspendAction(this));
-        while (!isSuspended()) {
+        while (access.isResponsive(thread) && // Don't bother waiting on unresponsive threads.
+                        !isSuspended()) {
             shouldSuspend = true;
             try {
                 synchronized (handshakeLock) {
-                    if (!access.isAlive(thread)) {
+                    if (access.isAlive(thread)) {
                         // If thread terminates, we don't want to wait forever
                         handshakeLock.wait(100);
                     } else {

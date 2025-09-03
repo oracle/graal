@@ -181,10 +181,10 @@ public class ExportLibraryTest extends AbstractLibraryTest {
 
     @ExportLibrary(ExportLibraryTestLibrary.class)
     @ExpectError("The exported type must not be private. Increase visibility to resolve this.")
-    private static class ExportsTestObjectError2 {
+    private static final class ExportsTestObjectError2 {
         @SuppressWarnings("static-method")
         @ExportMessage
-        final Object m0() {
+        Object m0() {
             return null;
         }
     }
@@ -213,7 +213,7 @@ public class ExportLibraryTest extends AbstractLibraryTest {
     static class ExportsTestObjectError5 {
         @ExpectError("Exported message node class must not be private.")
         @ExportMessage
-        private static class M0 {
+        private static final class M0 {
         }
     }
 

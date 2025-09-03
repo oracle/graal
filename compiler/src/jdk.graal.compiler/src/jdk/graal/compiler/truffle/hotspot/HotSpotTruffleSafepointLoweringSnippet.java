@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -45,8 +45,10 @@ import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -60,7 +62,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -78,7 +79,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                     NO_SIDE_EFFECT,
                     NO_LOCATIONS,
                     "HotSpotThreadLocalHandshake.doHandshake",
-                    void.class, Object.class);
+                    void.class, Word.class, Object.class);
 
     static final LocationIdentity PENDING_HANDSHAKE_LOCATION = NamedLocationIdentity.mutable("JavaThread::_jvmci_reserved0");
 
@@ -90,16 +91,16 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * {@link TruffleSafepointInsertionPhase}.
      */
     @Snippet
-    private static void pollSnippet(Object node, @ConstantParameter int pendingHandshakeOffset) {
+    private static void pollSnippet(Word method, Object node, @ConstantParameter int pendingHandshakeOffset) {
         Word thread = CurrentJavaThreadNode.get();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         thread.readInt(pendingHandshakeOffset, PENDING_HANDSHAKE_LOCATION) != 0)) {
-            foreignPoll(THREAD_LOCAL_HANDSHAKE, node);
+            foreignPoll(THREAD_LOCAL_HANDSHAKE, method, node);
         }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object node);
+    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word method, Object node);
 
     static class Templates extends AbstractTemplates {
 
@@ -112,11 +113,13 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             this.pollSnippet = snippet(providers, HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION);
         }
 
-        public void lower(TruffleSafepointNode node, LoweringTool tool) {
+        public void lower(TruffleSafepointNode node, LoweringTool tool, ResolvedJavaMethod javaMethod) {
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(pollSnippet, graph, tool.getLoweringStage());
+            ValueNode method = ConstantNode.forConstant(tool.getStampProvider().createMethodStamp(), javaMethod.getEncoding(), tool.getMetaAccess(), graph);
+            args.add("method", method);
             args.add("node", node.location());
-            args.addConst("pendingHandshakeOffset", pendingHandshakeOffset);
+            args.add("pendingHandshakeOffset", pendingHandshakeOffset);
             SnippetTemplate template = template(tool, node, args);
             template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
@@ -124,14 +127,14 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     static class TruffleHotSpotSafepointLoweringExtension implements DefaultHotSpotLoweringProvider.Extension {
 
-        @NativeImageReinitialize private Templates templates;
+        private Templates templates;
 
         private final HotSpotKnownTruffleTypes types;
 
         /**
          * Initialization deferred until the first Truffle compilation starts.
          */
-        @NativeImageReinitialize private volatile Runnable deferredInit;
+        private volatile Runnable deferredInit;
 
         TruffleHotSpotSafepointLoweringExtension(HotSpotKnownTruffleTypes types) {
             this.types = types;
@@ -147,7 +150,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 doDeferredInit();
                 if (templates != null) {
-                    templates.lower((TruffleSafepointNode) n, tool);
+                    templates.lower((TruffleSafepointNode) n, tool, types.HotSpotThreadLocalHandshake_doHandshake);
                 } else {
                     GraphUtil.unlinkFixedNode((TruffleSafepointNode) n);
                     n.safeDelete();
@@ -171,16 +174,14 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         OptionValues options,
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
-                        Iterable<DebugHandlersFactory> factories) {
+                        Iterable<DebugDumpHandlersFactory> factories) {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
                 this.templates = new Templates(options, providers, config.jvmciReserved0Offset);
                 foreignCalls.register(THREAD_LOCAL_HANDSHAKE.getSignature());
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
-                    GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
-                    ResolvedJavaMethod staticMethod = types.HotSpotThreadLocalHandshake_doHandshake;
-                    foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
+                    foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address);
                 };
             }
         }

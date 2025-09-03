@@ -32,7 +32,7 @@ import jdk.graal.compiler.jtt.JTTTest;
 
 public class BC_getfield extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         private int field = 13;
     }
 

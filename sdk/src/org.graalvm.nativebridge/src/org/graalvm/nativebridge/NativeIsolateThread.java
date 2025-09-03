@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,27 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.ref.WeakReference;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.graalvm.nativebridge.NativeIsolate.CLOSED;
+import java.util.Objects;
 
 /**
- * Represents an entered isolate thread.
+ * Represents an entered native isolate thread.
  *
  * @see NativeIsolate#enter()
  */
-public final class NativeIsolateThread {
-
-    private static final int CLOSING_MASK = 0b1;
+public final class NativeIsolateThread extends AbstractIsolateThread {
 
     private final NativeIsolate isolate;
-    private final WeakReference<Thread> thread;
-    private final AtomicInteger enteredCount;
-    private final boolean nativeThread;
     final long isolateThread;
-    private boolean executesShutDown;
 
     NativeIsolateThread(Thread thread, NativeIsolate isolate, boolean nativeThread, long isolateThreadId) {
-        this.thread = new WeakReference<>(thread);
-        this.isolate = isolate;
-        this.nativeThread = nativeThread;
+        super(thread, nativeThread);
+        this.isolate = Objects.requireNonNull(isolate, "Isolate must be non-null");
         this.isolateThread = isolateThreadId;
-        this.enteredCount = new AtomicInteger();
+    }
+
+    @Override
+    public NativeIsolate getIsolate() {
+        return isolate;
     }
 
     /**
@@ -77,109 +71,12 @@ public final class NativeIsolateThread {
     public long getIsolateThreadId() {
         assert verifyThread();
         if (!isActive()) {
-            throw new IllegalStateException("Isolate 0x" + Long.toHexString(isolate.getIsolateId()) + " is not entered.");
+            throw new IllegalStateException("Isolate " + isolate + " is not entered.");
         }
         return isolateThread;
     }
 
-    /**
-     * Returns the isolate for this thread.
-     */
-    public NativeIsolate getIsolate() {
-        return isolate;
-    }
-
-    /**
-     * Leaves the {@link NativeIsolate} on the current thread.
-     */
-    public void leave() {
-        assert verifyThread();
-        decrementAttached();
-    }
-
-    boolean enter() {
-        assert verifyThread();
-        return incrementAttached();
-    }
-
-    boolean invalidate() {
-        while (true) { // TERMINATION ARGUMENT: busy loop
-            int value = enteredCount.get();
-            if (value == CLOSED) {
-                return true;
-            }
-            int numberOfAttached = (value >>> 1);
-            boolean inactive = numberOfAttached == 0;
-            int newValue = inactive ? CLOSED : (value | CLOSING_MASK);
-            if (enteredCount.compareAndSet(value, newValue)) {
-                return inactive;
-            }
-        }
-    }
-
-    boolean isActive() {
-        if (executesShutDown) {
-            return true;
-        }
-        int value = enteredCount.get();
-        return value != CLOSED && (value >>> 1) > 0;
-    }
-
     boolean isNativeThread() {
-        return nativeThread;
-    }
-
-    void setShutDownRequest(boolean shutDown) {
-        this.executesShutDown = shutDown;
-    }
-
-    private boolean verifyThread() {
-        assert thread.get() == Thread.currentThread() : String.format(
-                        "NativeIsolateThread used by other thread. Expected thread %s, actual thread %s.",
-                        thread.get(),
-                        Thread.currentThread());
-        return true;
-    }
-
-    private boolean incrementAttached() {
-        while (true) { // TERMINATION ARGUMENT: busy loop
-            int value = enteredCount.get();
-            if (value == CLOSED) {
-                if (executesShutDown) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-            int closing = (value & CLOSING_MASK);
-            int newValue = (((value >>> 1) + 1) << 1) | closing;
-            if (enteredCount.compareAndSet(value, newValue)) {
-                break;
-            }
-        }
-        return true;
-    }
-
-    private void decrementAttached() {
-        while (true) { // TERMINATION ARGUMENT: busy loop
-            int value = enteredCount.get();
-            if (value == CLOSED) {
-                if (executesShutDown) {
-                    return;
-                } else {
-                    throw new IllegalStateException("Isolate 0x" + Long.toHexString(isolate.getIsolateId()) + " was closed while being active.");
-                }
-            }
-            int closing = (value & CLOSING_MASK);
-            int numberOfAttached = (value >>> 1) - 1;
-            boolean lastLeaving = closing == CLOSING_MASK && numberOfAttached == 0;
-            int newValue = lastLeaving ? CLOSED : ((numberOfAttached << 1) | closing);
-            if (enteredCount.compareAndSet(value, newValue)) {
-                if (lastLeaving) {
-                    isolate.lastLeave();
-                }
-                break;
-            }
-        }
+        return isForeignThread();
     }
 }

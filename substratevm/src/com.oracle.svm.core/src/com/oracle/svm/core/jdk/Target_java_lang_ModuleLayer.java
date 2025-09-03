@@ -24,16 +24,33 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.List;
+
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+
+import jdk.internal.loader.ClassLoaderValue;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.ModuleLayer.class)
 final class Target_java_lang_ModuleLayer {
 
-    @SuppressWarnings("unused")
     @Substitute
     public static ModuleLayer boot() {
-        return RuntimeModuleSupport.instance().getBootLayer();
+        return RuntimeModuleSupport.singleton().getBootLayer();
+    }
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ModuleLayerCLVTransformer.class, isFinal = true) //
+    static ClassLoaderValue<List<ModuleLayer>> CLV;
+}
+
+final class ModuleLayerCLVTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return originalValue != null ? RuntimeClassLoaderValueSupport.instance().moduleLayerCLV : null;
     }
 }

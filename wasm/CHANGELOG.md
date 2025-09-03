@@ -2,9 +2,39 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.0.0
+
+* BREAKING: Changed Context.eval of _wasm_ sources to return a compiled, but not yet instantiated, module object instead of the module instance.
+  To instantiate the module, you have to call `newInstance()` on the module object now, e.g.:
+  ```java
+  Context c = Context.create();
+  Source wasmSource = Source.newBuilder...;
+  Value module = c.eval(wasmSource);
+  Value instance = module.newInstance(); // < 25.0: c.eval(wasmSource)
+  ```
+  This change enables modules to be instantiated multiple times—and run independently—within the same context. Previously, each module could only be instantiated once per context.
+  `newInstance()` optionally also accepts an import object, similar to the JS WebAssembly API, as well as other modules to be linked together with the module.
+  The previous behavior can still be restored with the experimental option `--wasm.EvalReturnsInstance=true`.
+  Note: Modules instantiated using `module.newInstance()` are not accessible via `context.getBindings("wasm")`, unlike modules instantiated using `context.eval` when using `--wasm.EvalReturnsInstance=true`.
+* BREAKING: Exports are no longer exposed as direct members of the module instance.
+  Use the `exports` member of the module instance to access its exports, e.g:.
+  ```java
+  Value mainFunction = instance.getMember("exports").getMember("main"); // < 25.0: instance.getMember("main")
+  ```
+  This aligns with the JS WebAssembly API and allows other members to be introduced on the module instance without potential name clashes.
+  More information about these API changes and examples can be found in the [GraalWasm Polyglot API Migration Guide](docs/user/GraalWasmAPIMigration.md) and the [Readme](docs/user/README.md).
+* Implemented support for editing primitive values during debugging. Fixed several debugger-related issues.
+* Added an implementation of the [SIMD](https://github.com/WebAssembly/simd) proposal using the JDK's Vector API. This improves peak performance when running WebAssembly code which makes heavy use of the new instructions in the SIMD proposal. This new implementation is always used in native image. On the JVM, it is opt-in and requires setting `--add-modules=jdk.incubator.vector`. Use of the incubating Vector API will result in the following warning message being printed to stderr:
+  ```
+  WARNING: Using incubator modules: jdk.incubator.vector
+   ```
+
+
 ## Version 24.2.0
 
 * Updated developer metadata of Maven artifacts.
+* Deprecated the `--wasm.AsyncParsingBinarySize` and `--wasm.AsyncParsingStackSize` options. These options no longer have any effect and will be removed in a future release.
+* Implemented the [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd) proposal. This feature can be enabled with the options `--wasm.RelaxedSIMD`.
 
 ## Version 24.1.0
 

@@ -111,13 +111,13 @@ public class AArch64IntegerArithmeticSnippets extends SnippetTemplate.AbstractTe
             throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
         }
         StructuredGraph graph = node.graph();
-        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, graph, tool.getLoweringStage());
         args.add("x", node.getX());
         args.add("y", node.getY());
 
         IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
         boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
-        args.addConst("needsZeroCheck", needsZeroCheck);
+        args.add("needsZeroCheck", needsZeroCheck);
 
         template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }

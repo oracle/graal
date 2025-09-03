@@ -24,45 +24,12 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugContext.CompilerPhaseScope;
-import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 
-import jdk.vm.ci.code.TargetDescription;
-
-abstract class LinearScanAllocationPhase {
-
-    final CharSequence getName() {
-        return LIRPhase.createName(getClass());
-    }
-
+abstract class LinearScanAllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
     @Override
     public final String toString() {
         return getName().toString();
     }
-
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-        apply(target, lirGenRes, context, true);
-    }
-
-    @SuppressWarnings("try")
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context, boolean dumpLIR) {
-        DebugContext debug = lirGenRes.getLIR().getDebug();
-        CharSequence name = getName();
-        try (DebugContext.Scope s = debug.scope(name, this); CompilerPhaseScope cps = debug.enterCompilerPhase(name);) {
-            run(target, lirGenRes, context);
-            if (dumpLIR) {
-                if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
-                    debug.dump(DebugContext.VERBOSE_LEVEL, lirGenRes.getLIR(), "After %s", name);
-                }
-            }
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
-    }
-
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context);
-
 }

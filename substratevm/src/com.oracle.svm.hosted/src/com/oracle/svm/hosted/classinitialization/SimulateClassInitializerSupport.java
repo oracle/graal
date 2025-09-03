@@ -30,15 +30,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
@@ -48,6 +51,8 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
@@ -55,6 +60,7 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -179,6 +185,7 @@ public class SimulateClassInitializerSupport {
     protected final int maxInlineDepth = ClassInitializationOptions.SimulateClassInitializerMaxInlineDepth.getValue();
     protected final int maxLoopIterations = ClassInitializationOptions.SimulateClassInitializerMaxLoopIterations.getValue();
     protected final int maxAllocatedBytes = ClassInitializationOptions.SimulateClassInitializerMaxAllocatedBytes.getValue();
+    private final SVMImageLayerLoader layerLoader;
 
     public static SimulateClassInitializerSupport singleton() {
         return ImageSingletons.lookup(SimulateClassInitializerSupport.class);
@@ -188,6 +195,7 @@ public class SimulateClassInitializerSupport {
     public SimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess, SVMHost hostVM) {
         simulateClassInitializerPolicy = new SimulateClassInitializerPolicy(hostVM, this);
         simulatedFieldValueConstantFieldProvider = new SimulateClassInitializerConstantFieldProvider(aMetaAccess, hostVM, this);
+        layerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
     }
 
     public boolean isEnabled() {
@@ -197,9 +205,12 @@ public class SimulateClassInitializerSupport {
     /**
      * Initiate the simulation of the class initializer, unless there is already a published result
      * available.
-     *
-     * The method returns true if the provided type is either initialized at build time or the
-     * simulation succeeded, i.e., if the type starts out as "initialized" at image run time.
+     * <p>
+     * The method returns {@code true} if either the simulation succeeded or the type is initialized
+     * at build time in the host VM, i.e., {@link AnalysisType#isInitialized()} returns
+     * {@code true}. In both cases the type starts out as "initialized" at image run time.
+     * <p>
+     * In layered image builds the simulation result is loaded from previous layers, if available.
      */
     @SuppressWarnings("try")
     public boolean trySimulateClassInitializer(BigBang bb, AnalysisType type) {
@@ -313,7 +324,11 @@ public class SimulateClassInitializerSupport {
         }
     }
 
-    public boolean isClassInitializerSimulated(AnalysisType type) {
+    /**
+     * Returns {@code true} if the type was either successfully simulated or it is initialized at
+     * build time in the host VM, i.e., {@link AnalysisType#isInitialized()} returns {@code true}.
+     */
+    public boolean isSimulatedOrInitializedAtBuildTime(AnalysisType type) {
         var existingResult = lookupPublishedSimulateClassInitializerResult(type);
         if (existingResult != null) {
             return existingResult.simulatedInitialized;
@@ -321,8 +336,24 @@ public class SimulateClassInitializerSupport {
         return false;
     }
 
+    /** Returns {@code true} iff the type was successfully simulated. */
+    public boolean isSuccessfulSimulation(AnalysisType type) {
+        var existingResult = lookupPublishedSimulateClassInitializerResult(type);
+        if (existingResult != null && existingResult != SimulateClassInitializerResult.INITIALIZED_HOSTED) {
+            return existingResult.simulatedInitialized;
+        }
+        return false;
+    }
+
+    /** Returns {@code true} if the type simulation failed. */
+    public boolean isFailedSimulation(AnalysisType type) {
+        var existingResult = lookupPublishedSimulateClassInitializerResult(type);
+        return existingResult == SimulateClassInitializerResult.FAILED_SIMULATED_INITIALIZED;
+    }
+
     private SimulateClassInitializerResult lookupPublishedSimulateClassInitializerResult(AnalysisType type) {
         if (!type.isLinked()) {
+            /* We try linking the AnalysisType when we create it. This means linking failed. */
             return SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED;
         } else if (type.isInitialized()) {
             /*
@@ -335,6 +366,22 @@ public class SimulateClassInitializerSupport {
 
         if (!enabled) {
             return SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED;
+        }
+        if (type.isInBaseLayer()) {
+            if (type.getWrapped() instanceof BaseLayerType) {
+                return SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED;
+            }
+            /* Record type's simulation result loaded from the previous layer. */
+            var sharedLayerSimulation = layerLoader.getSimulationResult(type);
+            if (sharedLayerSimulation != null) {
+                if (sharedLayerSimulation.successful()) {
+                    var existingResult = recordSuccessfulSimulation(type, sharedLayerSimulation.staticFieldValues());
+                    assert existingResult == null || existingResult.simulatedInitialized : "Found unexpected simulation result.";
+                } else {
+                    var existingResult = recordFailedSimulation(type);
+                    assert existingResult == null || !existingResult.simulatedInitialized : "Found unexpected simulation result.";
+                }
+            }
         }
         return analyzedClasses.get(type);
     }
@@ -354,10 +401,10 @@ public class SimulateClassInitializerSupport {
         }
 
         checkStrictlyInitializeAtRunTime(clusterMember);
-        if (clusterMember.notInitializedReasons.size() == 0 || collectAllReasons) {
+        if (clusterMember.notInitializedReasons.isEmpty() || collectAllReasons) {
             addSuperDependencies(debug, clusterMember);
         }
-        if (clusterMember.notInitializedReasons.size() == 0 || collectAllReasons) {
+        if (clusterMember.notInitializedReasons.isEmpty() || collectAllReasons) {
             addClassInitializerDependencies(clusterMember);
         }
 
@@ -445,6 +492,7 @@ public class SimulateClassInitializerSupport {
         if (classInitializer == null) {
             return;
         }
+        VMError.guarantee(!classInitializer.isInBaseLayer(), "Trying to simulate a class initializer already simulated in a previous layer.");
 
         StructuredGraph graph;
         try {
@@ -472,11 +520,7 @@ public class SimulateClassInitializerSupport {
                         .recordInlinedMethods(analysisParsedGraph.getEncodedGraph().isRecordingInlinedMethods())
                         .build();
 
-        if (classInitializer.isInBaseLayer()) {
-            throw SimulateClassInitializerAbortException.doAbort(clusterMember, result, "The class initializer was already simulated in the base layer.");
-        }
-
-        try (var scope = debug.scope("SimulateClassInitializerGraphDecoder", result)) {
+        try (var scope = debug.scope("GraphDecoderSimulateClassInitializer", result)) {
 
             var decoder = createGraphDecoder(clusterMember, bb, result);
             decoder.decode(classInitializer);
@@ -521,6 +565,9 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
+                    if (constantValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                        imageHeapConstant.setOrigin(field);
+                    }
                     // We use the java kind here and not the storage kind since that's what the
                     // users of (Analysis)ConstantReflectionProvider expect.
                     clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));
@@ -532,6 +579,10 @@ public class SimulateClassInitializerSupport {
         clusterMember.notInitializedReasons.add(node);
     }
 
+    /**
+     * To enable logging use {@code -H:Log=SimulateClassInitializer} to match the {@link Scope}
+     * opened by {@link #trySimulateClassInitializer(BigBang, AnalysisType)}.
+     */
     private void publishResults(DebugContext debug, boolean simulatedInitialized, EconomicSet<SimulateClassInitializerClusterMember> transitiveDependencies) {
         for (var clusterMember : transitiveDependencies) {
             if (clusterMember.status.published) {
@@ -545,7 +596,7 @@ public class SimulateClassInitializerSupport {
                 if (debug.isLogEnabled(DebugContext.BASIC_LEVEL)) {
                     debug.log("simulated: %s", clusterMember.type.toJavaName(true));
                 }
-                existingResult = analyzedClasses.putIfAbsent(clusterMember.type, SimulateClassInitializerResult.forInitialized(clusterMember.staticFieldValues));
+                existingResult = recordSuccessfulSimulation(clusterMember.type, clusterMember.staticFieldValues);
                 clusterMember.status = SimulateClassInitializerStatus.PUBLISHED_AS_INITIALIZED;
 
             } else {
@@ -556,7 +607,7 @@ public class SimulateClassInitializerSupport {
                                                     .filter(s -> s != null && !s.isEmpty())
                                                     .collect(Collectors.joining(System.lineSeparator() + "    ")));
                 }
-                existingResult = analyzedClasses.putIfAbsent(clusterMember.type, SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED);
+                existingResult = recordFailedSimulation(clusterMember.type);
                 clusterMember.status = SimulateClassInitializerStatus.PUBLISHED_AS_NOT_INITIALIZED;
             }
             if (existingResult != null && simulatedInitialized != existingResult.simulatedInitialized) {
@@ -572,6 +623,18 @@ public class SimulateClassInitializerSupport {
                 throw VMError.shouldNotReachHere(msg.toString());
             }
         }
+    }
+
+    private SimulateClassInitializerResult recordFailedSimulation(AnalysisType type) {
+        return recordSimulationResult(type, SimulateClassInitializerResult.FAILED_SIMULATED_INITIALIZED);
+    }
+
+    private SimulateClassInitializerResult recordSuccessfulSimulation(AnalysisType type, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {
+        return recordSimulationResult(type, SimulateClassInitializerResult.forInitialized(staticFieldValues));
+    }
+
+    private SimulateClassInitializerResult recordSimulationResult(AnalysisType type, SimulateClassInitializerResult simulationResult) {
+        return analyzedClasses.putIfAbsent(type, simulationResult);
     }
 
     private boolean collectTransitiveDependencies(SimulateClassInitializerClusterMember clusterMember, EconomicSet<SimulateClassInitializerClusterMember> transitiveDependencies) {
@@ -600,8 +663,7 @@ public class SimulateClassInitializerSupport {
         if (reason instanceof AnalysisType type) {
             return "superclass/interface: " + type.toJavaName(true);
         } else if (reason instanceof EnsureClassInitializedNode node && node.constantTypeOrNull(providers.getConstantReflection()) != null) {
-            return "class initializer dependency: " +
-                            ((EnsureClassInitializedNode) reason).constantTypeOrNull(providers.getConstantReflection()).toJavaName(true) +
+            return "class initializer dependency: " + node.constantTypeOrNull(providers.getConstantReflection()).toJavaName(true) +
                             " " + node.getNodeSourcePosition();
         } else if (reason instanceof Node node) {
             if (node instanceof BeginNode || node instanceof ExceptionObjectNode || node instanceof MergeNode || node instanceof EndNode) {

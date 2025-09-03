@@ -71,6 +71,13 @@ public interface TruffleCompilerListener {
      */
     interface CompilationResultInfo {
         /**
+         * Gets the ID of the compilation.
+         */
+        default long getCompilationId() {
+            return -1;
+        }
+
+        /**
          * Gets the size of the machine code generated.
          */
         int getTargetCodeSize();

@@ -36,6 +36,8 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
+import jdk.graal.compiler.word.Word;
+
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
  * for newly-allocated or promoted objects.
@@ -50,9 +52,8 @@ final class CopyingOldGeneration extends OldGeneration {
     @Platforms(Platform.HOSTED_ONLY.class)
     CopyingOldGeneration(String name) {
         super(name);
-        int age = HeapParameters.getMaxSurvivorSpaces() + 1;
-        this.fromSpace = new Space("Old", "O", false, age);
-        this.toSpace = new Space("Old To", "O", true, age);
+        this.fromSpace = new Space("Old", "O", false, getAge());
+        this.toSpace = new Space("Old To", "O", true, getAge());
     }
 
     @Override
@@ -63,8 +64,9 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
+    public void walkObjects(ObjectVisitor visitor) {
+        getFromSpace().walkObjects(visitor);
+        getToSpace().walkObjects(visitor);
     }
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
@@ -73,7 +75,7 @@ final class CopyingOldGeneration extends OldGeneration {
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
-        return getToSpace().copyAlignedObject(original, originalSpace);
+        return ObjectPromoter.copyAlignedObject(original, originalSpace, getToSpace());
     }
 
     @AlwaysInline("GC performance")
@@ -81,7 +83,7 @@ final class CopyingOldGeneration extends OldGeneration {
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
-        getToSpace().promoteUnalignedHeapChunk(originalChunk, originalSpace);
+        ObjectPromoter.promoteUnalignedHeapChunk(originalChunk, originalSpace, getToSpace());
         return original;
     }
 
@@ -90,9 +92,9 @@ final class CopyingOldGeneration extends OldGeneration {
     protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         if (isAligned) {
-            getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            ObjectPromoter.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace, getToSpace());
         } else {
-            getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            ObjectPromoter.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace, getToSpace());
         }
         return true;
     }
@@ -151,13 +153,18 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(toSpace, visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
     boolean isInSpace(Pointer ptr) {
         return fromSpace.contains(ptr) || toSpace.contains(ptr);
+    }
+
+    @Override
+    boolean printLocationInfo(Log log, Pointer ptr) {
+        return fromSpace.printLocationInfo(log, ptr) || toSpace.printLocationInfo(log, ptr);
     }
 
     @Override

@@ -10,13 +10,22 @@
   hyphenize(a_list)::
     std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list)),
 
+  # generate a string that describes the specific hardware being executed on with format: <jdk_name>-<machine_name>-<os>-<arch>
+  jdk_and_hardware(build)::
+    self.hyphenize([
+      if std.objectHasAll(build, 'jdk_name') then build.jdk_name else null,
+      if std.objectHasAll(build, 'machine_name') then build.machine_name else null,
+      if std.objectHasAll(build, 'os') then build.os else null,
+      if std.objectHasAll(build, 'arch') then build.arch else null,
+    ]),
+
   # Pattern for a guard.includes clause that captures all top-level CI files.
   top_level_ci:: ["*.json", "*.jsonnet", "*.libsonnet", "ci/**"],
 
   # Adds a CI build predicate to `build` if it is a gate such that it is only
   # run if a top level CI file or a non-documentation file in any of `suites` has been updated
   add_gate_predicate(build, suites, extra_includes=[], extra_excludes=[])::
-    if std.member(build.targets, "gate") then
+    if std.member(build.targets, "gate") || std.member(build.targets, "tier1") || std.member(build.targets, "tier2") || std.member(build.targets, "tier3") then
     build + {
       guard+: {
         includes+: [ suite + "/**"      for suite in suites ] + extra_includes + $.top_level_ci,

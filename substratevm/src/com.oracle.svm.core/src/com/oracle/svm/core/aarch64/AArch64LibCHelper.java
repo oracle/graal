@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -131,6 +131,18 @@ public class AArch64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fSVEBITPERM();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fFPHP();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fASIMDHP();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSB();
     }
     // Checkstyle: resume
 }

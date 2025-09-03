@@ -30,9 +30,18 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class BuildPhaseProvider {
 
+    private boolean featureRegistrationFinished;
+    private boolean setupFinished;
+    private boolean analysisStarted;
     private boolean analysisFinished;
     private boolean hostedUniverseBuilt;
     private boolean readyForCompilation;
@@ -51,12 +60,36 @@ public final class BuildPhaseProvider {
     BuildPhaseProvider() {
     }
 
+    public static void markFeatureRegistrationFinished() {
+        singleton().featureRegistrationFinished = true;
+    }
+
+    public static boolean isFeatureRegistrationFinished() {
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().featureRegistrationFinished;
+    }
+
+    public static void markSetupFinished() {
+        singleton().setupFinished = true;
+    }
+
+    public static boolean isSetupFinished() {
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().setupFinished;
+    }
+
+    public static void markAnalysisStarted() {
+        singleton().analysisStarted = true;
+    }
+
+    public static boolean isAnalysisStarted() {
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().analysisStarted;
+    }
+
     public static void markAnalysisFinished() {
         singleton().analysisFinished = true;
     }
 
     public static boolean isAnalysisFinished() {
-        return singleton().analysisFinished;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().analysisFinished;
     }
 
     public static void markHostedUniverseBuilt() {
@@ -64,7 +97,7 @@ public final class BuildPhaseProvider {
     }
 
     public static boolean isHostedUniverseBuilt() {
-        return singleton().hostedUniverseBuilt;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().hostedUniverseBuilt;
     }
 
     public static void markReadyForCompilation() {
@@ -72,7 +105,7 @@ public final class BuildPhaseProvider {
     }
 
     public static boolean isReadyForCompilation() {
-        return singleton().readyForCompilation;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().readyForCompilation;
     }
 
     public static void markCompileQueueFinished() {
@@ -80,7 +113,7 @@ public final class BuildPhaseProvider {
     }
 
     public static boolean isCompileQueueFinished() {
-        return singleton().compileQueueFinished;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().compileQueueFinished;
     }
 
     public static void markCompilationFinished() {
@@ -88,7 +121,7 @@ public final class BuildPhaseProvider {
     }
 
     public static boolean isCompilationFinished() {
-        return singleton().compilationFinished;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().compilationFinished;
     }
 
     public static void markHeapLayoutFinished() {
@@ -96,7 +129,7 @@ public final class BuildPhaseProvider {
     }
 
     public static boolean isHeapLayoutFinished() {
-        return singleton().heapLayoutFinished;
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().heapLayoutFinished;
     }
 
     public static class AfterAnalysis implements BooleanSupplier {

@@ -8,20 +8,21 @@
   local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local linux_amd64 = common.linux_amd64,
+  local linux_aarch64 = common.linux_aarch64,
   local windows_amd64 = common.windows_amd64,
+
+  local winDevKit(jdk) =
+  devkits[
+    if jdk.jdk_version == 21
+    then "windows-jdk21"
+    else "windows-jdkLatest"
+  ],
 
   local truffle_common = {
     setup+: [
       ["cd", "./truffle"],
     ],
-    targets: ["gate"],
-    timelimit: "30:00",
-  },
-
-  local guard = {
-    guard+: {
-      includes+: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
-    }
+    notify_groups:: ["truffle"],
   },
 
   local bench_common = {
@@ -35,34 +36,17 @@
     ]
   },
 
-  local gate_lite = truffle_common + {
-    name: 'gate-truffle-lite-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
-    run: [
-      ["mx", "build"],
-      ["mx", "unittest", "--verbose"],
-    ],
-  },
-
-  local sigtest = truffle_common + {
-    name: 'gate-truffle-sigtest-' + self.jdk_name,
-    run: [
-      ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 21 then "all" else "bin")],
-    ],
-  },
-
   local simple_tool_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simpletool-' + self.jdk_name,
+    name: self.name_prefix + 'truffle-simpletool-maven-' + self.jdk_name + '-' + self.os + '-' + self.arch,
     packages+: {
       maven: "==3.3.9"
     },
-    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--dynamicimports", "/graal-js", "--native-images=none"],
+    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/graal-js"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
       self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
-      ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos/"],
       ["python", "populate.py"],
       ["cd", "simpletool"],
@@ -72,18 +56,17 @@
   },
 
   local simple_language_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simplelanguage-' + self.jdk_name,
+    name: self.name_prefix + 'truffle-simplelanguage-maven-' + self.jdk_name + '-' + self.os + '-' + self.arch,
     packages+: {
       maven: "==3.3.9",
-      ruby: ">=2.1.0",
+      ruby: "==3.0.2",
     },
-    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=none"],
+    mx_cmd: ["mx"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
       self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
-      ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos"],
       ["python", "populate.py"],
       ["cd", "simplelanguage"],
@@ -96,90 +79,172 @@
     ],
   },
 
-  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
-    name: 'gate-truffle-oraclejdk-' + self.jdk_name,
-    run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
+  local truffle_common_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs  {
+    components+: ["truffle"],
   },
 
-  local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
+  # this is only valid for gates that depend only on truffle files
+  # do not use for latest GraalVM builds
+  local guard = {
+    guard+: {
+      includes+: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
+    }
+  },
+
+  local truffle_style_gate = truffle_common_gate  + guard + {
+    name: self.name_prefix + 'truffle-style-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "--strict-compliance", "gate", "--strict-mode", "--tag", "style,fullbuild,sigtest"],
+    ],
+  },
+
+  local truffle_test_full_gate = truffle_common_gate + guard + {
+    name: self.name_prefix + 'truffle-full-test-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "--strict-compliance", "gate", "--strict-mode", "--tag", "style,fullbuild,fulltest"]
+    ],
+  },
+  local truffle_test_lite_gate= truffle_common_gate + guard + {
+    name: self.name_prefix + 'truffle-lite-test-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "--strict-compliance", "gate", "--strict-mode", "--tag", "build,test"],
+    ],
+  },
+
+  local truffle_test_super_lite_gate = truffle_common_gate + guard + {
+    name: self.name_prefix + 'truffle-super-lite-test-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "build"],
+      ["mx", "unittest", "--verbose"],
+    ],
+  },
+
+  local truffle_coverage = truffle_common + common.deps.eclipse + common.deps.jdt + guard + {
+    name: self.name_prefix + 'truffle-coverage-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov", "--tags", "build,fulltest"],
+    ],
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+    ],
+    timelimit: "45:00",
+  },
+
+  local jmh_benchmark = bench_common + {
+    name: self.name_prefix + 'truffle-jmh-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    notify_groups:: ["truffle_bench"],
+    run+: [
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "org.graalvm.truffle.benchmark"],
+    ],
+    timelimit: "3:00:00",
+    teardown: [
+      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
+    ],
+  },
+
+  local jmh_benchmark_test = bench_common + guard + {
+    name:  self.name_prefix + 'truffle-test-benchmarks-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "org.graalvm.truffle.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
+    ],
+  },
+
+  local tier1  = common.tier1 + {
+    name_prefix: "gate-",
+    timelimit: "0:30:00"
+  },
+  local tier2  = common.tier2 + {
+    name_prefix: "gate-",
+    timelimit: "01:00:00"
+  },
+  local tier3  = common.tier3 + {
+    name_prefix: "gate-",
+    timelimit: "01:15:00"
+  },
+  local daily  = common.daily + {
+    name_prefix: "daily-",
+    timelimit: "04:00:00"
+  },
+  local weekly  = common.weekly + {
+    name_prefix: "weekly-",
+    timelimit: "04:00:00"
+  },
+  local bench  = common.weekly + {
+    name_prefix: "bench-",
+    timelimit: "04:00:00"
+  },
+
+  local jdk_21_oracle = common.oraclejdk21 + {truffle_jdk_name: "oraclejdk-21"},
+  local jdk_latest_oracle = common.oraclejdkLatest + {truffle_jdk_name: "oraclejdk-latest"},
+  local jdk_latest_labs = common.labsjdkLatestCE+ {truffle_jdk_name: "labsjdk-latest"},
+
+  local jdk_latest_graalvm_ce = jdk_latest_labs + common.deps.svm + {
+    truffle_jdk_name: "graalvm-ce-latest",
+    mx_build_graalvm_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=lib:jvmcicompiler"],
+    run+: [
+        self.mx_build_graalvm_cmd + ["build", "--force-javac"],
+        ["set-export", "JAVA_HOME", self.mx_build_graalvm_cmd + ["--quiet", "--no-warning", "graalvm-home"]]
+    ]
+  },
+
+  local test_jdks = [jdk_latest_oracle, jdk_21_oracle],
+  local graalvm_jdks = [jdk_latest_graalvm_ce],
+
+  local forEach(arr, fn) = std.flattenArrays([fn(x) for x in arr]),
 
   local _builds = std.flattenArrays([
+
+    # Regular Truffle gates
+    [linux_amd64 + tier1 + jdk_latest_oracle + truffle_style_gate],
+
+    forEach(test_jdks, function(jdk)
       [
-        linux_amd64  + jdk + sigtest + guard,
-        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-        darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
-    ]) +
-  [
-    # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
-    linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
-    linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
-    # The simple_tool_maven_project_gate builds compiler, so we must run on labsjdk rather than oraclejdk because of compiler module rename
-    linux_amd64  + common.labsjdk21 + simple_tool_maven_project_gate,
-    linux_amd64  + common.labsjdkLatest + simple_tool_maven_project_gate,
+        linux_amd64      + tier2  + jdk + truffle_test_lite_gate,
+        linux_amd64      + tier3  + jdk + truffle_test_full_gate,
 
-    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+        linux_aarch64    + tier3  + jdk + truffle_test_lite_gate,
+        darwin_aarch64   + tier3  + jdk + truffle_test_lite_gate,
+        windows_amd64    + tier3  + jdk + truffle_test_lite_gate + winDevKit(jdk),
 
-    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
-      name: "gate-truffle-javadoc",
-      run: [
-        ["mx", "build"],
-        ["mx", "javadoc"],
-      ],
-    },
+        # we do have very few resources for Darwin AMD64 so only run weekly
+        darwin_amd64     + weekly + jdk + truffle_test_lite_gate,
+      ]
+    ),
 
-    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
-      name: "gate-truffle-slow-path-unittests",
-      run: [
-        ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
-        # only those tests exercise meaningfully implemented nodes
-        # e.g. com.oracle.truffle.api.dsl.test uses nodes that intentionally produce
-        # different results from fast/slow path specializations to test their activation
-        ["mx", "unittest", "com.oracle.truffle.api.test.polyglot", "com.oracle.truffle.nfi.test"],
-      ],
-    },
+    # SimpleLanguage Maven Integration Test
+    forEach(graalvm_jdks, function(jdk)
+      [
+        linux_amd64      + tier3  + jdk + simple_language_maven_project_gate,
 
-    # TODO Run full gate on Windows GR-51441
-    windows_amd64 + gate_lite + common.oraclejdk21 + devkits["windows-jdk21"] + guard,
-    windows_amd64 + gate_lite + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard,
+        linux_aarch64    + weekly + jdk + simple_language_maven_project_gate,
+        darwin_amd64     + weekly + jdk + simple_language_maven_project_gate,
+        darwin_aarch64   + weekly + jdk + simple_language_maven_project_gate,
 
-    truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
-      name: "weekly-truffle-coverage-21-linux-amd64",
-      run: [
-        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
-      ],
-      teardown+: [
-        ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
-      ],
-      targets: ["weekly"],
-      notify_groups:: ["truffle"],
-      timelimit: "45:00",
-    },
+        # GR-68277 currently unsupported
+        # windows_amd64  + weekly + jdk + simple_language_maven_project_gate + winDevKit(jdk),
+      ]
+    ),
 
-    # BENCHMARKS
+    # SimpleTool Maven Integration Test
+    forEach(graalvm_jdks, function(jdk)
+      [
+        linux_amd64      + tier3  + jdk + simple_tool_maven_project_gate,
 
-    bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
-      name: "bench-truffle-jmh",
-      notify_groups:: ["truffle_bench"],
-      run: [
-        ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],
-      ],
-      targets+: ["weekly"],
-      timelimit: "3:00:00",
-      teardown: [
-        ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
-      ],
-    },
+        linux_aarch64    + weekly + jdk + simple_tool_maven_project_gate,
+        darwin_amd64     + weekly + jdk + simple_tool_maven_project_gate,
+        darwin_aarch64   + weekly + jdk + simple_tool_maven_project_gate,
 
-    linux_amd64 + common.labsjdkLatestCE + bench_common + {
-      name: "gate-truffle-test-benchmarks",
-      run: [
-        ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
-      ],
-      targets: ["gate"],
-    },
-  ],
+        # GR-68277 currently unsupported
+        # windows_amd64  + weekly + jdk + simple_tool_maven_project_gate + winDevKit(jdk),
+      ]
+    ),
 
+    # Truffle Coverage
+    [linux_amd64 + weekly + jdk_21_oracle + truffle_coverage],
+
+    # Truffle Benchmarks
+    [linux_amd64  + tier3  + jdk_latest_labs + jmh_benchmark_test],
+    [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark]
+  ]),
   builds: utils.add_defined_in(_builds, std.thisFile),
 }

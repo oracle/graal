@@ -113,7 +113,7 @@ final class TStringConstants {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
             return createAscii(SINGLE_BYTE_ARRAYS[value], encoding);
         }
-        if (TStringGuards.isUnsupportedEncoding(encoding)) {
+        if (JCodings.JCODINGS_ENABLED && TStringGuards.isUnsupportedEncoding(encoding)) {
             return SINGLE_BYTE[Encoding.US_ASCII.id][value];
         }
         return SINGLE_BYTE[encoding.id][value];

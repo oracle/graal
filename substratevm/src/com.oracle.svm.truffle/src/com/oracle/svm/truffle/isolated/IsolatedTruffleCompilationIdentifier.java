@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
@@ -37,7 +36,11 @@ import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
-final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<CompilationIdentifier> implements TruffleCompilationIdentifier {
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.vm.ci.meta.JavaMethod;
+
+final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<TruffleCompilationIdentifier> implements TruffleCompilationIdentifier {
 
     private static final Verbosity[] VERBOSITIES = Verbosity.values();
 
@@ -45,7 +48,7 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Com
     private final TruffleCompilationTask task;
     private final TruffleCompilable compilable;
 
-    IsolatedTruffleCompilationIdentifier(ClientHandle<CompilationIdentifier> handle, TruffleCompilationTask task, TruffleCompilable compilable) {
+    IsolatedTruffleCompilationIdentifier(ClientHandle<TruffleCompilationIdentifier> handle, TruffleCompilationTask task, TruffleCompilable compilable) {
         super(handle);
         this.task = task;
         this.compilable = compilable;
@@ -76,11 +79,27 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Com
         return descriptions[ordinal];
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static CompilerHandle<String> toString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<CompilationIdentifier> idHandle, int verbosityOrdinal) {
-        CompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
+    private static CompilerHandle<String> toString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle, int verbosityOrdinal) {
+        TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
         String description = id.toString(VERBOSITIES[verbosityOrdinal]);
         return IsolatedCompileClient.get().createStringInCompiler(description);
     }
 
+    @Override
+    public long getTruffleCompilationId() {
+        return getTruffleCompilationId0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static long getTruffleCompilationId0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle) {
+        TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
+        return id.getTruffleCompilationId();
+    }
+
+    @Override
+    public JavaMethod asJavaMethod() {
+        return new TruffleDebugJavaMethod(getTask(), getCompilable());
+    }
 }

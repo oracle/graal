@@ -48,6 +48,6 @@ final class SimulateClassInitializerConstantFieldProvider extends AnalysisConsta
 
     @Override
     protected boolean isClassInitialized(ResolvedJavaField field) {
-        return support.isClassInitializerSimulated((AnalysisType) field.getDeclaringClass());
+        return support.isSimulatedOrInitializedAtBuildTime((AnalysisType) field.getDeclaringClass());
     }
 }

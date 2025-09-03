@@ -138,7 +138,7 @@ public class ExperimentParser {
     /**
      * A parsed proftool log.
      */
-    private static class ProftoolLog {
+    private static final class ProftoolLog {
         /**
          * The compilation kind of the parsed experiment (JIT/AOT).
          */

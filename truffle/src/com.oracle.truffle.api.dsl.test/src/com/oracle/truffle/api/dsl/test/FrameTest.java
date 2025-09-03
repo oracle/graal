@@ -50,7 +50,6 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.FrameTestFactory.FrameDescriptorAccess1NodeGen;
 import com.oracle.truffle.api.dsl.test.FrameTestFactory.FrameDescriptorAccess2NodeGen;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -92,7 +91,7 @@ public class FrameTest {
     @TypeSystemReference(ExampleTypes.class)
     abstract static class FrameDescriptorAccess2Node extends Node {
 
-        public abstract Object execute(Frame frame, Object arg);
+        public abstract Object execute(VirtualFrame frame, Object arg);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "cachedValue == value", limit = "3")

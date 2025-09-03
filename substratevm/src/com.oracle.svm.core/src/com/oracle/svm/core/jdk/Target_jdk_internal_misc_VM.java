@@ -47,7 +47,7 @@ public final class Target_jdk_internal_misc_VM {
 
     @Substitute
     public static String getSavedProperty(String name) {
-        return SystemPropertiesSupport.singleton().getSavedProperties().get(name);
+        return SystemPropertiesSupport.singleton().getInitialProperty(name);
     }
 
     @Substitute
@@ -68,7 +68,7 @@ public final class Target_jdk_internal_misc_VM {
     @Alias @InjectAccessors(DirectMemoryAccessors.class) //
     private static long directMemory;
     @Alias @InjectAccessors(PageAlignDirectMemoryAccessors.class) //
-    private static boolean pageAlignDirectMemory;
+    private static Boolean pageAlignDirectMemory;
 }
 
 final class DirectMemoryAccessors {
@@ -125,7 +125,7 @@ final class PageAlignDirectMemoryAccessors {
     private static boolean initialized;
     private static boolean pageAlignDirectMemory;
 
-    static boolean getPageAlignDirectMemory() {
+    static Boolean getPageAlignDirectMemory() {
         if (!initialized) {
             initialize();
         }

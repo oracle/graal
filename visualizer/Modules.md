@@ -19,7 +19,7 @@ to enrich the basic functionality.
 IGV modules depend on each other. The API separation is not strict and compatibility is not strictly maintained
 as so far the project has no external contributors except the IGV team; however code is separated
 to API / implementation as allocated development time permits and it can be formalized by splitting APIs into
-separate modules (if multiple implementations exist, or the set of implementation dependencies is almost distict
+separate modules (if multiple implementations exist, or the set of implementation dependencies is almost distinct
 from the APIs) or refactoring into public packages.
 
 The following picture outlines conceptual dependencies between IGV modules and selected API interfaces exported
@@ -36,8 +36,8 @@ of implementation details):
 ![NetBeans Platform Dependencies](doc/Platform-Dependencies.jpg)
 
 ## Customizations
-Resources, pictures, embedded files are replaced / overriden so the graphics and content appropriate for IGV and/or Oracle
-appear to the user. The `branding/` directory contains such overriden resources. The `igv` directory contains launcher 
+Resources, pictures, embedded files are replaced / overridden so the graphics and content appropriate for IGV and/or Oracle
+appear to the user. The `branding/` directory contains such overridden resources. The `igv` directory contains launcher
 configuration and the launcher script(s) themselves.
 
 Resources stored in the **virtual configuration filesystem** provided by individual modules is customized in a special
@@ -91,7 +91,7 @@ which copy BGV data and add positional and e.g. color for presenting the data.
 | Port | Input/OutputSlot |
 
 ### HierarchicalLayout
-The layouting algorithm implementation. The algortithm takes **Diagram** as an input, and computes positions of its constituents.
+The layouting algorithm implementation. The algorithm takes **Diagram** as an input, and computes positions of its constituents.
 Multiple layouting algorithms may be supported in theory, but now **View** module hardcodes usage of clustered / non-clustered 
 algorithm for all graphs. 
 
@@ -173,7 +173,7 @@ separated into API/SPI/UI submodules.
 ### View
 This is the core module that manages the graph view. It uses **HierarchicalLayout** to compute layout, and **NetBeans Visual Library**
 to provide drawing surface. For performance reasons only part of Diagram figures are converted to Visual Library Widgets - they
-are heavyweight to caputre user gestures and provide drawing capabilities, so only the visible region plus some side gap is converted;
+are heavyweight to capture user gestures and provide drawing capabilities, so only the visible region plus some side gap is converted;
 additional widgets are created lazily as the user slides the viewport.
 
 The View module also implements the process of converting data (InputGraph) into view model (Diagram) and filter processing; the process is
@@ -181,7 +181,7 @@ organized into stages:
 
 - base diagram,
 - filtered diagram (including scripts),
-- layouted diagram,
+- laid out diagram,
 - extracted diagram
 
 Output of each stage is weakly cached, with respect to the settings / applied function; this allows to e.g. quickly change extraction, since
@@ -208,7 +208,7 @@ HTML4Java allows to specify layout in HTML, style with CSS and bing controls to 
 
 ### VisualizerUI
 This module is a "customization layer" that disables unnecessary UI parts of included NetBeans plugins and/or NetBeans 
-platofrm itself. It also defines a layout for the application windows and default positions of docking containers in 
+platform itself. It also defines a layout for the application windows and default positions of docking containers in
 the layout.
 
 ### ViewerApi

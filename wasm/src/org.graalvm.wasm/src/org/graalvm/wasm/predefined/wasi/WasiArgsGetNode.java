@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,21 +59,23 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsGet(getContext(), memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsGet(WasmMemory memory, int argvAddress, int argvBuffAddress) {
-        final String[] arguments = getContext().environment().getApplicationArguments();
+    private int argsGet(WasmContext context, WasmMemory memory, int argvAddress, int argvBuffAddress) {
+        final String[] arguments = context.environment().getApplicationArguments();
         int argvPointer = argvAddress;
         int argvBuffPointer = argvBuffAddress;
         for (final String argument : arguments) {
-            memory.store_i32(this, argvPointer, argvBuffPointer);
+            memoryLib.store_i32(memory, this, argvPointer, argvBuffPointer);
             argvPointer += 4;
             argvBuffPointer += memory.writeString(this, argument, argvBuffPointer);
-            memory.store_i32_8(this, argvBuffPointer, (byte) 0);
+            memoryLib.store_i32_8(memory, this, argvBuffPointer, (byte) 0);
             ++argvBuffPointer;
 
         }

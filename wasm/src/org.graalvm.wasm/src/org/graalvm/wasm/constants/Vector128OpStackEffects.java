@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -295,6 +295,26 @@ public final class Vector128OpStackEffects {
         vector128OpStackEffects[Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U] = NO_EFFECT;
         vector128OpStackEffects[Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO] = NO_EFFECT;
         vector128OpStackEffects[Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4] = NO_EFFECT;
+        vector128OpStackEffects[Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S] = NO_EFFECT;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U] = NO_EFFECT;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO] = NO_EFFECT;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO] = NO_EFFECT;
+        vector128OpStackEffects[Bytecode.VECTOR_F32X4_RELAXED_MADD] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_F32X4_RELAXED_NMADD] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_F64X2_RELAXED_MADD] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_F64X2_RELAXED_NMADD] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_I8X16_RELAXED_LANESELECT] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_I16X8_RELAXED_LANESELECT] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_LANESELECT] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_I64X2_RELAXED_LANESELECT] = POP_2;
+        vector128OpStackEffects[Bytecode.VECTOR_F32X4_RELAXED_MIN] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_F32X4_RELAXED_MAX] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_F64X2_RELAXED_MIN] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_F64X2_RELAXED_MAX] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S] = POP_1;
+        vector128OpStackEffects[Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S] = POP_2;
     }
 
     private Vector128OpStackEffects() {

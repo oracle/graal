@@ -41,6 +41,8 @@ import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.word.Word.objectToTrackedPointer;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -56,16 +58,14 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.Register;
 
 /**
  * Snippet for updating JFR thread local data on {@code Thread#setCurrentThread} events.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/share/opto/library_call.cpp#L3544-L3670",
-          sha1 = "1f980401f5d7d9a363577635fd57fc1e24505d91")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L3634-L3762",
+          sha1 = "59f07096cdbe1aac79b1248db345e9616b54f4a4")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
@@ -152,8 +152,8 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
         }
 
         public void lower(VirtualThreadUpdateJFRNode virtualThreadUpdateJFRNode, HotSpotRegistersProvider registers, LoweringTool tool) {
-            Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("javaThreadRegister", registers.getThreadRegister());
+            Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph(), tool.getLoweringStage());
+            args.add("javaThreadRegister", registers.getThreadRegister());
             args.add("threadObj", virtualThreadUpdateJFRNode.getThread());
 
             template(tool, virtualThreadUpdateJFRNode, args).instantiate(tool.getMetaAccess(), virtualThreadUpdateJFRNode, DEFAULT_REPLACER, args);

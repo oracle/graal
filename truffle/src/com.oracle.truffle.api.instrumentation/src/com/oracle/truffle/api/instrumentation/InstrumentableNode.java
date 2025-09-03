@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -84,16 +85,16 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * <b>Example minimal implementation of an instrumentable node:</b>
  *
- * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
- * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode"}
+ * {@snippet file = "com/oracle/truffle/api/instrumentation/InstrumentableNode.java" region =
+ * "com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode"}
  *
  * <p>
  * Example for a typical implementation of an instrumentable node with support for source
  * sections:</b>
- * 
- * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
- * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode"}
- * 
+ *
+ * {@snippet file = "com/oracle/truffle/api/instrumentation/InstrumentableNode.java" region =
+ * "com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode"}
+ *
  * <p>
  *
  * @see #isInstrumentable() to decide whether node is instrumentable.
@@ -132,7 +133,7 @@ public interface InstrumentableNode extends NodeInterface {
      * original node. After the replacement of an instrumentable node with a wrapper we refer to the
      * original node as an instrumented node. Wrappers can be generated automatically using an
      * annotation processor by annotating the class with @{@link GenerateWrapper}. Please note that
-     * if an instrumetnable node subclass has additional execute methods then a new wrapper must be
+     * if an instrumentable node subclass has additional execute methods then a new wrapper must be
      * generated or implemented. Otherwise the {@link Node#replace(Node) replacement} of the
      * instrumentable node with the wrapper will fail if the subtype is used as static type in nodes
      * {@link Child children}.
@@ -154,6 +155,10 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * This method is always invoked on an interpreter thread. The method may be invoked without a
      * language context currently being active.
+     * <p>
+     * If {@link #findProbe()} is overriden and never returns a <code>null</code> value, then
+     * {@link #createWrapper(ProbeNode)} does not need to be implemented and may throw an
+     * {@link UnsupportedOperationException} instead.
      *
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
      *            wrapper
@@ -161,6 +166,33 @@ public interface InstrumentableNode extends NodeInterface {
      * @since 0.33
      */
     WrapperNode createWrapper(ProbeNode probe);
+
+    /**
+     * Determines how to find a probe given an instrumentable node. Implementing this method allows
+     * to customize probe storage, e.g. if a different strategy should be used other than the
+     * default wrapper node strategy. The default implementation discovers the probe through the
+     * parent wrapper node by calling {@link WrapperNode#getProbeNode()}. A probe can be initialized
+     * lazily on {@link #findProbe()} calls using {@link #createProbe(SourceSection)}. This method
+     * will never be invoked if {@link #isInstrumentable()} returns <code>false</code>.
+     * <p>
+     * If this method returns <code>null</code> then the default wrapper node strategy will be
+     * applied for this instrumentable node. A custom probe storage strategy must therefore ensure
+     * that this method never returns <code>null</code>.
+     * <p>
+     * The probe must be stored/read from a reference with volatile semantics. This method must
+     * produce a {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial evaluation
+     * constant} if the receiver is a PE constant.
+     *
+     * @see #createProbe(SourceSection)
+     * @since 24.2
+     */
+    default ProbeNode findProbe() {
+        Node parent = ((Node) this).getParent();
+        if (parent instanceof WrapperNode w) {
+            return w.getProbeNode();
+        }
+        return null;
+    }
 
     /**
      * Returns <code>true</code> if this node should be considered tagged by a given tag else
@@ -175,15 +207,15 @@ public interface InstrumentableNode extends NodeInterface {
      * implement tagging using Java types is by overriding the {@link #hasTag(Class)} method. This
      * example shows how to tag a node subclass and all its subclasses as statement:
      *
-     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
-     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode"}
+     * {@snippet file = "com/oracle/truffle/api/instrumentation/InstrumentableNode.java" region =
+     * "com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode"}
      *
      * <p>
      * Often it is impossible to just rely on the node's Java type to implement tagging. This
      * example shows how to use local state to implement tagging for a node.
      *
-     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
-     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode"}
+     * {@snippet file = "com/oracle/truffle/api/instrumentation/InstrumentableNode.java" region =
+     * "com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode"}
      *
      * <p>
      * The implementation of hasTag method must ensure that its result is stable after the parent
@@ -279,8 +311,8 @@ public interface InstrumentableNode extends NodeInterface {
      * how it can implement <code>materializeSyntaxNodes</code> to restore the syntactic structure
      * of the AST:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
-     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode"}
+     * {@snippet file = "com/oracle/truffle/api/instrumentation/InstrumentableNode.java" region =
+     * "com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode"}
      *
      * @param materializedTags a set of tags that requested to be materialized
      * @since 0.33
@@ -410,6 +442,17 @@ public interface InstrumentableNode extends NodeInterface {
         assert inode == null || inode instanceof InstrumentableNode && ((InstrumentableNode) inode).isInstrumentable() : inode;
         assert !(inode instanceof WrapperNode) : inode;
         return inode;
+    }
+
+    /**
+     * Method allows to create an eager probe node given an instrumentable node. This is useful to
+     * implement custom probe storage by implementing {@link #findProbe()}.
+     *
+     * @param sourceSection the eager materialized source section for this probe.
+     * @since 24.2
+     */
+    default ProbeNode createProbe(SourceSection sourceSection) {
+        return new ProbeNode(this, sourceSection);
     }
 
     /**

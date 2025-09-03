@@ -42,12 +42,21 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -57,33 +66,58 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * This class is similar to the {@link SLLessThanNode}.
  */
 @NodeInfo(shortName = "<=")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLLessOrEqualNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean doLong(long left, long right) {
+    public static boolean doLong(long left, long right) {
         return left <= right;
     }
 
-    @Specialization
-    @TruffleBoundary
-    protected boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
-        return left.compareTo(right) <= 0;
+    @Specialization(replaces = "doLong")
+    public static boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+        BigInteger castLeft = left.getValue();
+        BigInteger castRight = right.getValue();
+        return compareBoundary(castLeft, castRight) <= 0;
     }
 
-    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
-    @TruffleBoundary
-    protected boolean doInteropBigInteger(Object left, Object right,
-                    @CachedLibrary("left") InteropLibrary leftLibrary,
-                    @CachedLibrary("right") InteropLibrary rightLibrary) {
-        try {
-            return leftLibrary.asBigInteger(left).compareTo(rightLibrary.asBigInteger(right)) <= 0;
-        } catch (UnsupportedMessageException e) {
-            throw shouldNotReachHere(e);
-        }
+    @TruffleBoundary(allowInlining = true)
+    private static int compareBoundary(BigInteger castLeft, BigInteger castRight) {
+        return castLeft.compareTo(castRight);
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    @HostCompilerDirectives.InliningCutoff
+    public static boolean doFallback(Object left, Object right,
+                    @Cached SlowPathNode fallback,
+                    @Bind Node node) {
+        return fallback.execute(node, left, right);
     }
+
+    @GenerateInline(false)
+    @GenerateUncached
+    public abstract static class SlowPathNode extends Node {
+
+        abstract boolean execute(Node node, Object left, Object right);
+
+        @Specialization(guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+        @SuppressWarnings("unused")
+        static boolean doInteropBigInteger(Node node, Object left, Object right,
+                        @CachedLibrary("left") InteropLibrary leftLibrary,
+                        @CachedLibrary("right") InteropLibrary rightLibrary) {
+            try {
+                BigInteger castLeft = leftLibrary.asBigInteger(left);
+                BigInteger castRight = rightLibrary.asBigInteger(right);
+                return compareBoundary(castLeft, castRight) <= 0;
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
+        }
+
+        @Fallback
+        static boolean typeError(Node node, Object left, Object right) {
+            throw SLException.typeError(node, "<=", left, right);
+        }
+    }
+
 }

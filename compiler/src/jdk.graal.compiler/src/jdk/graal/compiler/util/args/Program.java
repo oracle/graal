@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,10 @@ package jdk.graal.compiler.util.args;
 import static jdk.graal.compiler.util.args.OptionValue.INDENT;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.Pair;
 
 /**
  * Main entry-point of command-line parsing. The method {@link #parseAndValidate(String[], boolean)}
@@ -47,36 +51,59 @@ public class Program extends Command {
         } catch (CommandParsingException e) {
             System.err.println(e.getMessage());
             if (errorIsFatal) {
-                printHelpAndExit(e.getCommand(), 1);
+                printHelpAndExit(1);
             }
         } catch (HelpRequestedException e) {
-            printHelpAndExit(e.getCommand(), 0);
+            printHelpAndExit(0);
         }
     }
 
-    public void printHelpAndExit(Command c, int exitCode) {
+    public void printHelpAndExit(int exitCode) {
         try (PrintWriter writer = new PrintWriter(System.out)) {
-            printHelp(c, writer);
+            printHelp(writer);
         }
         System.exit(exitCode);
     }
 
-    private void printUsage(Command c, PrintWriter writer) {
-        if (c != this) {
-            // Printing usage for subcommand
-            writer.append(getName());
-            writer.append(' ');
-        }
-        c.printUsage(writer);
-    }
+    public final void printHelp(PrintWriter writer) {
+        List<OptionValue<?>> positional = new ArrayList<>();
+        List<Pair<String, OptionValue<?>>> named = new ArrayList<>();
+        collectOptions(positional, named);
 
-    public void printHelp(Command c, PrintWriter writer) {
         writer.println();
         writer.println("USAGE:");
         writer.append(INDENT);
-        printUsage(c, writer);
+        printUsage(writer);
         writer.println();
-        writer.println();
-        c.printHelp(writer);
+
+        if (!positional.isEmpty()) {
+            writer.println();
+            writer.println("ARGS:");
+        }
+        boolean separate = false;
+        for (OptionValue<?> arg : positional) {
+            if (separate) {
+                writer.println();
+            }
+            OptionValue.printIndented(writer, arg.getUsage(false), 1);
+            arg.printHelp(writer, 2);
+            separate = true;
+        }
+
+        if (!named.isEmpty()) {
+            writer.println();
+            writer.println("OPTIONS:");
+        }
+        separate = false;
+        for (Pair<String, OptionValue<?>> pair : named) {
+            if (separate) {
+                writer.println();
+            }
+            String name = pair.getLeft();
+            OptionValue<?> option = pair.getRight();
+            OptionValue.printIndented(writer, String.format("%s %s", name, option.getUsage(false)), 1);
+            option.printHelp(writer, 2);
+            separate = true;
+        }
     }
 }

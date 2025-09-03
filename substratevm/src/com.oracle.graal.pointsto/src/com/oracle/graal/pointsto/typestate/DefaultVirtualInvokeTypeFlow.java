@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
@@ -73,7 +74,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
 
         for (AnalysisType type : receiverState.types(bb)) {
-            assert receiverType.isAssignableFrom(type) : type + " should be a subtype of " + receiverType;
+            assert receiverType.isAssignableFrom(type) || type.getWrapped() instanceof BaseLayerType : type + " should be a subtype of " + receiverType;
             if (isSaturated()) {
                 /*-
                  * The receiver can become saturated during the callees linking, which saturates
@@ -138,6 +139,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        assert isFlowEnabled() : "Should only be executed if this flow is enabled " + this;
         if (!setSaturated()) {
             return;
         }

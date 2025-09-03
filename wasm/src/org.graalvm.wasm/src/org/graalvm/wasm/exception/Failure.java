@@ -65,6 +65,7 @@ public enum Failure {
     MALFORMED_IMPORT_KIND(Type.MALFORMED, "malformed import kind"),
     END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
     UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
+    MALFORMED_MEMOP_FLAGS(Type.MALFORMED, "malformed memop flags"),
     // GraalWasm-specific:
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
@@ -147,6 +148,7 @@ public enum Failure {
 
     MEMORY_OVERHEAD_MODE(Type.TRAP, "functions cannot be executed with memory overhead mode enabled"),
     SHARED_MEMORY_WITHOUT_UNSAFE(Type.TRAP, "shared memories are not supported without Unsafe"),
+    DIRECT_BYTE_BUFFER_WITHOUT_UNSAFE(Type.TRAP, "direct ByteBuffer memory access is not supported without Unsafe"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),

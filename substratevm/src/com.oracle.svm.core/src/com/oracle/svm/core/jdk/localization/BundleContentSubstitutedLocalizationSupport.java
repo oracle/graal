@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,13 +47,28 @@ import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
-import sun.util.resources.ParallelListResourceBundle;
 
+/**
+ * This version of LocalizationSupport stores the content of resource bundles in a map to make the
+ * (Open)ListResourceBundle.getContents() methods of individual resource bundle subclasses
+ * unreachable. To do this, we substitute the lookup methods that would call the getContents methods
+ * and provide the content for resource bundles ourselves. For this to work, we have to extract the
+ * content of the bundles at build time via {@link BundleSerializationUtils#extractContent}.
+ * <p>
+ * We could avoid this dependency by including the getContents() methods of (Open)ListResourceBundle
+ * subclasses in the image, but these methods are huge, so making them reachable would cause
+ * regressions in compile time and binary size when multiple locales are requested.
+ *
+ * @see BundleSerializationUtils
+ * @see GzipBundleCompression
+ * @see SubstituteLoadLookup
+ */
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)//
@@ -134,8 +149,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static boolean isBundleSupported(Class<?> bundleClass) {
-        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
+    public static boolean isBundleSupported(Class<?> bundleClass) {
+        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

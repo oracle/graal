@@ -47,14 +47,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 
 sealed interface JCodings permits JCodingsImpl {
 
     JCodingsProvider PROVIDER = loadProvider();
-    boolean ENABLED = PROVIDER != null;
-    JCodings INSTANCE = ENABLED ? new JCodingsImpl(PROVIDER) : null;
+    boolean JCODINGS_ENABLED = PROVIDER != null;
+    JCodings INSTANCE = JCODINGS_ENABLED ? new JCodingsImpl(PROVIDER) : null;
 
     private static JCodingsProvider loadProvider() {
         if (TruffleOptions.AOT && !TStringAccessor.getNeedsAllEncodings()) {
@@ -83,11 +82,11 @@ sealed interface JCodings permits JCodingsImpl {
         return INSTANCE;
     }
 
-    static byte[] asByteArray(Object array) {
-        if (array instanceof AbstractTruffleString.NativePointer) {
-            return ((AbstractTruffleString.NativePointer) array).getBytes();
+    static byte[] asByteArray(AbstractTruffleString a, byte[] arrayA) {
+        if (arrayA == null) {
+            return ((AbstractTruffleString.NativePointer) a.data()).materializeByteArray(a);
         }
-        return (byte[]) array;
+        return arrayA;
     }
 
     /**
@@ -131,14 +130,14 @@ sealed interface JCodings permits JCodingsImpl {
     @TruffleBoundary
     int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, TruffleString.Encoding encoding);
 
+    @TruffleBoundary
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling);
 
-    long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
-                    InlinedConditionProfile fixedWidthProfile);
+    @TruffleBoundary
+    long calcStringAttributes(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
 
-    TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
-                    TranscodingErrorHandler errorHandler);
+    @TruffleBoundary
+    TruffleString transcode(Node location, AbstractTruffleString a, byte[] arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler);
 
     static TruffleString.Encoding fromJCodingsName(String jCodingsName) {
         // This mapping does not actually require JCodings to be present to work.

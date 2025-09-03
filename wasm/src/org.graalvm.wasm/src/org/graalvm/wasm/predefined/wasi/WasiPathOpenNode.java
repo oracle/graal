@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,10 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
@@ -61,9 +61,9 @@ public final class WasiPathOpenNode extends WasmBuiltinRootNode {
 
     @Override
     @SuppressWarnings("unused")
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathOpen(context, memory(frame),
+        return pathOpen(instance.store(), memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -76,9 +76,9 @@ public final class WasiPathOpenNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathOpen(WasmContext context, WasmMemory memory, int fd, int dirflags, int pathStart, int pathLength,
+    private int pathOpen(WasmStore store, WasmMemory memory, int fd, int dirflags, int pathStart, int pathLength,
                     short oflags, long fsRightsBase, long fsRightsInheriting, short fdflags, int fdAddress) {
-        final Fd handle = context.fdManager().get(fd);
+        final Fd handle = store.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }

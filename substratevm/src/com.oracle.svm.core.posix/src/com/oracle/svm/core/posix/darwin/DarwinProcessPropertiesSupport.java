@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -45,7 +45,7 @@ public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSuppor
         /* Find out how long the executable path is. */
         final CIntPointer sizePointer = UnsafeStackValue.get(CIntPointer.class);
         sizePointer.write(0);
-        if (DarwinDyld._NSGetExecutablePath(WordFactory.nullPointer(), sizePointer) != -1) {
+        if (DarwinDyld._NSGetExecutablePath(Word.nullPointer(), sizePointer) != -1) {
             VMError.shouldNotReachHere("DarwinProcessPropertiesSupport.getExecutableName: Executable path length is 0?");
         }
         /* Allocate a correctly-sized buffer and ask again. */

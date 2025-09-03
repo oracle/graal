@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,22 +49,17 @@ public class AMD64MathStub extends SnippetStub {
     }
 
     private static String snippetName(UnaryOperation operation) {
-        switch (operation) {
-            case SIN:
-                return "sin";
-            case COS:
-                return "cos";
-            case TAN:
-                return "tan";
-            case EXP:
-                return "exp";
-            case LOG:
-                return "log";
-            case LOG10:
-                return "log10";
-            default:
-                throw GraalError.shouldNotReachHere("Unknown operation " + operation); // ExcludeFromJacocoGeneratedReport
-        }
+        return switch (operation) {
+            case SIN -> "sin";
+            case SINH -> "sinh";
+            case COS -> "cos";
+            case TAN -> "tan";
+            case TANH -> "tanh";
+            case EXP -> "exp";
+            case LOG -> "log";
+            case LOG10 -> "log10";
+            case CBRT -> "cbrt";
+        };
     }
 
     private static String snippetName(BinaryOperation operation) {
@@ -90,6 +85,11 @@ public class AMD64MathStub extends SnippetStub {
     }
 
     @Snippet
+    private static double sinh(double value) {
+        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.SINH);
+    }
+
+    @Snippet
     private static double cos(double value) {
         return UnaryMathIntrinsicNode.compute(value, UnaryOperation.COS);
     }
@@ -100,6 +100,11 @@ public class AMD64MathStub extends SnippetStub {
     }
 
     @Snippet
+    private static double tanh(double value) {
+        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.TANH);
+    }
+
+    @Snippet
     private static double exp(double value) {
         return UnaryMathIntrinsicNode.compute(value, UnaryOperation.EXP);
     }
@@ -107,5 +112,10 @@ public class AMD64MathStub extends SnippetStub {
     @Snippet
     private static double pow(double value1, double value2) {
         return BinaryMathIntrinsicNode.compute(value1, value2, BinaryOperation.POW);
+    }
+
+    @Snippet
+    private static double cbrt(double value) {
+        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.CBRT);
     }
 }

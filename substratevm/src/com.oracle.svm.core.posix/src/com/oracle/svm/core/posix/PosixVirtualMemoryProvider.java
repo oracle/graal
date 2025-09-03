@@ -37,9 +37,8 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
-import static org.graalvm.word.WordFactory.nullPointer;
+import static jdk.graal.compiler.word.Word.nullPointer;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -47,20 +46,35 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.graal.compiler.word.Word;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class PosixVirtualMemoryProviderFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
@@ -69,6 +83,7 @@ class PosixVirtualMemoryProviderFeature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     protected static final int NO_FD = -1;
     protected static final int NO_FD_OFFSET = 0;
@@ -78,9 +93,9 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getPageSize() {
         Word value = CACHED_PAGE_SIZE.get().read();
-        if (value.equal(WordFactory.zero())) {
+        if (value.equal(Word.zero())) {
             long queried = Unistd.NoTransitions.sysconf(Unistd._SC_PAGE_SIZE());
-            value = WordFactory.unsigned(queried);
+            value = Word.unsigned(queried);
             CACHED_PAGE_SIZE.get().write(value);
         }
         return value;
@@ -111,7 +126,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (nbytes.equal(0)) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         UnsignedWord granularity = getGranularity();
@@ -148,7 +163,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         int flags = MAP_PRIVATE();
@@ -157,14 +172,14 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         int fd = (int) fileHandle.rawValue();
         Pointer result = mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
-        return result.notEqual(MAP_FAILED()) ? result : WordFactory.nullPointer();
+        return result.notEqual(MAP_FAILED()) ? result : Word.nullPointer();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         int flags = MAP_ANON() | MAP_PRIVATE();

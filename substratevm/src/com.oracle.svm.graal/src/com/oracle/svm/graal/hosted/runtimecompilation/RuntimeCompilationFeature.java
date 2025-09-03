@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,6 +104,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.RuntimeCompilationCallbacks;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -131,6 +132,7 @@ import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -138,6 +140,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Bytec
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
@@ -147,6 +151,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -410,7 +415,15 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
 
-        TruffleRuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
+        TruffleRuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites,
+                        createRuntimeInvocationPlugins(hostedProviders.getGraphBuilderPlugins().getInvocationPlugins(), ConfigurationValues.getTarget().arch));
+    }
+
+    private static InvocationPlugins createRuntimeInvocationPlugins(InvocationPlugins hostedInvocationPlugins, Architecture arch) {
+        InvocationPlugins plugins = new InvocationPlugins();
+        hostedInvocationPlugins.collectRuntimeCheckedPlugins(plugins, arch);
+        plugins.closeRegistration();
+        return plugins;
     }
 
     @Override
@@ -427,6 +440,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
+
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
         graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
@@ -462,6 +476,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         for (ResolvedJavaMethod method : replacements.getSnippetMethods()) {
             objectReplacer.apply(method);
         }
+
+        /*
+         * Register the same allow list as for hosted compiles also for runtime compiles.
+         */
+        if (SharedArenaSupport.isAvailable()) {
+            SharedArenaSupport.singleton().registerSafeArenaAccessorsForRuntimeCompilation(objectReplacer::createMethod, objectReplacer::createType);
+        }
     }
 
     boolean newRuntimeMethodsSeen = false;
@@ -483,7 +504,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         graphEncoder.finishPrepare();
         AnalysisMetaAccess metaAccess = config.getMetaAccess();
-        NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
+        NodeClassMap nodeClasses = graphEncoder.getNodeClasses();
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
@@ -622,7 +643,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
     }
 
-    private class RuntimeCompilationParsingSupport implements SVMParsingSupport {
+    private final class RuntimeCompilationParsingSupport implements SVMParsingSupport {
         RuntimeCompilationInlineBeforeAnalysisPolicy runtimeInlineBeforeAnalysisPolicy = null;
 
         @Override
@@ -872,12 +893,23 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             return newNode;
         }
 
+        private boolean isRuntimeCheckedInvocationPlugin(GraphBuilderContext b, AnalysisMethod method) {
+            InvocationPlugin plugin = hostedProviders.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, false, false, b.getOptions());
+            if (plugin instanceof InvocationPlugin.ConditionalInvocationPlugin conditionalInvocationPlugin) {
+                return conditionalInvocationPlugin.isRuntimeChecked(hostedProviders.getLowerer().getTarget().arch);
+            }
+            return false;
+        }
+
         @Override
         protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
             if (allowInliningPredicate.allowInlining(b, method) != AllowInliningPredicate.InlineDecision.INLINE) {
                 return false;
             }
-
+            if (isRuntimeCheckedInvocationPlugin(b, method)) {
+                // postpone the inlining till runtime compilation
+                return false;
+            }
             InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accScope;
             if (policyScope instanceof RuntimeCompilationAlwaysInlineScope) {
                 /*
@@ -966,7 +998,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         return (T) runtimeMethod;
     }
 
-    private class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
+    private final class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
 
         @Override
         public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {

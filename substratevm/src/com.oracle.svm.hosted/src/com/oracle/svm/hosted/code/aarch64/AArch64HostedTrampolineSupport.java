@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -85,7 +86,7 @@ public class AArch64HostedTrampolineSupport implements HostedDirectCallTrampolin
      */
     @Override
     public byte[] createTrampoline(TargetDescription td, HostedMethod target, int trampolineStart) {
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(td);
+        AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(td);
         CompilationResult compilationResult = new CompilationResult("trampoline");
         Consumer<Assembler.CodeAnnotation> consumer = PatchConsumerFactory.HostedPatchConsumerFactory.factory().newConsumer(compilationResult);
         masm.setCodePatchingAnnotationConsumer(consumer);

@@ -96,7 +96,7 @@ public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNo
     }
 
     final byte[] arrayA;
-    final int offsetA;
+    final long offsetA;
     final int lengthA;
     final int strideA;
     final int fromIndexA;
@@ -105,7 +105,7 @@ public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNo
     public TStringOpsIndexOfAnyRangeTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int[] values) {
         super(ArrayIndexOfNode.class);
         this.arrayA = arrayA;
-        this.offsetA = offsetA;
+        this.offsetA = offsetA + byteArrayBaseOffset();
         this.lengthA = lengthA;
         this.strideA = strideA;
         this.fromIndexA = fromIndexA;

@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle;
 
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.phases.TruffleCompilerPhases;
@@ -37,11 +36,6 @@ public final class TruffleTierConfiguration {
     private final Providers providers;
     private final Suites suites;
     private final LIRSuites lirSuites;
-
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options, KnownTruffleTypes knownTruffleTypes) {
-        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options, backend.getTarget().arch), backend.getSuites().getDefaultLIRSuites(options),
-                        knownTruffleTypes);
-    }
 
     public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {
         this.configuration = configuration;

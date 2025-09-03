@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.RequiredField;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
@@ -93,6 +95,7 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSha
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSharedInlinedMultipleInstances2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedProfileInSpecializationClassNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SpecializationClassAndInlinedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.TestGR67848NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use128BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use2048BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use32BitsNodeGen;
@@ -133,6 +136,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings({"truffle-neverdefault", "truffle-sharing", "truffle-interpreted-performance"})
 public class GenerateInlineTest extends AbstractPolyglotTest {
@@ -341,7 +345,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static int doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("arg") int cachedArg,
                         @Cached InlinedBranchProfile p0) {
             p0.enter(node);
@@ -754,7 +758,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -786,7 +790,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doCached(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -797,7 +801,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static Object doOther(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached(value = "arg", neverDefault = true) int cachedArg) {
@@ -828,7 +832,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = false) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -1387,7 +1391,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 2")
         static Object s1(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared("innerShared") @Cached(inline = true) InlineInlineCache innerShared,
                         @Shared("innerSharedPrimitive") @Cached("arg") int innerSharedPrimitive,
                         @Shared("innerSharedNotInlined") @Cached(inline = false) InlineInlineCache innerSharedNotInlined,
@@ -1407,7 +1411,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 3")
         static Object s2(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedAllInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1416,7 +1420,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 4")
         static Object s3(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedNoneInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1425,7 +1429,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 5")
         static Object s4(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedMixedInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1643,7 +1647,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization(guards = "sharedNode.execute(this, arg0)")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(sharedNode.execute(inliningTarget, arg0));
@@ -1653,7 +1657,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         String s1(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Exclusive @Cached InlinedIdentityNode exclusiveNode) {
             assertFalse(sharedNode.execute(inliningTarget, arg0));
@@ -1690,7 +1694,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization(guards = "exclusiveNode.execute(this, arg0)", limit = "3")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(exclusiveNode.execute(inliningTarget, arg0));
@@ -1699,7 +1703,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         String s1(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Exclusive @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(sharedNode.execute(inliningTarget, arg0));
@@ -1731,7 +1735,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @ExpectError("For this specialization with inlined cache parameters it is recommended to use the static modifier.%")
         @Specialization(guards = "arg == cachedArg", limit = "3")
         Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached("arg") int cachedArg) {
             return simpleNode.execute(node, cachedArg);
@@ -1745,7 +1749,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Object arg);
 
-        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"this\") Node node' parameter must be declared. %")
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared. %")
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
                         @Cached(inline = true) SimpleNode simpleNode,
@@ -1796,7 +1800,8 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization()
         Object doInt(int arg,
-                        @ExpectError("The cached node type does not support object inlining. Add @GenerateInline on the node type or disable inline using @Cached(inline=false) to resolve this.") @Cached(inline = true) NoInliningNode simpleNode) {
+                        @ExpectError("The cached node type does not support object inlining. " +
+                                        "Add @GenerateInline or @GenerateInline(false) on the node type or disable inlining using @Cached(inline=false) to resolve this.") @Cached(inline = true) NoInliningNode simpleNode) {
             return "";
         }
 
@@ -2065,7 +2070,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = {"cachedCompaction ==compaction"}, limit = "2")
         static void doCached(CompactionLevel compaction,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("compaction") CompactionLevel cachedCompaction,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
             errorProfile.enter(node);
@@ -2327,7 +2332,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             return false;
         }
 
-        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared.%")
         @ExportMessage
         long asPointer(@Cached InlinedBranchProfile profile) {
             return 0L;
@@ -2346,7 +2351,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @ExportMessage
         static class AsPointer {
-            @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+            @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared.%")
             @Specialization
             static long asPointer(ErrorUseBindParamterInLibraryExport2 receiver, @Cached InlinedBranchProfile profile) {
                 return 0L;
@@ -2369,7 +2374,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
                         assumptions = "createAssumption()", //
                         limit = "3")
         protected static Object s0(final Object object,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("object.getClass()") final Class<?> cachedLayout,
                         // need to have one node inlined
                         @Cached InlinedConditionProfile weakRefProfile) {
@@ -2638,4 +2643,70 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         }
         assertTrue(String.format("Node %s did not throw when it used wrong inlineTarget. Is the UseInlinedByDefault really inlined?", testCaseName), thrown);
     }
+
+    @GenerateCached(false)
+    @GenerateInline(true)
+    public abstract static class TestGR67848 extends Node {
+
+        abstract Object execute(Node node, int arg);
+
+        @SuppressWarnings("unused")
+        // we use an inline cache to trigger a specialization data class
+        @Specialization(guards = "arg == cachedArg", limit = "5")
+        static String doInt(Node node, int arg,
+                        @Cached("arg") int cachedArg,
+                        @Cached InlinedBranchProfile inlinedProfile,
+                        @Cached InlineInlineCache inlineInlineCache) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testGR67848() {
+        // needs reflection, no difference to HotSpot expected
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeNoIsolateEncapsulation();
+
+        Class<?> inlinedClass = null;
+        for (Class<?> c : TestGR67848NodeGen.class.getDeclaredClasses()) {
+            if (c.getSimpleName().equals("Inlined")) {
+                inlinedClass = c;
+                break;
+            }
+        }
+        assertNotNull(inlinedClass);
+
+        int referenceFieldCount = 0;
+        int stateFieldCount = 0;
+        int allFieldCount = 0;
+        for (Field m : inlinedClass.getDeclaredFields()) {
+            if (Modifier.isStatic(m.getModifiers())) {
+                continue;
+            }
+            allFieldCount++;
+
+            if (m.getType().isAssignableFrom(InlineSupport.ReferenceField.class)) {
+                referenceFieldCount++;
+            }
+            if (m.getType().isAssignableFrom(InlineSupport.StateField.class)) {
+                stateFieldCount++;
+            }
+            /*
+             * Without the fix for GR-67848 we would have a field for an InlinedBranchProfile and
+             * InlineInlineCache as well.
+             */
+            if (m.getType().isAssignableFrom(InlinedBranchProfile.class)) {
+                throw new AssertionError("No InlinedBranchProfile field expected");
+            }
+            if (m.getType().isAssignableFrom(InlineInlineCache.class)) {
+                throw new AssertionError("No InlineInlineCache field expected");
+            }
+        }
+
+        assertEquals(1, referenceFieldCount);
+        assertEquals(1, stateFieldCount);
+        assertEquals(2, allFieldCount);
+
+    }
+
 }

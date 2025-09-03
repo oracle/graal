@@ -20,20 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.perf.DebugCloseable;
-import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.perf.DebugTimer;
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
+import com.oracle.truffle.espresso.classfile.ClasspathFile;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -58,17 +54,15 @@ public final class BootClassRegistry extends ClassRegistry {
         loadKlassCacheHits.inc();
     }
 
-    private final Map<String, String> packageMap = new ConcurrentHashMap<>();
-
-    public BootClassRegistry(long loaderID) {
-        super(loaderID);
+    public BootClassRegistry(long loaderID, ArchivedRegistryData archivedRegistryData) {
+        super(loaderID, archivedRegistryData);
     }
 
     @Override
     @SuppressWarnings("try")
     public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        if (Types.isPrimitive(type)) {
+        if (TypeSymbols.isPrimitive(type)) {
             return null;
         }
         ClasspathFile classpathFile;
@@ -82,19 +76,8 @@ public final class BootClassRegistry extends ClassRegistry {
         // use of computeIfAbsent to insert the class since the map is modified.
         ObjectKlass result = defineKlass(context, type, classpathFile.contents);
         context.getRegistries().recordConstraint(type, result, getClassLoader());
-        packageMap.put(result.getRuntimePackage().toString(), classpathFile.classpathEntry.path());
+        result.packageEntry().setBootClasspathLocation(classpathFile.classpathEntry.path());
         return result;
-    }
-
-    @TruffleBoundary
-    public String getPackagePath(String pkgName) {
-        String result = packageMap.get(pkgName);
-        return result;
-    }
-
-    @TruffleBoundary
-    public String[] getPackages() {
-        return packageMap.keySet().toArray(new String[0]);
     }
 
     @Override

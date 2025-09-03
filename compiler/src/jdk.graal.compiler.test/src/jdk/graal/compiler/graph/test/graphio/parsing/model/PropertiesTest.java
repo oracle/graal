@@ -36,8 +36,6 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +52,8 @@ import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 import jdk.graal.compiler.graphio.parsing.model.Properties.PropertySelector;
 import jdk.graal.compiler.graphio.parsing.model.Properties.RegexpPropertyMatcher;
 import jdk.graal.compiler.graphio.parsing.model.Property;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 public class PropertiesTest {
     /**
@@ -304,7 +304,7 @@ public class PropertiesTest {
         }
 
         try {
-            entity.getProperties().putAll(new HashMap<>());
+            entity.getProperties().putAll(new EconomicHashMap<String, Object>());
             fail();
         } catch (UnsupportedOperationException e) {
             // expected
@@ -542,11 +542,11 @@ public class PropertiesTest {
      */
     @Test
     public void testToMap() {
-        Map<String, Object> props = new HashMap<>();
-        Set<String> excludes = new HashSet<>(List.of("p2"));
+        Map<String, Object> props = new EconomicHashMap<>();
+        Set<String> excludes = CollectionsUtil.setOf("p2");
         Properties instance = Properties.newProperties("p1", "1", "p2", "2", "p3", 3);
 
-        Map<String, Object> expResult = new HashMap<>();
+        Map<String, Object> expResult = new EconomicHashMap<>();
         expResult.put("p1", "1");
         expResult.put("p3", 3);
 
@@ -634,7 +634,7 @@ public class PropertiesTest {
      */
     @Test
     public void testPutAll() {
-        Map<String, Object> m = new HashMap<>();
+        Map<String, Object> m = new EconomicHashMap<>();
         m.put("p1", "1");
         m.put("p2", new int[]{1, 2, 3});
         m.put("p4", "4");

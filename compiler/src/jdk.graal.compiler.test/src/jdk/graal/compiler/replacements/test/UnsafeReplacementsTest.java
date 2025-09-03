@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.graal.compiler.test.AddExports;
 import org.junit.Test;
+
+import jdk.graal.compiler.test.AddExports;
 
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
@@ -153,6 +154,15 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndSetLong");
         test("unsafeCompareAndSetFloat");
         test("unsafeCompareAndSetDouble");
+    }
+
+    public static Boolean unsafeCompareAndSetFloatVar(Container c) {
+        return unsafe.compareAndSetFloat(c, floatOffset, 1.0f, 2.0f);
+    }
+
+    @Test
+    public void testUnsafeCompareAndSetFloatVar() {
+        test("unsafeCompareAndSetFloatVar", new Container());
     }
 
     public static boolean unsafeWeakCompareAndSetBoolean() {

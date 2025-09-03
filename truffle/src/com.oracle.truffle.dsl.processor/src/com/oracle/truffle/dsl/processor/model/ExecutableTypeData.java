@@ -70,6 +70,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     private String uniqueName;
 
     private final boolean ignoreUnexpected;
+    private final boolean reachableForRuntimeCompilation;
 
     public ExecutableTypeData(NodeData node, TypeMirror returnType, String uniqueName, TypeMirror frameParameter, List<TypeMirror> evaluatedParameters) {
         this.node = node;
@@ -79,14 +80,16 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         this.uniqueName = uniqueName;
         this.method = null;
         this.ignoreUnexpected = false;
+        this.reachableForRuntimeCompilation = true;
     }
 
     @SuppressWarnings("this-escape")
-    public ExecutableTypeData(NodeData node, ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes, boolean ignoreUnexpected) {
+    public ExecutableTypeData(NodeData node, ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes, boolean ignoreUnexpected, boolean reachableForRuntimeCompilation) {
         this.node = node;
         this.method = method;
         this.returnType = method.getReturnType();
         this.ignoreUnexpected = ignoreUnexpected;
+        this.reachableForRuntimeCompilation = reachableForRuntimeCompilation;
         TypeMirror foundFrameParameter = null;
         List<? extends VariableElement> parameters = method.getParameters();
 
@@ -216,6 +219,10 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
 
     public int getEvaluatedCount() {
         return evaluatedParameters.size();
+    }
+
+    public boolean isReachableForRuntimeCompilation() {
+        return reachableForRuntimeCompilation;
     }
 
     public boolean canDelegateTo(ExecutableTypeData to) {

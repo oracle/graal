@@ -52,8 +52,9 @@ public interface SamplerStackTraceSerializer {
      * @param sampleTick The timestamp of the sample.
      * @param threadId A unique identifier for the sampled thread.
      * @param threadState The state of the sampled thread.
+     * @param skipCount The number of top frames to omit.
      * @return A pointer to the next stack trace entry or the end of the buffer.
      */
     Pointer serializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash,
-                    boolean isTruncated, long sampleTick, long threadId, long threadState);
+                    boolean isTruncated, long sampleTick, long threadId, long threadState, int skipCount);
 }

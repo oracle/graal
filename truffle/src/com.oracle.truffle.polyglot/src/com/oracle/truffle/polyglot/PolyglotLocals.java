@@ -258,7 +258,7 @@ final class PolyglotLocals {
                 if (context.engine != instrument.engine) {
                     throw new AssertionError("Invalid sharing of locations.");
                 }
-                return EngineAccessor.INSTRUMENT.invokeContextLocalFactory(factory, context.creatorTruffleContext);
+                return EngineAccessor.INSTRUMENT.invokeContextLocalFactory(factory, context.getCreatorTruffleContext());
             }
         }
 
@@ -484,7 +484,7 @@ final class PolyglotLocals {
                 if (context.engine != instrument.engine) {
                     throw new AssertionError("Invalid sharing of locations.");
                 }
-                return EngineAccessor.INSTRUMENT.invokeContextThreadLocalFactory(factory, context.creatorTruffleContext, thread);
+                return EngineAccessor.INSTRUMENT.invokeContextThreadLocalFactory(factory, context.getCreatorTruffleContext(), thread);
             }
         }
 

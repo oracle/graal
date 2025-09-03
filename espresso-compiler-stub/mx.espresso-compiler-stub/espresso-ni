@@ -1,0 +1,4 @@
+# Use $GRAALVM/bin/native-image in the resulting GraalVM
+DYNAMIC_IMPORTS=/vm,/substratevm
+COMPONENTS=Java on Truffle,Espresso Standalone jvm.cfg,SubstrateVM,tflm,ni,sdkni,svmt,svmsl,tflc,tflsm,ecs
+NATIVE_IMAGES=lib:javavm

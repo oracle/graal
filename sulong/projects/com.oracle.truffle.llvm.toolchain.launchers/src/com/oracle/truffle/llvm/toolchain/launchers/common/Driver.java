@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
+
+import com.oracle.truffle.llvm.toolchain.launchers.AbstractToolchainWrapper;
+import com.oracle.truffle.llvm.toolchain.launchers.AbstractToolchainWrapper.ToolchainWrapperConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -113,30 +116,37 @@ public class Driver {
         }
     }
 
-    private static Path getRuntimeDir() {
-        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
-        if (runtimeDir == null) {
-            throw new IllegalStateException("Could not find GraalVM home");
-        }
-        return runtimeDir;
-    }
-
     public static Path getLLVMBinDir() {
+        // allow manually overriding custom LLVM path
         final String property = System.getProperty("llvm.bin.dir");
         if (property != null) {
             return Paths.get(property);
         }
 
-        // TODO (GR-18389): Set only for standalones currently
+        // look up LLVM path relative to the toolchain wrapper
+        ToolchainWrapperConfig config = AbstractToolchainWrapper.getConfig();
+        if (config != null) {
+            return config.llvmPath().resolve("bin");
+        }
+
+        // TODO (GR-18389): Set only for old-style standalones
         Path toolchainHome = HomeFinder.getInstance().getLanguageHomes().get("llvm-toolchain");
         if (toolchainHome != null) {
             return toolchainHome.resolve("bin");
         }
 
-        return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
+        // TODO: Set only for old-style monolithic GraalVM builds
+        return HomeFinder.getInstance().getHomeFolder().resolve("lib").resolve("llvm").resolve("bin");
     }
 
     public static Path getSulongHome() {
+        ToolchainWrapperConfig config = AbstractToolchainWrapper.getConfig();
+        if (config != null) {
+            // the toolchain root is <sulong_home>/native
+            return config.toolchainPath().getParent();
+        }
+
+        // TODO (GR-18389): Set only for old-style standalones
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;

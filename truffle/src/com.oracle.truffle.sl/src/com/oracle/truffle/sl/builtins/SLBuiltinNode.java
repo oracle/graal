@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 
@@ -58,33 +56,9 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  * {@link SLFunctionRegistry}. This ensures that builtin functions can be called like user-defined
  * functions; there is no special function lookup or call node for builtin functions.
  */
-@NodeChild(value = "arguments", type = SLExpressionNode[].class)
 @GenerateNodeFactory
-public abstract class SLBuiltinNode extends SLExpressionNode {
+@GenerateInline(value = false, inherit = true)
+public abstract class SLBuiltinNode extends Node {
 
-    @Override
-    public final Object executeGeneric(VirtualFrame frame) {
-        try {
-            return execute(frame);
-        } catch (UnsupportedSpecializationException e) {
-            throw SLException.typeError(e.getNode(), e.getSuppliedValues());
-        }
-    }
-
-    @Override
-    public final boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeBoolean(frame);
-    }
-
-    @Override
-    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeLong(frame);
-    }
-
-    @Override
-    public final void executeVoid(VirtualFrame frame) {
-        super.executeVoid(frame);
-    }
-
-    protected abstract Object execute(VirtualFrame frame);
+    public abstract Object execute(VirtualFrame frame, Object... arguments);
 }

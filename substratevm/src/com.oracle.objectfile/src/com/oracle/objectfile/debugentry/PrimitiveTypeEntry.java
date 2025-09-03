@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,76 +26,40 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.JavaKind;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_INTEGRAL;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_SIGNED;
+public final class PrimitiveTypeEntry extends TypeEntry {
 
-public class PrimitiveTypeEntry extends TypeEntry {
-    private char typeChar;
-    private int flags;
-    private int bitCount;
+    private final int bitCount;
+    private final boolean isNumericInteger;
+    private final boolean isNumericFloat;
+    private final boolean isUnsigned;
 
-    public PrimitiveTypeEntry(String typeName, int size) {
-        super(typeName, size);
-        typeChar = '#';
-        flags = 0;
-        bitCount = 0;
+    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature, JavaKind kind) {
+        this(typeName, size, classOffset, typeSignature, kind == JavaKind.Void ? 0 : kind.getBitCount(), kind.isNumericInteger(), kind.isNumericFloat(), kind.isUnsigned());
     }
 
-    @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.PRIMITIVE;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        DebugPrimitiveTypeInfo debugPrimitiveTypeInfo = (DebugPrimitiveTypeInfo) debugTypeInfo;
-        flags = debugPrimitiveTypeInfo.flags();
-        typeChar = debugPrimitiveTypeInfo.typeChar();
-        bitCount = debugPrimitiveTypeInfo.bitCount();
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s %s (%d bits)%n", typeName, decodeFlags(), bitCount);
-        }
-    }
-
-    private String decodeFlags() {
-        StringBuilder builder = new StringBuilder();
-        if ((flags & FLAG_NUMERIC) != 0) {
-            if ((flags & FLAG_INTEGRAL) != 0) {
-                if ((flags & FLAG_SIGNED) != 0) {
-                    builder.append("SIGNED ");
-                } else {
-                    builder.append("UNSIGNED ");
-                }
-                builder.append("INTEGRAL");
-            } else {
-                builder.append("FLOATING");
-            }
-        } else {
-            if (bitCount > 0) {
-                builder.append("LOGICAL");
-            } else {
-                builder.append("VOID");
-            }
-        }
-        return builder.toString();
-    }
-
-    public char getTypeChar() {
-        return typeChar;
+    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature, int bitCount, boolean isNumericInteger, boolean isNumericFloat, boolean isUnsigned) {
+        super(typeName, size, classOffset, typeSignature, typeSignature);
+        this.bitCount = bitCount;
+        this.isNumericInteger = isNumericInteger;
+        this.isNumericFloat = isNumericFloat;
+        this.isUnsigned = isUnsigned;
     }
 
     public int getBitCount() {
         return bitCount;
     }
 
-    public int getFlags() {
-        return flags;
+    public boolean isNumericInteger() {
+        return isNumericInteger;
+    }
+
+    public boolean isNumericFloat() {
+        return isNumericFloat;
+    }
+
+    public boolean isUnsigned() {
+        return isUnsigned;
     }
 }

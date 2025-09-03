@@ -27,6 +27,9 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -54,20 +57,20 @@ public class TStringOpsCalcStringAttributesUTF8ConstantTest extends TStringOpsCo
     @Test
     public void testUtf8Valid() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, true, false, InlinedConditionProfile.getUncached());
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, true, false, InlinedConditionProfile.getUncached());
     }
 
     @Test
     public void testUtf8Unknown() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, false, false, InlinedConditionProfile.getUncached());
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, false, false, InlinedConditionProfile.getUncached());
     }
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         try {
             long ret = (long) invoke(method, null, constantArgs);
             if ((ret & 0xff) != LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE) {
@@ -76,5 +79,13 @@ public class TStringOpsCalcStringAttributesUTF8ConstantTest extends TStringOpsCo
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (method.getName().equals("calcStringAttributesUTF8Invalid")) {
+            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
+        }
+        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 }

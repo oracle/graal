@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,16 +38,19 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
+import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
@@ -54,16 +58,21 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.GlobalMetrics;
-import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.EncodedGraph;
-import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
 import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -82,15 +91,18 @@ public class TruffleRuntimeCompilationSupport {
     private LIRSuites firstTierLirSuites;
     private Providers firstTierProviders;
 
+    private InvocationPlugins invocationPlugins;
+
     /*
      * The following four fields are set late in the image build process. To ensure their values are
-     * not prematurely constant folded we must mark them as unknown object fields.
+     * not prematurely constant folded we must mark them as unknown fields.
      */
 
-    @UnknownObjectField private SubstrateMethod[] methodsToCompile;
-    @UnknownObjectField private byte[] graphEncoding;
-    @UnknownObjectField private Object[] graphObjects;
-    @UnknownObjectField private NodeClass<?>[] graphNodeTypes;
+    @UnknownObjectField(availability = AfterAnalysis.class) private SubstrateMethod[] methodsToCompile;
+    @UnknownObjectField(availability = AfterAnalysis.class) private byte[] graphEncoding;
+    @UnknownObjectField(availability = AfterAnalysis.class) private Object[] graphObjects;
+    @UnknownObjectField(availability = AfterAnalysis.class) private NodeClassMap graphNodeTypes;
+    @UnknownPrimitiveField(availability = AfterAnalysis.class) private int graphNodeTypesSize;
 
     protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 
@@ -118,7 +130,8 @@ public class TruffleRuntimeCompilationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites) {
+    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites,
+                    InvocationPlugins invocationPlugins) {
         get().runtimeConfig = runtimeConfig;
         get().fullOptimizationSuites = suites;
         get().suitesWithoutSpeculation = getWithoutSpeculative(suites);
@@ -127,6 +140,7 @@ public class TruffleRuntimeCompilationSupport {
         get().firstTierSuites = firstTierSuites;
         get().firstTierLirSuites = firstTierLirSuites;
         get().firstTierProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
+        get().invocationPlugins = invocationPlugins;
     }
 
     private static Suites getWithoutSpeculative(Suites s) {
@@ -184,11 +198,10 @@ public class TruffleRuntimeCompilationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClass<?>[] graphNodeTypes) {
+    public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClassMap graphNodeTypes) {
         TruffleRuntimeCompilationSupport support = get();
         if (support.graphObjects == null && graphObjects.length == 0) {
             assert graphEncoding.length == 0;
-            assert graphNodeTypes.length == 0;
             return false;
         }
         boolean result = false;
@@ -201,7 +214,8 @@ public class TruffleRuntimeCompilationSupport {
             TruffleRuntimeCompilationSupport.rescan(a, graphObjects);
             result = true;
         }
-        if (!Arrays.equals(support.graphNodeTypes, graphNodeTypes)) {
+        if (support.graphNodeTypesSize != graphNodeTypes.size() || support.graphNodeTypes != graphNodeTypes) {
+            support.graphNodeTypesSize = graphNodeTypes.size();
             support.graphNodeTypes = graphNodeTypes;
             TruffleRuntimeCompilationSupport.rescan(a, graphNodeTypes);
             result = true;
@@ -284,8 +298,22 @@ public class TruffleRuntimeCompilationSupport {
                         .setIsSubstitution(isSubstitution)
                         .speculationLog((caller != null) ? caller.getSpeculationLog() : null)
                         .build();
-        GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
-        decoder.decode(encodedGraph);
+        PEGraphDecoder decoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, graph, get().runtimeConfig.getProviders(),
+                        null, get().invocationPlugins, new InlineInvokePlugin[0], null, null,
+                        null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
+            @Override
+            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
+                GraalError.guarantee(method.equals(lookupMethod), lookupMethod.getName());
+                return encodedGraph;
+            }
+
+            @Override
+            protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
+                // disable inlining in PEDecoder
+                return null;
+            }
+        };
+        decoder.decode(method);
         return graph;
     }
 

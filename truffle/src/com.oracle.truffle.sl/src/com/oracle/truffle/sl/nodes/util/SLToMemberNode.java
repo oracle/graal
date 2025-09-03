@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ public abstract class SLToMemberNode extends Node {
     public abstract String execute(Node node, Object value) throws UnknownIdentifierException;
 
     @Specialization
-    protected static String fromString(String value) {
+    public static String fromString(String value) {
         return value;
     }
 
@@ -85,24 +85,24 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @Specialization
-    protected static String fromBoolean(boolean value) {
+    public static String fromBoolean(boolean value) {
         return String.valueOf(value);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static String fromLong(long value) {
+    public static String fromLong(long value) {
         return String.valueOf(value);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static String fromBigNumber(SLBigInteger value) {
+    public static String fromBigNumber(SLBigInteger value) {
         return value.toString();
     }
 
     @Specialization(limit = "LIMIT")
-    protected static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
+    public static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
         try {
             if (interop.fitsInLong(value)) {
                 return longToString(interop.asLong(value));
@@ -119,17 +119,17 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @TruffleBoundary
-    private static UnknownIdentifierException error(Object value) {
+    public static UnknownIdentifierException error(Object value) {
         return UnknownIdentifierException.create(value.toString());
     }
 
     @TruffleBoundary
-    private static String bigNumberToString(SLBigInteger value) {
+    public static String bigNumberToString(SLBigInteger value) {
         return value.toString();
     }
 
     @TruffleBoundary
-    private static String longToString(long longValue) {
+    public static String longToString(long longValue) {
         return String.valueOf(longValue);
     }
 

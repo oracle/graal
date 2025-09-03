@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,22 +35,20 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.jtt.JTTTest;
-import jdk.graal.compiler.lir.jtt.LIRTest;
-import jdk.graal.compiler.lir.jtt.LIRTestSpecification;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
-import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
-import jdk.graal.compiler.lir.ConstantValue;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.hotspot.HotSpotBackend;
+import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.jtt.LIRTest;
+import jdk.graal.compiler.lir.jtt.LIRTestSpecification;
+import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -97,7 +95,7 @@ public class BenchmarkCounterOverflowTest extends LIRTest {
 
         Object[] args = new Object[]{Integer.MAX_VALUE * 4L};
         ResolvedJavaMethod method = getResolvedJavaMethod("test");
-        executeActualCheckDeopt(GraalCompilerTest.getInitialOptions(), method, JTTTest.EMPTY, null, args);
+        executeActual(method, null, args);
     }
 
     @Test

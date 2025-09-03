@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -41,6 +41,7 @@ public enum DwarfTag {
     DW_TAG_typedef(0x16),
     DW_TAG_union_type(0x17),
     DW_TAG_inheritance(0x1c),
+    DW_TAG_inlined_subroutine(0x1d),
     DW_TAG_subrange_type(0x21),
     DW_TAG_base_type(0x24),
     DW_TAG_constant(0x27),
@@ -48,7 +49,7 @@ public enum DwarfTag {
     DW_TAG_variable(0x34),
     DW_TAG_namespace(0x39),
     DW_TAG_unspecified_type(0x3b),
-    DW_TAG_inlined_subroutine(0x1d);
+    DW_TAG_type_unit(0x41);
 
     private final int value;
 

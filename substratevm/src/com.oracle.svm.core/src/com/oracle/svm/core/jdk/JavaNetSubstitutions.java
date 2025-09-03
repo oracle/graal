@@ -36,13 +36,13 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -107,8 +107,8 @@ final class DefaultProxySelectorSystemProxiesAccessor {
         return hasSystemProxies;
     }
 
-    static final SignedWord UNINITIALIZED = WordFactory.signed(-2);
-    static final SignedWord INITIALIZING = WordFactory.signed(-1);
+    static final SignedWord UNINITIALIZED = Word.signed(-2);
+    static final SignedWord INITIALIZING = Word.signed(-1);
 
     static final CGlobalData<Pointer> initState = CGlobalDataFactory.createWord(UNINITIALIZED);
 
@@ -124,7 +124,7 @@ final class DefaultProxySelectorSystemProxiesAccessor {
                 }
                 if (initState.get().logicCompareAndSwapWord(0, UNINITIALIZED, INITIALIZING, LocationIdentity.ANY_LOCATION)) {
                     boolean result = Target_sun_net_spi_DefaultProxySelector.init();
-                    initState.get().writeWord(0, WordFactory.signed(result ? 1 : 0));
+                    initState.get().writeWord(0, Word.signed(result ? 1 : 0));
                 }
             }
         }

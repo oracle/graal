@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static java.util.zip.ZipFile.OPEN_READ;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -31,12 +33,16 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.ClasspathEntry;
+import com.oracle.truffle.espresso.classfile.ClasspathFile;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 
@@ -45,11 +51,12 @@ public final class Classpath {
     private static final byte[] CLASS_SUFFIX = ".class".getBytes(StandardCharsets.UTF_8);
 
     /**
-     * Creates a classpath {@link Entry} from a given file system path.
+     * Creates a classpath {@link ClasspathEntry} from a given file system path.
      *
      * @param name a file system path denoting a classpath entry
      */
-    public static Entry createEntry(String name) {
+    @TruffleBoundary
+    public static ClasspathEntry createEntry(String name) {
         final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
@@ -63,64 +70,21 @@ public final class Classpath {
                 }
             }
             try {
-                ZipFile zipFile = new ZipFile(pathFile);
+                ZipFile zipFile = new JarFile(pathFile, false, OPEN_READ, context.getJavaVersion().toRunTimeVersion());
                 return new Archive(pathFile, zipFile);
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             }
         }
         return new PlainFile(pathFile);
     }
 
-    private final List<Entry> entries;
-
-    /**
-     * An entry in a classpath is a file system path that denotes an existing {@linkplain Directory
-     * directory}, an existing {@linkplain Archive zip/jar} file or a {@linkplain PlainFile neither}
-     * .
-     */
-    public abstract static class Entry {
-
-        /**
-         * Gets the string representing the underlying path of this entry.
-         */
-        public final String path() {
-            return file().getPath();
-        }
-
-        /**
-         * Gets the File object representing the underlying path of this entry.
-         */
-        public abstract File file();
-
-        /**
-         * Gets the contents of a file denoted by a given path that is relative to this classpath
-         * entry. If the denoted file does not exist under this classpath entry then {@code null} is
-         * returned. Any IO exception that occurs when reading is silently ignored.
-         *
-         * @param archiveName name of the file in an archive with {@code '/'} as the separator
-         */
-        abstract ClasspathFile readFile(ByteSequence archiveName);
-
-        public boolean isDirectory() {
-            return false;
-        }
-
-        public boolean isArchive() {
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return path();
-        }
-
-    }
+    private final List<ClasspathEntry> entries;
 
     /**
      * Represents a classpath entry that is neither an existing directory nor an existing zip/jar
      * archive file.
      */
-    static final class PlainFile extends Entry {
+    static final class PlainFile extends ClasspathEntry {
         private final File file;
 
         PlainFile(File file) {
@@ -128,7 +92,7 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(ByteSequence archiveName) {
+        public ClasspathFile readFile(ByteSequence archiveName) {
             return null;
         }
 
@@ -141,7 +105,7 @@ public final class Classpath {
     /**
      * Represents a classpath entry that is a path to an existing directory.
      */
-    public static final class Directory extends Entry {
+    public static final class Directory extends ClasspathEntry {
         private static final boolean REPLACE_SEPARATOR = File.separatorChar != '/';
 
         private final File directory;
@@ -152,7 +116,7 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(ByteSequence archiveName) {
+        public ClasspathFile readFile(ByteSequence archiveName) {
             String fsPath = archiveName.toString();
             if (REPLACE_SEPARATOR) {
                 fsPath = fsPath.replace('/', File.separatorChar);
@@ -182,7 +146,7 @@ public final class Classpath {
     /**
      * Represents a classpath entry that is a path to an existing zip/jar archive file.
      */
-    static final class Archive extends Entry {
+    static final class Archive extends ClasspathEntry {
         private final File file;
         private final ZipFile zipFile;
 
@@ -192,13 +156,13 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(ByteSequence archiveName) {
+        public ClasspathFile readFile(ByteSequence archiveName) {
             try {
                 ZipEntry zipEntry = zipFile.getEntry(archiveName.toString());
                 if (zipEntry != null) {
                     return new ClasspathFile(readZipEntry(zipFile, zipEntry), this, archiveName);
                 }
-            } catch (IOException ioException) {
+            } catch (IOException ignored) {
             }
             return null;
         }
@@ -218,7 +182,7 @@ public final class Classpath {
     /**
      * Represents a classpath entry that is a path to a jimage modules file.
      */
-    static final class Modules extends Entry {
+    static final class Modules extends ClasspathEntry {
         private final File file;
         private final JImageHelper helper;
         private final JImageExtensions extensions;
@@ -235,7 +199,7 @@ public final class Classpath {
         }
 
         @Override
-        ClasspathFile readFile(ByteSequence archiveName) {
+        public ClasspathFile readFile(ByteSequence archiveName) {
             byte[] classBytes = null;
             if (this.extensions != null) {
                 classBytes = extensions.getClassBytes(archiveName);
@@ -256,7 +220,7 @@ public final class Classpath {
      *
      * @return a sequence of {@code Entry} objects
      */
-    public List<Entry> entries() {
+    public List<ClasspathEntry> entries() {
         return entries;
     }
 
@@ -266,7 +230,7 @@ public final class Classpath {
      * @param paths an array of classpath entries
      */
     public Classpath(String[] paths) {
-        final Entry[] entryArray = new Entry[paths.length];
+        final ClasspathEntry[] entryArray = new ClasspathEntry[paths.length];
         for (int i = 0; i < paths.length; ++i) {
             final String path = paths[i];
             entryArray[i] = createEntry(path);
@@ -279,7 +243,7 @@ public final class Classpath {
      *
      * @param entries a sequence of classpath entries
      */
-    public Classpath(List<Entry> entries) {
+    public Classpath(List<ClasspathEntry> entries) {
         this.entries = entries;
     }
 
@@ -299,10 +263,23 @@ public final class Classpath {
      * @param entry the entry to prepend to this classpath
      * @return the result of prepending {@code classpath} to this classpath
      */
-    public Classpath prepend(Entry entry) {
-        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
+    public Classpath prepend(ClasspathEntry entry) {
+        ArrayList<ClasspathEntry> newEntries = new ArrayList<>(this.entries.size());
         newEntries.add(entry);
         newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
+    }
+
+    /**
+     * Gets a new classpath entry obtained by appending a given entry to this classpath.
+     *
+     * @param entry the entry to append to this classpath
+     * @return the result of appending {@code entry} to this classpath
+     */
+    public Classpath append(ClasspathEntry entry) {
+        ArrayList<ClasspathEntry> newEntries = new ArrayList<>(entries.size() + 1);
+        newEntries.addAll(this.entries);
+        newEntries.add(entry);
         return new Classpath(newEntries);
     }
 
@@ -328,7 +305,7 @@ public final class Classpath {
         }
         System.arraycopy(CLASS_SUFFIX, 0, archiveNameBytes, type.length() - 2, CLASS_SUFFIX.length);
         ByteSequence archiveName = ByteSequence.wrap(archiveNameBytes);
-        for (Entry entry : entries()) {
+        for (ClasspathEntry entry : entries()) {
             ClasspathFile classpathFile = entry.readFile(archiveName);
             if (classpathFile != null) {
                 return classpathFile;

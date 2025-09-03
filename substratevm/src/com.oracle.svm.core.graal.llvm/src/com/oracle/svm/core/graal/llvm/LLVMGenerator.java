@@ -250,7 +250,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         if (isEntryPoint) {
             builder.addAlias(SubstrateUtil.mangleName(functionName));
 
-            Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
+            Object entryPointData = ((HostedMethod) method).getWrapped().getNativeEntryPointData();
             if (entryPointData instanceof CEntryPointData) {
                 CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
                 if (cEntryPointData.getPublishAs() != CEntryPoint.Publish.NotPublished) {
@@ -1148,6 +1148,11 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     @Override
+    public void emitExitMethodAddressResolution(Value ip) {
+        throw unimplemented("the LLVM backend doesn't support PLT/GOT"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public <I extends LIRInstruction> I append(I op) {
         throw unimplemented("the LLVM backend doesn't support LIR instructions"); // ExcludeFromJacocoGeneratedReport
     }
@@ -1844,5 +1849,10 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
         builder.buildFence();
+    }
+
+    @Override
+    public boolean isReservedRegister(Register r) {
+        return ReservedRegisters.singleton().isReservedRegister(r);
     }
 }

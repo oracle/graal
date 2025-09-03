@@ -32,10 +32,11 @@ import java.lang.management.ThreadInfo;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ExitStatus;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public class DeadlockWatchdog implements Closeable {
 
@@ -65,7 +66,7 @@ public class DeadlockWatchdog implements Closeable {
     }
 
     public void recordActivity() {
-        nextDeadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(watchdogInterval);
+        nextDeadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(watchdogInterval);
     }
 
     @Override
@@ -80,7 +81,7 @@ public class DeadlockWatchdog implements Closeable {
         recordActivity();
 
         while (!stopped) {
-            long now = System.currentTimeMillis();
+            long now = System.nanoTime();
             if (enabled && now >= nextDeadline) {
                 reportFailureState();
                 if (!watchdogExitOnTimeout) {
@@ -89,7 +90,7 @@ public class DeadlockWatchdog implements Closeable {
             }
 
             try {
-                Thread.sleep(Math.max(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)), 1));
+                Thread.sleep(Math.max(Math.min(TimeUnit.NANOSECONDS.toMillis(nextDeadline - now), TimeUnit.SECONDS.toMillis(1)), 1));
             } catch (InterruptedException e) {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }

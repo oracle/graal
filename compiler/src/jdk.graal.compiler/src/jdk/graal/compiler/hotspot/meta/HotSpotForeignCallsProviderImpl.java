@@ -46,12 +46,14 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.InvokeJavaMethodStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
@@ -63,7 +65,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -248,12 +249,11 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public void invokeJavaMethodStub(OptionValues options,
                     HotSpotProviders providers,
                     HotSpotForeignCallDescriptor descriptor,
-                    long address,
-                    ResolvedJavaMethod staticMethod) {
+                    long address) {
         if (address == 0) {
             throw new IllegalArgumentException("Can't link foreign call with zero address");
         }
-        InvokeJavaMethodStub stub = new InvokeJavaMethodStub(options, jvmciRuntime, providers, address, descriptor, staticMethod);
+        InvokeJavaMethodStub stub = new InvokeJavaMethodStub(options, jvmciRuntime, providers, address, descriptor);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
@@ -266,13 +266,23 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public static final boolean DONT_PREPEND_THREAD = !PREPEND_THREAD;
 
     @Override
+    @SuppressWarnings("try")
     public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallSignature signature) {
         GraalError.guarantee(foreignCalls != null, "%s", signature);
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(signature);
         if (callTarget == null) {
             throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature); // ExcludeFromJacocoGeneratedReport
         }
-        callTarget.finalizeAddress(runtime.getHostBackend());
+        if (callTarget.hasAddress()) {
+            return callTarget;
+        }
+        ReplayCompilationSupport support = getRuntime().getReplayCompilationSupport();
+        if (support != null && support.finalizeForeignCallLinkage(signature, callTarget)) {
+            return callTarget;
+        }
+        try (DebugCloseable ignored = ReplayCompilationSupport.enterSnippetContext(support)) {
+            callTarget.finalizeAddress(runtime.getHostBackend());
+        }
         return callTarget;
     }
 

@@ -41,9 +41,9 @@ public class StandaloneHeapSnapshotVerifier extends HeapSnapshotVerifier {
     }
 
     @Override
-    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor) {
+    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor, boolean skipReachableCheck) {
         StandaloneImageHeapScanner standaloneImageHeapScanner = (StandaloneImageHeapScanner) this.scanner;
-        return new StandaloneObjectScanner(bb, executor, scannedObjects, new ScanningObserver(), standaloneImageHeapScanner.getShouldScanConstant(),
+        return new StandaloneObjectScanner(bb, executor, scannedObjects, new ScanningObserver(skipReachableCheck), standaloneImageHeapScanner.getShouldScanConstant(),
                         standaloneImageHeapScanner.getShouldScanField());
     }
 }

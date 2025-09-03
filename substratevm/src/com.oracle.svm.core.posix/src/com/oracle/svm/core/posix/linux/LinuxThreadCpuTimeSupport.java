@@ -66,7 +66,7 @@ public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return fastCpuTime(pthread);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/linux/os_linux.cpp#L5113-L5125")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/linux/os_linux.cpp#L4939-L4951")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long fastCpuTime(pthread_t pthread) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);

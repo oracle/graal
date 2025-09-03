@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -37,6 +37,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.ClassPlugins;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -386,7 +387,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
                 return String.format("%s.%s()", m.getDeclaringClass().getName(), m.getName());
             }
         }
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inRuntimeCode()) {
             return String.format("%s.%s()", c.getName(), "apply");
         }
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
@@ -515,6 +516,88 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
         @Override
         public final boolean inlineOnly() {
+            return true;
+        }
+    }
+
+    public abstract static class OptionalInlineOnlyInvocationPlugin extends OptionalInvocationPlugin {
+
+        public OptionalInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean inlineOnly() {
+            return true;
+        }
+    }
+
+    /**
+     * ConditionalInvocationPlugin enables additional checks (e.g., CPU feature detection) before
+     * the plugin is applied. In a native image with runtime compilation, this plugin can help
+     * identify plugins that cannot be applied during image building but may still be relevant when
+     * running the image on more advanced architectures.
+     *
+     * Because supporting arbitrary plugins in the context of encoded graphs is complex, we disallow
+     * ConditionalInvocationPlugin in snippets. See
+     * {@code SymbolicSnippetEncoder$HotSpotSnippetBytecodeParser#tryInvocationPlugin}
+     */
+    public abstract static class ConditionalInvocationPlugin extends InvocationPlugin implements Cloneable {
+
+        public ConditionalInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
+            if (!isApplicable(b.getLowerer().getTarget().arch)) {
+                return false;
+            }
+            return super.execute(b, targetMethod, receiver, argsIncludingReceiver);
+        }
+
+        public boolean isRuntimeChecked(Architecture arch) {
+            return !isApplicable(arch);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public ConditionalInvocationPlugin clone() {
+            try {
+                ConditionalInvocationPlugin newInstance = (ConditionalInvocationPlugin) super.clone();
+                newInstance.next = null;
+                return newInstance;
+            } catch (CloneNotSupportedException e) {
+                throw GraalError.shouldNotReachHere(e);
+            }
+        }
+
+        /**
+         * Determines if this plugin is applicable on the given {@code arch}.
+         */
+        public abstract boolean isApplicable(Architecture arch);
+    }
+
+    public abstract static class InlineOnlyConditionalInvocationPlugin extends ConditionalInvocationPlugin {
+
+        public InlineOnlyConditionalInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+    }
+
+    public abstract static class OptionalInlineOnlyConditionalInvocationPlugin extends InlineOnlyConditionalInvocationPlugin {
+
+        public OptionalInlineOnlyConditionalInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public boolean isOptional() {
             return true;
         }
     }

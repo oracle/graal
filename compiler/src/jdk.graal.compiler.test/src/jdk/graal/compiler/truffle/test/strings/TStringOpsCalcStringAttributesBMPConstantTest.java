@@ -48,6 +48,6 @@ public class TStringOpsCalcStringAttributesBMPConstantTest extends TStringOpsCon
     @Test
     public void testBMP() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesBMP", byte[].class, long.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }
 }

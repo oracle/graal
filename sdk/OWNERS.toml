@@ -1,0 +1,12 @@
+[[rule]]
+files = ["mx_sdk_benchmark.py"]
+any = [
+    "patrick.ziegler@oracle.com",
+]
+
+[[rule]]
+files = ["mx_sdk_vm*.py"]
+any = [
+    "gilles.m.duboscq@oracle.com",
+    "benoit.daloze@oracle.com",
+]

@@ -1,0 +1,52 @@
+From 77b8644bd3ebb043bfd2c46ef5f4c409b0b597cc Mon Sep 17 00:00:00 2001
+From: Bernhard Urban-Forster <bernhard.urban-forster@oracle.com>
+Date: Thu, 13 Mar 2025 20:46:22 +0100
+Subject: [PATCH] gcc -g produces .dSYM directories on Darwin
+
+Workaround to get rid of this warning:
+```
+rm: conftest.dSYM: is a directory
+```
+
+Can be removed once libffi packages their tarballs with a recent enough `automake`, see:
+- GR-63069
+- https://github.com/autotools-mirror/automake/commit/cb537c9f1de660e6d7b269179f9406cd24ab5a36
+
+---
+ configure | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/configure b/configure
+index bcbbd44..f651133 100755
+--- a/configure
++++ b/configure
+@@ -5063,7 +5063,7 @@ _ACEOF
+       break
+     fi
+   done
+-  rm -f core conftest*
++  rm -rf core conftest*
+   unset am_i
+ fi
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $am_cv_prog_cc_c_o" >&5
+@@ -6667,7 +6667,7 @@ else $as_nop
+   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
+     lt_cv_nm_interface="MS dumpbin"
+   fi
+-  rm -f conftest*
++  rm -rf conftest*
+ fi
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $lt_cv_nm_interface" >&5
+ printf "%s\n" "$lt_cv_nm_interface" >&6; }
+@@ -7776,7 +7776,7 @@ then :
+       rm -f conftest.* libconftest.a
+ 
+ fi
+-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
++rm -rf core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+ 
+ fi
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $lt_cv_ar_at_file" >&5
+-- 
+2.48.1
+

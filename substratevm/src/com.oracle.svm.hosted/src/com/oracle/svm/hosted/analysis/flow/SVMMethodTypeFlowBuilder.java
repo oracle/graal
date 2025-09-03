@@ -170,9 +170,10 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
             TypeFlowBuilder<?> predicate = state.getPredicate();
             TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, method, predicate, storeNode, TypeFlow.class, () -> {
-                TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
+                BytecodePosition position = AbstractAnalysisEngine.sourcePosition(storeNode);
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(position, valueType.getTypeFlow(bb, false));
                 flowsGraph.addMiscEntryFlow(proxy);
-                return maybePatchAllInstantiated(proxy, valueType, predicate);
+                return maybePatchAllInstantiated(proxy, position, valueType, predicate);
             });
             storeBuilder.addUseDependency(valueBuilder);
             typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);

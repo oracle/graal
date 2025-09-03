@@ -24,17 +24,20 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates.findMethod;
+
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.TestForeignCalls;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -45,12 +48,14 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
         for (JavaKind kind : TestForeignCalls.KINDS) {
             HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
             String name = desc.getName();
-            Class<?> argType = desc.getSignature().getArgumentTypes()[0];
+            Class<?> argType = desc.getSignature().getArgumentTypes()[1];
             invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin(name, argType) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
-                    ForeignCallNode node = new ForeignCallNode(desc, arg);
-                    b.addPush(kind, node);
+                    ResolvedJavaMethod javaMethod = findMethod(b.getMetaAccess(), HotSpotInvokeJavaMethodTest.class, desc.getName());
+                    ValueNode method = ConstantNode.forConstant(b.getStampProvider().createMethodStamp(), javaMethod.getEncoding(), b.getMetaAccess(), b.getGraph());
+                    ForeignCallNode node = new ForeignCallNode(desc, method, arg);
+                    b.add(node);
                     return true;
                 }
             });
@@ -63,132 +68,137 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
         Assume.assumeTrue("Invoke stub helper is missing", runtime().getVMConfig().invokeJavaMethodAddress != 0);
     }
 
+    static Object passedArg;
+
     static boolean[] booleanValues = new boolean[]{Boolean.TRUE, Boolean.FALSE};
 
-    static boolean booleanReturnsBoolean(boolean arg) {
-        return arg;
+    static void passingBoolean(boolean arg) {
+        passedArg = arg;
     }
 
-    public static boolean booleanReturnsBooleanSnippet(boolean arg) {
-        return booleanReturnsBoolean(arg);
+    public static boolean passingBooleanSnippet(boolean arg) {
+        passedArg = null;
+        passingBoolean(arg);
+        return (boolean) passedArg;
     }
 
     @Test
-    public void testBooleanReturnsBoolean() {
+    public void testPassingBoolean() {
         for (boolean value : booleanValues) {
-            test("booleanReturnsBooleanSnippet", value);
+            test("passingBooleanSnippet", value);
         }
     }
 
     static byte[] byteValues = new byte[]{Byte.MAX_VALUE, -1, 0, 1, Byte.MIN_VALUE};
 
-    static byte byteReturnsByte(byte arg) {
-        return arg;
+    static void passingByte(byte arg) {
+        passedArg = arg;
     }
 
-    public static byte byteReturnsByteSnippet(byte arg) {
-        return byteReturnsByte(arg);
+    public static void passingByteSnippet(byte arg) {
+        passedArg = null;
+        passingByte(arg);
     }
 
     @Test
-    public void testByteReturnsByte() {
+    public void testPassingByte() {
         for (byte value : byteValues) {
-            test("byteReturnsByteSnippet", value);
+            test("passingByteSnippet", value);
         }
     }
 
     static short[] shortValues = new short[]{Short.MAX_VALUE, -1, 0, 1, Short.MIN_VALUE};
 
-    static short shortReturnsShort(short arg) {
-        return arg;
+    static void passingShort(short arg) {
+        passedArg = arg;
     }
 
-    public static short shortReturnsShortSnippet(short arg) {
-        return shortReturnsShort(arg);
+    public static short passingShortSnippet(short arg) {
+        passedArg = null;
+        passingShort(arg);
+        return (short) passedArg;
     }
 
     @Test
-    public void testShortReturnsShort() {
+    public void testPassingShort() {
         for (short value : shortValues) {
-            test("shortReturnsShortSnippet", value);
+            test("passingShortSnippet", value);
         }
     }
 
     static char[] charValues = new char[]{Character.MAX_VALUE, 1, Character.MIN_VALUE};
 
-    static char charReturnsChar(char arg) {
-        return arg;
+    static void passingChar(char arg) {
+        passedArg = arg;
     }
 
-    public static char charReturnsCharSnippet(char arg) {
-        return charReturnsChar(arg);
+    public static char passingCharSnippet(char arg) {
+        passedArg = null;
+        passingChar(arg);
+        return (char) passedArg;
     }
 
     @Test
-    public void testCharReturnsChar() {
+    public void testPassingChar() {
         for (char value : charValues) {
-            test("charReturnsCharSnippet", value);
+            test("passingCharSnippet", value);
         }
     }
 
     static int[] intValues = new int[]{Integer.MAX_VALUE, -1, 0, 1, Integer.MIN_VALUE};
 
-    static int intReturnsInt(int arg) {
-        return arg;
+    static void passingInt(int arg) {
+        passedArg = arg;
     }
 
-    public static int intReturnsIntSnippet(int arg) {
-        return intReturnsInt(arg);
+    public static int passingIntSnippet(int arg) {
+        passedArg = null;
+        passingInt(arg);
+        return (int) passedArg;
     }
 
     @Test
-    public void testIntReturnsInt() {
+    public void testPassingInt() {
         for (int value : intValues) {
-            test("intReturnsIntSnippet", value);
+            test("passingIntSnippet", value);
         }
     }
 
     static long[] longValues = new long[]{Long.MAX_VALUE, -1, 0, 1, Long.MIN_VALUE};
 
-    static long longReturnsLong(long arg) {
-        return arg;
+    static void passingLong(long arg) {
+        passedArg = arg;
     }
 
-    public static long longReturnsLongSnippet(long arg) {
-        return longReturnsLong(arg);
+    public static long passingLongSnippet(long arg) {
+        passedArg = null;
+        passingLong(arg);
+        return (long) passedArg;
     }
 
     @Test
-    public void testLongReturnsLong() {
+    public void testPassingLong() {
         for (long value : longValues) {
-            test("longReturnsLongSnippet", value);
+            test("passingLongSnippet", value);
         }
-    }
-
-    static float[] floatValues = new float[]{Float.MAX_VALUE, -1, 0, 1, Float.MIN_VALUE};
-
-    static float floatReturnsFloat(float arg) {
-        return arg;
-    }
-
-    public static float floatReturnsFloatSnippet(float arg) {
-        return floatReturnsFloat(arg);
     }
 
     static Object[] objectValues = new Object[]{null, "String", Integer.valueOf(-1)};
 
-    static Object objectReturnsObject(Object arg) {
-        return arg;
+    static void passingObject(Object arg) {
+        passedArg = arg;
     }
 
-    public static Object objectReturnsObjectSnippet(Object arg) {
-        return objectReturnsObject(arg);
+    public static Object passingObjectSnippet(Object arg) {
+        passedArg = null;
+        passingObject(arg);
+        return passedArg;
     }
 
     @Test
-    public void testObjectReturnsObject() {
+    public void testPassingObject() {
         for (Object value : objectValues) {
-            test("objectReturnsObjectSnippet", value);
+            test("passingObjectSnippet", value);
         }
     }
 }

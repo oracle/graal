@@ -156,21 +156,21 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
         abstract int foo();
     }
 
-    private static class A extends SuperClass {
+    private static final class A extends SuperClass {
         @Override
         public int foo() {
             return 'A';
         }
     }
 
-    private static class B extends SuperClass {
+    private static final class B extends SuperClass {
         @Override
         public int foo() {
             return 'B';
         }
     }
 
-    private static class NotInlinableSubClass extends SuperClass {
+    private static final class NotInlinableSubClass extends SuperClass {
         @Override
         public int foo() {
             return 'X';

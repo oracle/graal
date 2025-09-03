@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
-import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
-import jdk.graal.compiler.nodes.extended.RawLoadNode;
-import jdk.graal.compiler.nodes.extended.RawStoreNode;
-import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
+import java.lang.invoke.MethodHandles;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,6 +40,18 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
+import jdk.graal.compiler.nodes.extended.RawLoadNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
+import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
+import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import jdk.vm.ci.meta.JavaKind;
 
 public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
@@ -59,8 +61,9 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
-        rootShapeWithoutFields = Shape.newBuilder().layout(TestDynamicObject.class).build();
-        rootShapeWithFields = Shape.newBuilder().layout(TestDynamicObjectWithFields.class).build();
+        var lookup = MethodHandles.lookup();
+        rootShapeWithoutFields = Shape.newBuilder().layout(TestDynamicObject.class, lookup).build();
+        rootShapeWithFields = Shape.newBuilder().layout(TestDynamicObjectWithFields.class, lookup).build();
         newInstanceWithFields();
         newInstanceWithoutFields();
     }

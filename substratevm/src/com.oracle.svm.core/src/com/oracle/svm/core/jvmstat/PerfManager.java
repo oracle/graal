@@ -30,13 +30,10 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
@@ -47,7 +44,12 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Used to create and manage performance data entries.
@@ -64,7 +66,7 @@ public class PerfManager {
     public PerfManager() {
         perfDataHolders = new ArrayList<>();
         mutablePerfDataEntries = new ArrayList<>();
-        longEntries = EconomicMap.create();
+        longEntries = ImageHeapMap.createNonLayeredMap();
         perfDataThread = new PerfDataThread(this);
     }
 
@@ -110,7 +112,7 @@ public class PerfManager {
 
     public static boolean usePerfData() {
         int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UsePerfData);
-        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.getBooleanOptionValue(optionIndex);
+        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.singleton().getBooleanOptionValue(optionIndex);
     }
 
     /** Returns a pointer into the image heap. */
@@ -118,7 +120,7 @@ public class PerfManager {
         waitForInitialization();
         PerfLong entry = longEntries.get(name);
         assert Heap.getHeap().isInImageHeap(entry);
-        return (CLongPointer) Word.objectToUntrackedPointer(entry).add(WordFactory.unsigned(PerfLong.VALUE_OFFSET));
+        return (CLongPointer) Word.objectToUntrackedPointer(entry).add(Word.unsigned(PerfLong.VALUE_OFFSET));
     }
 
     public boolean hasLongPerfEntry(String name) {
@@ -184,8 +186,9 @@ public class PerfManager {
 
         @Override
         public void run() {
-            initializeMemory();
+            RecurringCallbackSupport.suspendCallbackTimer("Performance data thread must not execute recurring callbacks.");
 
+            initializeMemory();
             try {
                 sampleData();
                 ImageSingletons.lookup(PerfMemory.class).setAccessible();
@@ -213,8 +216,11 @@ public class PerfManager {
 
                 initialized = true;
                 initializationCondition.broadcast();
+            } catch (OutOfMemoryError e) {
+                /* For now, we can only rethrow the error to terminate the thread (see GR-40601). */
+                throw e;
             } catch (Throwable e) {
-                VMError.shouldNotReachHere(ERROR_DURING_INITIALIZATION, e);
+                throw VMError.shouldNotReachHere(ERROR_DURING_INITIALIZATION, e);
             } finally {
                 initializationMutex.unlock();
             }

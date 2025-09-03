@@ -76,6 +76,10 @@ final class TStringGuards {
         return TSCodeRange.isValid(codeRange);
     }
 
+    static boolean isUpToValid(int codeRange) {
+        return TSCodeRange.isUpToValid(codeRange);
+    }
+
     static boolean isBroken(int codeRange) {
         return TSCodeRange.isBroken(codeRange);
     }
@@ -112,9 +116,10 @@ final class TStringGuards {
         return TSCodeRange.isFixedWidth(codeRangeA, codeRangeB);
     }
 
-    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, Encoding encoding,
-                    TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(node, b, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+    static boolean indexOfCannotMatch(Node node, int codeRangeA,
+                    AbstractTruffleString b, byte[] arrayB, long offsetB, int codeRangeB,
+                    int regionLength, Encoding encoding, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
+        return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {
@@ -177,12 +182,28 @@ final class TStringGuards {
         return enc == Encoding.UTF_16;
     }
 
+    static boolean isUTF16FE(Encoding enc) {
+        return enc == Encoding.UTF_16_FOREIGN_ENDIAN;
+    }
+
+    static boolean isUTF16FE(int enc) {
+        return enc == Encoding.UTF_16_FOREIGN_ENDIAN.id;
+    }
+
     static boolean isUTF32(int enc) {
         return enc == Encoding.UTF_32.id;
     }
 
     static boolean isUTF32(Encoding enc) {
         return enc == Encoding.UTF_32;
+    }
+
+    static boolean isUTF32FE(Encoding enc) {
+        return enc == Encoding.UTF_32_FOREIGN_ENDIAN;
+    }
+
+    static boolean isUTF32FE(int enc) {
+        return enc == Encoding.UTF_32_FOREIGN_ENDIAN.id;
     }
 
     static boolean isUTF16Or32(Encoding enc) {
@@ -205,6 +226,10 @@ final class TStringGuards {
 
     static boolean isSupportedEncoding(int encoding) {
         return Encoding.isSupported(encoding);
+    }
+
+    static boolean isSupportedEncodingWithCompaction(Encoding encoding) {
+        return Encoding.isSupportedWithCompaction(encoding.id);
     }
 
     static boolean isSupportedEncoding(Encoding encoding) {
@@ -276,9 +301,7 @@ final class TStringGuards {
     }
 
     static boolean isBuiltin(DecodingErrorHandler errorHandler) {
-        boolean ret = errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
-        CompilerAsserts.partialEvaluationConstant(ret);
-        return ret;
+        return errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
     }
 
     static boolean isBuiltin(TranscodingErrorHandler errorHandler) {

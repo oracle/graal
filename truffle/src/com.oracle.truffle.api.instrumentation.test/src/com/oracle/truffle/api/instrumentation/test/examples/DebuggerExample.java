@@ -172,7 +172,7 @@ public final class DebuggerExample extends TruffleInstrument {
             }
         }
 
-        private class Stepping implements ExecutionEventListener {
+        private final class Stepping implements ExecutionEventListener {
 
             public void onEnter(EventContext context, VirtualFrame frame) {
                 ontStatementStep(context);

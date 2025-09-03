@@ -6,6 +6,7 @@
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
+  local check_no_timelimit = (import '../../ci/ci_common/run-spec-tools.libsonnet').check_no_timelimit,
   local galahad    = import "../../ci/ci_common/galahad-common.libsonnet",
   local exclude    = run_spec.exclude,
 
@@ -19,12 +20,17 @@
   local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm") + task_spec(common.deps.svm),
 
   local eclipse = task_spec(common.deps.eclipse),
+  local spotbugs = task_spec(common.deps.spotbugs),
   local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
+  local tier1 = sg.tier1,
+  local tier2 = sg.tier2,
+  local tier3 = sg.tier3,
   local gdb(version) = task_spec(sg.gdb(version)),
   local use_musl_static = sg.use_musl_static,
   local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
+  local partial = sg.partial,
 
   local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
     "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
@@ -80,7 +86,7 @@
   local os_arch_jdk_mixin = task_spec(run_spec.evaluate_late({
     // this starts with _ on purpose so that it will be evaluated first
     "_os_arch_jdk": function(b)
-      tools.delete_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch(b)[b.os][b.arch])
+      check_no_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch(b)[b.os][b.arch])
   })),
 
   local all_jobs = {
@@ -117,31 +123,29 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
-      // We could run the style gate on JDK 22 as well, and use old JDKs for running tools like StopBugs etc.,
-      // but since we support JDK 21 anyways, there is not good reason to do so.
-      "linux:amd64:jdk21": gate + t("30:00"),
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
-    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
-      "windows:amd64:jdk-latest": gate + t("1:30:00"),
+    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
+      "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
-        "windows:amd64:jdk-latest": gate + t("1:30:00"),
+        "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
       },
       "libc:musl_static": {
-        "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
+        "linux:amd64:jdk-latest": tier3 + gdb("14.2") + t("55:00"),
       },
       "java-compiler:ecj": {
-        "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
+        "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
     }),
     "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + use_oraclejdk_latest + t("30:00"),
+      "linux:amd64:jdk-latest": tier1 + use_oraclejdk_latest + t("30:00"),
     }),
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: util.add_defined_in([util.add_gate_predicate(b, gate_triggering_suites) for b in self.processed_builds.list], std.thisFile),
+  builds: util.add_defined_in([util.add_gate_predicate(sg.validate_tiers(b), gate_triggering_suites) for b in self.processed_builds.list], std.thisFile),
   assert tools.check_names($.builds),
 }

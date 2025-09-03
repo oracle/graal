@@ -2,15 +2,15 @@
 
 ## Prerequisites
 
-- JDK 21 is the recommended Java runtime platform for IGV, but any release between 17 and 22 is
-  supported by the NetBeans 22 platform.
+- JDK 21 is the recommended Java runtime platform for IGV, but any release between 17 and 24 is
+  supported by the NetBeans 26 platform.
 
 ## Building and testing IGV
 
 ### MX
 
 IGV is an MX project and for convenience should be built and tested as such.  It's also a NetBeans
-22 project based on Maven so it can be developed using any tool chain which supports Maven.
+26 project based on Maven so it can be developed using any tool chain which supports Maven.
 Certains kind of edits, like editing the NetBeans module exlusions or editing the special UI
 components, will require using NetBeans.
 

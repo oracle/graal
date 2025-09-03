@@ -35,7 +35,10 @@ import java.util.regex.Pattern;
 
 import org.junit.Assert;
 import org.junit.Test;
-
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -46,7 +49,15 @@ import org.graalvm.polyglot.io.MessageTransport;
 /**
  * Tests the use of {@link MessageTransport} with the Inspector.
  */
+@RunWith(Parameterized.class)
 public class InspectorMessageTransportTest extends EnginesGCedTest {
+
+    @Parameters(name = "useBytecode={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter(0) public Boolean useBytecode;
 
     private static final String PORT = "54367";
     private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Za-z_\\-]+");
@@ -97,6 +108,10 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         inspectorEndpointTest(null, rc);
     }
 
+    private Context.Builder newContextBuilder() {
+        return Context.newBuilder().allowExperimentalOptions(true).option("sl.UseBytecode", Boolean.toString(useBytecode));
+    }
+
     private void inspectorEndpointTest(String path) {
         inspectorEndpointTest(path, null);
     }
@@ -105,7 +120,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         Session session = new Session(rc);
         DebuggerEndpoint endpoint = new DebuggerEndpoint(path, rc);
         try (Engine engine = endpoint.onOpen(session)) {
-            Context context = Context.newBuilder().engine(engine).build();
+            Context context = newContextBuilder().engine(engine).build();
             Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
             Assert.assertEquals("Result", "1", result.toString());
 
@@ -140,7 +155,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         try (Engine engine = endpoint.onOpen(session)) {
 
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
                 Assert.assertEquals("Result", "1", result.toString());
 
@@ -174,7 +189,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         endpoint.setOpenCountLimit(1);
         try (Engine engine = endpoint.onOpen(session)) {
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
                 Assert.assertEquals("Result", "1", result.toString());
 
@@ -185,7 +200,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
                 Assert.assertEquals("Result", "2", result.toString());
             }
             try (Engine engine2 = endpoint.onOpen(session)) {
-                try (Context context = Context.newBuilder().engine(engine2).build()) {
+                try (Context context = newContextBuilder().engine(engine2).build()) {
                     Value result = context.eval("sl", "function main() {\n  x = 3;\n  debugger;  return x;\n}");
                     Assert.assertEquals("Result", "3", result.toString());
                 }
@@ -209,7 +224,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         MessageEndpoint peerEndpoint;
         try (Engine engine = endpoint.onOpen(session)) {
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
                 peerEndpoint = endpoint.peer;
             }
@@ -245,7 +260,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         Session session = new Session(true);
         DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         try (Engine engine = endpoint.onOpen(session, Engine.newBuilder().option("inspect.SuspensionTimeout", "1s"))) {
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
             }
         }
@@ -427,7 +442,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
 
         public Context onOpenContext(final Session session) {
             assert this != null;
-            Context.Builder contextBuilder = Context.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
+            Context.Builder contextBuilder = newContextBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
             if (path != null) {
                 contextBuilder.option("inspect.Path", path);
             }

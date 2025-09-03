@@ -1,0 +1,14 @@
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'complete-reflection-types'. The preferred usage is '--future-defaults=all'.
+
+The meaning of each possible option is as follows:
+  'all' - is the preferred option, and it enables all other behaviors.
+
+  'none' - forcefully disables all enabled options. This can be used only on the command line to override choices taken by inaccessible parts of the build process.
+
+  'run-time-initialize-jdk' - enables all behaviors related to run-time initialization of the JDK: ['run-time-initialize-security-providers', 'run-time-initialize-file-system-providers'].
+
+  'complete-reflection-types' - reflective registration of a type, via metadata files or the Feature API, always includes all type metadata. Now, all registered types behave the same as types defined in 'reachability-metadata.json'.
+
+  'run-time-initialize-security-providers' - shifts away from build-time initialization for 'java.security.Provider'. Unless you store 'java.security.Provider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+
+  'run-time-initialize-file-system-providers' - shifts away from build-time initialization for 'java.nio.file.spi.FileSystemProvider'. Unless you store 'FileSystemProvider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.

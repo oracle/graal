@@ -26,11 +26,11 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -153,7 +153,7 @@ final class WindowsVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
         Process.NoTransitions.LeaveCriticalSection(getStructPointer());
@@ -289,7 +289,7 @@ final class WindowsVMSemaphore extends VMSemaphore {
     @Override
     @Uninterruptible(reason = "Too early for safepoints.")
     public int initialize() {
-        hSemaphore = WinBase.CreateSemaphoreA(WordFactory.nullPointer(), 0, Integer.MAX_VALUE, WordFactory.nullPointer());
+        hSemaphore = WinBase.CreateSemaphoreA(Word.nullPointer(), 0, Integer.MAX_VALUE, Word.nullPointer());
         return hSemaphore.isNonNull() ? 0 : 1;
     }
 
@@ -297,7 +297,7 @@ final class WindowsVMSemaphore extends VMSemaphore {
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public int destroy() {
         int errorCode = WinBase.CloseHandle(hSemaphore);
-        hSemaphore = WordFactory.nullPointer();
+        hSemaphore = Word.nullPointer();
         return errorCode;
     }
 
@@ -309,6 +309,6 @@ final class WindowsVMSemaphore extends VMSemaphore {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
-        WindowsVMLockSupport.checkResult(SynchAPI.NoTransitions.ReleaseSemaphore(hSemaphore, 1, WordFactory.nullPointer()), "ReleaseSemaphore");
+        WindowsVMLockSupport.checkResult(SynchAPI.NoTransitions.ReleaseSemaphore(hSemaphore, 1, Word.nullPointer()), "ReleaseSemaphore");
     }
 }

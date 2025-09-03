@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.word;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -35,13 +33,13 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.WordFactoryOperation;
 
 /**
  * Encapsulates information for Java types representing raw words (as opposed to Objects).
@@ -52,17 +50,11 @@ public class WordTypes {
      * Resolved type for {@link WordBase}.
      */
     private final ResolvedJavaType wordBaseType;
-    private final Class<?> wordBaseClass;
 
     /**
      * Resolved type for {@link Word}.
      */
     private final ResolvedJavaType wordImplType;
-
-    /**
-     * Resolved type for {@link WordFactory}.
-     */
-    private final ResolvedJavaType wordFactoryType;
 
     /**
      * Resolved type for {@link ObjectAccess}.
@@ -79,15 +71,10 @@ public class WordTypes {
     public WordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        this.wordBaseClass = WordBase.class;
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
-        this.wordFactoryType = metaAccess.lookupJavaType(WordFactory.class);
         this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
         this.barrieredAccessType = metaAccess.lookupJavaType(BarrieredAccess.class);
 
-        if (!IS_BUILDING_NATIVE_IMAGE) {
-            Word.ensureInitialized();
-        }
         this.wordImplType.initialize();
     }
 
@@ -95,10 +82,10 @@ public class WordTypes {
      * Determines if a given method denotes a word operation.
      */
     public boolean isWordOperation(ResolvedJavaMethod targetMethod) {
-        final boolean isWordFactory = wordFactoryType.equals(targetMethod.getDeclaringClass());
-        if (isWordFactory) {
-            return !targetMethod.isConstructor();
+        if (targetMethod.getAnnotation(WordFactoryOperation.class) != null) {
+            return true;
         }
+
         final boolean isObjectAccess = objectAccessType.equals(targetMethod.getDeclaringClass());
         final boolean isBarrieredAccess = barrieredAccessType.equals(targetMethod.getDeclaringClass());
         if (isObjectAccess || isBarrieredAccess) {
@@ -142,7 +129,7 @@ public class WordTypes {
     }
 
     public boolean isWord(Class<?> clazz) {
-        return wordBaseClass.isAssignableFrom(clazz);
+        return WordBase.class.isAssignableFrom(clazz);
     }
 
     /**

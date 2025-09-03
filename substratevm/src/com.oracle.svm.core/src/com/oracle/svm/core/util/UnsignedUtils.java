@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.util;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -35,7 +35,7 @@ import com.oracle.svm.core.Uninterruptible;
 public final class UnsignedUtils {
 
     /** The UnsignedWord of the greatest magnitude. */
-    public static final UnsignedWord MAX_VALUE = WordFactory.unsigned(0xffffffffffffffffL);
+    public static final UnsignedWord MAX_VALUE = Word.unsigned(0xffffffffffffffffL);
 
     private UnsignedUtils() {
         // This is a class of static methods, so no need for any instances.
@@ -133,10 +133,10 @@ public final class UnsignedUtils {
     public static UnsignedWord fromDouble(double d) { // follows JLS 5.1.3
         long l = (long) d;
         if (Double.isNaN(d) || l <= 0) { // includes -inf
-            return WordFactory.zero();
+            return Word.zero();
         }
         if (l < Long.MAX_VALUE) {
-            return WordFactory.unsigned(l);
+            return Word.unsigned(l);
         }
         /*
          * This division does not lose precision with these large numbers because the double's
@@ -148,6 +148,6 @@ public final class UnsignedUtils {
         if (l == Long.MAX_VALUE) { // too large or +inf
             return UnsignedUtils.MAX_VALUE;
         }
-        return WordFactory.unsigned(l).shiftLeft(1);
+        return Word.unsigned(l).shiftLeft(1);
     }
 }

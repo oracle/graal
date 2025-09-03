@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -296,7 +297,7 @@ public final class NativeLibraries {
     }
 
     private static String getStaticLibraryName(String libraryName) {
-        boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+        boolean targetWindows = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
         String prefix = targetWindows ? "" : "lib";
         String suffix = targetWindows ? ".lib" : ".a";
         return prefix + libraryName + suffix;
@@ -364,16 +365,24 @@ public final class NativeLibraries {
                             !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue() && !NativeImageOptions.ReturnAfterAnalysis.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
+                boolean isMusl = false;
                 if (Platform.includedIn(Platform.LINUX.class)) {
                     libCMessage = " (target libc: " + HostedLibCBase.singleton().getName() + ")";
+                    isMusl = MuslLibC.NAME.equals(HostedLibCBase.singleton().getName());
                 }
                 String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
-                UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
-                                ImageSingletons.lookup(Platform.class).getClass().getName(),
-                                libCMessage,
-                                jdkDownloadURL,
-                                hint);
+                // Checkstyle: allow Class.getSimpleName
+                String className = ImageSingletons.lookup(Platform.class).getClass().getSimpleName();
+                // Checkstyle: disallow Class.getSimpleName
+                if (isMusl) {
+                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
+                                    "Building images on %s%s is not supported on your platform.%nBuild on a different platform or try upgrading to a newer GraalVM release%n%s",
+                                    className, libCMessage, hint);
+                } else {
+                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
+                                    "Building images on %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
+                                    className, libCMessage, jdkDownloadURL, hint);
+                }
             }
         }
         return libraryPaths;
@@ -388,7 +397,7 @@ public final class NativeLibraries {
     }
 
     public void reportErrors() {
-        if (errors.size() > 0) {
+        if (!errors.isEmpty()) {
             throw UserError.abort(errors.stream().map(CInterfaceError::getMessage).collect(Collectors.toList()));
         }
     }
@@ -446,6 +455,10 @@ public final class NativeLibraries {
         List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
         /* "jvm" is a basic dependence for static JNI libs */
         allDeps.add("jvm");
+        if (library.equals("nio")) {
+            /* "nio" implicitly depends on "net" */
+            allDeps.add("net");
+        }
         dependencyGraph.add(library, allDeps);
     }
 
@@ -482,7 +495,7 @@ public final class NativeLibraries {
 
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
-        String libSuffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
+        String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
                 paths.filter(Files::isRegularFile)
@@ -563,7 +576,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
@@ -629,9 +642,9 @@ public final class NativeLibraries {
         return constantReflection;
     }
 
-    public boolean processAnnotated() {
+    public void processAnnotated() {
         if (annotated.isEmpty()) {
-            return false;
+            return;
         }
         for (CLibrary lib : annotated) {
             if (lib.requireStatic()) {
@@ -641,7 +654,6 @@ public final class NativeLibraries {
             }
         }
         annotated.clear();
-        return true;
     }
 
     public List<String> getJniStaticLibraries() {

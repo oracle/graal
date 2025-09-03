@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.blocking;
 
 import java.util.concurrent.TimeUnit;
@@ -66,8 +65,8 @@ public final class BlockingSupport<T> {
     private final GuestInterrupter<T> guestInterrupter;
 
     /**
-     * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
-     * parameter as how guest interruptions are made observable.
+     * Creates an instance of this interface, using the given {@link GuestInterrupter
+     * guestInterrupter} parameter as how guest interruptions are made observable.
      * <p>
      * This implementation can be as simple as setting a boolean in the guest's representation of
      * the thread.
@@ -94,7 +93,7 @@ public final class BlockingSupport<T> {
      * 
      * As such, there are only three ways to retrieve control from a call to this method:
      * <ul>
-     * <li>The given {@linkplain Interruptible blockingRegion} naturally completes</li>
+     * <li>The given {@link Interruptible blockingRegion} naturally completes</li>
      * <li>{@link #guestInterrupt(Thread, Object)} is called for this thread.</li>
      * <li>An {@link ThreadLocalAction action} was submitted to this thread, that throws an
      * exception that is not an {@link InterruptedException}.</li>

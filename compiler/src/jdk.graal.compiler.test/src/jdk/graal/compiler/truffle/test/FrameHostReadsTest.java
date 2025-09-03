@@ -25,6 +25,9 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -32,14 +35,19 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
 
 /**
  * Tests that we can move frame array reads out of the loop even if there is a side-effect in the
@@ -50,7 +58,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
  */
 public class FrameHostReadsTest extends TruffleCompilerImplTest {
 
-    public static int snippet0(FrameWithoutBoxing frame, int index) {
+    public static int snippetStaticReads(FrameWithoutBoxing frame, int index) {
         int sum = 0;
         for (int i = 0; i < 5; i++) {
             GraalDirectives.sideEffect();
@@ -63,57 +71,120 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void test0() throws IOException, InterruptedException {
+    public void testStaticReads() throws IOException, InterruptedException {
         // Run in subprocess to disable assertions in FrameWithoutBoxing.
         // Assertion checking requires additional checks in the frame descriptor for handling of
         // static slots.
-        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, this::compileAndCheck).disableAssertions(FrameWithoutBoxing.class).run();
+        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, () -> {
+            compileAndCheck("snippetStaticReads", (graph) -> {
+
+                int fieldReads = 0;
+                int arrayReads = 0;
+                int arrayLengthReads = 0;
+                int otherReads = 0;
+
+                for (ReadNode read : graph.getNodes(ReadNode.TYPE)) {
+                    LocationIdentity identity = read.getLocationIdentity();
+                    if (identity instanceof FieldLocationIdentity) {
+                        fieldReads++;
+                        if (fieldReads > 1) {
+                            GraalError.guarantee(false, "%s", read.toString(Verbosity.All));
+                        }
+                    } else if (NamedLocationIdentity.isArrayLocation(identity)) {
+                        arrayReads++;
+                    } else if (identity == NamedLocationIdentity.ARRAY_LENGTH_LOCATION) {
+                        arrayLengthReads++;
+                    } else {
+                        otherReads++;
+                    }
+                }
+
+                /*
+                 * Frame read for FrameWithoutBoxing.indexedPrimitiveLocals.
+                 */
+                Assert.assertEquals(1, fieldReads);
+
+                /*
+                 * Array reads inside of the loop. We expect the loop to get unrolled, so we expect
+                 * 5 times the number of reads. It is important that the loop does not contain reads
+                 * to FrameWithoutBoxing.indexedTags or FrameWithoutBoxing.indexedPrimitiveLocals.
+                 */
+                Assert.assertEquals(5, arrayReads);
+
+                /*
+                 * Array.length reads. We read one for FrameWithoutBoxing.indexedPrimitiveLocals.
+                 */
+                Assert.assertEquals(1, arrayLengthReads);
+                Assert.assertEquals(0, otherReads);
+            });
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
     }
 
-    private void compileAndCheck() {
+    public static int snippetReadsWritesWithoutZeroExtend(FrameWithoutBoxing frame, int index) {
+        // this should optimize without zero extends and narros
+        frame.setInt(index + 0, frame.getInt(index + 1));
+        frame.setFloat(index + 2, frame.getFloat(index + 3));
+        return 0;
+    }
+
+    @Test
+    public void testReadsWritesWithoutZeroExtend() throws IOException, InterruptedException {
+        // Run in subprocess to disable assertions in FrameWithoutBoxing.
+        // Assertion checking requires additional checks in the frame descriptor for handling of
+        // static slots.
+        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, () -> {
+            compileAndCheck("snippetReadsWritesWithoutZeroExtend", (graph) -> {
+                int writeCount = 0;
+                for (Node node : graph.getNodes()) {
+                    if (node instanceof WriteNode write && write.getLocationIdentity().equals(NamedLocationIdentity.LONG_ARRAY_LOCATION)) {
+                        /*
+                         * No ZeroExtendNode or NarrowNode between read and write long.
+                         */
+                        assertTrue(write.value().toString(), write.value() instanceof ReadNode);
+                        writeCount++;
+                    }
+                }
+                Assert.assertEquals(2, writeCount);
+            });
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
+    }
+
+    static FrameWithoutBoxing escape;
+    static final Object[] EMPTY_ARRAY = new Object[0];
+
+    /**
+     * Test that the loads should not be hoisted incorrectly.
+     */
+    public static Object snippetNoMoveReads(FrameDescriptor desc, Object obj) {
+        FrameWithoutBoxing frame = new FrameWithoutBoxing(desc, EMPTY_ARRAY);
+        frame.setObject(0, obj);
+        VarHandle.fullFence();
+        // Don't let the frame be scalar replaced
+        escape = frame;
+        VarHandle.fullFence();
+        return frame.getObject(0);
+    }
+
+    @Test
+    public void testNoMoveReads() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, () -> {
+            FrameDescriptor.Builder descBuilder = FrameDescriptor.newBuilder();
+            descBuilder.addSlot(FrameSlotKind.Object, null, null);
+            FrameDescriptor desc = descBuilder.build();
+            Object obj = new Object();
+            Result res = test("snippetNoMoveReads", desc, obj);
+            Assert.assertSame(Objects.toString(res.returnValue), obj, res.returnValue);
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
+    }
+
+    private void compileAndCheck(String snippet, Consumer<StructuredGraph> check) {
         getTruffleCompiler();
         initAssertionError();
         Assert.assertSame("New frame implementation detected. Make sure to update this test.", FrameWithoutBoxing.class,
                         Truffle.getRuntime().createVirtualFrame(new Object[0], FrameDescriptor.newBuilder().build()).getClass());
         Assert.assertTrue("Frame assertions should be disabled.", !FrameAssertionsChecker.areFrameAssertionsEnabled());
-
-        StructuredGraph graph = getFinalGraph("snippet0");
-
-        int fieldReads = 0;
-        int arrayReads = 0;
-        int arrayLengthReads = 0;
-        int otherReads = 0;
-
-        for (ReadNode read : graph.getNodes(ReadNode.TYPE)) {
-            LocationIdentity identity = read.getLocationIdentity();
-            if (identity instanceof FieldLocationIdentity) {
-                fieldReads++;
-            } else if (NamedLocationIdentity.isArrayLocation(identity)) {
-                arrayReads++;
-            } else if (identity == NamedLocationIdentity.ARRAY_LENGTH_LOCATION) {
-                arrayLengthReads++;
-            } else {
-                otherReads++;
-            }
-        }
-
-        /*
-         * Frame read for FrameWithoutBoxing.indexedPrimitiveLocals.
-         */
-        Assert.assertEquals(1, fieldReads);
-
-        /*
-         * Array reads inside of the loop. We expect the loop to get unrolled, so we expect 5 times
-         * the number of reads. It is important that the loop does not contain reads to
-         * FrameWithoutBoxing.indexedTags or FrameWithoutBoxing.indexedPrimitiveLocals.
-         */
-        Assert.assertEquals(5, arrayReads);
-
-        /*
-         * Array.length reads. We read one for FrameWithoutBoxing.indexedPrimitiveLocals.
-         */
-        Assert.assertEquals(1, arrayLengthReads);
-        Assert.assertEquals(0, otherReads);
+        StructuredGraph graph = getFinalGraph(snippet);
+        check.accept(graph);
     }
 
     @SuppressWarnings({"serial"})

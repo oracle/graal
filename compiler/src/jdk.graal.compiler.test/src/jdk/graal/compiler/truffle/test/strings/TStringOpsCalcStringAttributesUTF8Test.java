@@ -126,25 +126,25 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<CalcS
     }
 
     final byte[] array;
-    final int offset;
+    final long offset;
     final int length;
 
     public TStringOpsCalcStringAttributesUTF8Test(byte[] array, int offset, int length) {
         super(CalcStringAttributesNode.class);
         this.array = array;
-        this.offset = offset;
+        this.offset = offset + byteArrayBaseOffset();
         this.length = length;
     }
 
     @Test
     public void testUtf8Valid() {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         testWithNative(method, null, DUMMY_LOCATION, array, offset, length, true, false, InlinedConditionProfile.getUncached());
     }
 
     @Test
     public void testUtf8Unknown() {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         testWithNative(method, null, DUMMY_LOCATION, array, offset, length, false, false, InlinedConditionProfile.getUncached());
     }
 }

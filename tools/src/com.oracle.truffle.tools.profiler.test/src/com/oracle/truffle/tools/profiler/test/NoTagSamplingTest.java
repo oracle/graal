@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.profiler.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -54,42 +55,32 @@ public class NoTagSamplingTest {
 
     private static final String TEST_ROOT_NAME = LILRootNode.class.getName();
 
-    private static Semaphore await;
+    private static Semaphore awaitStart;
+    private static Semaphore awaitFinish;
 
     @Test
     public void testNoTagSampling() throws InterruptedException, ExecutionException {
         ExecutorService singleThread = Executors.newSingleThreadExecutor();
-        await = new Semaphore(0);
+        awaitStart = new Semaphore(0);
+        awaitFinish = new Semaphore(0);
         try (Context context = Context.create(NoTagLanguage.ID)) {
             CPUSampler sampler = CPUSampler.find(context.getEngine());
             Source source = Source.newBuilder(NoTagLanguage.ID, "", "").buildLiteral();
-            Future<?> f = singleThread.submit(() -> {
-                return context.eval(source).asInt();
-            });
+            Future<?> f = singleThread.submit(() -> context.eval(source).asInt());
 
-            Map<Thread, List<StackTraceEntry>> sample = null;
-            for (int i = 0; i < 10000; i++) { // times out after 10s
-                sample = sampler.takeSample();
-                if (!sample.isEmpty()) {
-                    break;
-                }
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    throw new AssertionError(e);
-                }
-            }
+            awaitStart.acquire();
+            Map<Thread, List<StackTraceEntry>> sample = sampler.takeSample();
 
             // wait for future
-            await.release();
+            awaitFinish.release();
             assertEquals(42, f.get());
-            assertTrue(!sample.isEmpty());
+            assertFalse(sample.isEmpty());
             List<StackTraceEntry> entries = sample.values().iterator().next();
             assertEquals(1, entries.size());
             assertEquals(TEST_ROOT_NAME, entries.get(0).getRootName());
 
             singleThread.shutdown();
-            singleThread.awaitTermination(10, TimeUnit.SECONDS);
+            assertTrue(singleThread.awaitTermination(10, TimeUnit.SECONDS));
         }
 
     }
@@ -107,7 +98,8 @@ public class NoTagSamplingTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            TruffleSafepoint.setBlockedThreadInterruptible(this, Semaphore::acquire, await);
+            awaitStart.release();
+            TruffleSafepoint.setBlockedThreadInterruptible(this, Semaphore::acquire, awaitFinish);
             return 42;
         }
     }

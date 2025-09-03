@@ -111,7 +111,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     @Override
     @SuppressWarnings("cast")
     Object getStorage(Object obj, boolean primitive) {
-        Object receiverObject = cast(obj, storageClass, false);
+        Object receiverObject = checkedCast(obj, storageClass);
         if (safetyChecks) {
             checkShape(receiverObject);
         } else {

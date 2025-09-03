@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class BC_invokespecial extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         @SuppressWarnings("static-method")
         private int id(int i) {
             return i;

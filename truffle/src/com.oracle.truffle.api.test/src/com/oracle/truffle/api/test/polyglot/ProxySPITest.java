@@ -820,7 +820,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static class AllProxy implements ProxyArray, ProxyObject, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
+    private static final class AllProxy implements ProxyArray, ProxyObject, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
 
         public Object execute(Value... t) {
             throw new TestError();
@@ -936,7 +936,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         } catch (RuntimeException e) {
             InteropLibrary interop = InteropLibrary.getUncached();
             Assert.assertTrue(interop.isException(e));
-            Assert.assertEquals("Host Error", ((Exception) e).getMessage());
+            Assert.assertEquals("Host Error", e.getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }
     }

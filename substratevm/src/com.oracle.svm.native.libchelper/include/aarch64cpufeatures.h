@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -46,4 +46,7 @@ typedef struct {
   uint8_t fDMB_ATOMICS;
   uint8_t fPACA;
   uint8_t fSVEBITPERM;
+  uint8_t fFPHP;
+  uint8_t fASIMDHP;
+  uint8_t fSB;
 } CPUFeatures;

@@ -185,7 +185,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             context.initialize(NOT_EXISTING_LANGUAGE);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not installed."));
+            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not available."));
         }
 
         evalTestLanguage(context, NotExistingEmbedderTestLanguage.class, "");

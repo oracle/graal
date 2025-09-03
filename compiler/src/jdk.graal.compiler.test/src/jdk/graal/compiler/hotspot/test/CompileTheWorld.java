@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,12 +60,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Formatter;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -88,8 +85,8 @@ import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
-import jdk.graal.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBytecodeParser;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -99,9 +96,13 @@ import jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -145,7 +146,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            Iterable<OptionDescriptors> loader = OptionsContainer.getDiscoverableOptions(OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
         }
         if (!values.containsKey(HighTier.Options.Inline)) {
@@ -518,8 +519,8 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
 
         @Override
         public List<String> getClassNames() throws IOException {
-            Set<String> negative = new HashSet<>();
-            Set<String> positive = new HashSet<>();
+            Set<String> negative = new EconomicHashSet<>();
+            Set<String> positive = new EconomicHashSet<>();
             if (limitModules != null && !limitModules.isEmpty()) {
                 for (String s : limitModules.split(",")) {
                     if (s.startsWith("~")) {
@@ -533,7 +534,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
             Path top = fs.getPath("/modules/");
             Files.find(top, Integer.MAX_VALUE,
-                            (path, attrs) -> attrs.isRegularFile()).forEach(p -> {
+                            (_, attrs) -> attrs.isRegularFile()).forEach(p -> {
                                 int nameCount = p.getNameCount();
                                 if (nameCount > 2) {
                                     String base = p.getName(nameCount - 1).toString();
@@ -597,7 +598,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
 
     int compiledClasses;
 
-    final Map<ResolvedJavaMethod, Integer> hugeMethods = new HashMap<>();
+    final Map<ResolvedJavaMethod, Integer> hugeMethods = new EconomicHashMap<>();
 
     private List<Compilation> prepareCompilations(String[] classPath) throws IOException {
         int startAtClass = startAt;
@@ -875,13 +876,15 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         int limit = Options.MetricsReportLimit.getValue(harnessOptions);
         if (limit > 0) {
             TTY.println("Longest compile times:");
-            compileTimes.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getValue().compileTime())).limit(limit).forEach(e -> {
+            final Comparator<Map.Entry<ResolvedJavaMethod, CompilationResult>> compileTimeComparator = Comparator.comparing(entry -> entry.getValue().compileTime());
+            compileTimes.entrySet().stream().sorted(compileTimeComparator.reversed()).limit(limit).forEach(e -> {
                 long time = nanoToMillis(e.getValue().compileTime());
                 ResolvedJavaMethod method = e.getKey();
                 TTY.println("  %,10d ms   %s [bytecodes: %d]", time, method.format("%H.%n(%p)"), method.getCodeSize());
             });
             TTY.println("Largest methods skipped due to bytecode size exceeding HugeMethodLimit (%d):", getHugeMethodLimit(getGraalRuntime().getVMConfig()));
-            hugeMethods.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+            final Comparator<Map.Entry<ResolvedJavaMethod, Integer>> codeSizeComparator = Map.Entry.comparingByValue();
+            hugeMethods.entrySet().stream().sorted(codeSizeComparator.reversed()).limit(limit).forEach(e -> {
                 ResolvedJavaMethod method = e.getKey();
                 TTY.println("  %,10d      %s", e.getValue(), method.format("%H.%n(%p)"), method.getCodeSize());
             });
@@ -914,7 +917,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
          * spawns threads to redirect sysout and syserr. To help debug such scenarios, the stacks of
          * potentially problematic threads are dumped.
          */
-        Map<Thread, StackTraceElement[]> suspiciousThreads = new HashMap<>();
+        Map<Thread, StackTraceElement[]> suspiciousThreads = new EconomicHashMap<>();
         for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
             Thread thread = e.getKey();
             if (thread != Thread.currentThread() && !initialThreads.containsKey(thread) && !thread.isDaemon() && thread.isAlive()) {
@@ -937,10 +940,37 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
     }
 
     /**
+     * Determine if the message describes a failure we should ignore in the context of CTW. Since in
+     * CTW we try to compile all methods as compilation roots indiscriminately, we may hit upon a
+     * helper method that expects to only be inlined into a snippet. Such compilations may fail with
+     * a well-known message complaining about node intrinsics used outside a snippet. We can ignore
+     * these failures.
+     */
+    public static boolean shouldIgnoreFailure(String failureMessage) {
+        return failureMessage.startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT);
+    }
+
+    @Override
+    protected void handleFailure(HotSpotCompilationRequestResult result) {
+        if (!shouldIgnoreFailure(result.getFailureMessage())) {
+
+            if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+                HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+                HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+                HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+
+                HotSpotFuzzedSuitesProvider hp = (HotSpotFuzzedSuitesProvider) graalRuntime.getHostBackend().getProviders().getSuites();
+                TTY.printf("Fuzzing seed was %s%n", hp.getLastSeed().get());
+            }
+
+            super.handleFailure(result);
+        }
+    }
+
+    /**
      * Prepares a compilation of the methods in the classes in {@link #inputClassPath}. If
      * {@link #inputClassPath} equals {@link #SUN_BOOT_CLASS_PATH} the boot classes are used.
      */
-    @SuppressWarnings("try")
     public List<Compilation> prepare() throws IOException {
         String classPath = SUN_BOOT_CLASS_PATH.equals(inputClassPath) ? JRT_CLASS_PATH_ENTRY : inputClassPath;
         final String[] entries = getEntries(classPath);

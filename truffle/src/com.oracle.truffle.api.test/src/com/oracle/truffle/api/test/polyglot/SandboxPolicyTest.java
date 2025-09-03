@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -79,13 +78,15 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class SandboxPolicyTest {
 
-    private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library found for language";
+    private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library is available for the requested language(s)";
     private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "but the current Truffle runtime only supports the TRUSTED or CONSTRAINED sandbox policies.";
 
     private final Configuration configuration;
@@ -128,10 +129,20 @@ public class SandboxPolicyTest {
         }
     }
 
+    /**
+     * A mirror of the method {@link SandboxInstrument#isInterpreterCallStackHeadRoomSupported()}
+     * taking into account the possibility to run in polyglot isolate spawned form HotSpot.
+     */
+    private static boolean isInterpreterCallStackHeadRoomSupported() {
+        Runtime.Version jdkVersion = Runtime.version();
+        return (TruffleTestAssumptions.isIsolateEncapsulation() || TruffleOptions.AOT) && jdkVersion.feature() >= 23;
+    }
+
     @Before
     public void setUp() {
         Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.",
                         configuration.sandboxPolicy != SandboxPolicy.TRUSTED && executedWithXCompOptions());
+        Assume.assumeTrue(configuration.sandboxPolicy != SandboxPolicy.UNTRUSTED || isInterpreterCallStackHeadRoomSupported());
     }
 
     private static boolean executedWithXCompOptions() {

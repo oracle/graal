@@ -32,7 +32,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.Objects;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,10 +40,10 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -67,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * semantics. Covariant return types are not allowed when overriding a method, i.e., the base method
  * and the override must have the exact same declared return type. Covariant return types require a
  * synthetic bridge method that is generated automatically by the Java compiler, and not all Java
- * compilers put the {@link Uninterruptible} annotation on the bridge metod too (for example ECJ).
+ * compilers put the {@link Uninterruptible} annotation on the bridge method too (for example ECJ).
  * For consistency reasons, synthetic methods are therefore never treated as uninterruptible.
  * <p>
  * Annotated methods give a terse {@link #reason} why they are annotated. Often the reason is that
@@ -88,16 +87,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * is so simple that it can always be inlined into interruptible code, the method can be annotated
  * with {@link #mayBeInlined "mayBeInlined = true"}. Uninterruptible methods can always be inlined
  * into other uninterruptible methods.
- * <dl>
- * Some alternatives to annotation:
- * <dt>Code called from snippets</dt>
- * <dd>Snippet code is always inlined and runs to completion. Methods called only from snippets need
- * not be annotated.</dd>
- * <dt>Code called from VMOperations</dt>
- * <dd>VMOperation code runs single-threaded to completion. Public entry points that should only run
- * in VMOperations can be guarded with a call to
- * {@linkplain VMOperation#guaranteeInProgress(String)}.</dd>
- * </dl>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})

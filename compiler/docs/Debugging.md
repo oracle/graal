@@ -68,17 +68,17 @@ guarding against use in a thread different from the one in which it was instanti
 
 ## JVMCI and compiler specific options
 
-JVMCI and GraalVM compiler options are specified by the `jvmci.*` and `graal.*` system properties
+JVMCI and GraalVM compiler options are specified by the `jvmci.*` and `jdk.graal.*` system properties
 respectively. These must be specified on the JVM command line. Modifications to these properties by
 application code are not seen by JVMCI and the compiler. A listing of all supported properties can be
-obtained with `-XX:+JVMCIPrintProperties`.
+obtained with `-XX:+JVMCIPrintProperties -Djdk.graal.PrintPropertiesAll=true`.
 
 ## Metrics
 
 The compiler supports metrics in the form of counters, timers and memory trackers.
 Each metric has a unique name. Metrics are collected per-compilation.
 At shutdown, they are aggregated across all compilations and reported to the console.
-This ouput can be redirected to a file via the `-Djdk.graal.AggregatedMetricsFile` option.
+This output can be redirected to a file via the `-Djdk.graal.AggregatedMetricsFile` option.
 
 To list the per-compilation metrics, use the `-Djdk.graal.MetricsFile` option. If not specified,
 per-compilation metrics are not reported.
@@ -189,8 +189,8 @@ to obtain per-method metric values.
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-Djdk.graal.Log`, `-Djdk.graal.Dump`, `-Djdk.graal.Count`,
-`-Djdk.graal.Time`, or `-Djdk.graal.TrackMemUse`) can generate a lot of output. Typically, you are only
+Specifying one of the debug scope options (i.e., `-Djdk.graal.Log`, `-Djdk.graal.Dump`, `-Djdk.graal.Counter`,
+`-Djdk.graal.Timer`, or `-Djdk.graal.MemUseTracker`) can generate a lot of output. Typically, you are only
 interesting in compiler output related to a single or few methods. In this case, use the
 `-Djdk.graal.MethodFilter` option to specify a method filter. The matching logic for this option is
 described in
@@ -201,7 +201,7 @@ and documented in the
 ## Metric filtering
 
 Alternatively, you may only want to see certain metrics. The `-Djdk.graal.Timers`, `-Djdk.graal.Counters`
-and `-Djdk.graal.MemUseTrackers` exist for this purpose.  These options take a comma separated list of
+and `-Djdk.graal.MemUseTrackers` track everything if nothing is specified. Else, these options take a comma separated list of
 metrics names. Only the named metrics will be activated and reported. To see the available metric
 names, specify `-Djdk.graal.ListMetrics=true`. At VM shutdown this option lists all the metrics that
 were encountered during the VM execution. It does not list metrics registered on non-executed paths

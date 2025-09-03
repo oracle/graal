@@ -33,9 +33,24 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.spi.Replacements;
 
+/**
+ * This node represents a {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin
+ * plugin} which was deferred by
+ * {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool#shouldDeferPlugin(GeneratedInvocationPlugin)}
+ * during graph encoding that must be replaced when the graph is decoded. This primarily exists to
+ * deal with graphs that have been encoded by {@link GraphEncoder} for cases where a
+ * {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin} couldn't be applied at parse
+ * time. Usually {@link GraphDecoder} handles this by reapplying the plugins during decoding of the
+ * original {@link Invoke}. In the context of libgraal snippets that would create a lot of
+ * complexity because snippet methods aren't fully functional ResolvedJavaMethods. Using a
+ * placeholder instead avoids supporting the full GraphBuilder machinery in this admittedly weird
+ * case.
+ */
 @NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
     public static final NodeClass<PluginReplacementNode> TYPE = NodeClass.create(PluginReplacementNode.class);
@@ -52,12 +67,17 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
     }
 
     @Override
-    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection) {
-        return function.replace(b, injection, stamp, args);
+    public boolean replace(GraphBuilderContext b, Replacements injection) {
+        return function.replace(b, injection, args.toArray(ValueNode.EMPTY_ARRAY));
     }
 
+    /**
+     * This is the work of the original
+     * {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin} decoupled from the
+     * plugin.
+     */
     public interface ReplacementFunction {
-        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args);
+        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, ValueNode[] args);
     }
 
     @Override

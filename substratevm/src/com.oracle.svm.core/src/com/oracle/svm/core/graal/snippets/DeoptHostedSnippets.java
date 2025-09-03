@@ -29,6 +29,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.graph.Node;
@@ -43,16 +53,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.deopt.DeoptimizationRuntime;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -212,9 +212,9 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             }
 
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(deopt, graph.getGuardsStage(), loweringStage);
-            args.addConst("reason", node.getReason());
-            args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
+            Arguments args = new Arguments(deopt, graph, loweringStage);
+            args.add("reason", node.getReason());
+            args.add("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("message", message);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

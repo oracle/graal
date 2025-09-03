@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis;
 
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR_W;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR_W;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RET;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -37,13 +36,13 @@ import com.oracle.truffle.espresso.analysis.graph.EspressoBlockWithHandlers;
 import com.oracle.truffle.espresso.analysis.graph.EspressoExecutionGraph;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
-import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeTableSwitch;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
 public final class GraphBuilder {
     public static Graph<? extends LinkedBlock> build(Method method) {
@@ -84,7 +83,7 @@ public final class GraphBuilder {
     private GraphBuilder(Method method) {
         this.bs = new BytecodeStream(method.getOriginalCode());
         this.status = new long[bs.endBCI()];
-        this.handlers = method.getExceptionHandlers();
+        this.handlers = method.getSymbolicExceptionHandlers();
     }
 
     private EspressoExecutionGraph build() {

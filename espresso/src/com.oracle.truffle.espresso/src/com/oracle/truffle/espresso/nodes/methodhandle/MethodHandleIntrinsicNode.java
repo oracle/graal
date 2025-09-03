@@ -20,14 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.methodhandle;
 
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Top of the method handle intrinsic behavior implementation hierarchy.

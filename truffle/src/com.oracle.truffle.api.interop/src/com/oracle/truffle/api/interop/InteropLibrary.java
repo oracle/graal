@@ -5157,7 +5157,9 @@ public abstract class InteropLibrary extends Library {
 
         private boolean assertMetaObject(Object receiver) {
             try {
-                delegate.isMetaInstance(receiver, receiver);
+                // Don't use isMetaInstance(receiver, receiver) as the implementation might use
+                // isMetaObject(2nd arg) and that would then become an infinite recursion
+                delegate.isMetaInstance(receiver, 42);
             } catch (UnsupportedMessageException e) {
                 assert false : violationInvariant(receiver);
             }

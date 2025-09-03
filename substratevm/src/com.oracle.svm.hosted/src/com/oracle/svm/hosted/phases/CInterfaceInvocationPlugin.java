@@ -29,13 +29,13 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Arrays;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.impl.WordBoxFactory;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -649,7 +649,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (returnType == Long.class) {
             return value;
         } else if (WordBase.class.isAssignableFrom(returnType)) {
-            return WordBoxFactory.box(value);
+            return Word.unsigned(value);
         } else {
             throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
+
 import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -31,12 +35,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
-
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-
-import jdk.vm.ci.amd64.AMD64;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -44,16 +43,13 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
 
     public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
-                    TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
+                    TargetDescription target, VectorArchitecture vectorArchitecture) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, vectorArchitecture);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n)) {
-            return;
-        }
         @SuppressWarnings("rawtypes")
         NodeLoweringProvider lowering = getLowerings().get(n.getClass());
         if (lowering != null) {
@@ -68,10 +64,4 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             super.lower(n, tool);
         }
     }
-
-    @Override
-    public boolean supportsRounding() {
-        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
-    }
-
 }

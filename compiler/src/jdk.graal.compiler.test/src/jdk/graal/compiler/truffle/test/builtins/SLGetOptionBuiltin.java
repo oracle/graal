@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
+import com.oracle.truffle.sl.SLException;
 
 /**
  * Looks up the value of an option in {@link OptimizedRuntimeOptions}. In the future this builtin
@@ -47,7 +48,7 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         final OptionDescriptor option = OptimizedRuntimeOptions.getDescriptors().get(toJavaStringNode.execute(name));
         if (option == null) {
-            throw new SLAssertionError("No such option named \"" + name + "\" found in " + OptimizedRuntimeOptions.class.getName(), this);
+            throw SLException.create("No such option named \"" + name + "\" found in " + OptimizedRuntimeOptions.class.getName(), this);
         }
         return convertValue(((OptimizedCallTarget) getRootNode().getCallTarget()).getOptionValue(option.getKey()));
     }

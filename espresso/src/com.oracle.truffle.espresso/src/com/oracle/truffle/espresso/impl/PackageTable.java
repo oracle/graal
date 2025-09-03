@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,102 +20,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.tables.AbstractPackageTable;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEntry> {
+public final class PackageTable extends AbstractPackageTable<StaticObject, PackageTable.PackageEntry, ModuleEntry> {
     public PackageTable(ReadWriteLock lock) {
         super(lock);
     }
 
     @Override
-    protected PackageEntry createEntry(Symbol<Name> name, ModuleEntry appendix) {
-        return new PackageEntry(name, appendix);
+    protected PackageEntry createEntry(Symbol<Name> name, ModuleEntry data) {
+        return new PackageEntry(name, data);
     }
 
-    public static class PackageEntry extends EntryTable.NamedEntry {
-
-        @Override
-        public Symbol<Name> getName() {
-            return name;
+    @SuppressWarnings("try")
+    public void addPackageEntriesForCDS(List<PackageEntry> packageEntries) {
+        try (BlockLock block = write()) {
+            for (PackageEntry packageEntry : packageEntries) {
+                assert packageEntry != null;
+                assert !entries.containsKey(packageEntry.getName());
+                entries.put(packageEntry.getName(), packageEntry);
+            }
         }
+    }
 
+    public static final class PackageEntry extends AbstractPackageTable.AbstractPackageEntry<StaticObject, ModuleEntry> {
         public PackageEntry(Symbol<Name> name, ModuleEntry module) {
-            super(name);
-            this.module = module;
+            super(name, module);
         }
 
-        private final ModuleEntry module;
-        private ArrayList<ModuleEntry> exports = null;
-        private boolean isUnqualifiedExported = false;
-        private boolean isExportedAllUnnamed = false;
-
-        public void addExports(ModuleEntry m) {
-            if (isUnqualifiedExported()) {
-                return;
+        public List<ModuleEntry> getExportsForCDS() {
+            if (exports == null) {
+                return List.of();
             }
-            synchronized (this) {
-                if (m == null) {
-                    setUnqualifiedExports();
-                }
-                if (exports == null) {
-                    exports = new ArrayList<>();
-                }
-                if (!contains(m)) {
-                    exports.add(m);
-                }
-            }
-        }
-
-        public boolean isQualifiedExportTo(ModuleEntry m) {
-            if (isExportedAllUnnamed() && !m.isNamed()) {
-                return true;
-            }
-            if (isUnqualifiedExported() || exports == null) {
-                return false;
-            }
-            return contains(m);
-        }
-
-        public boolean isUnqualifiedExported() {
-            return module().isOpen() || isUnqualifiedExported;
-        }
-
-        public void setUnqualifiedExports() {
-            if (isUnqualifiedExported()) {
-                return;
-            }
-            isUnqualifiedExported = true;
-            isExportedAllUnnamed = true;
-            exports = null;
-        }
-
-        public boolean isExportedAllUnnamed() {
-            return module().isOpen() || isExportedAllUnnamed;
-        }
-
-        public void setExportedAllUnnamed() {
-            if (isExportedAllUnnamed()) {
-                return;
-            }
-            synchronized (this) {
-                isExportedAllUnnamed = true;
-            }
-        }
-
-        public boolean contains(ModuleEntry m) {
-            return exports.contains(m);
-        }
-
-        public ModuleEntry module() {
-            return module;
+            return Collections.unmodifiableList(exports);
         }
     }
 }

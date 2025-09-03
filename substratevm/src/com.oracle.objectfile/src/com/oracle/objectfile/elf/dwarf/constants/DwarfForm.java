@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -32,27 +32,31 @@ package com.oracle.objectfile.elf.dwarf.constants;
 public enum DwarfForm {
     DW_FORM_null(0x0),
     DW_FORM_addr(0x1),
-    DW_FORM_data2(0x05),
+    DW_FORM_data2(0x5),
     DW_FORM_data4(0x6),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_FORM_data8(0x7),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_FORM_string(0x8),
-    @SuppressWarnings("unused")
-    DW_FORM_block1(0x0a),
-    DW_FORM_ref_addr(0x10),
-    @SuppressWarnings("unused")
-    DW_FORM_ref1(0x11),
-    @SuppressWarnings("unused")
-    DW_FORM_ref2(0x12),
-    DW_FORM_ref4(0x13),
-    @SuppressWarnings("unused")
-    DW_FORM_ref8(0x14),
-    DW_FORM_sec_offset(0x17),
-    DW_FORM_data1(0x0b),
+    @SuppressWarnings("unused")//
+    DW_FORM_block1(0xa),
+    DW_FORM_data1(0xb),
     DW_FORM_flag(0xc),
     DW_FORM_strp(0xe),
-    DW_FORM_expr_loc(0x18);
+    DW_FORM_udata(0xf),
+    DW_FORM_ref_addr(0x10),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref1(0x11),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref2(0x12),
+    DW_FORM_ref4(0x13),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref8(0x14),
+    DW_FORM_sec_offset(0x17),
+    DW_FORM_expr_loc(0x18),
+    DW_FORM_line_strp(0x1f),
+    DW_FORM_ref_sig8(0x20),
+    DW_FORM_loclistx(0x22);
 
     private final int value;
 

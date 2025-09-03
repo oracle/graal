@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
@@ -42,10 +41,10 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.IHashCodeNode;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
@@ -86,7 +85,7 @@ public class BaseInterop {
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         object.checkNotForeign();
         if (isMetaObject(object)) {
-            return object.getMirrorKlass().getTypeName();
+            return object.getMirrorKlass().getGuestTypeName();
         }
         error.enter();
         throw UnsupportedMessageException.create();
@@ -210,10 +209,14 @@ public class BaseInterop {
     }
 
     @ExportMessage
-    public static int identityHashCode(StaticObject object) {
+    public static int identityHashCode(StaticObject object,
+                    @Cached IHashCodeNode iHashCodeNode) {
         object.checkNotForeign();
+        if (StaticObject.isNull(object)) {
+            return 0;
+        }
         // Working with espresso objects here, guaranteed to have identity.
-        return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
+        return iHashCodeNode.execute(object);
     }
 
     // endregion ### Identity/hashCode

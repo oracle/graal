@@ -623,7 +623,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             @TruffleBoundary
             Object toDisplayString(@SuppressWarnings("unused") boolean config) {
                 if (delegate instanceof Number) {
-                    return "L" + language.id + ":" + ((Number) delegate).toString();
+                    return "L" + language.id + ":" + delegate.toString();
                 }
                 if (delegate instanceof String) {
                     return "L" + language.id + ":" + delegate.toString();

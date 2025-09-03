@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.processor.builders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class StatementBuilder extends AbstractCodeBuilder {
     private final List<AbstractCodeBuilder> contents = new ArrayList<>();
@@ -35,7 +35,40 @@ public class StatementBuilder extends AbstractCodeBuilder {
     }
 
     public StatementBuilder addContent(Object... content) {
+        for (Object s : content) {
+            Objects.requireNonNull(s);
+        }
         contents.add(new RawBuilder(content));
+        return this;
+    }
+
+    public StatementBuilder raiseIndent() {
+        contents.add(new AbstractCodeBuilder() {
+            @Override
+            void buildImpl(IndentingStringBuilder isb) {
+                isb.raiseIndentLevel();
+            }
+        });
+        return this;
+    }
+
+    public StatementBuilder lowerIndent() {
+        contents.add(new AbstractCodeBuilder() {
+            @Override
+            void buildImpl(IndentingStringBuilder isb) {
+                isb.lowerIndentLevel();
+            }
+        });
+        return this;
+    }
+
+    public StatementBuilder addLine() {
+        contents.add(new AbstractCodeBuilder() {
+            @Override
+            void buildImpl(IndentingStringBuilder isb) {
+                isb.appendLine();
+            }
+        });
         return this;
     }
 

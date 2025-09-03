@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -121,10 +122,17 @@ public class JvmtiFeature implements InternalFeature {
         JvmtiFunctionTable functionTable = JvmtiFunctionTable.singleton();
         HostedType type = access.getMetaAccess().lookupJavaType(JvmtiFunctions.class);
         for (HostedMethod method : type.getDeclaredMethods(false)) {
-            StructFieldInfo field = findFieldFor(jvmtiInterfaceMetadata, method.getName());
-            int offset = field.getOffsetInfo().getProperty();
-            functionTable.init(offset, getStubFunctionPointer(access, method));
+            if (isIncluded(method)) {
+                StructFieldInfo field = findFieldFor(jvmtiInterfaceMetadata, method.getName());
+                int offset = field.getOffsetInfo().getProperty();
+                functionTable.init(offset, getStubFunctionPointer(access, method));
+            }
         }
+    }
+
+    private static boolean isIncluded(HostedMethod method) {
+        CEntryPoint entryPoint = method.getAnnotation(CEntryPoint.class);
+        return ReflectionUtil.newInstance(entryPoint.include()).getAsBoolean();
     }
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {

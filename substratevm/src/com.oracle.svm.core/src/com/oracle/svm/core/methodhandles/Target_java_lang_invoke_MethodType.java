@@ -52,6 +52,18 @@ final class Target_java_lang_invoke_MethodType {
 
 @TargetClass(className = "java.lang.invoke.Invokers")
 final class Target_java_lang_invoke_Invokers {
+
+    /**
+     * Substitute to remove the {@code @DontInline} from the original method.
+     */
+    @Substitute
+    static void maybeCustomize(Target_java_lang_invoke_MethodHandle mh) {
+        /*
+         * MethodHandle.maybeCustomized() is _currently_ substituted by an empty method. We still
+         * call it here and represent the original behavior to make it future-proof.
+         */
+        mh.maybeCustomize();
+    }
 }
 
 @TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator")

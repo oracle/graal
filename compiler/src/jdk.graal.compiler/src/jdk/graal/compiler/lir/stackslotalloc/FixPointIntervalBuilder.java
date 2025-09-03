@@ -253,7 +253,7 @@ final class FixPointIntervalBuilder {
                 // Stack slot is marked uninitialized so we have to assume it is live all
                 // the time.
                 DebugContext debug = lir.getDebug();
-                if (debug.isCountEnabled() && !(interval.from() == 0 && interval.to() == maxOpId)) {
+                if (debug.areCountersEnabled() && !(interval.from() == 0 && interval.to() == maxOpId)) {
                     uninitializedSlots.increment(debug);
                 }
                 interval.addFrom(0);

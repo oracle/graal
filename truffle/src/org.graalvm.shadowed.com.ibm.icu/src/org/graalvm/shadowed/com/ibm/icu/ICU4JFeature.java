@@ -105,84 +105,84 @@ public class ICU4JFeature implements Feature {
         List<ResourceEntry> resourcePatterns = List.of(
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.(?:res|lst)$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/[^/]*\\.(?:res|lst)$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.charset.CharsetMBCS",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/.*\\.cnv$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/.*\\.cnv$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCaseProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ucase\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ucase\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterName",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unames\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/unames\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/uprops\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/uprops\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty$LayoutProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ulayout\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ulayout\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UPropertyAliases",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/pnames\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/pnames\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.EmojiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/uemoji\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/uemoji\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UBiDiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ubidi\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ubidi\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationRoot",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/coll/ucadata\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/coll/ucadata\\.icu$"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationLoader",
                                         "org.graalvm.shadowed.com.ibm.icu.text.Collator"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/coll/[^/]*\\.res$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/coll/[^/]*\\.res$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.charset.UConverterAlias",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/cnvalias\\.icu$"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/cnvalias\\.icu$"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.TimeZoneNamesImpl",
                                         "org.graalvm.shadowed.com.ibm.icu.impl.TimeZoneGenericNames",
                                         "org.graalvm.shadowed.com.ibm.icu.text.TimeZoneFormat"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/zone/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/zone/.*"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.ICURegionDataTables",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/region/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/region/.*"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.ICULangDataTables",
                                         "org.graalvm.shadowed.com.ibm.icu.util.LocaleData"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/lang/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/lang/.*"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyDisplayInfoProvider",
                                         "org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyMetaInfo"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/curr/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/curr/.*"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.util.MeasureUnit",
                                         "org.graalvm.shadowed.com.ibm.icu.text.MeasureFormat",
                                         "org.graalvm.shadowed.com.ibm.icu.text.TimeUnitFormat",
                                         "org.graalvm.shadowed.com.ibm.icu.impl.number.LongNameHandler"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unit/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/unit/.*"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.text.TransliteratorRegistry",
                                         "org.graalvm.shadowed.com.ibm.icu.text.Transliterator"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/translit/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/translit/.*"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.text.RuleBasedNumberFormat",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/rbnf/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/rbnf/.*"),
                         new ResourceEntry(List.of(
                                         "org.graalvm.shadowed.com.ibm.icu.text.BreakIteratorFactory",
                                         "org.graalvm.shadowed.com.ibm.icu.impl.breakiter.DictionaryBreakEngine",
                                         "org.graalvm.shadowed.com.ibm.icu.impl.SimpleFilteredSentenceBreakIterator$Builder"),
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/brkitr/.*"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/brkitr/.*"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.text.SpoofChecker$SpoofData$DefaultData",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/confusables\\.cfu"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/confusables\\.cfu"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.text.StringPrep",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.spp"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/[^/]*\\.spp"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.Normalizer2Impl",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.nrm"),
+                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/[^/]*\\.nrm"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.duration.impl.ResourceBasedPeriodFormatterDataService",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/duration/impl/data/.*"));

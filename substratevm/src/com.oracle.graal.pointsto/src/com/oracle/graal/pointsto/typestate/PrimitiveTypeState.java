@@ -33,6 +33,8 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+
 /**
  * Represents type state for primitive values. These type states can be either concrete constants
  * represented by {@link PrimitiveConstantTypeState} or {@link AnyPrimitiveTypeState} that represent
@@ -72,18 +74,6 @@ public abstract sealed class PrimitiveTypeState extends TypeState permits Primit
         return AnyPrimitiveTypeState.SINGLETON;
     }
 
-    /** Returns a type state filtered with respect to the comparison and right. */
-    public TypeState filter(PrimitiveComparison comparison, PrimitiveTypeState right) {
-        return switch (comparison) {
-            case EQ -> forEquals(right);
-            case NEQ -> forNotEquals(right);
-            case LT -> forLessThan(right);
-            case GE -> forGreaterOrEqual(right);
-            case GT -> forGreaterThan(right);
-            case LE -> forLessOrEqual(right);
-        };
-    }
-
     public TypeState forEquals(PrimitiveTypeState right) {
         if (this instanceof PrimitiveConstantTypeState thisConstant) {
             if (right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() != rightConstant.getValue()) {
@@ -100,39 +90,31 @@ public abstract sealed class PrimitiveTypeState extends TypeState permits Primit
         throw AnalysisError.shouldNotReachHere("Combination not covered, this=" + this + ". right=" + right);
     }
 
-    public TypeState forNotEquals(PrimitiveTypeState right) {
-        if (this instanceof PrimitiveConstantTypeState thisConstant && right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() == rightConstant.getValue()) {
-            return forEmpty();
+    /** Returns a type state filtered with respect to the comparison and right. */
+    public TypeState filter(PrimitiveComparison comparison, boolean isUnsigned, PrimitiveTypeState right) {
+        if (comparison == PrimitiveComparison.EQ) {
+            /*
+             * This is the only case where we can improve even if one of the operands is Any, so we
+             * handle it first.
+             */
+            return forEquals(right);
         }
-        return this;
-    }
-
-    public TypeState forLessThan(PrimitiveTypeState right) {
-        if (this instanceof PrimitiveConstantTypeState thisConstant && right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() >= rightConstant.getValue()) {
-            return forEmpty();
+        if (!(this instanceof PrimitiveConstantTypeState leftConstant && right instanceof PrimitiveConstantTypeState rightConstant)) {
+            /*
+             * Apart from EQ, we cannot handle non-constant case, so always return the original
+             * value.
+             */
+            return this;
         }
-        return this;
-    }
-
-    public TypeState forGreaterOrEqual(PrimitiveTypeState right) {
-        if (this instanceof PrimitiveConstantTypeState thisConstant && right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() < rightConstant.getValue()) {
-            return forEmpty();
-        }
-        return this;
-    }
-
-    public TypeState forLessOrEqual(PrimitiveTypeState right) {
-        if (this instanceof PrimitiveConstantTypeState thisConstant && right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() > rightConstant.getValue()) {
-            return forEmpty();
-        }
-        return this;
-    }
-
-    public TypeState forGreaterThan(PrimitiveTypeState right) {
-        if (this instanceof PrimitiveConstantTypeState thisConstant && right instanceof PrimitiveConstantTypeState rightConstant && thisConstant.getValue() <= rightConstant.getValue()) {
-            return forEmpty();
-        }
-        return this;
+        boolean filterToEmpty = switch (comparison) {
+            case NEQ -> leftConstant.getValue() == rightConstant.getValue();
+            case LT -> isUnsigned ? UnsignedMath.aboveOrEqual(leftConstant.getValue(), rightConstant.getValue()) : leftConstant.getValue() >= rightConstant.getValue();
+            case GE -> isUnsigned ? UnsignedMath.belowThan(leftConstant.getValue(), rightConstant.getValue()) : leftConstant.getValue() < rightConstant.getValue();
+            case GT -> isUnsigned ? UnsignedMath.belowOrEqual(leftConstant.getValue(), rightConstant.getValue()) : leftConstant.getValue() <= rightConstant.getValue();
+            case LE -> isUnsigned ? UnsignedMath.aboveThan(leftConstant.getValue(), rightConstant.getValue()) : leftConstant.getValue() > rightConstant.getValue();
+            default -> throw AnalysisError.shouldNotReachHere("Unreachable case in switch.");
+        };
+        return filterToEmpty ? forEmpty() : this;
     }
 
     public abstract boolean canBeTrue();

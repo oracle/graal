@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -76,9 +77,11 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
     private short groupNumber = -1;
-    private short groupsWithGuardsIndex = -1;
-    private short enclosedCaptureGroupsLow;
-    private short enclosedCaptureGroupsHigh;
+    private int groupsWithGuardsIndex = -1;
+    private int enclosedCaptureGroupsLo;
+    private int enclosedCaptureGroupsHi;
+    private int enclosedZeroWidthGroupsLo;
+    private int enclosedZeroWidthGroupsHi;
 
     /**
      * Creates an empty non-capturing group.
@@ -98,8 +101,8 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     protected Group(Group copy) {
         super(copy);
         groupNumber = copy.groupNumber;
-        enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
-        enclosedCaptureGroupsHigh = copy.enclosedCaptureGroupsHigh;
+        enclosedCaptureGroupsLo = copy.enclosedCaptureGroupsLo;
+        enclosedCaptureGroupsHi = copy.enclosedCaptureGroupsHi;
     }
 
     @Override
@@ -206,8 +209,6 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     /**
      * Marks this {@link Group} as capturing and sets its group number.
-     *
-     * @param groupNumber
      */
     public void setGroupNumber(int groupNumber) {
         assert groupNumber <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
@@ -223,8 +224,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     public void setGroupsWithGuardsIndex(int groupsWithGuardsIndex) {
-        assert groupsWithGuardsIndex <= Short.MAX_VALUE;
-        this.groupsWithGuardsIndex = (short) groupsWithGuardsIndex;
+        this.groupsWithGuardsIndex = groupsWithGuardsIndex;
     }
 
     /**
@@ -237,51 +237,67 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     /**
      * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
-    public int getEnclosedCaptureGroupsLow() {
-        return enclosedCaptureGroupsLow;
+    public int getEnclosedCaptureGroupsLo() {
+        return enclosedCaptureGroupsLo;
     }
 
     /**
      * Gets the (inclusive) lower bound of the range of capture groups in this term. In contrast to
-     * {@link #getEnclosedCaptureGroupsLow()}, this range contains the group itself if it is a
+     * {@link #getEnclosedCaptureGroupsLo()}, this range contains the group itself if it is a
      * capturing group.
      */
-    public int getCaptureGroupsLow() {
-        return isCapturing() ? getGroupNumber() : enclosedCaptureGroupsLow;
+    public int getCaptureGroupsLo() {
+        return isCapturing() ? getGroupNumber() : enclosedCaptureGroupsLo;
     }
 
     /**
      * Sets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
-    public void setEnclosedCaptureGroupsLow(int enclosedCaptureGroupsLow) {
-        assert enclosedCaptureGroupsLow <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
-        this.enclosedCaptureGroupsLow = (short) enclosedCaptureGroupsLow;
+    public void setEnclosedCaptureGroupsLo(int enclosedCaptureGroupsLo) {
+        assert enclosedCaptureGroupsLo <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
+        this.enclosedCaptureGroupsLo = (short) enclosedCaptureGroupsLo;
     }
 
     /**
      * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
-    public int getEnclosedCaptureGroupsHigh() {
-        return enclosedCaptureGroupsHigh;
+    public int getEnclosedCaptureGroupsHi() {
+        return enclosedCaptureGroupsHi;
     }
 
     /**
      * Gets the (exclusive) upper bound of the range of capture groups in this term.
      */
-    public int getCaptureGroupsHigh() {
-        return enclosedCaptureGroupsHigh;
+    public int getCaptureGroupsHi() {
+        return enclosedCaptureGroupsHi;
     }
 
     /**
      * Sets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
-    public void setEnclosedCaptureGroupsHigh(int enclosedCaptureGroupsHigh) {
-        assert enclosedCaptureGroupsHigh <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
-        this.enclosedCaptureGroupsHigh = (short) enclosedCaptureGroupsHigh;
+    public void setEnclosedCaptureGroupsHi(int enclosedCaptureGroupsHi) {
+        assert enclosedCaptureGroupsHi <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
+        this.enclosedCaptureGroupsHi = (short) enclosedCaptureGroupsHi;
     }
 
     public boolean hasEnclosedCaptureGroups() {
-        return enclosedCaptureGroupsHigh > enclosedCaptureGroupsLow;
+        return enclosedCaptureGroupsHi > enclosedCaptureGroupsLo;
+    }
+
+    public int getEnclosedZeroWidthGroupsLo() {
+        return enclosedZeroWidthGroupsLo;
+    }
+
+    public void setEnclosedZeroWidthGroupsLo(int enclosedZeroWidthGroupsLo) {
+        this.enclosedZeroWidthGroupsLo = enclosedZeroWidthGroupsLo;
+    }
+
+    public int getEnclosedZeroWidthGroupsHi() {
+        return enclosedZeroWidthGroupsHi;
+    }
+
+    public void setEnclosedZeroWidthGroupsHi(int enclosedZeroWidthGroupsHi) {
+        this.enclosedZeroWidthGroupsHi = enclosedZeroWidthGroupsHi;
     }
 
     /**
@@ -300,8 +316,8 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+    public boolean isUnrollingCandidate(RegexOptions options) {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollLimitGroup);
     }
 
     /**
@@ -336,8 +352,6 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
-     *
-     * @param sequence
      */
     public void add(Sequence sequence) {
         sequence.setParent(this);
@@ -349,8 +363,6 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
      * Inserts a new alternative to this group. The new alternative will be <em>inserted at the
      * beginning</em>, meaning it will have the <em>highest priority</em> among all the
      * alternatives.
-     *
-     * @param sequence
      */
     public void insertFirst(Sequence sequence) {
         sequence.setParent(this);

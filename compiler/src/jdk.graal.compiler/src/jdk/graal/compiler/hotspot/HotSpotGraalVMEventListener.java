@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.vm.ci.code.CompiledCode;
@@ -56,8 +55,6 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     public void notifyInstall(HotSpotCodeCacheProvider codeCache, InstalledCode installedCode, CompiledCode compiledCode) {
         DebugContext debug = DebugContext.forCurrentThread();
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            CompilationResult compResult = debug.contextLookup(CompilationResult.class);
-            assert compResult != null : "can't dump installed code properly without CompilationResult";
             debug.dump(DebugContext.BASIC_LEVEL, installedCode, "After code installation");
         }
         if (debug.isLogEnabled()) {

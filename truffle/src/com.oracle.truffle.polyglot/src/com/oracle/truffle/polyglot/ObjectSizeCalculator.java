@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -188,8 +189,8 @@ final class ObjectSizeCalculator {
 
     /**
      * Given an object, returns the allocated size, in bytes, of the object and all other objects
-     * reachable from it within {@link ObjectSizeCalculator#isContextHeapBoundary(Object) context
-     * heap boundary}.
+     * reachable from it within {@link ObjectSizeCalculator#isContextHeapBoundary(APIAccess, Object)
+     * context heap boundary}.
      *
      * @param obj the object; cannot be null.
      * @param stopAtBytes when calculated size exceeds stopAtBytes, calculation stops and returns
@@ -285,7 +286,7 @@ final class ObjectSizeCalculator {
         }
     }
 
-    private static void increaseByArraySize(CalculationState calculationState, ArrayMemoryLayout layout, int length) {
+    private static void increaseByArraySize(CalculationState calculationState, ArrayMemoryLayout layout, long length) {
         increaseSize(calculationState, roundToObjectAlignment(layout.baseOffset + length * layout.indexScale, getObjectAlignment()));
     }
 
@@ -297,7 +298,6 @@ final class ObjectSizeCalculator {
         }
         if (obj instanceof PolyglotContextConfig ||
                         obj instanceof TruffleLanguageProvider ||
-                        obj instanceof TruffleLanguage.Provider ||
                         obj instanceof ExecutionEventListener ||
                         obj instanceof ClassValue ||
                         obj instanceof PolyglotWrapper ||
@@ -351,6 +351,8 @@ final class ObjectSizeCalculator {
 
                         (obj instanceof ContextLocal) ||
                         (obj instanceof ContextThreadLocal) ||
+
+                        (obj instanceof EventBinding<?>) ||
                         /*
                          * For safety, copy the asserts here in case asserts are disabled.
                          */

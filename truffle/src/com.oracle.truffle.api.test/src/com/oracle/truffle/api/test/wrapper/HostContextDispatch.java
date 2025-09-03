@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
+import java.lang.ref.Reference;
 import java.time.Duration;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
@@ -63,7 +66,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void setAPI(Object receiver, Object key) {
+    public void setContextAPIReference(Object receiver, Reference<Context> contextReference) {
     }
 
     @Override
@@ -141,4 +144,12 @@ public class HostContextDispatch extends AbstractContextDispatch {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void onContextCollected(Object receiver) {
+        HostContext hostContext = (HostContext) receiver;
+        Context localContext = hostContext.localContext;
+        AbstractPolyglotImpl.AbstractContextDispatch dispatch = api.getContextDispatch(localContext);
+        Object contextReceiver = api.getContextReceiver(localContext);
+        dispatch.onContextCollected(contextReceiver);
+    }
 }

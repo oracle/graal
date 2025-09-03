@@ -25,12 +25,51 @@
 package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.nativeimage.IsolateThread;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.spi.NFIState", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_spi_NFIState {
 
     @Alias boolean hasPendingException;
+
+    @Substitute
+    private static long initNfiErrnoAddress(Thread thread) {
+        var op = new GetErrnoMirrorAddressOperation(thread);
+        op.enqueue();
+        long address = op.result;
+        if (address == 0) {
+            throw CompilerDirectives.shouldNotReachHere("Could not find the IsolateThread for " + thread);
+        }
+        return address;
+    }
+
+    @Substitute
+    private void freeNfiErrnoAddress() {
+    }
+
+    private static class GetErrnoMirrorAddressOperation extends JavaVMOperation {
+        private final Thread thread;
+        private long result = 0;
+
+        GetErrnoMirrorAddressOperation(Thread thread) {
+            super(VMOperationInfos.get(GetErrnoMirrorAddressOperation.class, "Get ErrnoMirror address", SystemEffect.SAFEPOINT));
+            this.thread = thread;
+        }
+
+        @Override
+        protected void operate() {
+            IsolateThread isolateThread = PlatformThreads.getIsolateThread(thread);
+            if (isolateThread.isNonNull()) {
+                this.result = ErrnoMirror.errnoMirror.getAddress(isolateThread).rawValue();
+            }
+        }
+    }
 
     @Alias
     native void setPendingException(Throwable t);

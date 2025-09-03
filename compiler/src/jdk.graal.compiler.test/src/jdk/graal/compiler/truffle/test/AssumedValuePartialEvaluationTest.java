@@ -115,7 +115,7 @@ public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
         }
     }
 
-    private static class ReadDynamicAssumedValueNode extends AbstractTestNode {
+    private static final class ReadDynamicAssumedValueNode extends AbstractTestNode {
 
         @Override
         public int execute(VirtualFrame frame) {

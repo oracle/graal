@@ -1,0 +1,23 @@
+baseurl: "/webassembly"
+url: "https://graalvm.org"
+github: "oracle/graal"
+github_subdir: "/wasm"
+license_path: "/blob/master/wasm/LICENSE"
+language_version: 24.2.1
+name: GraalWasm
+
+permalink: pretty
+
+plugins:
+  - jekyll-relative-links
+  - jekyll-seo-tag
+  - graal-languages-jekyll-theme
+
+theme: graal-languages-jekyll-theme
+
+sass:
+  quiet_deps: true
+
+exclude:
+  - Gemfile
+  - Gemfile.lock

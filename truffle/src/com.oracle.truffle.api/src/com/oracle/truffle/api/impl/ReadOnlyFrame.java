@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,42 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 class ReadOnlyFrame implements Frame {
     private final Frame delegate;
+
+    public Object expectObject(int slot) throws UnexpectedResultException {
+        return delegate.expectObject(slot);
+    }
+
+    public byte expectByte(int slot) throws UnexpectedResultException {
+        return delegate.expectByte(slot);
+    }
+
+    public boolean expectBoolean(int slot) throws UnexpectedResultException {
+        return delegate.expectBoolean(slot);
+    }
+
+    public int expectInt(int slot) throws UnexpectedResultException {
+        return delegate.expectInt(slot);
+    }
+
+    public long expectLong(int slot) throws UnexpectedResultException {
+        return delegate.expectLong(slot);
+    }
+
+    public float expectFloat(int slot) throws UnexpectedResultException {
+        return delegate.expectFloat(slot);
+    }
+
+    public double expectDouble(int slot) throws UnexpectedResultException {
+        return delegate.expectDouble(slot);
+    }
+
+    public void swap(int first, int second) {
+        delegate.swap(first, second);
+    }
 
     ReadOnlyFrame(Frame delegate) {
         this.delegate = delegate;
@@ -252,7 +285,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setObjectStatic(int slot, Object value) {
-        delegate.setObjectStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -264,7 +297,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setByteStatic(int slot, byte value) {
-        delegate.setByteStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -276,7 +309,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setBooleanStatic(int slot, boolean value) {
-        delegate.setBooleanStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -288,7 +321,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setIntStatic(int slot, int value) {
-        delegate.setIntStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -300,7 +333,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setLongStatic(int slot, long value) {
-        delegate.setLongStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -312,7 +345,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setFloatStatic(int slot, float value) {
-        delegate.setFloatStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -324,60 +357,66 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setDoubleStatic(int slot, double value) {
-        delegate.setDoubleStatic(slot, value);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void copyPrimitiveStatic(int srcSlot, int destSlot) {
-        delegate.copyPrimitiveStatic(srcSlot, destSlot);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void copyObjectStatic(int srcSlot, int destSlot) {
-        delegate.copyObjectStatic(srcSlot, destSlot);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void copyStatic(int srcSlot, int destSlot) {
-        delegate.copyStatic(srcSlot, destSlot);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void swapPrimitiveStatic(int first, int second) {
-        delegate.swapPrimitiveStatic(first, second);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void swapObjectStatic(int first, int second) {
-        delegate.swapObjectStatic(first, second);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void swapStatic(int first, int second) {
-        delegate.swapStatic(first, second);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void clearPrimitiveStatic(int slot) {
-        delegate.clearPrimitiveStatic(slot);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void clearObjectStatic(int slot) {
-        delegate.clearObjectStatic(slot);
+        throw newReadonlyAssertionError();
     }
 
     @Override
     @TruffleBoundary
     public void clearStatic(int slot) {
-        delegate.clearStatic(slot);
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
+        delegate.copyTo(srcOffset, dst, dstOffset, length);
     }
 }

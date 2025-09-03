@@ -46,7 +46,7 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
     public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
-        assert aField.getJavaKind().isObject();
+        assert aField.getStorageKind().isObject();
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {

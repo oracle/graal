@@ -37,7 +37,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.word.BarrieredAccess;
 
@@ -383,6 +385,15 @@ final class Target_java_lang_reflect_Array {
     }
 
     @Substitute
+    private static Object newArray(Class<?> componentType, int length)
+                    throws NegativeArraySizeException {
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceReflectionArrayType(componentType);
+        }
+        return KnownIntrinsics.unvalidatedNewArray(componentType, length);
+    }
+
+    @Substitute
     private static Object multiNewArray(Class<?> componentType, int[] dimensions) {
         if (componentType == null) {
             throw new NullPointerException();
@@ -407,7 +418,7 @@ final class Target_java_lang_reflect_Array {
         for (int i = 0; i < dimensions.length; i++) {
             arrayHub = arrayHub.getArrayHub();
             if (arrayHub == null) {
-                throw MissingReflectionRegistrationUtils.errorForArray(componentType, dimensions.length);
+                throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
             }
         }
 

@@ -49,6 +49,7 @@ import tempfile
 import zipfile
 import argparse
 
+import mx_polybench
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
 from mx_benchmark import add_java_vm
@@ -327,3 +328,35 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
 
 
 add_bm_suite(MemoryBenchmarkSuite())
+
+mx_polybench.register_polybench_language(mx_suite=_suite, language="wasm", distributions=["WASM"])
+
+
+def wasm_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+    if "gate" in tags:
+        polybench_run(["--jvm", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        polybench_run(["--native", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+    if "benchmark" in tags:
+        polybench_run(["--jvm", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "interpreter/*.wasm"])
+        polybench_run(["--native", "interpreter/*.wasm"])
+        polybench_run(["--jvm", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
+        polybench_run(["--native", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
+        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=metaspace-memory"])
+        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=application-memory"])
+        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        polybench_run(["--native", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+    if "instructions" in tags:
+        assert mx_polybench.is_enterprise()
+        fork_count_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "polybench-fork-counts.json")
+        polybench_run(["--native", "interpreter/*.wasm", "--metric=instructions", "--experimental-options", "--engine.Compilation=false",
+                       "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+
+
+mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="wasm", languages=["wasm"],
+                                                benchmark_distribution="WASM_POLYBENCH_BENCHMARKS",
+                                                benchmark_file_filter=".*wasm", runner=wasm_polybench_runner,
+                                                tags={"gate", "benchmark", "instructions"})

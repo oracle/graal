@@ -176,6 +176,10 @@ final class TSCodeRange {
         return ordinal(codeRange) == CR_VALID;
     }
 
+    static boolean isUpToValid(int codeRange) {
+        return ordinal(codeRange) <= CR_VALID;
+    }
+
     static boolean isBroken(int codeRange) {
         return ordinal(codeRange) == CR_BROKEN;
     }

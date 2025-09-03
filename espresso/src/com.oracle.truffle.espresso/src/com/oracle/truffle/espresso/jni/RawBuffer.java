@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.jni;
 
 import java.nio.ByteBuffer;
@@ -28,11 +27,17 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class RawBuffer implements AutoCloseable {
     private ByteBuffer buffer;
@@ -87,9 +92,146 @@ public final class RawBuffer implements AutoCloseable {
         return pointer;
     }
 
+    @TruffleBoundary
+    public static RawBuffer getNativeHeapPointer(StaticObject obj, EspressoContext ctx) {
+        assert obj.getKlass().isArray();
+        JavaKind componentKind = ((ArrayKlass) obj.getKlass()).getComponentType().getJavaKind();
+        ByteBuffer bb = NativeUtils.allocateDirect(obj.length(ctx.getLanguage()) * componentKind.getByteCount());
+        switch (componentKind) {
+            case Boolean -> {
+                boolean[] array = obj.unwrap(ctx.getLanguage());
+                for (boolean b : array) {
+                    bb.put((byte) (b ? 1 : 0));
+                }
+            }
+            case Byte -> {
+                byte[] array = obj.unwrap(ctx.getLanguage());
+                for (byte b : array) {
+                    bb.put(b);
+                }
+            }
+            case Short -> {
+                short[] array = obj.unwrap(ctx.getLanguage());
+                for (short s : array) {
+                    bb.putShort(s);
+                }
+            }
+            case Char -> {
+                char[] array = obj.unwrap(ctx.getLanguage());
+                for (char c : array) {
+                    bb.putChar(c);
+                }
+            }
+            case Int -> {
+                int[] array = obj.unwrap(ctx.getLanguage());
+                for (int i : array) {
+                    bb.putInt(i);
+                }
+            }
+            case Float -> {
+                float[] array = obj.unwrap(ctx.getLanguage());
+                for (float f : array) {
+                    bb.putFloat(f);
+                }
+            }
+            case Long -> {
+                long[] array = obj.unwrap(ctx.getLanguage());
+                for (long l : array) {
+                    bb.putLong(l);
+                }
+            }
+            case Double -> {
+                double[] array = obj.unwrap(ctx.getLanguage());
+                for (double d : array) {
+                    bb.putDouble(d);
+                }
+            }
+            default -> throw ctx.getMeta().throwExceptionWithMessage(ctx.getMeta().java_lang_IllegalArgumentException, "Unsupported java heap access in downcall stub: " + obj.getKlass());
+        }
+        return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
+    }
+
+    @TruffleBoundary
+    public void writeBack(StaticObject obj, EspressoContext ctx) {
+        assert obj.getKlass().isArray();
+        JavaKind componentKind = ((ArrayKlass) obj.getKlass()).getComponentType().getJavaKind();
+        ByteBuffer bb = buffer.rewind();
+        switch (componentKind) {
+            case Boolean -> {
+                boolean[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.get() != 0;
+                }
+            }
+            case Byte -> {
+                byte[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.get();
+                }
+            }
+            case Short -> {
+                short[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getShort();
+                }
+            }
+            case Char -> {
+                char[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getChar();
+                }
+            }
+            case Int -> {
+                int[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getInt();
+                }
+            }
+            case Float -> {
+                float[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getFloat();
+                }
+            }
+            case Long -> {
+                long[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getLong();
+                }
+            }
+            case Double -> {
+                double[] array = obj.unwrap(ctx.getLanguage());
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = bb.getDouble();
+                }
+            }
+            default -> throw ctx.getMeta().throwExceptionWithMessage(ctx.getMeta().java_lang_IllegalArgumentException, "Unsupported java heap access in downcall stub: " + obj.getKlass());
+        }
+    }
+
     @Override
     public void close() {
         buffer.clear();
         this.buffer = null;
+    }
+
+    public static class Buffers {
+        private final ArrayList<RawBuffer> buffers = new ArrayList<>(0);
+        private final ArrayList<StaticObject> arrays = new ArrayList<>(0);
+
+        public void writeBack(EspressoContext ctx) {
+            assert buffers.size() == arrays.size();
+            for (int i = 0; i < buffers.size(); i++) {
+                RawBuffer b = buffers.get(i);
+                StaticObject target = arrays.get(i);
+                b.writeBack(target, ctx);
+                b.close();
+            }
+        }
+
+        public void add(RawBuffer b, StaticObject obj) {
+            buffers.add(b);
+            arrays.add(obj);
+        }
     }
 }

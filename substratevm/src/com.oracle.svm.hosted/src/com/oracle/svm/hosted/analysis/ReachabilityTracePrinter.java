@@ -59,6 +59,15 @@ public final class ReachabilityTracePrinter {
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
+    private static String reportElements(String element, String trace, String reportsPath, String baseImageName, List<String> patterns,
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
+        String elements = element + "s";
+        Path path = ReportUtils.report("trace for " + elements, reportsPath, "trace_" + elements + "_" + baseImageName, "txt",
+                        writer -> writer.print(trace));
+        String argument = SubstrateOptionsParser.commandArgument(option, String.join(",", patterns));
+        return "Image building is interrupted as the " + elements + " specified via " + argument + " are reachable. " + PATH_MESSAGE_PREFIX + path + ". ";
+    }
+
     public static void report(String imageName, OptionValues options, String reportsPath, BigBang bb) {
         String baseImageName = ReportUtils.extractImageName(imageName);
 
@@ -66,43 +75,25 @@ public final class ReachabilityTracePrinter {
 
         List<String> typePatterns = ReachabilityTracePrinter.Options.AbortOnTypeReachable.getValue(options).values();
         if (!typePatterns.isEmpty()) {
-            StringWriter stringWriter = new StringWriter();
-            int count = ReachabilityTracePrinter.printTraceForTypesImpl(typePatterns, bb, new PrintWriter(stringWriter));
-            if (count > 0) {
-                String trace = stringWriter.toString();
-                Path path = ReportUtils.report("trace for types", reportsPath, "trace_types_" + baseImageName, "txt",
-                                writer -> writer.print(trace));
-                String abortOnTypeReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnTypeReachable, String.join(",", typePatterns));
-                String message = "Image building is interrupted as the types specified via " + abortOnTypeReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
-                consoleMessageBuilder.append(message);
+            StringWriter buf = new StringWriter();
+            if (ReachabilityTracePrinter.printTraceForTypesImpl(typePatterns, bb, new PrintWriter(buf)) > 0) {
+                consoleMessageBuilder.append(reportElements("type", buf.toString(), reportsPath, baseImageName, typePatterns, Options.AbortOnTypeReachable));
             }
         }
 
         List<String> methodPatterns = ReachabilityTracePrinter.Options.AbortOnMethodReachable.getValue(options).values();
         if (!methodPatterns.isEmpty()) {
-            StringWriter stringWriter = new StringWriter();
-            int count = ReachabilityTracePrinter.printTraceForMethodsImpl(methodPatterns, bb, new PrintWriter(stringWriter));
-            if (count > 0) {
-                String trace = stringWriter.toString();
-                Path path = ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + baseImageName, "txt",
-                                writer -> writer.print(trace));
-                String abortOnMethodReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnMethodReachable, String.join(",", methodPatterns));
-                String message = "Image building is interrupted as the methods specified via " + abortOnMethodReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
-                consoleMessageBuilder.append(message);
+            StringWriter buf = new StringWriter();
+            if (ReachabilityTracePrinter.printTraceForMethodsImpl(methodPatterns, bb, new PrintWriter(buf)) > 0) {
+                consoleMessageBuilder.append(reportElements("method", buf.toString(), reportsPath, baseImageName, methodPatterns, Options.AbortOnMethodReachable));
             }
         }
 
         List<String> fieldPatterns = ReachabilityTracePrinter.Options.AbortOnFieldReachable.getValue(options).values();
         if (!fieldPatterns.isEmpty()) {
-            StringWriter stringWriter = new StringWriter();
-            int count = ReachabilityTracePrinter.printTraceForFieldsImpl(fieldPatterns, bb, new PrintWriter(stringWriter));
-            if (count > 0) {
-                String trace = stringWriter.toString();
-                Path path = ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + baseImageName, "txt",
-                                writer -> writer.print(trace));
-                String abortOnFieldReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnFieldReachable, String.join(",", fieldPatterns));
-                String message = "Image building is interrupted as the fields specified via " + abortOnFieldReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
-                consoleMessageBuilder.append(message);
+            StringWriter buf = new StringWriter();
+            if (ReachabilityTracePrinter.printTraceForFieldsImpl(fieldPatterns, bb, new PrintWriter(buf)) > 0) {
+                consoleMessageBuilder.append(reportElements("field", buf.toString(), reportsPath, baseImageName, fieldPatterns, Options.AbortOnFieldReachable));
             }
         }
 

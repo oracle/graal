@@ -37,6 +37,7 @@ public final class ErrorCodes {
     public static final int INVALID_SLOT = 35;
     public static final int INVALID_MODULE = 42;
     public static final int INVALID_CLASS_FORMAT = 60;
+    public static final int CIRCULAR_CLASS_DEFINITION = 61;
     public static final int FAILS_VERIFICATION = 62;
     public static final int ADD_METHOD_NOT_IMPLEMENTED = 63;
     public static final int SCHEMA_CHANGE_NOT_IMPLEMENTED = 64;
@@ -46,10 +47,12 @@ public final class ErrorCodes {
     public static final int NAMES_DONT_MATCH = 69;
     public static final int CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED = 70;
     public static final int METHOD_MODIFIERS_CHANGE_NOT_IMPLEMENTED = 71;
+    public static final int CLASS_ATTRIBUTE_CHANGE_NOT_IMPLEMENTED = 72;
     public static final int NOT_IMPLEMENTED = 99;
     public static final int ABSENT_INFORMATION = 101;
     public static final int INVALID_EVENT_TYPE = 102;
     public static final int INTERNAL = 113;
+    public static final int INVALID_INDEX = 503;
     public static final int INVALID_LENGTH = 504;
     public static final int INVALID_STRING = 506;
     public static final int INVALID_CLASS_LOADER = 507;

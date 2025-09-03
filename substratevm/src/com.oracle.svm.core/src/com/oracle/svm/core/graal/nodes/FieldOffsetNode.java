@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 
@@ -83,6 +84,7 @@ public final class FieldOffsetNode extends FloatingNode implements FieldOffsetPr
     protected FieldOffsetNode(ResolvedJavaField field) {
         super(TYPE, StampFactory.forInteger(JavaKind.Long, 0, Integer.MAX_VALUE));
         this.field = field;
+        StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(field);
     }
 
     @Override

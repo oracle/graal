@@ -59,8 +59,8 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
         final int length;
 
-        private ObjectArrayData(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int length, int identityHashCode) {
-            super(type, hostedObject, identityHashCode);
+        private ObjectArrayData(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int length, int identityHashCode, int id) {
+            super(type, hostedObject, identityHashCode, id);
             this.arrayElementValues = arrayElementValues;
             this.length = length;
             assert type.isArray() && !type.getComponentType().isPrimitive() : type;
@@ -68,19 +68,19 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     }
 
     ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length) {
-        this(type, hostedObject, length, -1);
+        this(type, hostedObject, length, -1, -1);
     }
 
-    ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length, int identityHashCode) {
-        super(new ObjectArrayData(type, hostedObject, null, length, identityHashCode), false);
+    public ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length, int identityHashCode, int id) {
+        super(new ObjectArrayData(type, hostedObject, null, length, identityHashCode, id), false);
     }
 
-    ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int identityHashCode) {
-        super(new ObjectArrayData(type, hostedObject, arrayElementValues, arrayElementValues.length, identityHashCode), false);
+    ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int identityHashCode, int id) {
+        super(new ObjectArrayData(type, hostedObject, arrayElementValues, arrayElementValues.length, identityHashCode, id), false);
     }
 
     ImageHeapObjectArray(AnalysisType type, int length) {
-        super(new ObjectArrayData(type, null, new Object[length], length, -1), false);
+        super(new ObjectArrayData(type, null, new Object[length], length, -1, -1), false);
     }
 
     private ImageHeapObjectArray(ConstantData data, boolean compressed) {
@@ -92,13 +92,13 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         return (ObjectArrayData) super.getConstantData();
     }
 
-    void setElementValues(Object[] elementValues) {
+    public void setElementValues(Object[] elementValues) {
         boolean success = elementsHandle.compareAndSet(constantData, null, elementValues);
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }
 
     public static ImageHeapObjectArray createUnbackedImageHeapArray(AnalysisType type, Object[] elementValues) {
-        return new ImageHeapObjectArray(type, null, elementValues, -1);
+        return new ImageHeapObjectArray(type, null, elementValues, -1, -1);
     }
 
     /**
@@ -168,6 +168,6 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         Objects.requireNonNull(arrayElements, "Cannot clone an array before the element values are set.");
         Object[] newArrayElementValues = Arrays.copyOf(arrayElements, arrayElements.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        return new ImageHeapObjectArray(new ObjectArrayData(constantData.type, null, newArrayElementValues, arrayElements.length, -1), compressed);
+        return new ImageHeapObjectArray(new ObjectArrayData(constantData.type, null, newArrayElementValues, arrayElements.length, -1, -1), compressed);
     }
 }

@@ -60,7 +60,7 @@ public class ReadEliminationCodeEmissionTest extends SubprocessTest {
 
     @Test
     public void accessVolatile1() {
-        runTest("accessVolatile1", new A(12));
+        runTest(currentUnitTestName(), new A(12));
     }
 
     public void runTest(String baseName, Object... args) {
@@ -120,7 +120,7 @@ public class ReadEliminationCodeEmissionTest extends SubprocessTest {
                             "-Dgraal.Dump=:5"};
         }
         try {
-            subprocess = launchSubprocess(baseName, run, vmArgs);
+            subprocess = launchSubprocess(run, vmArgs);
         } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }

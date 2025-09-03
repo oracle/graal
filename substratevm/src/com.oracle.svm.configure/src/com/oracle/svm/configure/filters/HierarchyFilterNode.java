@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.configure.filters;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+import static com.oracle.svm.configure.ConfigurationParser.asList;
 
 import java.io.IOException;
 import java.util.Arrays;

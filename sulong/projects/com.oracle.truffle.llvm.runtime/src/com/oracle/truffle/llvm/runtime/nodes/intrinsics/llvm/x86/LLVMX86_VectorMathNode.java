@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -262,16 +262,6 @@ public abstract class LLVMX86_VectorMathNode {
             return Comparator.values()[predicate];
         }
 
-        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
-        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, int predicate) {
-            return compare(v1, v2, getComparator(predicate));
-        }
-
-        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
-        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, byte predicate) {
-            return compare(v1, v2, getComparator(predicate));
-        }
-
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2", "predicate == cachedPredicate"}, limit = "cmpCnt")
         @GenerateAOT.Exclude
         protected LLVMDoubleVector doCmp(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") int predicate,
@@ -286,6 +276,16 @@ public abstract class LLVMX86_VectorMathNode {
                         @SuppressWarnings("unused") @Cached("predicate") byte cachedPredicate,
                         @Cached("getComparator(predicate)") Comparator comparator) {
             return compare(v1, v2, comparator);
+        }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, int predicate) {
+            return compare(v1, v2, getComparator(predicate));
+        }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, byte predicate) {
+            return compare(v1, v2, getComparator(predicate));
         }
 
         private static LLVMDoubleVector compare(LLVMDoubleVector v1, LLVMDoubleVector v2, Comparator comparator) {

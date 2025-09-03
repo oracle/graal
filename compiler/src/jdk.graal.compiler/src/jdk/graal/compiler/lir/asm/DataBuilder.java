@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir.asm;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.code.DataSection.Data;
@@ -121,14 +122,14 @@ public abstract class DataBuilder {
         return createPackedDataItem(alignment, size, nested);
     }
 
-    public Data createMultiDataItem(Constant... constants) {
-        assert constants.length > 0;
-        if (constants.length == 1) {
-            return createDataItem(constants[0]);
+    public Data createMultiDataItem(List<Constant> constants) {
+        assert !constants.isEmpty() : "must not be empty";
+        if (constants.size() == 1) {
+            return createDataItem(constants.get(0));
         } else {
-            Data[] data = new Data[constants.length];
-            for (int i = 0; i < constants.length; i++) {
-                data[i] = createDataItem(constants[i]);
+            Data[] data = new Data[constants.size()];
+            for (int i = 0; i < constants.size(); i++) {
+                data[i] = createDataItem(constants.get(i));
             }
             return createPackedDataItem(data);
         }

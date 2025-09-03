@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -97,6 +97,7 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT2S
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTAS;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTMS;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZS;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZU;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FDIV;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FMADD;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.FMAX;
@@ -133,9 +134,11 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.ORN;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.ORR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RBIT;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RET;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REV16;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVW;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVX;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RORV;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SB;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBC;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBCS;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBFM;
@@ -144,7 +147,6 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SDIV;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STLR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STLXR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
-import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STXR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SUB;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SUBS;
@@ -152,6 +154,7 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SWP;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.TBNZ;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.TBZ;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.UBFM;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.UCVTF;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.UDIV;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.FP32;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.FP64;
@@ -169,7 +172,6 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
@@ -178,7 +180,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
-import jdk.vm.ci.aarch64.AArch64.Flag;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
@@ -189,8 +190,6 @@ import jdk.vm.ci.code.TargetDescription;
  * <a href="https://developer.arm.com/documentation/ddi0487/latest">here</a>.
  */
 public abstract class AArch64Assembler extends Assembler<CPUFeature> {
-
-    private final EnumSet<Flag> flags;
 
     public static class LogicalBitmaskImmediateEncoding {
 
@@ -984,6 +983,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         CLS(0x00001400),
         CLZ(0x00001000),
         RBIT(0x00000000),
+        REV16(0x00000400),
         REVX(0x00000C00),
         REVW(0x00000800),
 
@@ -1018,7 +1018,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         FCVTMS(0x00100000),
 
         FCVTZS(0x00180000),
+        FCVTZU(0x00190000),
         SCVTF(0x00020000),
+        UCVTF(0x00030000),
 
         FABS(0x00008000),
         FSQRT(0x00018000),
@@ -1056,6 +1058,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         MSR(0xD5100000),
         DC(0xD5087000),
         ISB(0x000000C0),
+        SB(0x000000E0),
 
         PACIA(0b00001 << 16 | 0b000000 << 10),
         AUTIA(0b00001 << 16 | 0b000100 << 10),
@@ -1074,7 +1077,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         FPCR(0b11, 0b011, 0b0100, 0b0100, 0b000),
         FPSR(0b11, 0b011, 0b0100, 0b0100, 0b001),
         /* Counter-timer Virtual Count register */
-        CNTVCT_EL0(0b11, 0b011, 0b110, 0b0000, 0b010);
+        CNTVCT_EL0(0b11, 0b011, 0b1110, 0b0000, 0b010);
 
         SystemRegister(int op0, int op1, int crn, int crm, int op2) {
             this.op0 = op0;
@@ -1270,19 +1273,10 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     public AArch64Assembler(TargetDescription target) {
         super(target, ((AArch64) target.arch).getFeatures().clone());
-        this.flags = ((AArch64) target.arch).getFlags();
-    }
-
-    public final EnumSet<Flag> getFlags() {
-        return flags;
     }
 
     public boolean supports(CPUFeature feature) {
         return getFeatures().contains(feature);
-    }
-
-    public boolean isFlagSet(Flag flag) {
-        return getFlags().contains(flag);
     }
 
     /* Conditional Branch (5.2.1) */
@@ -1816,7 +1810,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64 : destSize;
         assert verifyRegistersZ(rt);
 
-        loadStoreInstruction(STR, rt, address, false, getLog2TransferSize(destSize));
+        loadStoreInstruction(Instruction.STR, rt, address, false, getLog2TransferSize(destSize));
     }
 
     private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize) {
@@ -2464,6 +2458,21 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
+     * C6.2.30 Bitfield insert.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param src general purpose register. May not be null, stackpointer or zero-register.
+     * @param lsb start index of target register to override with bits from src register.
+     * @param width number of bits to copy from src register.
+     */
+    public void bfi(int size, Register dst, Register src, int lsb, int width) {
+        assert verifySizeAndRegistersRR(size, dst, src);
+
+        bfm(size, dst, src, ((size - lsb) & (size - 1)), (width - 1));
+    }
+
+    /**
      * C6.2.337 Unsigned bitfield move.
      *
      * @param size register size. Has to be 32 or 64.
@@ -3032,6 +3041,18 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         }
     }
 
+    /**
+     * C6.2.223 Reverse bytes in 16-bit halfwords.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src source register. May not be null or the stackpointer.
+     */
+    public void rev16(int size, Register dst, Register src) {
+        assert verifySizeAndRegistersRR(size, dst, src);
+        dataProcessing1SourceOp(REV16, dst, src, generalFromSize(size));
+    }
+
     /* Conditional Data Processing (5.5.6) */
 
     /**
@@ -3281,7 +3302,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
-        loadStoreInstruction(STR, rt, address, true, getLog2TransferSize(size));
+        loadStoreInstruction(Instruction.STR, rt, address, true, getLog2TransferSize(size));
     }
 
     /**
@@ -3523,6 +3544,20 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         fcvtCpuFpuInstruction(FCVTZS, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
     }
 
+    /**
+     * Floating-point Convert to Unsigned integer, rounding toward Zero.
+     *
+     * @param dstSize size of integer register. 32 or 64.
+     * @param srcSize size of floating point register. 32 or 64.
+     * @param dst general purpose register. May not be null, the zero-register or the stackpointer.
+     * @param src floating point register. May not be null.
+     */
+    public void fcvtzu(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersRF(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(FCVTZU, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
+    }
+
     /* Convert from Integer (5.7.4.2) */
     /**
      * C7.2.236 Signed integer Convert to Floating-point (scalar).
@@ -3536,6 +3571,20 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert verifySizesAndRegistersFZ(dstSize, srcSize, dst, src);
 
         fcvtCpuFpuInstruction(SCVTF, dst, src, floatFromSize(dstSize), generalFromSize(srcSize));
+    }
+
+    /**
+     * Unsigned integer Convert to Floating-point (scalar).
+     *
+     * @param dstSize size of floating point register. 32 or 64.
+     * @param srcSize size of integer register. 32 or 64.
+     * @param dst floating point register. May not be null.
+     * @param src general purpose register. May not be null or the stackpointer.
+     */
+    public void ucvtf(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersFZ(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(UCVTF, dst, src, floatFromSize(dstSize), generalFromSize(srcSize));
     }
 
     private void fcvtCpuFpuInstruction(Instruction instr, Register dst, Register src, InstructionType type1, InstructionType type2) {
@@ -3988,6 +4037,15 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
+     * C6.2.75 Data Cache operation.
+     */
+    public void dc(DataCacheOperationType type, Register src) {
+        assert verifyRegistersR(src);
+
+        emitInt(DC.encoding | type.encoding() | rt(src));
+    }
+
+    /**
      * C6.2.80 Data Memory Barrier.
      *
      * @param barrierKind barrier that is issued. May not be null.
@@ -4035,12 +4093,12 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.75 Data Cache operation.
+     * C6.2.230 Speculation barrier.
      */
-    public void dc(DataCacheOperationType type, Register src) {
-        assert verifyRegistersR(src);
-
-        emitInt(DC.encoding | type.encoding() | rt(src));
+    public void sb() {
+        if (supports(CPUFeature.SB)) {
+            emitInt(SB.encoding | BarrierOp);
+        }
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {

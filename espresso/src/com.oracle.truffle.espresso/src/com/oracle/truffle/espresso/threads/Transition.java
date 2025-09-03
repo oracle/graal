@@ -20,72 +20,173 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.threads;
 
+import static com.oracle.truffle.espresso.threads.Transition.NoTransition.NO_TRANSITION;
+
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
- * Represents thread state transition in Espresso. Instances of this class are intended to be used
- * in a try-with-resources block.
+ * Represents thread state transitions in Espresso.
+ * <p>
+ * Use in try-finally blocks as follows:
+ *
+ * <pre>
+ * {@code
+ * Transition transition = Transition.transition(state, node);
+ * try {
+ *     // ...
+ * } finally {
+ *     transition.restore(node);
+ * }
+ * }
+ * </pre>
+ * <p>
+ * Prefer using the methods that takes a node as input when available.
+ * <p>
+ * Transitions and restores will eagerly
+ * {@link EspressoThreadLocalState#blockContinuationSuspension() block} and
+ * {@link EspressoThreadLocalState#unblockContinuationSuspension() unblock} continuation suspension
+ * respectively.
+ *
+ * @see #transition(ThreadState, EspressoNode)
+ * @see #restore(EspressoNode)
  */
-public interface Transition extends AutoCloseable {
-    /**
-     * Implements the transition of a thread from runnable to other {@link State states}.
-     * <p>
-     * Note that this class does not handle transition from native code to guest world. Use
-     * {@link #fromNative(EspressoContext)} instead.
-     */
-    static Transition transition(EspressoContext context, State state) {
-        return new ThreadStateTransitionImpl(context, state);
-    }
+public abstract class Transition {
+    private static final EspressoNode NO_LOCATION = new EspressoNode() {
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    };
 
     /**
-     * Implements the transition of a thread from native to guest code. The returned object is
-     * intended to be used in a try-with-resources block.
+     * Implements transition of a thread state (ie: Runnable, Waiting, etc...). Use this method when
+     * a precise {@link EspressoNode node} is available.
+     *
+     * @see ThreadState
      */
-    static Transition fromNative(EspressoContext context) {
-        return new NativeToGuestTransition(context);
+    public static Transition transition(ThreadState state, EspressoNode location) {
+        return transition(EspressoContext.get(location), EspressoLanguage.get(location), state, location);
     }
 
-    @Override
-    void close();
-
-}
-
-final class NativeToGuestTransition implements Transition {
-    private final ThreadsAccess access;
-    private final int old;
-    private final StaticObject thread;
-
-    NativeToGuestTransition(EspressoContext context) {
-        this.access = context.getThreadAccess();
-        this.thread = context.getCurrentPlatformThread();
-        this.old = access.getState(thread);
-        assert (old & State.IN_NATIVE.value) != 0;
-        access.setState(thread, State.RUNNABLE.value);
+    /**
+     * Restores the previous state of the thread on which this transition was performed. Use this
+     * method when a precise {@link EspressoNode node} is available.
+     */
+    public final void restore(EspressoNode location) {
+        restore(EspressoContext.get(location), EspressoLanguage.get(location), location);
     }
 
-    @Override
-    public void close() {
-        access.restoreState(thread, old);
-    }
-}
-
-final class ThreadStateTransitionImpl implements Transition {
-    private final ThreadsAccess access;
-    private final int old;
-    private final StaticObject thread;
-
-    ThreadStateTransitionImpl(EspressoContext context, State state) {
-        this.access = context.getThreadAccess();
-        this.thread = context.getCurrentPlatformThread();
-        this.old = access.fromRunnable(thread, state);
+    /**
+     * Implements transition of a thread state (ie: Runnable, Waiting, etc...). Use this method when
+     * no node is available.
+     *
+     * @see ThreadState
+     */
+    public static Transition transition(ThreadState state, ContextAccess access) {
+        return transition(access.getContext(), access.getLanguage(), state, NO_LOCATION);
     }
 
-    @Override
-    public void close() {
-        access.restoreState(thread, old);
+    /**
+     * Implements transition of a thread state (ie: Runnable, Waiting, etc...). Use this method when
+     * no node is available.
+     *
+     * @see ThreadState
+     */
+    public static Transition transition(ThreadState state, EspressoContext ctx) {
+        return transition(ctx, ctx.getLanguage(), state, NO_LOCATION);
+    }
+
+    /**
+     * Implements transition of a thread state (ie: Runnable, Waiting, etc...). Use this method when
+     * neither a node nor a context is easily obtainable.
+     *
+     * @see ThreadState
+     */
+    public static Transition transition(ThreadState state) {
+        return transition(state, NO_LOCATION);
+    }
+
+    /**
+     * Restores the previous state of the thread on which this transition was performed. Use this
+     * method when no node is available.
+     */
+    public final void restore(ContextAccess access) {
+        restore(access.getContext(), access.getLanguage(), NO_LOCATION);
+    }
+
+    /**
+     * Restores the previous state of the thread on which this transition was performed. Use this
+     * method when no node is available.
+     */
+    public final void restore(EspressoContext ctx) {
+        restore(ctx, ctx.getLanguage(), NO_LOCATION);
+    }
+
+    /**
+     * Restores the previous state of the thread on which this transition was performed. Use this
+     * method when neither a node nor a context is easily obtainable.
+     */
+    public final void restore() {
+        restore(NO_LOCATION);
+    }
+
+    // Internals
+
+    private static Transition transition(EspressoContext context, EspressoLanguage language, ThreadState state, EspressoNode location) {
+        language.getThreadLocalState().blockContinuationSuspension();
+        StaticObject currentThread = context.getThreadAccess().readyForTransitions();
+        if (currentThread == null) {
+            return NO_TRANSITION;
+        }
+        int oldState = context.getThreadAccess().getState(currentThread);
+        int toState = state.from(oldState);
+        if (oldState == toState) {
+            return NO_TRANSITION;
+        }
+        return new TransitionImpl(oldState, currentThread, toState).perform(context, location);
+    }
+
+    private void restore(EspressoContext context, EspressoLanguage language, EspressoNode location) {
+        language.getThreadLocalState().unblockContinuationSuspension();
+        doRestore(context, location);
+    }
+
+    abstract void doRestore(EspressoContext context, EspressoNode location);
+
+    private static final class TransitionImpl extends Transition {
+        private final int outerState;
+        private final int innerState;
+        private final StaticObject thread;
+
+        TransitionImpl(int old, StaticObject thread, int to) {
+            this.thread = thread;
+            this.outerState = old;
+            this.innerState = to;
+        }
+
+        Transition perform(EspressoContext context, EspressoNode location) {
+            context.getThreadAccess().transition(thread, outerState, innerState, location);
+            return this;
+        }
+
+        @Override
+        void doRestore(EspressoContext context, EspressoNode location) {
+            context.getThreadAccess().restoreState(thread, outerState, innerState, location);
+        }
+    }
+
+    static final class NoTransition extends Transition {
+        static final Transition NO_TRANSITION = new NoTransition();
+
+        @Override
+        void doRestore(EspressoContext context, EspressoNode location) {
+        }
     }
 }

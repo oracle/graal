@@ -40,7 +40,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class AnnotationMetadata {
 
     @SuppressWarnings("serial")
-    static final class AnnotationExtractionError extends Error {
+    public static final class AnnotationExtractionError extends Error {
         AnnotationExtractionError(Object targetElement, Throwable cause) {
             super("Failed to process '%s': %s".formatted(targetElement, cause), cause);
         }

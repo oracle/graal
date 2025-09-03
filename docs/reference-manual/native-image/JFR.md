@@ -9,14 +9,14 @@ redirect_from: /reference-manual/native-image/JFR/
 # JDK Flight Recorder (JFR) with Native Image
 
 JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM.
-GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
+GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
 ## Include JFR Support at Build Time and Record Events at Runtime
 
 JFR support is disabled by default and must be explicitly enabled at build time.
 
-> Note: JFR event recording is not yet available in GraalVM JDK on Windows.
- 
+> Note: JFR event recording is not yet available with Native Image on Windows.
+
 To build a native executable with JFR, use the `--enable-monitoring=jfr` option:
 ```shell
 native-image --enable-monitoring=jfr JavaApplication
@@ -55,11 +55,11 @@ The following key-value pairs are supported:
 
 ## Configure JFR System Logging
 
-You can configure the logging for the JFR system with a separate flag `-XX:FlightRecorderLogging`. 
-The usage is: `-XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]`. 
+You can configure the logging for the JFR system with a separate flag `-XX:FlightRecorderLogging`.
+The usage is: `-XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]`.
 For example:
 ```shell
--XX:FlightRecorderLogging=jfr,system=debug
+-XX:FlightRecorderLogging=jfr+system=debug
 -XX:FlightRecorderLogging=all=trace
 -XX:FlightRecorderLogging=jfr*=error
 ```
@@ -87,14 +87,14 @@ This section outlines the JFR features that are available in Native Image.
 
 ### Method Profiling and Stack Traces
 
-Method profiling in JFR supports two types of sampling: safepoint and asynchronous sampling. 
-The asynchronous sampler is enabled by default, while the safepoint sampler is used only on demand. 
-Asynchronous sampling offers the advantage of avoiding safepoint bias, which happens if a profiler does not sample all points in the application with equal probability. 
+Method profiling in JFR supports two types of sampling: safepoint and asynchronous sampling.
+The asynchronous sampler is enabled by default, while the safepoint sampler is used only on demand.
+Asynchronous sampling offers the advantage of avoiding safepoint bias, which happens if a profiler does not sample all points in the application with equal probability.
 In this scenario, the sampler can only perform sampling at a safepoint, thereby introducing bias into the profiles.
 
-Both samplers periodically produce the event `jdk.ExecutionSample` at specified frequencies. 
-These samples can be viewed in applications such as JDK Mission Control or VisualVM. 
-In addition, other JFR events that support stacktraces on HotSpot also support stacktraces in Native Image. 
+Both samplers periodically produce the event `jdk.ExecutionSample` at specified frequencies.
+These samples can be viewed in applications such as JDK Mission Control or VisualVM.
+In addition, other JFR events that support stacktraces on HotSpot also support stacktraces in Native Image.
 This means you can do interesting things such as viewing flamegraphs of `jdk.ObjectAllocationInNewTLAB` to diagnose where object allocations are frequently happening.
 
 ### JFR Event Streaming
@@ -103,7 +103,7 @@ This means you can do interesting things such as viewing flamegraphs of `jdk.Obj
 Event streaming enables you to register callbacks for specific events at the application level.
 This introduces more flexibility and control over how recordings are managed.
 For example, you may dynamically increase the duration threshold of an event if it is found in the stream beyond a certain number times.
-Event streaming also enables the application to get continuous periodic JFR updates that are useful for monitoring purposes. 
+Event streaming also enables the application to get continuous periodic JFR updates that are useful for monitoring purposes.
 
 Currently, stacktraces are not yet available on streamed events.
 This means you cannot access the stacktrace of an event inside its callback method.
@@ -115,7 +115,7 @@ You can interact with Native Image JFR from out of a process via a remote JMX co
 This can be done using applications such as JDK Mission Control or VisualVM.
 Over JMX you can start, stop, and dump JFR recordings using the `FlightRecorderMXBean` API as an interface.
 
-> Note: Remote JMX connection support needs to be enabled separately at build time and is experimental. 
+> Note: Remote JMX connection support needs to be enabled separately at build time and is experimental.
 
 ### FlightRecorderOptions
 
@@ -127,6 +127,12 @@ This is primarily for advanced users, and most people should be fine with the de
 Leak profiling implemented using the `jdk.OldObjectSample` event is partially available.
 Specifically, old object tracking is possible, but the path to the GC root information is unavailable.
 
+### Using JFR with JCMD
+
+JFR can be controlled using the Java Diagnostic Command utility (`jcmd`).
+To enable this functionality, `jcmd` support must be configured at build time.
+The following JFR commands are available with `jcmd`: `JFR.start`, `JFR.stop`, `JFR.check`, and `JFR.dump`.
+
 ### Built-In Events
 
 Many of the VM-level built-in events are available in Native Image.
@@ -135,59 +141,65 @@ Such events include file I/O and exception built-in events.
 
 The following table lists JFR Events that can be collected with Native Image.
 Some of the events are available with [Serial GC](MemoryManagement.md) only, the default garbage collector in Native Image.
- 
-| Event Name                          | 
-|-------------------------------------|
-| `jdk.ActiveRecording`               |
-| `jdk.ActiveSetting`                 |
-| `jdk.AllocationRequiringGC` <a href="#footnote-1">1)</a> |
-| `jdk.ClassLoadingStatistics`        |
-| `jdk.ContainerCPUThrottling`        |
-| `jdk.ContainerCPUUsage`             |
-| `jdk.ContainerConfiguration`        |
-| `jdk.ContainerIOUsage`              |
-| `jdk.ContainerMemoryUsage`          |
-| `jdk.DataLoss`                      |
-| `jdk.ExecutionSample`               |
-| `jdk.ExecuteVMOperation`            |
-| `jdk.GarbageCollection` <a href="#footnote-1">1)</a>         |
-| `jdk.GCHeapSummary` <a href="#footnote-1">1)</a>             |
-| `jdk.GCPhasePause` <a href="#footnote-1">1)</a>              |
-| `jdk.GCPhasePauseLevel1` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel2` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel3` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel4` <a href="#footnote-1">1)</a>        |
-| `jdk.InitialEnvironmentVariable`    |
-| `jdk.InitialSystemProperty`         |
-| `jdk.JavaMonitorEnter`              |
-| `jdk.JavaMonitorInflate`            |
-| `jdk.JavaMonitorWait`               |
-| `jdk.JavaThreadStatistics`          |
-| `jdk.JVMInformation`                |
-| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>    |
-| `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a> |
-| `jdk.OldObjectSample` <a href="#footnote-1">2)</a>           |
-| `jdk.OSInformation`                 |
-| `jdk.PhysicalMemory`                |
-| `jdk.SafepointBegin`                |
-| `jdk.SafepointEnd`                  |
-| `jdk.SocketRead`                    |
-| `jdk.SocketWrite`                   |
-| `jdk.SystemGC`  <a href="#footnote-1">1)</a>                 |
-| `jdk.ThreadAllocationStatistics`    |
-| `jdk.ThreadCPULoad`                 |
-| `jdk.ThreadEnd`                     |
-| `jdk.ThreadPark`                    |
-| `jdk.ThreadSleep`                   |
-| `jdk.ThreadStart`                   |
-| `jdk.VirtualThreadEnd`              |
-| `jdk.VirtualThreadPinned`           |
-| `jdk.VirtualThreadStart`            |
+
+| Event Name                                                    |
+|---------------------------------------------------------------|
+| `jdk.ActiveRecording`                                         |
+| `jdk.ActiveSetting`                                           |
+| `jdk.AllocationRequiringGC` <a href="#footnote-1">1)</a>      |
+| `jdk.ClassLoadingStatistics`                                  |
+| `jdk.ContainerCPUThrottling`                                  |
+| `jdk.ContainerCPUUsage`                                       |
+| `jdk.ContainerConfiguration`                                  |
+| `jdk.ContainerIOUsage`                                        |
+| `jdk.ContainerMemoryUsage`                                    |
+| `jdk.DataLoss`                                                |
+| `jdk.ExecutionSample`                                         |
+| `jdk.ExecuteVMOperation`                                      |
+| `jdk.GarbageCollection` <a href="#footnote-1">1)</a>          |
+| `jdk.GCHeapSummary` <a href="#footnote-1">1)</a>              |
+| `jdk.GCPhasePause` <a href="#footnote-1">1)</a>               |
+| `jdk.GCPhasePauseLevel1` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel2` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel3` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel4` <a href="#footnote-1">1)</a>         |
+| `jdk.InitialEnvironmentVariable`                              |
+| `jdk.InitialSystemProperty`                                   |
+| `jdk.JavaMonitorEnter`                                        |
+| `jdk.JavaMonitorInflate`                                      |
+| `jdk.JavaMonitorWait`                                         |
+| `jdk.JavaThreadStatistics`                                    |
+| `jdk.JVMInformation`                                          |
+| `jdk.NativeMemoryUsage` <a href="#footnote-3">3)</a>          |
+| `jdk.NativeMemoryUsageTotal` <a href="#footnote-3">3)</a>     |
+| `jdk.NativeMemoryUsagePeak` <a href="#footnote-3">3)</a>      |
+| `jdk.NativeMemoryUsageTotalPeak` <a href="#footnote-3">3)</a> |
+| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>     |
+| `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a>  |
+| `jdk.OldObjectSample` <a href="#footnote-1">2)</a>            |
+| `jdk.OSInformation`                                           |
+| `jdk.PhysicalMemory`                                          |
+| `jdk.SafepointBegin`                                          |
+| `jdk.SafepointEnd`                                            |
+| `jdk.SocketRead`                                              |
+| `jdk.SocketWrite`                                             |
+| `jdk.SystemGC`  <a href="#footnote-1">1)</a>                  |
+| `jdk.ThreadAllocationStatistics`                              |
+| `jdk.ThreadCPULoad`                                           |
+| `jdk.ThreadEnd`                                               |
+| `jdk.ThreadPark`                                              |
+| `jdk.ThreadSleep`                                             |
+| `jdk.ThreadStart`                                             |
+| `jdk.VirtualThreadEnd`                                        |
+| `jdk.VirtualThreadPinned`                                     |
+| `jdk.VirtualThreadStart`                                      |
 
 <p id="footnote-1" style="margin-bottom: 0;"><i>1) Available if Serial GC is used.</i></p>
 <p id="footnote-2" style="margin-bottom: 0;"><i>2) Partially available if Serial GC is used.</i></p>
+<p id="footnote-3" style="margin-bottom: 0;"><i>3) Available if Native Memory Tracking is used.</i></p>
 
 ### Further Reading
 
 - [Build and Run Native Executables with JFR](guides/build-and-run-native-executable-with-jfr.md)
 - [Use remote JMX with Native Image](guides/build-and-run-native-executable-with-remote-jmx.md)
+- [Java Diagnostic Command (jcmd) with Native Image](JCmd.md)

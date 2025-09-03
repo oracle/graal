@@ -54,7 +54,7 @@ public class AllocationRequiringGCEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.AllocationRequiringGC);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.AllocationRequiringGC, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.AllocationRequiringGC));
             JfrNativeEventWriter.putLong(data, gcId.rawValue());
             JfrNativeEventWriter.putLong(data, size.rawValue());
             JfrNativeEventWriter.endSmallEvent(data);

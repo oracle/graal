@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,7 @@
 package jdk.graal.compiler.truffle.test.strings;
 
 import java.lang.ref.Reference;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -50,7 +48,6 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     };
 
     protected static final Class<?> T_STRING_OPS_CLASS;
-    private static final Constructor<?> T_STRING_NATIVE_POINTER_CONSTRUCTOR;
     private static final long byteBufferAddressOffset;
 
     static {
@@ -63,11 +60,21 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         byteBufferAddressOffset = UNSAFE.objectFieldOffset(addressField);
         try {
             T_STRING_OPS_CLASS = Class.forName("com.oracle.truffle.api.strings.TStringOps");
-            T_STRING_NATIVE_POINTER_CONSTRUCTOR = Class.forName("com.oracle.truffle.api.strings.AbstractTruffleString$NativePointer").getDeclaredConstructor(Object.class, long.class);
-            T_STRING_NATIVE_POINTER_CONSTRUCTOR.setAccessible(true);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
+        } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected static long byteArrayBaseOffset() {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
+
+    protected static long charArrayBaseOffset() {
+        return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+    }
+
+    protected static long intArrayBaseOffset() {
+        return Unsafe.ARRAY_INT_BASE_OFFSET;
     }
 
     private static long getBufferAddress(ByteBuffer buffer) {
@@ -91,103 +98,132 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         testWithNativeExcept(method, receiver, 0, args);
     }
 
+    /**
+     * Runs the given test once as-is and once replacing all argument pairs of
+     * {@code (byte[], long)} with {@code (null, native-pointer)}.
+     * <p>
+     * In most TruffleString operations, {@code (byte[] array, long offset)} stands for a string's
+     * managed or native contents, where in the managed case, the byte array is a regular Java
+     * array, and the offset is a byte offset into the byte array. In the native case, the byte
+     * array is {@code null}, and the offset a pointer into native (off-heap) memory.
+     * <p>
+     * This test helper covers the native case for all {@code (byte[], long)} pairs, except for
+     * parameters that have been marked as excluded by setting their corresponding bit in the
+     * {@code ignore}-parameter: If e.g. {@code ignore == (1 << 3)}, the fourth parameter will not
+     * be replaced by a native pointer.
+     */
     protected void testWithNativeExcept(ResolvedJavaMethod method, Object receiver, long ignore, Object... args) {
         test(method, receiver, args);
         Object[] argsWithNative = Arrays.copyOf(args, args.length);
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+        int nByteBuffers = 0;
         try {
             ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
             Assert.assertTrue(parameters.length <= 64);
             for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].getType().getName().equals("Ljava/lang/Object;") && (ignore & (1L << i)) == 0) {
-                    Assert.assertTrue(argsWithNative[i] instanceof byte[]);
+                if (parameters[i].getType().getName().equals("[B") && (ignore & (1L << i)) == 0 && i + 1 < parameters.length && parameters[i + 1].getType().getName().equals("J")) {
+                    Assert.assertTrue(argsWithNative[i].toString(), argsWithNative[i] instanceof byte[]);
                     byte[] array = (byte[]) argsWithNative[i];
-                    ByteBuffer buffer = ByteBuffer.allocateDirect(array.length);
-                    long bufferAddress = getBufferAddress(buffer);
+                    byteBuffers[nByteBuffers] = ByteBuffer.allocateDirect(array.length);
+                    long bufferAddress = getBufferAddress(byteBuffers[nByteBuffers++]);
                     UNSAFE.copyMemory(array, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, bufferAddress, array.length);
-                    argsWithNative[i] = T_STRING_NATIVE_POINTER_CONSTRUCTOR.newInstance(buffer, bufferAddress);
+                    long offset = (long) argsWithNative[i + 1];
+                    Assert.assertTrue(offset >= byteArrayBaseOffset());
+                    argsWithNative[i] = null;
+                    argsWithNative[i + 1] = (offset - byteArrayBaseOffset()) + bufferAddress;
                 }
             }
             test(method, receiver, argsWithNative);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
         } finally {
-            Reference.reachabilityFence(argsWithNative);
+            Reference.reachabilityFence(byteBuffers);
         }
     }
 
     protected ResolvedJavaMethod getArrayCopyWithStride() {
         return getTStringOpsMethod("arraycopyWithStride",
-                        Object.class, int.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class, int.class);
+                        byte[].class, long.class, int.class, int.class,
+                        byte[].class, long.class, int.class, int.class, int.class);
     }
 
     protected ResolvedJavaMethod getArrayCopyWithStrideCB() {
         return getTStringOpsMethod("arraycopyWithStrideCB",
-                        char[].class, int.class,
-                        byte[].class, int.class, int.class, int.class);
+                        char[].class, long.class,
+                        byte[].class, long.class, int.class, int.class);
     }
 
     protected ResolvedJavaMethod getArrayCopyWithStrideIB() {
         return getTStringOpsMethod("arraycopyWithStrideIB",
-                        int[].class, int.class,
-                        byte[].class, int.class, int.class, int.class);
+                        int[].class, long.class,
+                        byte[].class, long.class, int.class, int.class);
+    }
+
+    protected ResolvedJavaMethod getByteSwapS1() {
+        return getTStringOpsMethod("byteSwapS1",
+                        byte[].class, long.class,
+                        byte[].class, long.class, int.class);
+    }
+
+    protected ResolvedJavaMethod getByteSwapS2() {
+        return getTStringOpsMethod("byteSwapS2",
+                        byte[].class, long.class,
+                        byte[].class, long.class, int.class);
     }
 
     protected ResolvedJavaMethod getMemcmpWithStrideIntl() {
         return getTStringOpsMethod("memcmpWithStrideIntl",
-                        Object.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class);
+                        byte[].class, long.class, int.class,
+                        byte[].class, long.class, int.class, int.class);
     }
 
     protected ResolvedJavaMethod getRegionEqualsWithOrMaskWithStrideIntl() {
         return getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
-                        Object.class, int.class, int.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
+                        byte[].class, long.class, int.class, int.class, int.class,
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class, int.class);
     }
 
     protected ResolvedJavaMethod getIndexOfAnyByteIntl() {
         return getTStringOpsMethod("indexOfAnyByteIntl",
-                        Object.class, int.class, int.class, int.class, byte[].class);
+                        byte[].class, long.class, int.class, int.class, byte[].class);
     }
 
     protected ResolvedJavaMethod getIndexOfAnyCharIntl() {
         return getTStringOpsMethod("indexOfAnyCharIntl",
-                        Object.class, int.class, int.class, int.class, int.class, char[].class);
+                        byte[].class, long.class, int.class, int.class, int.class, char[].class);
     }
 
     protected ResolvedJavaMethod getIndexOfAnyIntIntl() {
         return getTStringOpsMethod("indexOfAnyIntIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int[].class);
+                        byte[].class, long.class, int.class, int.class, int.class, int[].class);
     }
 
     protected ResolvedJavaMethod getIndexOfAnyIntRangeIntl() {
         return getTStringOpsMethod("indexOfAnyIntRangeIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int[].class);
+                        byte[].class, long.class, int.class, int.class, int.class, int[].class);
     }
 
     protected ResolvedJavaMethod getIndexOfTableIntl() {
         return getTStringOpsMethod("indexOfTableIntl",
-                        Object.class, int.class, int.class, int.class, int.class, byte[].class);
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
     }
 
     protected ResolvedJavaMethod getIndexOf2ConsecutiveWithStrideIntl() {
         return getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int.class, int.class);
+                        byte[].class, long.class, int.class, int.class, int.class, int.class, int.class);
     }
 
     protected InstalledCode cacheInstalledCodeConstantStride(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
-                    InstalledCode[] cache, int strideA, int strideB) {
-        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache, strideA, strideB, 0);
+                    InstalledCode[] cache1, int strideA, int strideB) {
+        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache1, strideA, strideB, 0);
     }
 
     protected InstalledCode cacheInstalledCodeConstantStrideLength(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
-                    InstalledCode[] cache, int strideA, int strideB, int iLength) {
+                    InstalledCode[] cache1, int strideA, int strideB, int iLength) {
         Assert.assertEquals(expectedMethod, installedCodeOwner);
         int index = (iLength * 9) + (strideA * 3) + strideB;
-        InstalledCode installedCode = cache[index];
+        InstalledCode installedCode = cache1[index];
         while (installedCode == null || !installedCode.isValid()) {
             installedCode = super.getCode(installedCodeOwner, graph, true, false, options);
-            cache[index] = installedCode;
+            cache1[index] = installedCode;
         }
         return installedCode;
     }

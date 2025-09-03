@@ -40,7 +40,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * Inspired by the .NET CoreCLR GC, the {@link BrickTable} speeds up lookups of new object locations
  * after compaction by acting as a lookup table for {@link ObjectMoveInfo} structures. Each entry
- * stores a pointer to the start of the first such structure for the fraction of the chunk that it
+ * stores the offset of the start of the first such structure for the fraction of the chunk that it
  * covers. It borrows the memory of a chunk's {@link CardTable}.
  */
 public final class BrickTable {

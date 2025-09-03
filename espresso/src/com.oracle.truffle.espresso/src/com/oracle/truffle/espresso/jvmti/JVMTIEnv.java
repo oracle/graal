@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.jvmti;
 
 import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;

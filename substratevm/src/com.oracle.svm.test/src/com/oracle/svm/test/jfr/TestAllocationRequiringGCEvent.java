@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 
@@ -53,7 +53,10 @@ public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertTrue(events.size() > 0);
+        assertFalse(events.isEmpty());
+        for (RecordedEvent event : events) {
+            checkTopStackFrame(event, "maybeCollectOnAllocation");
+        }
     }
 
     @NeverInline("Prevent escape analysis.")

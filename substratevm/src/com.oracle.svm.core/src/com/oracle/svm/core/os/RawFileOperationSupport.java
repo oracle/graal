@@ -110,6 +110,9 @@ public interface RawFileOperationSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     RawFileDescriptor create(CCharPointer path, FileCreationMode creationMode, FileAccessMode accessMode);
 
+    /** Returns the path to the platform-specific temporary directory. */
+    String getTempDirectory();
+
     /**
      * Opens a file with the specified {@link FileAccessMode access mode}.
      *

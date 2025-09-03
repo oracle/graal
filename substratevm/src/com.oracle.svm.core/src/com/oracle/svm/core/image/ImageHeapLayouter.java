@@ -40,12 +40,14 @@ public interface ImageHeapLayouter {
     /**
      * Assign an object to the most suitable partition.
      */
-    void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable);
+    void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable, boolean patched);
 
     /**
-     * Places all heap partitions and assigns objects their final offsets.
+     * Places all heap partitions and assigns objects their final offsets. The layout operation can
+     * be cancelled through the {@link ImageHeapLayouterCallback}. If the layout is cancelled, an
+     * instance of {@link ImageHeapLayoutCancelledException} is thrown.
      */
-    ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
+    ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback);
 
     /** Hook to run tasks after heap layout is finished. */
     @SuppressWarnings("unused")
@@ -63,4 +65,39 @@ public interface ImageHeapLayouter {
      *            same offset in the given buffer, the same offset must be specified to this method.
      */
     void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer);
+
+    /**
+     * Facilitates {@link ImageHeapLayouter#layout} cancellation through an
+     * {@link ImageHeapLayouterCallback} instance.
+     */
+    class ImageHeapLayouterControl {
+        protected final ImageHeapLayouterCallback callback;
+
+        public ImageHeapLayouterControl(ImageHeapLayouterCallback callback) {
+            this.callback = callback;
+        }
+
+        public void poll() throws ImageHeapLayoutCancelledException {
+            if (callback.shouldCancel()) {
+                throw new ImageHeapLayoutCancelledException();
+            }
+        }
+    }
+
+    interface ImageHeapLayouterCallback {
+
+        ImageHeapLayouterCallback NONE = () -> false;
+
+        /**
+         * Called periodically to determine whether the operation should be canceled.
+         */
+        boolean shouldCancel();
+    }
+
+    class ImageHeapLayoutCancelledException extends RuntimeException {
+        private static final long serialVersionUID = 1017980175582546348L;
+
+        public ImageHeapLayoutCancelledException() {
+        }
+    }
 }

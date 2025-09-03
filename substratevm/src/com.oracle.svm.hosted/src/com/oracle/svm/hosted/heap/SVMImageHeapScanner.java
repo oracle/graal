@@ -40,6 +40,8 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -72,13 +74,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         economicMapImplTotalEntriesField = ReflectionUtil.lookupField(economicMapImpl, "totalEntries");
         economicMapImplDeletedEntriesField = ReflectionUtil.lookupField(economicMapImpl, "deletedEntries");
-        ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
-    }
-
-    public static ImageHeapScanner instance() {
-        return ImageSingletons.lookup(ImageHeapScanner.class);
     }
 
     @Override
@@ -104,7 +101,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     public JavaConstant readStaticFieldValue(AnalysisField field) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readValue(field, null, true);
+        return aConstantReflection.readValue(field, null, true, true);
     }
 
     @Override
@@ -130,6 +127,19 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             reflectionSupport.registerHeapReflectionExecutable(executable, reason);
         } else if (object instanceof DynamicHub hub) {
             reflectionSupport.registerHeapDynamicHub(hub, reason);
+        }
+    }
+
+    @Override
+    protected void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
+        if (BuildPhaseProvider.isAnalysisStarted()) {
+            super.maybeRunInExecutor(task);
+        } else {
+            /*
+             * Before the analysis is started post all scanning tasks to the executor. They will be
+             * executed after the analysis starts.
+             */
+            bb.postTask(task);
         }
     }
 }

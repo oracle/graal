@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
 import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -74,6 +73,11 @@ public class CompositeValueReplacementTest1 {
         @Override
         protected void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
             proc.visitValue(inst, value, mode, flags);
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
         }
     }
 
@@ -146,17 +150,17 @@ public class CompositeValueReplacementTest1 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput((instruction, value, mode, flags) -> {
+        op1.forEachInput((_, value, _, _) -> {
             assertEquals(dummyValue1, value);
             return dummyValue2;
         });
 
-        op2.forEachInput((instruction, value, mode, flags) -> {
+        op2.forEachInput((_, value, _, _) -> {
             assertEquals(dummyValue1, value);
             return dummyValue3;
         });
 
-        op1.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue2, value));
-        op2.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue3, value));
+        op1.visitEachInput((_, value, _, _) -> assertEquals(dummyValue2, value));
+        op2.visitEachInput((_, value, _, _) -> assertEquals(dummyValue3, value));
     }
 }

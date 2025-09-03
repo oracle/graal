@@ -28,11 +28,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class CachedLinkedKlassProvider extends AbstractCachedKlassProvider implements LinkedKlassProvider {
@@ -45,21 +45,21 @@ public final class CachedLinkedKlassProvider extends AbstractCachedKlassProvider
     }
 
     @Override
-    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
+    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, EspressoLanguage language, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
                     ClassRegistry.ClassDefinitionInfo info) {
         if (env.shouldCacheClass(info, loader)) {
             LinkedKlassCacheKey key = new LinkedKlassCacheKey(parserKlass, superKlass, interfaces);
             LinkedKlass linkedKlass = linkedKlassCache.get(key);
             if (linkedKlass == null) {
                 getLogger().finer(() -> "LinkedKlass cache miss: " + parserKlass.getName());
-                linkedKlass = fallbackProvider.getLinkedKlass(env, description, loader, parserKlass, superKlass, interfaces, info);
+                linkedKlass = fallbackProvider.getLinkedKlass(env, language, loader, parserKlass, superKlass, interfaces, info);
                 linkedKlassCache.put(key, linkedKlass);
             } else {
                 getLogger().finer(() -> "LinkedKlass cache hit: " + parserKlass.getName());
             }
             return linkedKlass;
         } else {
-            return fallbackProvider.getLinkedKlass(env, description, loader, parserKlass, superKlass, interfaces, info);
+            return fallbackProvider.getLinkedKlass(env, language, loader, parserKlass, superKlass, interfaces, info);
         }
     }
 

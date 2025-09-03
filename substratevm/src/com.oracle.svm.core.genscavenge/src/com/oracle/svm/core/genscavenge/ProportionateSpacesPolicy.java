@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
@@ -107,7 +107,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
 
         // AgeTable::compute_tenuring_threshold
         YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
-        UnsignedWord total = WordFactory.zero();
+        UnsignedWord total = Word.zero();
         int i;
         for (i = 0; i < HeapParameters.getMaxSurvivorSpaces(); i++) {
             Space space = youngGen.getSurvivorFromSpaceAt(0);
@@ -146,7 +146,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         }
 
         UnsignedWord maxShrinkBytes = oldSize.subtract(minimumDesiredCapacity);
-        UnsignedWord shrinkBytes = WordFactory.zero();
+        UnsignedWord shrinkBytes = Word.zero();
         if (MAX_HEAP_FREE_RATIO < 100) {
             double maximumFreePercentage = MAX_HEAP_FREE_RATIO / 100.0;
             double minimumUsedPercentage = 1 - maximumFreePercentage;
@@ -198,7 +198,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
 
         // DefNewGeneration::compute_space_boundaries, DefNewGeneration::compute_survivor_size
         survivorSize = minSpaceSize(alignDown(desiredNewSize.unsignedDivide(SURVIVOR_RATIO)));
-        UnsignedWord desiredEdenSize = WordFactory.zero();
+        UnsignedWord desiredEdenSize = Word.zero();
         if (desiredNewSize.aboveThan(survivorSize.multiply(2))) {
             desiredEdenSize = desiredNewSize.subtract(survivorSize.multiply(2));
         }

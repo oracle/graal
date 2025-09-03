@@ -211,14 +211,23 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes) : Assertions.errorMessage("obsolete nodes should not be reachable: ", obsoleteNodes);
+
+        final NodeBitMap unnusedNodes = new NodeBitMap(graph);
+
         for (Node node : obsoleteNodes) {
             if (node.isAlive() && node.hasNoUsages()) {
                 if (node instanceof FixedWithNextNode) {
                     assert ((FixedWithNextNode) node).next() == null;
                 }
                 node.replaceAtUsages(null);
-                GraphUtil.killWithUnusedFloatingInputs(node);
+                if (GraphUtil.shouldKillUnused(node)) {
+                    unnusedNodes.mark(node);
+                }
             }
+        }
+
+        if (unnusedNodes.isNotEmpty()) {
+            GraphUtil.killAllWithUnusedFloatingInputs(unnusedNodes, false);
         }
     }
 
@@ -355,6 +364,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     @Override
     @SuppressWarnings("try")
     protected final List<BlockT> processLoop(CFGLoop<HIRBlock> loop, BlockT initialState) {
+        final StructuredGraph graph = loop.getHeader().getBeginNode().graph();
         if (initialState.isDead()) {
             ArrayList<BlockT> states = new ArrayList<>();
             for (int i = 0; i < loop.getLoopExits().size(); i++) {
@@ -425,6 +435,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCacheCopy.putAll(loopLocationKillCache);
             }
         }
+
+        boolean tooManyIterationsSeen = false;
         while (true) { // // TERMINATION ARGUMENT: bound by number of basic blocks and iterative
                        // loop traversal
             CompilationAlarm.checkProgress(cfg.graph);
@@ -538,7 +550,18 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 currentMode = EffectsClosureMode.MATERIALIZE_ALL;
                 continue;
             }
-            throw new GraalError("too many iterations at %s", loop);
+            if (!tooManyIterationsSeen) {
+                tooManyIterationsSeen = true;
+                /*
+                 * The first time we see that we did too many iterations we materialize everything
+                 * before the loop and see if that fixes our problems.
+                 */
+                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Too many loop iterations for %s trying to materialize everything before loop and redo loop nest", loop);
+                currentMode = EffectsClosureMode.MATERIALIZE_ALL;
+                continue;
+            } else {
+                throw new GraalError("too many iterations at %s", loop);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,11 +75,13 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            boundary();
+            Object result = callNode.call(frame.getArguments());
             if (CompilerDirectives.inInterpreter()) {
                 return "root:interpreter";
             }
             boundary();
-            return callNode.call(frame.getArguments());
+            return result;
         }
     }
 
@@ -180,7 +182,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     private static void boundary() {
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testDefault() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
@@ -196,10 +197,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         for (int i = 0; i < firstTierCompilationThreshold; i++) {
             multiTierTarget.call();
         }
-        Assert.assertEquals("callee:interpreter", multiTierTarget.call());
-        for (int i = 0; i < firstTierCompilationThreshold; i++) {
-            multiTierTarget.call();
-        }
         Assert.assertEquals("callee:first-tier", multiTierTarget.call());
         for (int i = 0; i < compilationThreshold; i++) {
             multiTierTarget.call();
@@ -207,7 +204,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         Assert.assertEquals("callee:inlined", multiTierTarget.call());
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testFirstTierInlining() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
@@ -230,7 +226,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         Assert.assertEquals("callee:inlined", multiTierTarget.call());
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testWhenCalleeCompiledFirst() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
@@ -264,7 +259,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         Assert.assertEquals("callee:inlined", multiTierTarget.call());
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testLoop() {
         int firstThreshold = 100;

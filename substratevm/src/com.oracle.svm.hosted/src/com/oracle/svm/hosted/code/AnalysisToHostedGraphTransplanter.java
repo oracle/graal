@@ -39,7 +39,9 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -329,14 +331,21 @@ public class AnalysisToHostedGraphTransplanter {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
 
+        } else if (obj.getClass() == SubstrateMethodOffsetConstant.class) {
+            SubstrateMethodOffsetConstant methodOffsetConstant = (SubstrateMethodOffsetConstant) obj;
+
+            MethodOffset methodOffset = methodOffsetConstant.offset();
+            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(methodOffset.getMethod(), node, replacements, hUniverse);
+            newReplacement = new SubstrateMethodOffsetConstant(new MethodOffset(replacedMethod));
+
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
             ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;
             newReplacement = new ComputedIndirectCallTargetNode.FieldLoad(hUniverse.lookup(fieldLoad.getField()));
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
             ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
             newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
-        } else if (obj.getClass() == SnippetTemplate.EagerSnippetInfo.class) {
-            SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
+        } else if (obj.getClass() == SnippetTemplate.SnippetInfo.class) {
+            SnippetTemplate.SnippetInfo info = (SnippetTemplate.SnippetInfo) obj;
             newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
         } else if (obj instanceof ImageHeapConstant) {
             newReplacement = obj;

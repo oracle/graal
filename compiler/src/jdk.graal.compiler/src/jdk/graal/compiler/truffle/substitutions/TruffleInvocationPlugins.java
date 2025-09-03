@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,21 +35,37 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
+import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInlineOnlyConditionalInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
-import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfMacroNode;
@@ -58,12 +74,18 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins.Options;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are applied for host and
@@ -71,39 +93,141 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class TruffleInvocationPlugins {
 
-    public static void register(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
+    public static void register(Architecture architecture, InvocationPlugins plugins) {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
-            registerTStringPlugins(plugins, replacements, architecture);
-            registerArrayUtilsPlugins(plugins, replacements);
+            registerTStringPlugins(plugins, architecture);
+            registerArrayUtilsPlugins(plugins);
+            registerExactMathPlugins(plugins);
         }
+        registerFramePlugins(plugins);
+        registerBytecodePlugins(plugins);
     }
 
-    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerFramePlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/impl/FrameWithoutBoxing;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.impl.FrameWithoutBoxing");
+        r.register(new OptionalInlineOnlyInvocationPlugin("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                            ValueNode isExactType) {
+                if (!clazz.isConstant() || !nonNull.isConstant() || !isExactType.isConstant()) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                if (javaType == null) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+
+                TypeReference type;
+                if (isExactType.asJavaConstant().asInt() != 0) {
+                    assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                    type = TypeReference.createExactTrusted(javaType);
+                } else {
+                    type = TypeReference.createTrusted(b.getAssumptions(), javaType);
+                }
+
+                boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
+                Stamp piStamp = StampFactory.object(type, trustedNonNull);
+
+                ConditionAnchorNode valueAnchorNode = null;
+                if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
+                    // Nothing to do.
+                } else {
+                    boolean skipAnchor = false;
+                    LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
+                                    NodeView.DEFAULT);
+                    if (compareNode instanceof LogicConstantNode) {
+                        LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
+                        if (logicConstantNode.getValue()) {
+                            skipAnchor = true;
+                        }
+                    }
+                    if (!skipAnchor) {
+                        valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
+                    }
+                }
+
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, valueAnchorNode));
+                return true;
+            }
+        });
+    }
+
+    /**
+     * Try to inject into the {@link LoadFieldNode} the property that it is a load from a trusted
+     * final field.
+     *
+     * @see ConstantFieldProvider#isTrustedFinal(CanonicalizerTool, ResolvedJavaField)
+     */
+    private static ValueNode castTrustedFinalFrameField(GraphBuilderContext b, ValueNode object) {
+        ValueNode result = object;
+        if (Options.TruffleTrustedFinalFrameFields.getValue(b.getOptions()) &&
+                        object instanceof LoadFieldNode loadField && loadField.field().isFinal()) {
+            result = b.add(loadField.withTrustInjected());
+        }
+        return result;
+    }
+
+    private static void registerBytecodePlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess");
+        r.register(new OptionalInlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode object, ValueNode clazz) {
+                if (!clazz.isConstant()) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                if (javaType == null) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+
+                TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
+                Stamp piStamp = StampFactory.object(type, true);
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, null));
+
+                return true;
+            }
+        });
+    }
+
+    private static void registerArrayUtilsPlugins(InvocationPlugins plugins) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ArrayUtils;"));
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils", replacements);
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils");
         for (Stride stride : new Stride[]{Stride.S1, Stride.S2}) {
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB1" + stride.name(), byte[].class, int.class, int.class, int.class) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfB1" + stride.name(), byte[].class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB2" + stride.name(), byte[].class, int.class, int.class, int.class, int.class) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfB2" + stride.name(), byte[].class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0, v1);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB3" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfB3" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0, v1, v2);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB4" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfB4" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
@@ -111,49 +235,49 @@ public class TruffleInvocationPlugins {
                 }
             });
         }
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC1S2", char[].class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfC1S2", char[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC2S2", char[].class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfC2S2", char[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC3S2", char[].class, int.class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfC3S2", char[].class, int.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1, v2);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC4S2", char[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOfC4S2", char[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1, v2, v3);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS1", byte[].class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS1", byte[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", byte[].class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", byte[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", char[].class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", char[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
@@ -161,21 +285,21 @@ public class TruffleInvocationPlugins {
             }
         });
 
-        r.register(new InlineOnlyInvocationPlugin("stubRegionEqualsS1", byte[].class, long.class, byte[].class, long.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubRegionEqualsS1", byte[].class, long.class, byte[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
                 return arrayUtilsRegionEquals(graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, Stride.S1, Stride.S1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubRegionEqualsS2S1", byte[].class, long.class, byte[].class, long.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubRegionEqualsS2S1", byte[].class, long.class, byte[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
                 return arrayUtilsRegionEquals(graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, Stride.S2, Stride.S1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubRegionEqualsS2", char[].class, long.class, char[].class, long.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubRegionEqualsS2", char[].class, long.class, char[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
@@ -267,34 +391,35 @@ public class TruffleInvocationPlugins {
     }
 
     @SuppressWarnings("try")
-    private static void registerTStringPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+    private static void registerTStringPlugins(InvocationPlugins plugins, Architecture architecture) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/strings/TStringOps;"));
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps", replacements);
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps");
 
         OptionalLazySymbol nodeType = new OptionalLazySymbol("com.oracle.truffle.api.nodes.Node");
 
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfAny1", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfAny1", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfAny2", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfAny2", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfAny3", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfAny3", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfAny4", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfAny4", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class,
+                        int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2,
@@ -302,14 +427,14 @@ public class TruffleInvocationPlugins {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfRange1", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfRange1", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfRange2", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfRange2", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class,
                         int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -318,14 +443,15 @@ public class TruffleInvocationPlugins {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOfTable", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, byte[].class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfTable", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, byte[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode tables) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.Table, location, array, offset, length, stride, isNative, fromIndex, tables);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runIndexOf2ConsecutiveWithStride", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOf2ConsecutiveWithStride", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class,
+                        int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
@@ -333,7 +459,7 @@ public class TruffleInvocationPlugins {
             }
         });
 
-        r.register(new InlineOnlyInvocationPlugin("runRegionEqualsWithStride", nodeType,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runRegionEqualsWithStride", nodeType,
                         byte[].class, long.class, boolean.class,
                         byte[].class, long.class, boolean.class, int.class, int.class) {
             @Override
@@ -353,7 +479,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runMemCmp", nodeType,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runMemCmp", nodeType,
                         byte[].class, long.class, boolean.class,
                         byte[].class, long.class, boolean.class, int.class, int.class) {
             @Override
@@ -373,7 +499,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runArrayCopy", nodeType,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runArrayCopy", nodeType,
                         byte[].class, long.class, boolean.class,
                         byte[].class, long.class, boolean.class, int.class, int.class) {
             @Override
@@ -383,7 +509,7 @@ public class TruffleInvocationPlugins {
                 return applyArrayCopy(b, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runArrayCopy", nodeType,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runArrayCopy", nodeType,
                         char[].class, long.class,
                         byte[].class, long.class, int.class, int.class) {
             @Override
@@ -393,7 +519,7 @@ public class TruffleInvocationPlugins {
                 return applyArrayCopy(b, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runArrayCopy", nodeType,
+        r.register(new OptionalInlineOnlyInvocationPlugin("runArrayCopy", nodeType,
                         int[].class, long.class,
                         byte[].class, long.class, int.class, int.class) {
             @Override
@@ -403,7 +529,29 @@ public class TruffleInvocationPlugins {
                 return applyArrayCopy(b, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesLatin1", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runByteSwapS1", nodeType,
+                        byte[].class, long.class, boolean.class,
+                        byte[].class, long.class, boolean.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length) {
+                b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length, Stride.S2, true));
+                return true;
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runByteSwapS2", nodeType,
+                        byte[].class, long.class, boolean.class,
+                        byte[].class, long.class, boolean.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length) {
+                b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length, Stride.S4, true));
+                return true;
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesLatin1", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
@@ -412,7 +560,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesBMP", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesBMP", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
@@ -421,7 +569,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesUTF8", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF8", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
@@ -430,7 +578,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesUTF16", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
@@ -439,7 +587,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesUTF16C", nodeType, char[].class, long.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16C", nodeType, char[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
@@ -448,7 +596,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesUTF32", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
@@ -457,7 +605,7 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesUTF32I", nodeType, int[].class, long.class, int.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32I", nodeType, int[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
@@ -467,7 +615,7 @@ public class TruffleInvocationPlugins {
             }
         });
 
-        r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InlineOnlyInvocationPlugin(
+        r.register(new OptionalInlineOnlyConditionalInvocationPlugin(
                         "runHashCode", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -487,7 +635,33 @@ public class TruffleInvocationPlugins {
                     return true;
                 }
             }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return VectorizedHashCodeNode.isSupported(arch);
+            }
         });
+
+        if (architecture instanceof AMD64) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF8Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_8, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static boolean applyArrayCopy(GraphBuilderContext b, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {
@@ -524,5 +698,64 @@ public class TruffleInvocationPlugins {
             b.addPush(JavaKind.Int, new ArrayIndexOfNode(constStride, variant, null, locationIdentity, array, offset, length, fromIndex, values));
         }
         return true;
+    }
+
+    public static void registerExactMathPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ExactMath;"));
+        var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ExactMath");
+
+        for (JavaKind floatKind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            for (JavaKind integerKind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+                r.register(new ConditionalInvocationPlugin(
+                                integerKind == JavaKind.Long ? "truncateToUnsignedLong" : "truncateToUnsignedInt",
+                                floatKind.toJavaClass()) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                        FloatConvert op = floatKind == JavaKind.Double
+                                        ? (integerKind == JavaKind.Long
+                                                        ? FloatConvert.D2UL
+                                                        : FloatConvert.D2UI)
+                                        : (integerKind == JavaKind.Long
+                                                        ? FloatConvert.F2UL
+                                                        : FloatConvert.F2UI);
+                        b.addPush(integerKind, FloatConvertNode.create(op, x, NodeView.DEFAULT));
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isOptional() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isApplicable(Architecture arch) {
+                        return FloatConvertNode.supportsFloatToUnsignedConvert(arch);
+                    }
+                });
+            }
+
+            r.register(new ConditionalInvocationPlugin(
+                            floatKind == JavaKind.Double ? "unsignedToDouble" : "unsignedToFloat",
+                            long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                    FloatConvert op = floatKind == JavaKind.Double
+                                    ? FloatConvert.UL2D
+                                    : FloatConvert.UL2F;
+                    b.addPush(floatKind, FloatConvertNode.create(op, x, NodeView.DEFAULT));
+                    return true;
+                }
+
+                @Override
+                public boolean isOptional() {
+                    return true;
+                }
+
+                @Override
+                public boolean isApplicable(Architecture arch) {
+                    return FloatConvertNode.supportsUnsignedToFloatConvert(arch);
+                }
+            });
+        }
     }
 }

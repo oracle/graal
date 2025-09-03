@@ -33,19 +33,14 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -57,7 +52,9 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -112,7 +109,7 @@ public class StackTraceUtils {
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread) {
-        return getStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+        return getStackTraceAtSafepoint(isolateThread, Word.nullPointer());
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
@@ -128,7 +125,7 @@ public class StackTraceUtils {
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer startSP, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
-        JavaStackWalker.walkThread(isolateThread, startSP, endSP, WordFactory.nullPointer(), visitor);
+        JavaStackWalker.walkThread(isolateThread, startSP, endSP, Word.nullPointer(), visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
@@ -543,10 +540,10 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
      */
     static Class<?> readSourceClass(long[] backtrace, int pos) {
         if (useCompressedReferences()) {
-            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).unsignedShiftRight(32);
+            UnsignedWord ref = Word.unsigned(backtrace[pos + 1]).unsignedShiftRight(32);
             return (Class<?>) ReferenceAccess.singleton().uncompressReference(ref);
         } else {
-            Word sourceClassPtr = WordFactory.pointer(backtrace[pos + 1]);
+            Word sourceClassPtr = Word.pointer(backtrace[pos + 1]);
             return sourceClassPtr.toObject(Class.class, true);
         }
     }
@@ -561,10 +558,10 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
      */
     static String readSourceMethodName(long[] backtrace, int pos) {
         if (useCompressedReferences()) {
-            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).and(WordFactory.unsigned(0xffffffffL));
+            UnsignedWord ref = Word.unsigned(backtrace[pos + 1]).and(Word.unsigned(0xffffffffL));
             return (String) ReferenceAccess.singleton().uncompressReference(ref);
         } else {
-            Word sourceMethodNamePtr = WordFactory.pointer(backtrace[pos + 2]);
+            Word sourceMethodNamePtr = Word.pointer(backtrace[pos + 2]);
             return sourceMethodNamePtr.toObject(String.class, true);
         }
     }
@@ -804,27 +801,5 @@ class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
         }
 
         return !isPrivileged;
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    @SuppressWarnings({"deprecation"}) // deprecated starting JDK 17
-    public static AccessControlContext getFromStack() {
-        StackAccessControlContextVisitor visitor = new StackAccessControlContextVisitor();
-        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), visitor);
-        Target_java_security_AccessControlContext wrapper;
-
-        if (visitor.localArray.isEmpty()) {
-            if (visitor.isPrivileged && visitor.privilegedContext == null) {
-                return null;
-            }
-            wrapper = new Target_java_security_AccessControlContext(null, visitor.privilegedContext);
-        } else {
-            ProtectionDomain[] context = visitor.localArray.toArray(new ProtectionDomain[visitor.localArray.size()]);
-            wrapper = new Target_java_security_AccessControlContext(context, visitor.privilegedContext);
-        }
-
-        wrapper.isPrivileged = visitor.isPrivileged;
-        wrapper.isAuthorized = true;
-        return SubstrateUtil.cast(wrapper, AccessControlContext.class);
     }
 }

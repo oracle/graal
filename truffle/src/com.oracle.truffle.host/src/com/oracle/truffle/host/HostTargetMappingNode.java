@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,7 @@ abstract class HostTargetMappingNode extends Node {
     abstract Object execute(Node node, Object value, Class<?> targetType, HostContext hostContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "targetType != null")
+    @Specialization(guards = "targetType != null", excludeForUncached = true)
     @ExplodeLoop
     protected Object doCached(Object operand, Class<?> targetType, HostContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
                     @Cached(value = "getMappings(context, targetType)", dimensions = 1, neverDefault = true) HostTargetMapping[] mappings,
@@ -154,7 +154,7 @@ abstract class HostTargetMappingNode extends Node {
         @Specialization
         protected static Object doDefault(Object receiver, @SuppressWarnings("unused") HostTargetMapping cachedMapping,
                         HostContext context, InteropLibrary interop, boolean checkOnly,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) Boolean allowsImplementation,
                         @Cached(inline = true) HostToTypeNode toHostRecursive) {

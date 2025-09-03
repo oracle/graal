@@ -48,6 +48,6 @@ public class TStringOpsCalcStringAttributesLatin1ConstantTest extends TStringOps
     @Test
     public void testLatin1() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesLatin1", Object.class, int.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesLatin1", byte[].class, long.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }
 }

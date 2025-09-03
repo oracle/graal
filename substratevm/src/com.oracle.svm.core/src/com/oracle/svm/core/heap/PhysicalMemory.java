@@ -28,18 +28,23 @@ import java.lang.management.ManagementFactory;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
-import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 import com.sun.management.OperatingSystemMXBean;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Contains static methods to get configuration of physical memory.
@@ -47,7 +52,8 @@ import com.sun.management.OperatingSystemMXBean;
 public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
-    public interface PhysicalMemorySupport extends RuntimeOnlyImageSingleton {
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+    public interface PhysicalMemorySupport {
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
 
@@ -81,9 +87,9 @@ public class PhysicalMemory {
      */
     public static void initialize() {
         assert !isInitialized() : "Physical memory already initialized.";
-        long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.MaxRAM));
+        long memoryLimit = IsolateArgumentParser.singleton().getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.MaxRAM));
         if (memoryLimit > 0) {
-            cachedSize = WordFactory.unsigned(memoryLimit);
+            cachedSize = Word.unsigned(memoryLimit);
         } else if (Container.singleton().isContainerized()) {
             cachedSize = Container.singleton().getPhysicalMemory();
         } else {
@@ -94,7 +100,7 @@ public class PhysicalMemory {
     /** Returns the amount of used physical memory in bytes, or -1 if not supported. */
     public static long usedSize() {
         // Windows, macOS, and containerized Linux use the OS bean.
-        if (Platform.includedIn(Platform.WINDOWS.class) ||
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ||
                         Platform.includedIn(Platform.MACOS.class) ||
                         (Container.singleton().isContainerized() && Container.singleton().getMemoryLimitInBytes() > 0)) {
             OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();

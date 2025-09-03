@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.blocking;
 
 import java.lang.invoke.VarHandle;
@@ -30,10 +29,14 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -265,6 +268,7 @@ public interface EspressoLock {
  */
 @SuppressWarnings("serial")
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoLock.class);
 
     private static final Node dummy = new Node() {
         @Override
@@ -323,7 +327,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             // fast-path before involving safepoint support
             return;
         }
-        blockingSupport.enterBlockingRegion(EspressoLockImpl::doLock, dummy, this);
+        blockingSupport.enterBlockingRegion(Locker.LOCKER, dummy, this);
     }
 
     @Override
@@ -414,7 +418,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @SuppressFBWarnings(value = "UL_UNRELEASED_LOCK", justification = "this lock is released at the start of the method and re-acquired at the end")
-    private void enterWaitInterruptible(InterruptibleWithBooleanResult<EspressoLockImpl> interruptible) throws GuestInterruptedException {
+    private void enterWaitInterruptible(InterruptibleWithBooleanResult interruptible) throws GuestInterruptedException {
         ensureWaitLockInitialized();
         boolean enableManagement;
         Meta meta;
@@ -449,19 +453,26 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
                              * Signaled exception is thrown.
                              */
                             this::afterSafepointForWait);
+            if (consumeSignal()) {
+                throw new Signaled(null);
+            }
+            interruptible.timedOut(); // Or spurious wake up.
         } catch (Signaled e) {
+            interruptible.signaled();
             e.maybeRethrow();
         } catch (Throwable e) {
             /*
              * Either GuestInterruptedException or an exception thrown by a safepoint. Since at that
              * point, we are still considered in waiting, we may have missed a signal.
              */
+            interruptible.interrupted();
             consumeSignal();
             throw e;
         } finally {
             if (enableManagement) {
                 meta.HIDDEN_THREAD_WAITING_MONITOR.setHiddenObject(interruptible.thread, StaticObject.NULL);
             }
+            waiters--;
             waitLock.unlock();
             // We need to ensure that we re-acquire the lock (even if the guest is getting
             // interrupted)
@@ -482,7 +493,11 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             for (int i = 1; i < holdCount; i++) {
                 lock();
             }
-            waiters--;
+            LOGGER.fine(() -> {
+                EspressoContext ctx = EspressoContext.get(null);
+                String tName = ctx.getMeta().toHostString(ctx.getMeta().java_lang_Thread_name.getObject(ctx.getCurrentPlatformThread()));
+                return "Wait for thread \"" + tName + "\" finished because it was " + interruptible.reason();
+            });
         }
     }
 
@@ -531,10 +546,27 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         }
     }
 
-    private abstract static class InterruptibleWithBooleanResult<T> implements TruffleSafepoint.Interruptible<T> {
+    private static final class Locker implements Interruptible<EspressoLockImpl> {
+        static final Interruptible<EspressoLockImpl> LOCKER = new Locker();
+
+        private Locker() {
+        }
+
+        @Override
+        public void apply(EspressoLockImpl lock) throws InterruptedException {
+            lock.doLock();
+        }
+    }
+
+    private abstract static class InterruptibleWithBooleanResult implements Interruptible<EspressoLockImpl> {
+        private static final byte SIGNALED = 0x1;
+        private static final byte INTERRUPTED = 0x2;
+        private static final byte TIMED_OUT = 0x4;
+
         private final StaticObject thread;
         private final StaticObject obj;
         private boolean result;
+        private byte status = 0;
 
         InterruptibleWithBooleanResult(StaticObject thread, StaticObject obj) {
             this.thread = thread;
@@ -548,9 +580,37 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         public final void setResult(boolean result) {
             this.result = result;
         }
+
+        public void signaled() {
+            assert status == 0;
+            status = SIGNALED;
+        }
+
+        public void interrupted() {
+            assert status == 0;
+            status = INTERRUPTED;
+        }
+
+        public void timedOut() {
+            assert status == 0;
+            status = TIMED_OUT;
+        }
+
+        public String reason() {
+            switch (status) {
+                case SIGNALED:
+                    return "SIGNALED";
+                case INTERRUPTED:
+                    return "INTERRUPTED";
+                case TIMED_OUT:
+                    return "COMPLETED";
+                default:
+                    return "NONE";
+            }
+        }
     }
 
-    private static final class WaitInterruptible extends InterruptibleWithBooleanResult<EspressoLockImpl> {
+    private static final class WaitInterruptible extends InterruptibleWithBooleanResult {
         WaitInterruptible(long timeout, TimeUnit unit, StaticObject thread, StaticObject obj) {
             super(thread, obj);
             this.nanoTimeout = unit.toNanos(timeout);
@@ -576,9 +636,10 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
                 setResult(lock.waitCondition.await(left, TimeUnit.NANOSECONDS));
             }
         }
+
     }
 
-    private static final class WaitUntilInterruptible extends InterruptibleWithBooleanResult<EspressoLockImpl> {
+    private static final class WaitUntilInterruptible extends InterruptibleWithBooleanResult {
         WaitUntilInterruptible(Date date) {
             super(null, null);
             this.date = date;
@@ -594,5 +655,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             // `enterWaitInterruptible`.
             setResult(lock.waitCondition.awaitUntil(date));
         }
+
     }
 }

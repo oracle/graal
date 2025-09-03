@@ -32,6 +32,10 @@ import jdk.graal.compiler.word.Word;
 
 /**
  * Persisted execution state of a yielded continuation, use via {@link StoredContinuationAccess}.
+ *
+ * Stored continuations are {@link Hybrid} objects where the array part contains the raw stack data.
+ * After writing the stack data into the object, we manually emit the correct GC write barriers for
+ * all the references (see {@link Heap#dirtyAllReferencesOf}).
  */
 @Hybrid(componentType = Word.class)
 public final class StoredContinuation {

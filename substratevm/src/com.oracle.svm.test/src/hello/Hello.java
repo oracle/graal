@@ -73,6 +73,18 @@ public class Hello {
         }
     }
 
+    public static class Holder {
+        final Class<?> c;
+        final Object o;
+
+        Holder(Class<?> c, Object o) {
+            this.c = c;
+            this.o = o;
+        }
+    }
+
+    private static Holder staticHolder = new Holder(String.class, String.class);
+
     @NeverInline("For testing purposes")
     private static void noInlineFoo() {
         inlineMee();
@@ -211,6 +223,15 @@ public class Hello {
         return sb.toString();
     };
 
+    @NeverInline("For testing purposes")
+    private static void checkClassType(Class<?> clazz, Holder dyn) {
+        System.out.println("clazz = " + clazz);
+        System.out.println("dyn.c = " + dyn.c);
+        System.out.println("dyn.o = " + dyn.o);
+        System.out.println("staticHolder.c = " + staticHolder.c);
+        System.out.println("staticHolder.o = " + staticHolder.o);
+    }
+
     /* Add new methods above main */
     public static void main(String[] args) {
         Greeter greeter = Greeter.greeter(args);
@@ -236,6 +257,8 @@ public class Hello {
                         0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
         noInlinePassConstants();
         System.out.println(lambda.get());
+        checkClassType(String.class, new Holder(String.class, String.class));
+        staticHolder = null;  // make sure the staticHolder field ends up in the native image
         // create and manipulate some foreign types
         CStructTests.composite();
         CStructTests.weird();

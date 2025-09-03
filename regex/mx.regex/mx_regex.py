@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,9 @@ def _tregex_tests_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=['default', 'all'], report=True) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'], test_report_tags={'task': t.title})
+    with Task("CoverageTests", tasks, tags=['coverage'], report=True) as t:
+        if t:
+            unittest(['com.oracle.truffle.regex'], test_report_tags={'task': t.title})
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -63,8 +66,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle', 'ICU4J'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
-    installable=True,
-    standalone=False,
     stability="supported",
 ))
 

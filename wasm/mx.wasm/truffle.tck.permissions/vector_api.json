@@ -1,0 +1,17 @@
+[
+    {
+        "name": "jdk.incubator.vector.VectorMathLibrary",
+        "methods": [
+            {
+                "name": "lookup",
+                "parameterTypes" : [
+                    "jdk.incubator.vector.VectorOperators$Operator",
+                    "int",
+                    "jdk.incubator.vector.VectorSpecies",
+                    "java.util.function.IntFunction"
+                ],
+                "justification": "JDK code that looks up native functions in bundled JDK libraries. GraalWasm cannot reach this function."
+            }
+        ]
+    }
+]

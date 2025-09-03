@@ -39,6 +39,7 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
@@ -72,7 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 @NodeIntrinsicFactory
-public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Canonicalizable, ValueProxy {
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Canonicalizable, ValueProxy, IterableNodeType {
 
     public static final NodeClass<PiNode> TYPE = NodeClass.create(PiNode.class);
     @Input ValueNode object;
@@ -188,7 +189,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                         nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
         ValueNode value = canonical(object, stamp, (GuardingNode) guard, null);
         if (value == null) {
-            value = new PiNode(object, stamp);
+            value = new PiNode(object, stamp, guard);
         }
         b.push(JavaKind.Object, b.append(value));
         return true;
@@ -252,8 +253,12 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return canonical(object, piStamp, guard, self, false);
     }
 
-    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
     public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self, boolean allUsagesAvailable) {
+        return canonical(object, piStamp, guard, self, allUsagesAvailable, true);
+    }
+
+    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
+    public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self, boolean allUsagesAvailable, boolean processUsage) {
         GraalError.guarantee(piStamp != null && object != null, "Invariant piStamp=%s object=%s guard=%s self=%s", piStamp, object, guard, self);
 
         // Use most up to date stamp.
@@ -322,31 +327,44 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 return readNode;
             }
         } else {
-            for (Node n : guard.asNode().usages()) {
-                if (n instanceof PiNode && n != self) {
-                    PiNode otherPi = (PiNode) n;
-                    if (otherPi.guard != guard) {
-                        assert otherPi.object() == guard : Assertions.errorMessageContext("object", object, "otherPi", otherPi, "guard", guard);
-                        /*
-                         * The otherPi is unrelated because it uses this.guard as object but not as
-                         * guard.
-                         */
-                        continue;
-                    }
-                    if (otherPi.object() == self || otherPi.object() == object) {
-                        // Check if other pi's stamp is more precise
-                        Stamp joinedPiStamp = piStamp.improveWith(otherPi.piStamp());
-                        if (joinedPiStamp.equals(piStamp)) {
-                            // Stamp did not get better, nothing to do.
-                        } else if (otherPi.object() == object && joinedPiStamp.equals(otherPi.piStamp())) {
-                            // We can be replaced with the other pi.
-                            return otherPi;
-                        } else if (self != null && self.hasExactlyOneUsage() && otherPi.object == self) {
-                            if (joinedPiStamp.equals(otherPi.piStamp)) {
-                                return object;
-                            }
+            if (processUsage && self instanceof PiNode selfPi) {
+                for (Node n : guard.asNode().usages()) {
+                    if (n instanceof PiNode && n != self) {
+                        PiNode otherPi = (PiNode) n;
+                        ValueNode canonByOtherPi = tryImproveWithOtherPi(selfPi, otherPi);
+                        if (canonByOtherPi != null) {
+                            return canonByOtherPi;
                         }
                     }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Canonicalizes a {@link PiNode} by comparing it with another {@link PiNode} based on guards,
+     * objects, and stamps. Returns a replacement node if simplification or precision improvement is
+     * possible.
+     */
+    public static ValueNode tryImproveWithOtherPi(PiNode p1, PiNode p2) {
+        GuardingNode guard = p1.guard;
+        if (p2.guard != guard) {
+            // though p1 and p2 use guard they do it on different edges, one as value the other as
+            // guard (or vice versa)
+            return null;
+        }
+        if (p2.object() == p1 || p2.object() == p1.object) {
+            // Check if other pi's stamp is more precise
+            Stamp joinedPiStamp = p1.piStamp.improveWith(p2.piStamp());
+            if (joinedPiStamp.equals(p1.piStamp)) {
+                // Stamp did not get better, nothing to do.
+            } else if (p2.object() == p1.object && joinedPiStamp.equals(p2.piStamp())) {
+                // We can replace p1 with the other pi.
+                return p2;
+            } else if (p1.hasExactlyOneUsage() && p2.object == p1) {
+                if (joinedPiStamp.equals(p2.piStamp)) {
+                    return p1.object;
                 }
             }
         }
@@ -370,7 +388,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        Node value = canonical(object(), piStamp(), getGuard(), this, tool.allUsagesAvailable());
+        // usages run during canonicalization
+        final boolean processUsages = false;
+        Node value = canonical(object(), piStamp(), getGuard(), this, tool.allUsagesAvailable(), processUsages);
         if (value != null) {
             return value;
         }

@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -42,30 +42,32 @@ import org.junit.runners.Parameterized.Parameters;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck.Version;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 @RunWith(Parameterized.class)
 public class JVMCIVersionCheckTest extends GraalCompilerTest {
 
     private static final String[] JDK_VERSIONS = {
                     null,
-                    "21",
-                    "21+3",
-                    "21.0.1+3",
-                    "21-ea+11-790"
+                    "99",
+                    "99+3",
+                    "99.0.1+3",
+                    "99-ea+11-790"
     };
 
     static final Map<String, String> PROPS;
     static {
         Properties sprops = System.getProperties();
-        Map<String, String> propsLocal = new HashMap<>(sprops.size());
+        Map<String, String> propsLocal = new EconomicHashMap<>(sprops.size());
         for (String name : sprops.stringPropertyNames()) {
             propsLocal.put(name, sprops.getProperty(name));
         }
-        PROPS = Map.copyOf(propsLocal);
+        PROPS = Collections.unmodifiableMap(propsLocal);
     }
 
     static Map<String, String> createTestProperties(String javaSpecVersion, String javaVmVersion, String javaVmVendor) {
-        var props = new HashMap<>(JVMCIVersionCheckTest.PROPS);
+        var props = (Map<String, String>) new EconomicHashMap<>(JVMCIVersionCheckTest.PROPS);
         if (javaSpecVersion != null) {
             props.put("java.specification.version", javaSpecVersion);
         }
@@ -75,7 +77,7 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
         if (javaVmVendor != null) {
             props.put("java.vm.vendor", javaVmVendor);
         }
-        return Map.copyOf(props);
+        return Collections.unmodifiableMap(props);
     }
 
     @Parameters(name = "{0} vs {1}")
@@ -124,10 +126,10 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
     public void test01() {
         String legacyPrefix = version.toString().startsWith("jvmci") ? "prefix-" : "";
         String javaVmVersion = legacyPrefix + version.toString() + "Suffix";
-        String javaSpecVersion = "21";
+        String javaSpecVersion = "99";
         var props = createTestProperties(javaSpecVersion, javaVmVersion, null);
-        var jvmciMinVersions = Map.of(
-                        javaSpecVersion, Map.of(JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY, minVersion));
+        var jvmciMinVersions = CollectionsUtil.mapOf(
+                        javaSpecVersion, CollectionsUtil.mapOf(JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY, minVersion));
         if (!version.isLessThan(minVersion)) {
             try {
                 JVMCIVersionCheck.check(props, false, null, jvmciMinVersions);

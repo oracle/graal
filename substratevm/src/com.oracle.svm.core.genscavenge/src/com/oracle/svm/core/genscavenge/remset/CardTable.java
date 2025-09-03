@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -81,7 +82,8 @@ final class CardTable {
 
     static final byte DIRTY_ENTRY = 0;
     static final byte CLEAN_ENTRY = 1;
-    static final UnsignedWord CLEAN_WORD = WordFactory.unsigned(0x0101010101010101L);
+    static final UnsignedWord CLEAN_WORD = Word.unsigned(0x0101010101010101L);
+    static final UnsignedWord DIRTY_WORD = Word.unsigned(0x0000000000000000L);
 
     private static final CardTableVerificationVisitor CARD_TABLE_VERIFICATION_VISITOR = new CardTableVerificationVisitor();
 
@@ -91,6 +93,11 @@ final class CardTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void cleanTable(Pointer tableStart, UnsignedWord size) {
         UnmanagedMemoryUtil.fill(tableStart, size, CLEAN_ENTRY);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void dirtyTable(Pointer tableStart, UnsignedWord size) {
+        UnmanagedMemoryUtil.fill(tableStart, size, DIRTY_ENTRY);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -148,7 +155,7 @@ final class CardTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
-        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
+        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, Word.unsigned(BYTES_COVERED_BY_ENTRY));
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
 
@@ -157,12 +164,16 @@ final class CardTable {
         if (SerialGCOptions.VerifyRememberedSet.getValue()) {
             Pointer curPtr = objectsStart;
             while (curPtr.belowThan(objectsLimit)) {
-                // As we only use imprecise card marking at the moment, only the card at the address
-                // of the object may be dirty.
-                Object obj = curPtr.toObject();
+                Object obj = curPtr.toObjectNonNull();
+                boolean precise = RememberedSet.get().usePreciseCardMarking(obj);
+                /*
+                 * Objects using precise card marking need to be visited, as any of their cards may
+                 * be dirty. For objects using imprecise card marking, only the card at the address
+                 * of the object may be dirty.
+                 */
                 UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
-                if (isClean(cardTableStart, cardTableIndex)) {
-                    CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart);
+                if (precise || isClean(cardTableStart, cardTableIndex)) {
+                    CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart, precise);
                     InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
                     success &= CARD_TABLE_VERIFICATION_VISITOR.success;
                     CARD_TABLE_VERIFICATION_VISITOR.reset();
@@ -172,7 +183,7 @@ final class CardTable {
                         // The referent field of java.lang.Reference is excluded from the reference
                         // map, so we need to verify it separately.
                         Reference<?> ref = (Reference<?>) obj;
-                        success &= verifyReferent(ref, cardTableStart, objectsStart);
+                        success &= verifyReferent(ref, cardTableStart, objectsStart, precise);
                     }
                 }
                 curPtr = LayoutEncoding.getObjectEndInGC(obj);
@@ -192,11 +203,11 @@ final class CardTable {
         return success;
     }
 
-    private static boolean verifyReferent(Reference<?> ref, Pointer cardTableStart, Pointer objectsStart) {
-        return verifyReference(ref, cardTableStart, objectsStart, ReferenceInternals.getReferentFieldAddress(ref), ReferenceInternals.getReferentPointer(ref));
+    private static boolean verifyReferent(Reference<?> ref, Pointer cardTableStart, Pointer objectsStart, boolean precise) {
+        return verifyReference(ref, cardTableStart, objectsStart, ReferenceInternals.getReferentFieldAddress(ref), ReferenceInternals.getReferentPointer(ref), precise);
     }
 
-    private static boolean verifyReference(Object parentObject, Pointer cardTableStart, Pointer objectsStart, Pointer reference, Pointer referencedObject) {
+    private static boolean verifyReference(Object parentObject, Pointer cardTableStart, Pointer objectsStart, Pointer reference, Pointer referencedObject, boolean precise) {
         if (referencedObject.isNull() ||
                         HeapImpl.getHeapImpl().isInImageHeap(referencedObject) ||
                         HeapImpl.getHeapImpl().isInImageHeap(parentObject) && !HeapImpl.usesImageHeapCardMarking()) {
@@ -205,6 +216,12 @@ final class CardTable {
 
         Object obj = referencedObject.toObject();
         HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
+
+        // If the object is marked precise, we need to check the card of the reference.
+        if (precise && !isClean(cardTableStart, memoryOffsetToIndex(reference.subtract(objectsStart)))) {
+            return true;
+        }
+
         /* Fail if we find a reference to the young generation. */
         boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(parentObject);
         if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
@@ -221,34 +238,45 @@ final class CardTable {
         return true;
     }
 
-    private static class CardTableVerificationVisitor implements ObjectReferenceVisitor {
+    private static final class CardTableVerificationVisitor implements ObjectReferenceVisitor {
         private Object parentObject;
         private Pointer cardTableStart;
         private Pointer objectsStart;
         private boolean success;
+        private boolean precise;
 
         @SuppressWarnings("hiding")
-        public void initialize(Object parentObject, Pointer cardTableStart, Pointer objectsStart) {
+        public void initialize(Object parentObject, Pointer cardTableStart, Pointer objectsStart, boolean precise) {
             assert this.parentObject == null && this.cardTableStart.isNull() && this.objectsStart.isNull() && !this.success;
             this.parentObject = parentObject;
             this.cardTableStart = cardTableStart;
             this.objectsStart = objectsStart;
             this.success = true;
+            this.precise = precise;
         }
 
         public void reset() {
             this.parentObject = null;
-            this.cardTableStart = WordFactory.nullPointer();
-            this.objectsStart = WordFactory.nullPointer();
+            this.cardTableStart = Word.nullPointer();
+            this.objectsStart = Word.nullPointer();
             this.success = false;
+            this.precise = false;
         }
 
         @Override
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed);
+                pos = pos.add(referenceSize);
+            }
+        }
+
         @SuppressFBWarnings(value = {"NS_DANGEROUS_NON_SHORT_CIRCUIT"}, justification = "Non-short circuit logic is used on purpose here.")
-        public boolean visitObjectReference(Pointer reference, boolean compressed, Object holderObject) {
+        private void visitObjectReference(Pointer reference, boolean compressed) {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
-            success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
-            return true;
+            success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject, precise);
         }
     }
 }

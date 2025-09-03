@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,8 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugException;
@@ -94,8 +96,6 @@ import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 import com.oracle.truffle.tools.chromeinspector.types.StackTrace;
 import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class InspectorDebugger extends DebuggerDomain {
 
@@ -338,9 +338,15 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (scriptId == null) {
             throw new CommandProcessException("A scriptId required.");
         }
-        CharSequence characters = getScript(scriptId).getCharacters();
+        Script script = getScript(scriptId);
         JSONObject json = new JSONObject();
-        json.put("scriptSource", characters.toString());
+        if (script.hasWasmSource()) {
+            CharSequence bytecode = script.getWasmBytecode();
+            json.put("bytecode", bytecode.toString());
+        } else {
+            CharSequence characters = script.getCharacters();
+            json.put("scriptSource", characters.toString());
+        }
         return new Params(json);
     }
 
@@ -998,7 +1004,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         return false;
     }
 
-    private class LoadScriptListenerImpl implements LoadScriptListener {
+    private final class LoadScriptListenerImpl implements LoadScriptListener {
 
         @Override
         public void loadedScript(Script script) {
@@ -1077,7 +1083,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     }
 
-    private class SuspendedCallbackImpl implements SuspendedCallback {
+    private final class SuspendedCallbackImpl implements SuspendedCallback {
 
         private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, new SchedulerThreadFactory());
         private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();

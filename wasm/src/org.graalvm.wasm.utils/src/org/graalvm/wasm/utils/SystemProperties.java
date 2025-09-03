@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,9 @@ import java.util.Properties;
 public class SystemProperties {
     public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
+
+    public static final String WAT_TO_WASM_VERBOSE_PROPERTY_NAME = "wasmtest.watToWasmVerbose";
+    public static final Boolean WAT_TO_WASM_VERBOSE = Boolean.parseBoolean(System.getProperty(WAT_TO_WASM_VERBOSE_PROPERTY_NAME, "false"));
 
     public static final String BENCHMARK_NAME_PROPERTY_NAME = "wasmbench.benchmarkName";
     public static final String BENCHMARK_NAME = System.getProperty(BENCHMARK_NAME_PROPERTY_NAME);

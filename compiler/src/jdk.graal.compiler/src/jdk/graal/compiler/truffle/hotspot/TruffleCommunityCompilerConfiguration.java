@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,16 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
-import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
-import jdk.graal.compiler.core.phases.HighTier;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.spi.Replacements;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
-import jdk.graal.compiler.truffle.host.HostInliningPhase;
-import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
+import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -44,7 +43,7 @@ import jdk.vm.ci.code.Architecture;
  * Note that this configuration is also used as basis for Truffle guest compilation on HotSpot.
  * Therefore make sure that phases which are only relevant for host compilations are explicitly
  * disabled for Truffle guest compilation in
- * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime)}.
+ * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime, Supplier)}.
  * <p>
  * Note that on SubstrateVM TruffleBaseFeature and TruffleFeature must be used for this purpose,
  * this configuration is NOT loaded. So make sure SVM configuration is in sync if you make changes
@@ -61,21 +60,20 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
 
     public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
         HostInliningPhase.install(defaultHighTier, options);
-        InjectImmutableFrameFieldsPhase.install(defaultHighTier, options);
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
-        super.registerGraphBuilderPlugins(arch, plugins, options, replacements);
-        registerCommunityGraphBuilderPlugins(arch, plugins, options, replacements);
+    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options) {
+        super.registerGraphBuilderPlugins(arch, plugins, options);
+        registerCommunityGraphBuilderPlugins(arch, plugins, options);
     }
 
-    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
+    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options) {
         HostInliningPhase.installInlineInvokePlugin(plugins, options);
         plugins.getInvocationPlugins().defer(new Runnable() {
             @Override
             public void run() {
-                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), replacements);
+                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins());
             }
         });
     }

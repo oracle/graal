@@ -26,11 +26,9 @@ package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -124,7 +122,7 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
     default ResolvedJavaType getReceiverType() {
         ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver());
         if (receiverType == null) {
-            receiverType = ((MethodCallTargetNode) callTarget()).targetMethod().getDeclaringClass();
+            receiverType = callTarget().targetMethod().getDeclaringClass();
         }
         return receiverType;
     }
@@ -134,7 +132,7 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
     }
 
     /**
-     * See {@link GraphBuilderContext#currentBlockCatchesOOM()}.
+     * See {@link GraphBuilderContext#currentBlockCatchesOOME()}.
      */
     boolean isInOOMETry();
 

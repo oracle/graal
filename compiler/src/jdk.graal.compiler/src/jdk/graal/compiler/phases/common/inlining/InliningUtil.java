@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,6 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.Invoke;
@@ -592,7 +591,7 @@ public class InliningUtil extends ValueMergeUtil {
     public static InlineeReturnAction NoReturnAction = new InlineeReturnAction();
 
     @SuppressWarnings("try")
-    private static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode,
+    private static void finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode,
                     StructuredGraph inlineGraph, InlineeReturnAction inlineeReturnAction, Graph.Mark beforeInlining) {
 
         List<ReturnNode> processedReturns = inlineeReturnAction.processInlineeReturns(returnNodes);
@@ -637,21 +636,19 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
 
-        ValueNode returnValue;
         if (!processedReturns.isEmpty()) {
             FixedNode next = invoke.next();
             invoke.setNext(null);
             if (processedReturns.size() == 1) {
                 ReturnNode returnNode = processedReturns.get(0);
                 Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next, beforeInlining);
-                returnValue = returnAnchorPair.getLeft();
                 returnNode.replaceAndDelete(returnAnchorPair.getRight());
             } else {
                 MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode mergedReturn = mergeReturns(merge, processedReturns);
                 Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge, beforeInlining);
-                returnValue = returnAnchorPair.getLeft();
+                ValueNode returnValue = returnAnchorPair.getLeft();
                 assert returnAnchorPair.getRight() == merge : Assertions.errorMessage(returnAnchorPair.getRight(), merge);
                 if (merge.isPhiAtMerge(mergedReturn)) {
                     fixFrameStates(graph, merge, mergedReturn, returnValue);
@@ -659,8 +656,20 @@ public class InliningUtil extends ValueMergeUtil {
                 merge.setNext(next);
             }
         } else {
-            returnValue = null;
-            invokeNode.replaceAtUsages(null);
+            if (invokeNode.hasUsages()) {
+                JavaKind returnKind = invoke.getTargetMethod().getSignature().getReturnKind();
+                if (returnKind != JavaKind.Void) {
+                    /*
+                     * The target method is declared to return a value but does not have any returns
+                     * because it always deoptimizes. Usages of the invoke will usually be removed
+                     * by the following killCFG call, but in special cases they are already
+                     * disconnected from the control flow and survive until the next
+                     * canonicalization or dead code elimination. Until the usages are removed, they
+                     * need some placeholder value as an input to keep the graph valid.
+                     */
+                    invokeNode.replaceAtUsages(ConstantNode.defaultForKind(returnKind, graph));
+                }
+            }
             GraphUtil.killCFG(invoke.next());
         }
 
@@ -670,8 +679,6 @@ public class InliningUtil extends ValueMergeUtil {
         graph.maybeMarkUnsafeAccess(inlineGraph);
         assert inlineGraph.getSpeculationLog() == null ||
                         inlineGraph.getSpeculationLog() == graph.getSpeculationLog() : "Only the root graph should have a speculation log";
-
-        return returnValue;
     }
 
     /**
@@ -902,7 +909,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
-        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) ||
+        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage().allowsFloatingGuards()) ||
                         frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
             /*
              * This path converts the frame states relevant for exception unwinding to
@@ -1066,7 +1073,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     private static DeoptimizeNode addDeoptimizeNode(StructuredGraph graph, DeoptimizationAction action, DeoptimizationReason reason) {
-        GraalError.guarantee(graph.getGuardsStage() == GuardsStage.FLOATING_GUARDS, "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
+        GraalError.guarantee(graph.getGuardsStage().allowsFloatingGuards(), "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
         return graph.add(new DeoptimizeNode(action, reason));
     }
 

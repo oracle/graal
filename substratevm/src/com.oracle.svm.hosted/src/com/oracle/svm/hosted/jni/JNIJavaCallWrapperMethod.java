@@ -246,7 +246,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     }
 
     private static ValueNode createNewObjectCall(JNIGraphKit kit, ResolvedSignature<AnalysisType> invokeSignature, ValueNode newObjectAddress, ValueNode[] args) {
-        ConstantNode abstractTypeSentinel = kit.createWord(JNIAccessibleMethod.NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
+        ConstantNode abstractTypeSentinel = kit.createWord(JNIAccessibleMethod.NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE);
         kit.startIf(IntegerEqualsNode.create(newObjectAddress, abstractTypeSentinel, NodeView.DEFAULT), BranchProbabilityNode.SLOW_PATH_PROFILE);
         kit.thenPart();
         var exceptionCtor = kit.getMetaAccess().lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR);

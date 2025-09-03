@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,13 @@
 package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
+import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
+import static jdk.graal.compiler.phases.common.LockEliminationPhase.removeMonitorAccess;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -66,7 +68,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GetObjectAddressNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -79,6 +80,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
@@ -88,6 +90,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
@@ -121,6 +124,7 @@ import jdk.graal.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.AccessIndexedNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -165,6 +169,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -182,7 +188,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * VM-independent lowerings for standard Java nodes. VM-specific methods are abstract and must be
  * implemented by VM-specific subclasses.
  */
-public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
+public abstract class DefaultJavaLoweringProvider implements LoweringProvider, VectorLoweringProvider {
 
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
@@ -190,6 +196,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    protected final VectorArchitecture vectorArchitecture;
     protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
@@ -200,13 +207,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
-                    TargetDescription target, boolean useCompressedOops) {
+                    TargetDescription target, boolean useCompressedOops, VectorArchitecture vectorArchitecture) {
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
         this.barrierSet = platformConfig.getBarrierSet();
         this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
+        this.vectorArchitecture = vectorArchitecture;
     }
 
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
@@ -274,7 +282,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             } else if (n instanceof LoadHubOrNullNode) {
                 lowerLoadHubOrNullNode((LoadHubOrNullNode) n, tool);
             } else if (n instanceof LoadArrayComponentHubNode) {
-                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
+                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n, tool);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
             } else if (n instanceof UnsafeCompareAndExchangeNode) {
@@ -324,7 +332,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
-            } else if (n instanceof FloatingIntegerDivRemNode<?> divRem && divRem.graph().isAfterStage(GraphState.StageFlag.FSA)) {
+            } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
                 lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
@@ -405,9 +413,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
             }
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
+                return;
+            }
+            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
                 return;
             }
         }
@@ -423,9 +434,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
+                return;
+            }
+            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
                 return;
             }
         }
@@ -478,7 +492,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
 
         BarrierType barrierType = barrierSet.fieldReadBarrierType(field, getStorageKind(field));
-        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()), loadStamp, barrierType, loadField.getMemoryOrder()));
+        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()),
+                        loadStamp, barrierType, loadField.getMemoryOrder(), loadField.field(), loadField.trustInjected()));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -602,9 +617,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  * The guard on the read hub should be the null check of the array that was
                  * introduced earlier.
                  */
-                ValueNode arrayClass = createReadHub(graph, array, tool);
+                ValueNode arrayClass = createReadHub(graph, array, tool, tool.lastFixedNode());
                 boolean isKnownObjectArray = arrayType != null && !arrayType.getType().getComponentType().isPrimitive();
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed, tool, tool.lastFixedNode());
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
@@ -654,7 +669,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool, tool.lastFixedNode());
         loadHub.replaceAtUsagesAndDelete(hub);
     }
 
@@ -693,7 +708,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final AbstractPointerStamp hubStamp = (AbstractPointerStamp) loadHubOrNullNode.stamp(NodeView.DEFAULT);
         ValueNode nullHub = ConstantNode.forConstant(hubStamp.asAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), graph);
         final ValueNode nonNullValue = graph.addOrUniqueWithInputs(PiNode.create(value, stamp.asNonNull(), ifNode.falseSuccessor()));
-        ValueNode hub = createReadHub(graph, nonNullValue, tool);
+        ValueNode hub = createReadHub(graph, nonNullValue, tool, ifNode.falseSuccessor());
         ValueNode[] values = new ValueNode[]{nullHub, hub};
         final PhiNode hubPhi = graph.unique(new ValuePhiNode(hubStamp, merge, values));
         final FixedNode oldNext = predecessor.next();
@@ -702,9 +717,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         loadHubOrNullNode.replaceAtUsagesAndDelete(hubPhi);
     }
 
-    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
+    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub, LoweringTool tool) {
         StructuredGraph graph = loadHub.graph();
-        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub);
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub, tool, tool.lastFixedNode());
         graph.replaceFixed(loadHub, hub);
     }
 
@@ -821,7 +836,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else {
             memoryRead.setGuard(guard);
         }
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, compressible), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
     }
@@ -836,18 +851,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, false), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, false);
         load.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(load, memoryRead);
     }
 
-    private static ValueNode performBooleanCoercionIfNecessary(ValueNode readValue, JavaKind readKind) {
-        if (readKind == JavaKind.Boolean) {
-            StructuredGraph graph = readValue.graph();
-            IntegerEqualsNode eq = graph.addOrUnique(new IntegerEqualsNode(readValue, ConstantNode.forInt(0, graph)));
-            return graph.addOrUnique(new ConditionalNode(eq, ConstantNode.forBoolean(false, graph), ConstantNode.forBoolean(true, graph)));
-        }
-        return readValue;
+    /**
+     * Coerce integer values into a boolean 0 or 1 to match Java semantics. The returned nodes have
+     * not been added to the graph.
+     */
+    private static ValueNode performBooleanCoercion(ValueNode readValue) {
+        IntegerEqualsNode eq = new IntegerEqualsNode(readValue, ConstantNode.forInt(0));
+        return new ConditionalNode(eq, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true));
     }
 
     protected void lowerUnsafeStoreNode(RawStoreNode store) {
@@ -910,7 +925,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() != GraphState.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
 
@@ -1109,6 +1124,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit) {
+        for (MonitorIdNode otherLock : commit.getLocks()) {
+            if (otherLock.getLockDepth() < lock.getLockDepth() && commit.getObjectIndex(lock) == commit.getObjectIndex(otherLock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1120,13 +1144,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
-         * state. It will be the state from before the allocation occurred instead of a valid state
-         * after the locking is performed. In practice this should be fine since these are newly
-         * allocated objects. The bytecodes themselves permit allocating an object, doing a
-         * monitorenter and then dropping all references to the object which would produce the same
-         * state, though that would normally produce an IllegalMonitorStateException. In HotSpot
-         * some form of fast path locking should always occur so the FrameState should never
-         * actually be used.
+         * state. The FrameState on the CommitAllocationNode is the nearest previous side effecting
+         * FrameState. The objects being materialized correspond to some side effecting state which
+         * most likely no longer exists as the virtualization of the objects means operations like
+         * storing to the virtual object are no longer side effecting.
+         *
+         * In Substrate and versions of HotSpot that used stack locking, acquiring these locks
+         * doesn't create any global side effects so it was always ok if we deoptimized after
+         * acquiring these locks.
+         *
+         * Starting with the introduction of lightweight locking in HotSpot and some features of
+         * Loom, acquiring locks created global side effects that must be cleaned up unlocking of
+         * these objects. This means PEA must treat MonitorEnterNodes as having a side effect even
+         * after being virtualized to ensure that the lock is released after being acquired..
+         * Additionally we must ensure that the MonitorEnterNodes can't deoptimize as it will use
+         * the FrameState where the locks are still virtual and the lock acquired by the
+         * MonitorEnterNode won't be released.
          */
         ArrayList<MonitorEnterNode> enters = null;
         FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
@@ -1136,14 +1169,32 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             // Ensure that the lock operations are performed in lock depth order
             ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
             newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            // Eliminate nested locks
+            newList.removeIf(lock -> isNestedLock(lock, commit));
+
+            for (MonitorIdNode lock : locks) {
+                if (!newList.contains(lock)) {
+                    // lock is nested and eliminated
+                    for (Node usage : lock.usages().snapshot()) {
+                        if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
+                            removeMonitorAccess(access);
+                        }
+                    }
+                    lock.setEliminated();
+                }
+            }
             locks = newList;
         }
+
+        insertionPoint = maybeEmitLockingCheck(locks, insertionPoint, stateBefore);
 
         int lastDepth = -1;
         for (MonitorIdNode monitorId : locks) {
             GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
+            GraalError.guarantee(!monitorId.isEliminated(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
             lastDepth = monitorId.getLockDepth();
             MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
+            enter.setSynthetic();
             graph.addAfterFixed(insertionPoint, enter);
             enter.setStateAfter(stateBefore.duplicate());
             insertionPoint = enter;
@@ -1172,6 +1223,17 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         // Insert the required ALLOCATION_INIT barrier after all objects are initialized.
         graph.addAfterFixed(insertAfter, graph.add(MembarNode.forInitialization()));
+    }
+
+    /**
+     * Emit any extra checks before acquired locks on the thread local objects.
+     *
+     * @param locks the locks to be acquired in order
+     * @param insertionPoint the fixed node to insert new nodes after
+     * @param stateBefore the state used by the {@link CommitAllocationNode}
+     */
+    protected FixedWithNextNode maybeEmitLockingCheck(List<MonitorIdNode> locks, FixedWithNextNode insertionPoint, FrameState stateBefore) {
+        return insertionPoint;
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);
@@ -1213,45 +1275,66 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return stamp;
     }
 
-    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
-        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+
+    /**
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The nodes have already been added to the graph.
+     */
+    public final ValueNode implicitUnsafeLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        if (compressible && kind.isObject()) {
+            return implicitLoadConvert(graph, kind, value, compressible);
+        } else {
+            ValueNode ret = implicitUnsafePrimitiveLoadConvert(kind, value);
+            if (!ret.isAlive()) {
+                ret = graph.addOrUniqueWithInputs(ret);
+            }
+            return ret;
+        }
     }
 
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
 
-    public ValueNode implicitLoadConvert(JavaKind kind, ValueNode value) {
-        return implicitLoadConvert(kind, value, true);
-    }
-
+    /**
+     * Perform sign or zero extensions for subword types and add the nodes to the graph.
+     */
     protected final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        ValueNode ret = implicitLoadConvert(kind, value, compressible);
+        ValueNode ret;
+        if (useCompressedOops(kind, compressible)) {
+            ret = newCompressionNode(CompressionOp.Uncompress, value);
+        } else {
+            ret = implicitPrimitiveLoadConvert(kind, value);
+        }
+
         if (!ret.isAlive()) {
-            ret = graph.addOrUnique(ret);
+            ret = graph.addOrUniqueWithInputs(ret);
         }
         return ret;
     }
 
-    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+    /**
+     * Perform sign or zero extensions for subword types. The caller is expected to add an resulting
+     * nodes to the graph.
+     */
+    public static ValueNode implicitPrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Byte, Short -> new SignExtendNode(value, 32);
+            case Boolean, Char -> new ZeroExtendNode(value, 32);
+            default -> value;
+        };
+    }
 
     /**
-     * @param compressible whether the convert should be compressible
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The caller is expected to add an resulting * nodes to the graph.
      */
-    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
-        if (useCompressedOops(kind, compressible)) {
-            return newCompressionNode(CompressionOp.Uncompress, value);
+    public static ValueNode implicitUnsafePrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        if (kind == JavaKind.Boolean) {
+            return performBooleanCoercion(new ZeroExtendNode(value, 32));
         }
-
-        switch (kind) {
-            case Byte:
-            case Short:
-                return new SignExtendNode(value, 32);
-            case Boolean:
-            case Char:
-                return new ZeroExtendNode(value, 32);
-        }
-        return value;
+        return implicitPrimitiveLoadConvert(kind, value);
     }
 
     public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
@@ -1308,20 +1391,65 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return newCompressionNode(CompressionOp.Compress, value);
         }
 
-        switch (kind) {
-            case Boolean:
-            case Byte:
-                return new NarrowNode(value, 8);
-            case Char:
-            case Short:
-                return new NarrowNode(value, 16);
-        }
-        return value;
+        return implicitPrimitiveStoreConvert(kind, value);
     }
 
-    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
+    public static ValueNode implicitPrimitiveStoreConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Boolean, Byte -> new NarrowNode(value, 8);
+            case Char, Short -> new NarrowNode(value, 16);
+            default -> value;
+        };
+    }
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor);
+    /**
+     * Simulate a primitive store.
+     *
+     * So for code like:
+     *
+     * <pre>
+     * static class Data {
+     *     int value = 0xF0F0F0F0;
+     * }
+     *
+     * Data data = new Data();
+     * UNSAFE.putByte(data, FIELD_OFFSET, 0x0F);
+     * </pre>
+     *
+     * The field value of the data object is 0xF0F0F0F0 before the unsafe write operation and
+     * 0xF0F0F00F after the unsafe write operation. We are not allowed to touch the upper 3 bytes.
+     * To simulate the write operation we extract the appropriate bytes and combine them.
+     * <p>
+     * Example for a byte operation, currently stored value 0xF0F0F0F0 and value to store
+     * 0x0000000F:
+     *
+     * <pre>
+     * lowerBytesMask   = 00000000 00000000 00000000 11111111
+     * upperBytesMask   = 11111111 11111111 11111111 00000000
+     * currentStored    = 11110000 11110000 11110000 11110000
+     * valueToStore     = 00000000 00000000 00000000 00001111
+     * newValue         = (currentStored & upperBytesMask) | (valueToStore & lowerBytesMask)
+     *                  = 11110000 11110000 11110000 00001111
+     * </pre>
+     *
+     */
+    public static ValueNode simulatePrimitiveStore(JavaKind kind, ValueNode currentValue, ValueNode valueToStore) {
+        // compute the masks
+        int bitCount = kind.getByteCount() * 8;
+        int lowerBytesMask = (int) CodeUtil.mask(bitCount);
+        int upperBytesMask = ~lowerBytesMask;
+
+        // extract the upper bytes from the current entry
+        ValueNode upperBytes = AndNode.create(ConstantNode.forInt(upperBytesMask), currentValue, NodeView.DEFAULT);
+        // extract the lower bytes from the value
+        ValueNode lowerBytes = AndNode.create(ConstantNode.forInt(lowerBytesMask), valueToStore, NodeView.DEFAULT);
+        // combine both
+        return OrNode.create(upperBytes, lowerBytes, NodeView.DEFAULT);
+    }
+
+    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool, FixedWithNextNode insertAfter);
+
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor, LoweringTool tool, FixedWithNextNode insertAfter);
 
     protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();
@@ -1384,5 +1512,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @Override
     public boolean supportsOptimizedFilling(OptionValues options) {
         return false;
+    }
+
+    @Override
+    public VectorArchitecture getVectorArchitecture() {
+        return vectorArchitecture;
+    }
+
+    @Override
+    public DefaultJavaLoweringProvider getBasicLoweringProvider() {
+        return this;
     }
 }

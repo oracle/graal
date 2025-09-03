@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,15 @@
  */
 package jdk.graal.compiler.core.test;
 
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.TypeKind;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDescs;
+import java.lang.constant.DirectMethodHandleDesc.Kind;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -32,11 +41,6 @@ import java.util.Map;
 
 import org.junit.Assume;
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.ConstantDynamic;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,20 +51,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see "https://openjdk.java.net/jeps/309"
  * @see "https://bugs.openjdk.java.net/browse/JDK-8177279"
  */
-public class DynamicConstantTest extends CustomizedBytecodePatternTest {
-
-    private static final int PUBLIC_STATIC = ACC_PUBLIC | ACC_STATIC;
-
-    static final String testClassInternalName = DynamicConstantTest.class.getName().replace('.', '/');
-    static final String constantBootstrapsClassInternalName = "java/lang/invoke/ConstantBootstraps";
-
+public class DynamicConstantTest extends GraalCompilerTest {
     /**
      * Map of test class generators keyed by internal class name.
      */
     private final Map<String, TestGenerator> generators = new LinkedHashMap<>();
 
     private void add(TestGenerator gen) {
-        generators.put(gen.className.replace('.', '/'), gen);
+        generators.put(gen.taregtClassName.replace('.', '/'), gen);
     }
 
     enum CondyType {
@@ -88,11 +86,11 @@ public class DynamicConstantTest extends CustomizedBytecodePatternTest {
      * Generates a class with a static {@code run} method that returns a value loaded from
      * CONSTANT_Dynamic constant pool entry.
      */
-    static class TestGenerator {
+    static class TestGenerator implements CustomizedBytecodePattern {
         /**
          * Type of value returned by the generated {@code run} method.
          */
-        final Type type;
+        final ClassDesc type;
 
         /**
          * Type of condy used to produce the returned value.
@@ -108,63 +106,50 @@ public class DynamicConstantTest extends CustomizedBytecodePatternTest {
         /**
          * Name of the generated class.
          */
-        final String className;
+        final String taregtClassName;
 
         TestGenerator(Class<?> type, CondyType condyType) {
             String typeName = type.getSimpleName();
-            this.type = Type.getType(type);
+            this.type = cd(type);
             this.condyType = condyType;
             this.getter = "get" + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
-            this.className = DynamicConstantTest.class.getName() + "$" + typeName + '_' + condyType;
+            this.taregtClassName = DynamicConstantTest.class.getName() + "$" + typeName + '_' + condyType;
         }
 
-        void generate(ClassWriter cw) {
+        @Override
+        public byte[] generateClass(String className) {
+            // @formatter:off
+            return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                            .withMethodBody("run", MethodTypeDesc.of(type), ACC_PUBLIC_STATIC, this::generate));
+            // @formatter:on
+        }
+
+        private void generate(CodeBuilder b) {
             // @formatter:off
             // Object ConstantBootstraps.invoke(MethodHandles.Lookup lookup, String name, Class<?> type, MethodHandle handle, Object... args)
-            // @formatter:on
-            String invokeSig = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/invoke/MethodHandle;[Ljava/lang/Object;)Ljava/lang/Object;";
-            Handle invokeHandle = new Handle(H_INVOKESTATIC, constantBootstrapsClassInternalName, "invoke", invokeSig, false);
+            ClassDesc outerClass = cd(DynamicConstantTest.class);
+            String desc = type.descriptorString();
 
-            String desc = type.getDescriptor();
             if (condyType == CondyType.CALL_DIRECT_BSM) {
                 // Example: int DynamicConstantTest.getIntBSM(MethodHandles.Lookup l, String name,
                 // Class<?> type)
                 String sig = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)" + desc;
-                Handle handle = new Handle(H_INVOKESTATIC, testClassInternalName, getter + "BSM", sig, false);
-
-                ConstantDynamic condy = new ConstantDynamic("const", desc, handle);
-                MethodVisitor run = cw.visitMethod(PUBLIC_STATIC, "run", "()" + desc, null, null);
-                run.visitLdcInsn(condy);
-                run.visitInsn(type.getOpcode(IRETURN));
-                run.visitMaxs(0, 0);
-                run.visitEnd();
+                var condy = DynamicConstantDesc.ofNamed(MethodHandleDesc.of(Kind.STATIC, outerClass, getter + "BSM", sig), "const", type);
+                b.ldc(condy).return_(TypeKind.from(type));
             } else if (condyType == CondyType.CALL_INDIRECT_BSM) {
                 // Example: int DynamicConstantTest.getInt()
-                Handle handle = new Handle(H_INVOKESTATIC, testClassInternalName, getter, "()" + desc, false);
-
-                ConstantDynamic condy = new ConstantDynamic("const", desc, invokeHandle, handle);
-                MethodVisitor run = cw.visitMethod(PUBLIC_STATIC, "run", "()" + desc, null, null);
-                run.visitLdcInsn(condy);
-                run.visitInsn(type.getOpcode(IRETURN));
-                run.visitMaxs(0, 0);
-                run.visitEnd();
+                var condy = DynamicConstantDesc.ofNamed(ConstantDescs.BSM_INVOKE, "const", type, MethodHandleDesc.of(Kind.STATIC, outerClass, getter, "()" + desc));
+                b.ldc(condy).return_(TypeKind.from(type));
             } else {
                 assert condyType == CondyType.CALL_INDIRECT_WITH_ARGS_BSM;
                 // Example: int DynamicConstantTest.getInt()
-                Handle handle1 = new Handle(H_INVOKESTATIC, testClassInternalName, getter, "()" + desc, false);
-
+                var condy1 = DynamicConstantDesc.ofNamed(ConstantDescs.BSM_INVOKE, "const1", type, MethodHandleDesc.of(Kind.STATIC, outerClass, getter, "()" + desc));
                 // Example: int DynamicConstantTest.getInt(int v1, int v2)
-                Handle handle2 = new Handle(H_INVOKESTATIC, testClassInternalName, getter, "(" + desc + desc + ")" + desc, false);
-
-                ConstantDynamic condy1 = new ConstantDynamic("const1", desc, invokeHandle, handle1);
-                ConstantDynamic condy2 = new ConstantDynamic("const2", desc, invokeHandle, handle2, condy1, condy1);
-
-                MethodVisitor run = cw.visitMethod(PUBLIC_STATIC, "run", "()" + desc, null, null);
-                run.visitLdcInsn(condy2);
-                run.visitInsn(type.getOpcode(IRETURN));
-                run.visitMaxs(0, 0);
-                run.visitEnd();
+                var condy2 = DynamicConstantDesc.ofNamed(ConstantDescs.BSM_INVOKE, "const2", type, MethodHandleDesc.of(Kind.STATIC, outerClass, getter, "(" + desc + desc + ")" + desc), condy1,
+                                condy1);
+                b.ldc(condy2).return_(TypeKind.from(type));
             }
+            // @formatter:on
         }
     }
 
@@ -226,21 +211,11 @@ public class DynamicConstantTest extends CustomizedBytecodePatternTest {
 
     private static final boolean VERBOSE = Boolean.getBoolean(DynamicConstantTest.class.getSimpleName() + ".verbose");
 
-    @Override
-    protected byte[] generateClass(String internalClassName) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cw.visit(55, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
-        generators.get(internalClassName).generate(cw);
-        cw.visitEnd();
-        return cw.toByteArray();
-    }
-
-    @SuppressWarnings("try")
     @Test
     public void test() throws Throwable {
         boolean jvmciCompatibilityChecked = false;
         for (TestGenerator e : generators.values()) {
-            Class<?> testClass = getClass(e.className);
+            Class<?> testClass = e.getClass(e.taregtClassName);
             ResolvedJavaMethod run = getResolvedJavaMethod(testClass, "run");
             if (!jvmciCompatibilityChecked) {
                 checkJVMCICompatibility(run);

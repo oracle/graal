@@ -24,23 +24,49 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.hosted.image.NativeImage.localSymbolNameForMethod;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public class MethodPointerRelocationProvider {
+
+    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
 
     public static MethodPointerRelocationProvider singleton() {
         return ImageSingletons.lookup(MethodPointerRelocationProvider.class);
     }
 
     public void markMethodPointerRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target,
-                    long addend, @SuppressWarnings("unused") boolean isStaticallyResolved) {
-        section.markRelocationSite(offset, relocationKind, localSymbolNameForMethod(target), addend);
+                    long addend, MethodPointer methodPointer, boolean isInjectedNotCompiled) {
+        String symbolName;
+        if (imageLayer) {
+            symbolName = LayeredDispatchTableFeature.singleton().getSymbolName(methodPointer, target, isInjectedNotCompiled);
+        } else {
+            symbolName = NativeImage.localSymbolNameForMethod(target);
+        }
+        section.markRelocationSite(offset, relocationKind, symbolName, addend);
+    }
+
+    public void markMethodOffsetRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target,
+                    long addend, MethodOffset methodOffset, boolean isInjectedNotCompiled) {
+        if (!imageLayer || !isInjectedNotCompiled) {
+            throw VMError.shouldNotReachHere("must be written to image heap without relocation");
+        }
+
+        /*
+         * Add a relocation entry that will be resolved to the absolute address for the symbol. At
+         * runtime, we recompute this address ourselves to become relative to the code base.
+         */
+        String symbolName = LayeredDispatchTableFeature.singleton().getSymbolName(methodOffset, target, isInjectedNotCompiled);
+        section.markRelocationSite(offset, relocationKind, symbolName, addend);
     }
 }
 

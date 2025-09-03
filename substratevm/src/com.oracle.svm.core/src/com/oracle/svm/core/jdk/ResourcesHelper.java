@@ -32,18 +32,18 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
-
 import org.graalvm.nativeimage.ImageInfo;
+
+import com.oracle.svm.core.util.VMError;
 
 public class ResourcesHelper {
 
     public static URL nameToResourceURL(String resourceName) {
-        return Resources.singleton().createURL(resourceName);
+        return Resources.createURL(resourceName);
     }
 
     public static URL nameToResourceURL(Module module, String resourceName) {
-        return Resources.singleton().createURL(module, resourceName);
+        return Resources.createURL(module, resourceName);
     }
 
     public static InputStream nameToResourceInputStream(String mn, String resourceName) throws IOException {
@@ -54,7 +54,7 @@ public class ResourcesHelper {
     }
 
     public static List<URL> nameToResourceListURLs(String resourcesName) {
-        Enumeration<URL> urls = Resources.singleton().createURLs(resourcesName);
+        Enumeration<URL> urls = Resources.createURLs(resourcesName);
         List<URL> resourceURLs = new ArrayList<>();
         while (urls.hasMoreElements()) {
             resourceURLs.add(urls.nextElement());

@@ -38,7 +38,7 @@ class SpeculationEncodingAdapter implements SpeculationReasonGroup.SpeculationCo
     Object[] flatten(Object[] context) {
         boolean flatten = false;
         for (Object c : context) {
-            if (c instanceof SpeculationReasonGroup.SpeculationContextObject || (c != null && c.getClass() == BytecodePosition.class)) {
+            if (c instanceof SpeculationReasonGroup.SpeculationContextObject || (c != null && c.getClass() == BytecodePosition.class) || c instanceof byte[]) {
                 // Needs extra work to flatten the representation
                 flatten = true;
                 break;
@@ -62,6 +62,11 @@ class SpeculationEncodingAdapter implements SpeculationReasonGroup.SpeculationCo
                     visitInt(p.getBCI());
                     objects.add(p.getMethod());
                     p = p.getCaller();
+                }
+            } else if (c instanceof byte[]) {
+                byte[] array = (byte[]) c;
+                for (byte b : array) {
+                    objects.add(b);
                 }
             } else {
                 objects.add(c);

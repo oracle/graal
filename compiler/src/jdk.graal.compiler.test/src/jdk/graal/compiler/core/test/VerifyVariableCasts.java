@@ -63,7 +63,7 @@ public class VerifyVariableCasts extends VerifyPhase<CoreProviders> {
         for (PiNode cast : graph.getNodes().filter(PiNode.class)) {
             Stamp stamp = cast.piStamp();
             if (stamp instanceof AbstractObjectStamp) {
-                ResolvedJavaType castType = ((AbstractObjectStamp) stamp).javaType(metaAccess);
+                ResolvedJavaType castType = stamp.javaType(metaAccess);
                 if (variableType.isAssignableFrom(castType)) {
                     throw new VerificationError("Cast to %s in %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.asVariable instead.",
                                     variableType.toJavaName(),

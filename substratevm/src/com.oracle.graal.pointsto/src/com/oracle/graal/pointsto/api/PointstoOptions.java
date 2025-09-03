@@ -37,10 +37,10 @@ import jdk.graal.compiler.options.OptionKey;
 public class PointstoOptions {
 
     @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
-    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(true);
 
     @Option(help = "Use predicates in points-to analysis.")//
-    public static final OptionKey<Boolean> UsePredicates = new OptionKey<>(false);
+    public static final OptionKey<Boolean> UsePredicates = new OptionKey<>(true);
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
@@ -134,6 +134,15 @@ public class PointstoOptions {
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
+    /**
+     * This flag enables conservative modeling of unsafe access during the analysis. First, the type
+     * state of unsafe accessed fields now contains all instantiated subtypes of their declared
+     * type. Second, all unsafe loads are saturated by default; we do this because we assume we
+     * cannot accurately track which fields can be unsafe accessed.
+     */
+    @Option(help = "Conservative unsafe access injects all unsafe accessed fields with the instantiated subtypes of their declared type and saturates all unsafe loads.")//
+    public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(true);
+
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
     static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 
@@ -188,6 +197,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 0);
                     MinCallingContextDepth.update(values, 0);
                     MaxCallingContextDepth.update(values, 0);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_1obj":
@@ -196,6 +206,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 0);
                     MinCallingContextDepth.update(values, 1);
                     MaxCallingContextDepth.update(values, 1);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_2obj1h":
@@ -204,6 +215,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 1);
                     MinCallingContextDepth.update(values, 2);
                     MaxCallingContextDepth.update(values, 2);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_3obj2h":
@@ -212,6 +224,7 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 2);
                     MinCallingContextDepth.update(values, 3);
                     MaxCallingContextDepth.update(values, 3);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 case "_4obj3h":
@@ -220,10 +233,16 @@ public class PointstoOptions {
                     MaxHeapContextDepth.update(values, 3);
                     MinCallingContextDepth.update(values, 4);
                     MaxCallingContextDepth.update(values, 4);
+                    UseConservativeUnsafeAccess.update(values, false);
                     break;
 
                 default:
                     throw shouldNotReachHere("Unknown context sensitivity setting:" + newValue);
+            }
+            if (!newValue.toLowerCase(Locale.ROOT).equals("insens")) {
+                /* GR-58495: WP-SCCP is not yet compatible with context-sensitive analysis. */
+                TrackPrimitiveValues.update(values, false);
+                UsePredicates.update(values, false);
             }
         }
     };

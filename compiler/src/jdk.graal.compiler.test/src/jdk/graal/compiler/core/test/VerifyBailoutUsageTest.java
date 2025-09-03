@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,35 +53,35 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyBailoutUsageTest {
 
-    private static class InvalidBailoutUsagePhase1 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase1 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException("Bailout in graph %s", graph);
         }
     }
 
-    private static class InvalidBailoutUsagePhase2 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase2 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException(new GraalError("other cause"), "Bailout in graph %s", graph);
         }
     }
 
-    private static class InvalidBailoutUsagePhase3 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase3 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException(true/* permanent */, "Bailout in graph %s", graph);
         }
     }
 
-    private static class ValidPermanentBailoutUsage extends TestPhase {
+    private static final class ValidPermanentBailoutUsage extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new PermanentBailoutException("Valid permanent bailout %s", graph);
         }
     }
 
-    private static class ValidRetryableBailoutUsage extends TestPhase {
+    private static final class ValidRetryableBailoutUsage extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new RetryableBailoutException("Valid retryable bailout %s", graph);
@@ -113,7 +113,6 @@ public class VerifyBailoutUsageTest {
         testBailoutUsage(ValidRetryableBailoutUsage.class);
     }
 
-    @SuppressWarnings("try")
     private static void testBailoutUsage(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -130,7 +129,7 @@ public class VerifyBailoutUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugCloseable s = debug.disableIntercept()) {
+                try (DebugCloseable _ = debug.disableIntercept()) {
                     new VerifyBailoutUsage().apply(graph, context);
                 }
             }

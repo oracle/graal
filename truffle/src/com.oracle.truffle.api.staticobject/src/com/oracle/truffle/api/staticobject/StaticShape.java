@@ -175,7 +175,7 @@ public abstract class StaticShape<T> {
         }
     }
 
-    private static <U> U checkedCast(Object obj, Class<U> type) {
+    static <U> U checkedCast(Object obj, Class<U> type) {
         try {
             return type.cast(obj);
         } catch (ClassCastException e) {

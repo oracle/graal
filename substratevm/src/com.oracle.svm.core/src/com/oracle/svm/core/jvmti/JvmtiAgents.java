@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.Serial;
 import java.util.ArrayList;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,7 +39,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -152,7 +152,7 @@ public class JvmtiAgents {
     private static boolean callOnLoadFunction(PointerBase function, String options) {
         JvmtiOnLoadFunctionPointer onLoad = (JvmtiOnLoadFunctionPointer) function;
         try (CTypeConversion.CCharPointerHolder holder = CTypeConversion.toCString(options)) {
-            int result = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), holder.get(), WordFactory.nullPointer());
+            int result = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), holder.get(), Word.nullPointer());
             /* Any value other than 0 is an error. */
             return result == 0;
         }
@@ -160,7 +160,7 @@ public class JvmtiAgents {
 
     private static void callOnUnLoadFunction(PointerBase function) {
         JvmtiOnUnLoadFunctionPointer onLoad = (JvmtiOnUnLoadFunctionPointer) function;
-        onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), WordFactory.nullPointer());
+        onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), Word.nullPointer());
     }
 
     private static class AgentInitException extends RuntimeException {

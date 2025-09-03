@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -44,8 +44,8 @@ public final class ModulesHelperVM {
         return (ModuleTable.ModuleEntry) meta.HIDDEN_MODULE_ENTRY.getHiddenObject(module);
     }
 
-    private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
-        return fromModuleEntry.registry().packages().lookup(nameSymbol);
+    private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Name> nameSymbol, Meta meta) {
+        return fromModuleEntry.registry(meta).packages().lookup(nameSymbol);
     }
 
     public static ModuleTable.ModuleEntry extractToModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject toModule, Meta meta,
@@ -83,9 +83,9 @@ public final class ModulesHelperVM {
 
     public static PackageTable.PackageEntry extractPackageEntry(String pkg, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
         PackageTable.PackageEntry packageEntry = null;
-        Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
+        Symbol<Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
         if (nameSymbol != null) {
-            packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
+            packageEntry = getPackageEntry(fromModuleEntry, nameSymbol, meta);
         }
         if (packageEntry == null) {
             if (profiler != null) {

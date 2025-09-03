@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ package com.oracle.truffle.api.object;
  *
  * @since 0.8 or earlier
  */
-public abstract class Property {
+public abstract sealed class Property permits PropertyImpl {
     /**
      * Constructor for subclasses.
      *
@@ -69,7 +69,7 @@ public abstract class Property {
     @Deprecated(since = "22.2")
     @SuppressWarnings("deprecation")
     public static Property create(Object key, Location location, int flags) {
-        return Layout.getFactory().createProperty(key, location, flags);
+        return new PropertyImpl(key, location, flags);
     }
 
     /**

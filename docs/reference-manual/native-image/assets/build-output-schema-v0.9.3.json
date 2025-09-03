@@ -30,7 +30,7 @@
         "name": {
           "type": "string",
           "default": "",
-          "title": "The name of the native executable"
+          "title": "The file name of the native executable (including file extension if any)"
         },
         "graalvm_version": {
           "type": "string",

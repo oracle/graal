@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.core.hub;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
 
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 @DuplicatedInNativeCode
 public enum ReferenceType {
@@ -44,5 +48,19 @@ public enum ReferenceType {
 
     public byte getValue() {
         return value;
+    }
+
+    public static ReferenceType computeReferenceType(Class<?> type) {
+        if (Reference.class.isAssignableFrom(type)) {
+            if (PhantomReference.class.isAssignableFrom(type)) {
+                return ReferenceType.Phantom;
+            } else if (SoftReference.class.isAssignableFrom(type)) {
+                return ReferenceType.Soft;
+            } else {
+                /* Treat all other java.lang.Reference subclasses as weak references. */
+                return ReferenceType.Weak;
+            }
+        }
+        return ReferenceType.None;
     }
 }

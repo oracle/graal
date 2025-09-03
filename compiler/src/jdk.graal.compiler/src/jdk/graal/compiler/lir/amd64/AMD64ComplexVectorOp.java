@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     }
 
     protected AMD64Kind getVectorKind(JavaKind valueKind) {
+        // Checkstyle: stop FallThrough
         switch (vectorSize) {
             case XMM:
                 switch (valueKind) {
@@ -143,9 +144,11 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("Unsupported vector size.");
         }
+        // Checkstyle: resume FallThrough
     }
 
     protected AMD64Kind getVectorKind(Stride stride) {
+        // Checkstyle: stop FallThrough
         switch (vectorSize) {
             case XMM:
                 switch (stride) {
@@ -189,6 +192,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("Unsupported vector size."); // ExcludeFromJacocoGeneratedReport
         }
+        // Checkstyle: resume FallThrough
     }
 
     protected Value[] allocateTempRegisters(LIRGeneratorTool tool, AMD64Kind kind, int n) {
@@ -243,12 +247,8 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         return supports(CPUFeature.BMI2);
     }
 
-    protected boolean supportsTZCNT() {
-        return supports(AMD64.CPUFeature.BMI1) && ((AMD64) targetDescription.arch).getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
-    }
-
     protected void bsfq(AMD64MacroAssembler masm, Register dst, Register src) {
-        if (supportsTZCNT()) {
+        if (supports(AMD64.CPUFeature.BMI1)) {
             TZCNT.emit(masm, QWORD, dst, src);
         } else {
             masm.bsfq(dst, src);

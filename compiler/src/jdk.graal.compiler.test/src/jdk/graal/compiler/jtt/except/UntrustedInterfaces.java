@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,21 @@
  */
 package jdk.graal.compiler.jtt.except;
 
-import jdk.graal.compiler.jtt.JTTTest;
-import jdk.graal.compiler.api.test.ExportingClassLoader;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
+import jdk.graal.compiler.jtt.JTTTest;
 
 public class UntrustedInterfaces extends JTTTest {
 
@@ -152,7 +159,7 @@ public class UntrustedInterfaces extends JTTTest {
     // Checkstyle: stop
     @BeforeClass
     public static void setUp() throws Exception {
-        poisonPill = (Pill) new PoisonLoader().findClass(PoisonLoader.POISON_IMPL_NAME).getDeclaredConstructor().newInstance();
+        poisonPill = (Pill) new PoisonLoader().getClass(PoisonLoader.POISON_IMPL_NAME).getDeclaredConstructor().newInstance();
     }
 
     // Checkstyle: resume
@@ -217,71 +224,47 @@ public class UntrustedInterfaces extends JTTTest {
         runTest("returnCheckcast", poisonPill);
     }
 
-    private static class PoisonLoader extends ExportingClassLoader {
+    private static final class PoisonLoader implements CustomizedBytecodePattern {
+
         public static final String POISON_IMPL_NAME = "jdk.graal.compiler.jtt.except.PoisonPill";
 
         @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            if (name.equals(POISON_IMPL_NAME)) {
-                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-
-                cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, POISON_IMPL_NAME.replace('.', '/'), null, Type.getInternalName(Pill.class), null);
-                // constructor
-                MethodVisitor constructor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-                constructor.visitCode();
-                constructor.visitVarInsn(Opcodes.ALOAD, 0);
-                constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(Pill.class), "<init>", "()V", false);
-                constructor.visitInsn(Opcodes.RETURN);
-                constructor.visitMaxs(0, 0);
-                constructor.visitEnd();
-
-                MethodVisitor setList = cw.visitMethod(Opcodes.ACC_PUBLIC, "setField", "()V", null, null);
-                setList.visitCode();
-                setList.visitVarInsn(Opcodes.ALOAD, 0);
-                setList.visitTypeInsn(Opcodes.NEW, Type.getInternalName(Object.class));
-                setList.visitInsn(Opcodes.DUP);
-                setList.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
-                setList.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(Pill.class), "field", Type.getDescriptor(TestInterface.class));
-                setList.visitInsn(Opcodes.RETURN);
-                setList.visitMaxs(0, 0);
-                setList.visitEnd();
-
-                MethodVisitor setStaticList = cw.visitMethod(Opcodes.ACC_PUBLIC, "setStaticField", "()V", null, null);
-                setStaticList.visitCode();
-                setStaticList.visitTypeInsn(Opcodes.NEW, Type.getInternalName(Object.class));
-                setStaticList.visitInsn(Opcodes.DUP);
-                setStaticList.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
-                setStaticList.visitFieldInsn(Opcodes.PUTSTATIC, Type.getInternalName(Pill.class), "staticField", Type.getDescriptor(TestInterface.class));
-                setStaticList.visitInsn(Opcodes.RETURN);
-                setStaticList.visitMaxs(0, 0);
-                setStaticList.visitEnd();
-
-                MethodVisitor callMe = cw.visitMethod(Opcodes.ACC_PUBLIC, "callMe", Type.getMethodDescriptor(Type.INT_TYPE, Type.getType(CallBack.class)), null, null);
-                callMe.visitCode();
-                callMe.visitVarInsn(Opcodes.ALOAD, 1);
-                callMe.visitTypeInsn(Opcodes.NEW, Type.getInternalName(Object.class));
-                callMe.visitInsn(Opcodes.DUP);
-                callMe.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
-                callMe.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(CallBack.class), "callBack", Type.getMethodDescriptor(Type.INT_TYPE, Type.getType(TestInterface.class)), true);
-                callMe.visitInsn(Opcodes.IRETURN);
-                callMe.visitMaxs(0, 0);
-                callMe.visitEnd();
-
-                MethodVisitor getList = cw.visitMethod(Opcodes.ACC_PUBLIC, "get", Type.getMethodDescriptor(Type.getType(TestInterface.class)), null, null);
-                getList.visitCode();
-                getList.visitTypeInsn(Opcodes.NEW, Type.getInternalName(Object.class));
-                getList.visitInsn(Opcodes.DUP);
-                getList.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
-                getList.visitInsn(Opcodes.ARETURN);
-                getList.visitMaxs(0, 0);
-                getList.visitEnd();
-
-                cw.visitEnd();
-
-                byte[] bytes = cw.toByteArray();
-                return defineClass(name, bytes, 0, bytes.length);
-            }
-            return super.findClass(name);
+        public byte[] generateClass(String className) {
+            ClassDesc classPill = cd(Pill.class);
+            ClassDesc classTestInterface = cd(TestInterface.class);
+            // @formatter:off
+            return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                            .withSuperclass(classPill)
+                            .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                            .aload(0)
+                                            .invokespecial(classPill, INIT_NAME, MTD_void)
+                                            .return_())
+                            .withMethodBody("setField", MTD_void, ACC_PUBLIC, b -> b
+                                            .aload(0)
+                                            .new_(CD_Object)
+                                            .dup()
+                                            .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                            .putfield(classPill, "field", classTestInterface)
+                                            .return_())
+                            .withMethodBody("setStaticField", MTD_void, ACC_PUBLIC, b -> b
+                                            .new_(CD_Object)
+                                            .dup()
+                                            .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                            .putstatic(classPill, "staticField", classTestInterface)
+                                            .return_())
+                            .withMethodBody("callMe", MethodTypeDesc.of(CD_int, cd(CallBack.class)), ACC_PUBLIC, b -> b
+                                            .aload(1)
+                                            .new_(CD_Object)
+                                            .dup()
+                                            .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                            .invokeinterface(cd(CallBack.class), "callBack", MethodTypeDesc.of(CD_int, classTestInterface))
+                                            .ireturn())
+                            .withMethodBody("get", MethodTypeDesc.of(classTestInterface), ACC_PUBLIC, b -> b
+                                            .new_(CD_Object)
+                                            .dup()
+                                            .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                            .areturn()));
+            // @formatter:on
         }
     }
 }

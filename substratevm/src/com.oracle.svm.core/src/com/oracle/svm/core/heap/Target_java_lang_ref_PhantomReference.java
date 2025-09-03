@@ -36,4 +36,10 @@ public final class Target_java_lang_ref_PhantomReference<T> {
     boolean refersTo0(Object obj) {
         return ReferenceInternals.refersTo(SubstrateUtil.cast(this, PhantomReference.class), obj);
     }
+
+    @Substitute
+    private void clear0() {
+        ReferenceInternals.clear(SubstrateUtil.cast(this, PhantomReference.class));
+    }
+
 }

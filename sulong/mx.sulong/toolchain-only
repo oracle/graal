@@ -1,4 +1,0 @@
-DYNAMIC_IMPORTS=/substratevm,/vm
-COMPONENTS=GraalVM compiler,Truffle Macro,LLVM Runtime Native,LLVM.org toolchain
-NATIVE_IMAGES=graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,graalvm-native-binutil
-DISABLE_POLYGLOT=true

@@ -29,11 +29,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -130,15 +130,15 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
             dataOffset = NumUtil.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
             if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
                 // round up for readonly code cache so that the data section can remain writeable
-                dataOffset = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset), CommittedMemoryProvider.get().getGranularity()));
+                dataOffset = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(Word.unsigned(dataOffset), CommittedMemoryProvider.get().getGranularity()));
             }
-            codeAndDataMemorySize = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset + dataSize), CommittedMemoryProvider.get().getGranularity()));
+            codeAndDataMemorySize = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(Word.unsigned(dataOffset + dataSize), CommittedMemoryProvider.get().getGranularity()));
 
             code = allocateCodeMemory(codeAndDataMemorySize);
             compiledBytes = compilation.getTargetCode();
 
             if (RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                UnsignedWord alignedAfterCodeOffset = UnsignedUtils.roundUp(WordFactory.unsigned(codeSize), CommittedMemoryProvider.get().getGranularity());
+                UnsignedWord alignedAfterCodeOffset = UnsignedUtils.roundUp(Word.unsigned(codeSize), CommittedMemoryProvider.get().getGranularity());
                 assert alignedAfterCodeOffset.belowOrEqual(codeAndDataMemorySize);
 
                 makeCodeMemoryExecutableWritable(code, alignedAfterCodeOffset);
@@ -217,7 +217,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
         // remove write access from code
         if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-            makeCodeMemoryExecutableReadOnly(code, WordFactory.unsigned(codeSize));
+            makeCodeMemoryExecutableReadOnly(code, Word.unsigned(codeSize));
         }
 
         /* Write primitive constants to the buffer, record object constants with offsets */
@@ -300,7 +300,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         return patchesHandled;
     }
 
-    private static class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
+    private static final class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
         @Override
         protected boolean storeDeoptTargetMethod() {
             return true;

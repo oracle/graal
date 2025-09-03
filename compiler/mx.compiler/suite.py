@@ -1,10 +1,10 @@
 suite = {
-  "mxversion": "7.28.0",
+  "mxversion": "7.58.9",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "24.2.0",
+  "version" : "26.0.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,10 +24,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-      },
-      {
-        "name" : "regex",
-        "subdir": True
       },
       {
         "name" : "sdk",
@@ -65,8 +61,8 @@ suite = {
       "packedResource": True,
     },
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.20-ea624c6066a.zip"],
-      "digest" : "sha512:263aefe418be987fc4e9a84cc301d0cc23858175ff0688791468ca31bae91e3fd51409a6167e1e6bd596e7ebe0fab1f26a025fcd6aac0b750fde62edaec33c0a",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.22-6cb0d3acbb1.zip"],
+      "digest" : "sha512:8c4795fae203bfa84c40b041fe6d0f46a89bd8b975120d28aea9483eef1c1b63ab685716c1258387c12a255560904284fd0bf9aa947f2efabc4a629148000b5d",
       "packedResource": True,
     },
 
@@ -83,35 +79,6 @@ suite = {
     "BATIK" : {
       "digest" : "sha512:cefc274dab0f3cd8064f135a8a3bccb59b8168864acd2143f8a5563c6feacd9651a740bcfc9998031d78b6c219168b7e5ba3341d1d11e429f1bf53629000566d",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
-    },
-
-    "ASM_9.5" : {
-      "digest" : "sha512:9e65f2983783725bae196ca939b45246958731246df1c495089c8ea5ce646de77c4e01a5a9ba10642016bb3258e1727e9ebcece6e74d9e3c32f528025d76b955",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm",
-        "version" : "9.5",
-      },
-    },
-
-    "ASM_TREE_9.5" : {
-      "digest" : "sha512:816de8f84c216a7bd97b2458bde64a4b99a039b7b59fbd1ef52edf8bf869edabb93967736fe0c61e8eb3e1520e0cefe69ba59cda12df30f9f85db75fb6c064f3",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm-tree",
-        "version" : "9.5",
-      },
-      "dependencies" : ["ASM_9.5"],
-    },
-
-    "ASM_UTIL_9.5" : {
-      "digest" : "sha512:f68284d8f8fd029f3f428112225b2035ed3a4216cf3b34e0aacc83c32a6d44ab5e5d128b60a13ef768e3396041a62cf63f7fd3445dc5a05ce0ae03a2b2ed3080",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm-util",
-        "version" : "9.5",
-      },
-      "dependencies" : ["ASM_9.5"],
     },
 
     "HSDIS" : {
@@ -182,11 +149,13 @@ suite = {
           "jdk.vm.ci.common",
           "jdk.vm.ci.amd64",
           "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.riscv64",
           "jdk.vm.ci.services",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.hotspot",
           "jdk.vm.ci.hotspot.amd64",
           "jdk.vm.ci.hotspot.aarch64",
+          "jdk.vm.ci.hotspot.riscv64",
         ],
       },
       "uses" : [
@@ -203,13 +172,12 @@ suite = {
         "GRAAL_PROCESSOR"
       ],
       "checkPackagePrefix": "false",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "21+",
       "workingSets" : "API,Graal",
       "jacoco" : "include",
       "jacocoExcludePackages" : [
         "jdk.graal.compiler.test",
-        "org.graalvm.libgraal.jni",
         "jdk.graal.compiler.replacements",
         "jdk.graal.compiler.hotspot.test",
         "jdk.graal.compiler.replacements.test",
@@ -231,6 +199,7 @@ suite = {
         "java.compiler" # javax.annotation.processing.*
       ],
       "checkPackagePrefix": "false",
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
     },
@@ -241,8 +210,6 @@ suite = {
       "dependencies" : [
         "jdk.graal.compiler",
         "mx:JUNIT",
-        "ASM_TREE_9.5",
-        "ASM_UTIL_9.5",
         "JAVA_ALLOCATION_INSTRUMENTER",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
@@ -255,6 +222,7 @@ suite = {
         "java.instrument",
         "java.management",
         "jdk.jfr",
+        "jdk.incubator.vector",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -262,6 +230,8 @@ suite = {
           "jdk.internal.misc",
           "jdk.internal.util",
           "jdk.internal.vm.annotation",
+          "sun.security.util.math",
+          "sun.security.util.math.intpoly",
         ],
         "java.instrument" : [
           "sun.instrument",
@@ -286,8 +256,11 @@ suite = {
         "truffle:TRUFFLE_DSL_PROCESSOR"
       ],
       "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "jacoco" : "exclude",
+      # warning: [incubating] using incubating module(s): jdk.incubator.vector
+      "javac.lint.overrides" : "-incubating",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -310,66 +283,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "jdk.graal.compiler.hotspot.jdk21.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.graal.compiler.test",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.util",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "jdk.graal.compiler",
-      "javaCompliance" : "21+",
-      "javaPreviewNeeded": "21+",
-      "workingSets" : "Graal,HotSpot,Test",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
-    "jdk.graal.compiler.hotspot.jdk23.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.graal.compiler.test",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.util",
-          "sun.security.util.math",
-          "sun.security.util.math.intpoly",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "jdk.graal.compiler",
-      "javaCompliance" : "23+",
-      # GR-51699
-      "forceJavac": True,
-      "workingSets" : "Graal,HotSpot,Test",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
-    "jdk.graal.compiler.virtual.bench" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["mx:JMH_1_21", "jdk.graal.compiler.microbenchmarks"],
-      "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
-      "annotationProcessors" : ["mx:JMH_1_21"],
-      "spotbugsIgnoresGenerated" : True,
-      "workingSets" : "Graal,Bench",
-      "testProject" : True,
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "jdk.graal.compiler.microbenchmarks" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -381,10 +294,13 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.code"
         ],
       },
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -407,6 +323,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "jacoco" : "exclude",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
@@ -432,6 +349,7 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
+      "jacoco" : "exclude",
       "workingSets" : "Graal,Test",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -445,6 +363,7 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
+      "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -457,8 +376,72 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
+      "jacoco" : "exclude",
       "workingSets" : "Graal,Test",
       "graalCompilerSourceEdition": "ignore",
+    },
+
+    # ------------- libgraal -------------
+
+    # See jdk.graal.compiler.core.common.LibGraalSupport for the SPI
+    # used by core compiler classes to access libgraal specific
+    # functionality without requiring the compiler classes to directly
+    # depend on libgraal specific modules.
+    "jdk.graal.compiler.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "workingSets" : "Graal",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
+      "checkstyle" : "jdk.graal.compiler",
+      "dependencies" : [
+        "GRAAL",
+        "GRAAL_MANAGEMENT",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
+        "sdk:JNIUTILS"
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.module",
+          "jdk.internal.misc"
+        ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.runtime",
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.hotspot",
+        ],
+      },
+      # Code coverage is not done when building libgraal
+      "jacoco" : "exclude",
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+
+      # Direct reference to jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope
+      # causing spotbugs analysis to fail with "missing class" error.
+      "spotbugs": "false",
+    },
+
+    "jdk.graal.compiler.libgraal.loader" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "workingSets" : "Graal",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
+      "checkstyle" : "jdk.graal.compiler",
+      "dependencies" : [
+        "sdk:NATIVEIMAGE_LIBGRAAL",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.module",
+          "jdk.internal.jimage",
+        ],
+      },
+      "spotbugs": "false",
+      "jacoco" : "exclude",
     },
   },
 
@@ -477,29 +460,10 @@ suite = {
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
-        "regex:TREGEX",
-        "ASM_TREE_9.5",
-        "ASM_UTIL_9.5",
       ],
       "exclude" : [
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
-      ],
-      "testDistribution" : True,
-      "unittestConfig": "graal",
-      "maven": False,
-      "graalCompilerSourceEdition": "ignore",
-    },
-    "GRAAL_TEST_PREVIEW_FEATURE" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.graal.compiler.hotspot.jdk21.test",
-        "jdk.graal.compiler.hotspot.jdk23.test",
-      ],
-      "distDependencies" : [
-        "GRAAL_TEST",
-      ],
-      "exclude" : [
       ],
       "testDistribution" : True,
       "unittestConfig": "graal",
@@ -530,14 +494,15 @@ suite = {
       "moduleInfo" : {
         "name" : "jdk.graal.compiler",
         "exports" : [
-          """* to com.oracle.graal.graal_enterprise,
+          """* to jdk.graal.compiler.libgraal,
+                  jdk.graal.compiler.management,
+                  com.oracle.graal.graal_enterprise,
                   org.graalvm.nativeimage.pointsto,
                   org.graalvm.nativeimage.builder,
                   org.graalvm.nativeimage.foreign,
                   org.graalvm.nativeimage.llvm,
                   com.oracle.svm.svm_enterprise,
                   com.oracle.svm_enterprise.ml_dataset,
-                  com.oracle.svm.enterprise.jdwp.resident,
                   org.graalvm.nativeimage.base,
                   org.graalvm.extraimage.builder,
                   org.graalvm.extraimage.librarysupport,
@@ -551,14 +516,14 @@ suite = {
           "jdk.graal.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "jdk.graal.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "jdk.graal.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
-          "jdk.graal.compiler.serviceprovider        to jdk.graal.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
-          "jdk.graal.compiler.util.args",
-          "jdk.graal.compiler.util.json",
+          "jdk.graal.compiler.serviceprovider        to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
+          "jdk.graal.compiler.util.json              to org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.driver",
         ],
         "uses" : [
           "jdk.graal.compiler.code.DisassemblerProvider",
           "jdk.graal.compiler.core.match.MatchStatementSet",
-          "jdk.graal.compiler.debug.DebugHandlersFactory",
+          "jdk.graal.compiler.core.common.LibGraalSupport",
+          "jdk.graal.compiler.debug.DebugDumpHandlersFactory",
           "jdk.graal.compiler.debug.TTYStreamProvider",
           "jdk.graal.compiler.debug.PathUtilitiesProvider",
           "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
@@ -581,7 +546,7 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
-      "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
+      "description": "The JAR build of the Graal compiler. This is intended to be used to speed up Graal Languages on OpenJDK distributions that do not ship the Graal compiler. To enable it, \'-XX:+EnableJVMCI\' is required and this Graal compiler JAR and its dependencies need to be on the \'--upgrade-module-path\'.", # pylint: disable=line-too-long
       "maven" : {
         "artifactId" : "compiler",
         "tag": ["default", "public"],
@@ -608,10 +573,44 @@ suite = {
       },
     },
 
+    "LIBGRAAL_LOADER" : {
+      "subDir": "src",
+      "dependencies" : [
+        "jdk.graal.compiler.libgraal.loader"
+      ],
+      "distDependencies" : [
+        "sdk:NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
+        "GRAAL",
+      ],
+      "maven": False,
+    },
+
+    "LIBGRAAL": {
+      "moduleInfo" : {
+        "name" : "jdk.graal.compiler.libgraal",
+      },
+      "subDir": "src",
+      "description" : "Module that builds libgraal",
+      "javaCompliance" : "24+",
+      "dependencies": [
+        "jdk.graal.compiler.libgraal",
+      ],
+      "distDependencies": [
+        "GRAAL",
+        "GRAAL_MANAGEMENT",
+        "sdk:NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
+        "sdk:COLLECTIONS",
+        "sdk:JNIUTILS",
+        "truffle:TRUFFLE_COMPILER"
+      ],
+      "maven": False,
+    },
+
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : [
-        "jdk.graal.compiler.virtual.bench",
         "jdk.graal.compiler.microbenchmarks",
       ],
       "distDependencies" : [

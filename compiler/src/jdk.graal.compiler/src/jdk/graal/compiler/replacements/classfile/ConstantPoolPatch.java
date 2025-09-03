@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.replacements.classfile;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@LibGraalSupport.HostedOnly
 public interface ConstantPoolPatch {
 
     JavaMethod lookupMethod(int index, int opcode, ResolvedJavaMethod caller);

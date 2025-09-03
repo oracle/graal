@@ -49,8 +49,7 @@ public final class OffsetOfSupportImpl implements OffsetOf.Support {
         VMError.guarantee(typeInfo instanceof StructInfo, "Class parameter %s of call to %s is not an annotated C struct", type, SizeOf.class.getSimpleName());
         StructInfo structInfo = (StructInfo) typeInfo;
         for (ElementInfo element : structInfo.getChildren()) {
-            if (element instanceof StructFieldInfo) {
-                StructFieldInfo field = (StructFieldInfo) element;
+            if (element instanceof StructFieldInfo field) {
                 if (field.getName().equals(fieldName)) {
                     return field.getOffsetInfo().getProperty();
                 }

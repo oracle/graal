@@ -92,8 +92,27 @@ final class JfrLogConfiguration {
     private static void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
+                // prepare suggestions
+                StringBuilder logTagSuggestions = new StringBuilder();
+                for (Set<JfrLogTag> valid : JfrLogConfiguration.LOG_TAG_SETS.values()) {
+                    if (valid.containsAll(selection.tags)) {
+                        boolean first = true;
+                        for (JfrLogTag jfrLogTag : valid) {
+                            if (!first) {
+                                logTagSuggestions.append("+");
+                            }
+                            logTagSuggestions.append(jfrLogTag.toString().toLowerCase(Locale.ROOT));
+                            first = false;
+                        }
+                        if (!logTagSuggestions.isEmpty()) {
+                            logTagSuggestions.append(" ");
+                        }
+                    }
+                }
+
                 throw new IllegalArgumentException("No tag set matches tag combination " +
-                                selection.tags.toString().toLowerCase(Locale.ROOT) + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
+                                selection.tags.toString().toLowerCase(Locale.ROOT) + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging" +
+                                (logTagSuggestions.isEmpty() ? "" : ". Did you mean any of the following? " + logTagSuggestions));
             }
         }
     }

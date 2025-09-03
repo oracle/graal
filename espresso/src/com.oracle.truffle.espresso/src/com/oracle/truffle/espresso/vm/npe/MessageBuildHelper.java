@@ -20,69 +20,67 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.npe;
 
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ARRAYLENGTH;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ATHROW;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.BALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.BASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.BIPUSH;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.CALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.CASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.IALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.IASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_4;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_5;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ICONST_M1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.INVOKEINTERFACE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.INVOKESPECIAL;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.INVOKESTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.INVOKEVIRTUAL;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITORENTER;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ACONST_NULL;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ARRAYLENGTH;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ATHROW;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.BALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.BASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.BIPUSH;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.CALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.CASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETFIELD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.IALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.IASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_4;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_5;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ICONST_M1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEINTERFACE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKESPECIAL;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKESTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEVIRTUAL;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITORENTER;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITOREXIT;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SALOAD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SASTORE;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
 
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -267,10 +265,9 @@ final class MessageBuildHelper {
 
     private static void appendStaticField(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        FieldRefConstant ref = pool.fieldAt(analysis.bs.readCPI(bci));
-        Symbol<Name> klassName = ref.getHolderKlassName(pool);
-        Symbol<Name> fieldName = ref.getName(pool);
-
+        int fieldIndex = analysis.bs.readCPI(bci);
+        Symbol<Name> klassName = pool.memberClassName(fieldIndex);
+        Symbol<Name> fieldName = pool.fieldName(fieldIndex);
         appendClassName(sb, klassName);
         sb.append(".").append(fieldName);
 
@@ -278,10 +275,11 @@ final class MessageBuildHelper {
 
     private static void appendMethodCall(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        MethodRefConstant ref = pool.methodAt(analysis.bs.readCPI(bci));
-        Symbol<Name> klassName = ref.getHolderKlassName(pool);
-        Symbol<Name> methodName = ref.getName(pool);
-        Symbol<Signature> signature = ref.getSignature(pool);
+
+        int methodIndex = analysis.bs.readCPI(bci);
+        Symbol<Name> klassName = pool.memberClassName(methodIndex);
+        Symbol<Name> methodName = pool.methodName(methodIndex);
+        Symbol<Signature> signature = pool.methodSignature(methodIndex);
 
         appendClassName(sb, klassName);
         sb.append(".").append(methodName).append("(");
@@ -309,10 +307,10 @@ final class MessageBuildHelper {
         sb.append(n);
     }
 
-    private static void appendSignature(Signatures signatures, StringBuilder sb, Symbol<Signature> signature) {
-        Symbol<Type>[] sig = signatures.parsed(signature);
+    private static void appendSignature(SignatureSymbols signatureSymbols, StringBuilder sb, Symbol<Signature> signature) {
+        Symbol<Type>[] sig = signatureSymbols.parsed(signature);
         boolean first = true;
-        for (int i = 0; i < Signatures.parameterCount(sig); i++) {
+        for (int i = 0; i < SignatureSymbols.parameterCount(sig); i++) {
             Symbol<Type> type = sig[i];
             if (!first) {
                 sb.append(", ");
@@ -350,9 +348,9 @@ final class MessageBuildHelper {
         int currentSlot = m.isStatic() ? 0 : 1;
         int paramIndex = 1;
         Symbol<Type>[] sig = m.getParsedSignature();
-        for (int i = 0; i < Signatures.parameterCount(sig); i++) {
-            Symbol<Type> type = Signatures.parameterType(sig, i);
-            int slots = Types.slotCount(type);
+        for (int i = 0; i < SignatureSymbols.parameterCount(sig); i++) {
+            Symbol<Type> type = SignatureSymbols.parameterType(sig, i);
+            int slots = TypeSymbols.slotCount(type);
             if ((slot >= currentSlot) && (slot < currentSlot + slots)) {
                 sb.append("<parameter").append(paramIndex).append(">");
                 return;
@@ -395,7 +393,7 @@ final class MessageBuildHelper {
             case DASTORE:
                 return 3;
             case PUTFIELD:
-                return Types.slotCount(analysis.getFieldType(bci));
+                return TypeSymbols.slotCount(analysis.getFieldType(bci));
             case INVOKEVIRTUAL:
             case INVOKESPECIAL:
             case INVOKEINTERFACE:
@@ -403,10 +401,10 @@ final class MessageBuildHelper {
                 // Assume the call of a constructor can never cause a NullPointerException
                 // (which is true in Java). This is mainly used to avoid generating wrong
                 // messages for NullPointerExceptions created explicitly by new in Java code.
-                if (name == Name._init_) {
+                if (name == Names._init_) {
                     return EXPLICIT_NPE;
                 } else {
-                    return Signatures.slotsForParameters(analysis.getInvokeSignature(bci, opcode));
+                    return SignatureSymbols.slotsForParameters(analysis.getInvokeSignature(bci, opcode));
                 }
         }
         return INVALID_BYTECODE;

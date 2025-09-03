@@ -592,9 +592,10 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static <T> ReferenceField<T> create(Lookup declaringLookup, String field, Class<T> valueClass) {
+        @SuppressWarnings({"cast", "rawtypes", "unchecked"})
+        public static <T> ReferenceField<T> create(Lookup declaringLookup, String field, Class<? super T> valueClass) {
             Class<?> lookupClass = declaringLookup.lookupClass();
-            return new ReferenceField<>(lookupClass, lookupClass, declaringLookup, field, valueClass);
+            return (ReferenceField<T>) new ReferenceField(lookupClass, lookupClass, declaringLookup, field, valueClass);
         }
     }
 
@@ -1252,7 +1253,7 @@ public final class InlineSupport {
             CompilerAsserts.neverPartOfCompilation();
             throw new ClassCastException(String.format("Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is '%s'. " + //
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
-                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));
+                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(inlineTarget.getClass())));
         }
 
         final boolean getBoolean(Object node) {

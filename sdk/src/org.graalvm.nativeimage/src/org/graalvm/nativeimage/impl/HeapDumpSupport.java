@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,14 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.io.IOException;
+
 public interface HeapDumpSupport {
 
-    void dumpHeap(String outputFile, boolean live) throws java.io.IOException;
+    /** Overwrites the file if it already exists. */
+    default void dumpHeap(String outputFile, boolean live) throws IOException {
+        dumpHeap(outputFile, live, true);
+    }
 
+    void dumpHeap(String outputFile, boolean live, boolean overwrite) throws IOException;
 }

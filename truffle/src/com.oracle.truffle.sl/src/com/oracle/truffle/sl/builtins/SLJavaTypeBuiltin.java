@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -56,16 +57,17 @@ public abstract class SLJavaTypeBuiltin extends SLBuiltinNode {
 
     @Specialization
     public Object doLookup(Object symbolName,
-                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @Bind SLContext context) {
         try {
             /*
              * This is the entry point to Java host interoperability. The return value of
              * lookupHostSymbol implements the interop contracts. So we can use Java for things that
              * are expressible also in SL. Like function calls on objects.
              */
-            return SLContext.get(this).getEnv().lookupHostSymbol(interop.asString(symbolName));
+            return context.getEnv().lookupHostSymbol(interop.asString(symbolName));
         } catch (UnsupportedMessageException e) {
-            throw new SLException("The java builtin expected a String argument, but a non-string argument was provided.", this);
+            throw SLException.create("The java builtin expected a String argument, but a non-string argument was provided.", this);
         }
     }
 

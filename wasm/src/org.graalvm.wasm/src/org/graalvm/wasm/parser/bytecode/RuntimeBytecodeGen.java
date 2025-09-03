@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,13 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmType;
-
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * A data structure for generating the GraalWasm runtime bytecode.
@@ -529,16 +529,17 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add1(nodeIndex);
             add1(typeIndex);
             add1(tableIndex);
-            // profile
-            addProfile();
         } else {
             add1(Bytecode.CALL_INDIRECT_I32);
             add4(nodeIndex);
             add4(typeIndex);
             add4(tableIndex);
-            // profile
-            addProfile();
         }
+    }
+
+    public void addSelect(int instruction) {
+        add1(instruction);
+        addProfile();
     }
 
     private void addDataHeader(int mode, int length, byte[] offsetBytecode, long offsetAddress, int memoryIndex) {
@@ -639,9 +640,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds the runtime header of a data segment to the bytecode.
      * 
      * @param length The length of the data segment
-     * @param unsafeMemory If unsafe memory is enabled
      */
-    public void addDataRuntimeHeader(int length, boolean unsafeMemory) {
+    public void addDataRuntimeHeader(int length) {
         int location = location();
         add1(0);
         int flags = 0;
@@ -656,9 +656,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         } else {
             flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32;
             add4(length);
-        }
-        if (unsafeMemory) {
-            add8(0);
         }
         set(location, (byte) flags);
     }

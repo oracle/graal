@@ -556,7 +556,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testSplittingBudgetLimit() {
-        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).build()) {
+        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).option("engine.CompileImmediately", "false").build()) {
             c.eval(SplittingLimitTestLanguage.ID, "");
         }
     }

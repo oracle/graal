@@ -341,7 +341,7 @@ public final class TestLSPLibrary extends TruffleLSPTest {
 
             @ExportMessage
             public Object readArrayElement(long idx,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
                 if (!isArrayElementReadable(idx)) {
                     error.enter(node);

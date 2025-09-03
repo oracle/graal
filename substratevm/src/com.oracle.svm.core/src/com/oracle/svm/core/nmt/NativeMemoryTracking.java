@@ -35,16 +35,16 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class implements native memory tracking (NMT). There are two components to NMT: tracking
@@ -61,7 +61,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * model of virtual memory is maintained.
  */
 public class NativeMemoryTracking {
-    private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
+    private static final UnsignedWord ALIGNMENT = Word.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;
     private static final long KB = 1024;
 
@@ -140,7 +140,7 @@ public class NativeMemoryTracking {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PointerBase untrack(PointerBase innerPtr) {
         if (innerPtr.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         NmtMallocHeader header = getHeader(innerPtr);
@@ -313,9 +313,8 @@ public class NativeMemoryTracking {
 
     public static RuntimeSupport.Hook initializationHook() {
         return isFirstIsolate -> {
-            // Track the image heap virtual memory usage.
-            NativeMemoryTracking.singleton().trackReserve(Heap.getHeap().getImageHeapReservedBytes(), NmtCategory.ImageHeap);
-            NativeMemoryTracking.singleton().trackCommit(Heap.getHeap().getImageHeapCommittedBytes(), NmtCategory.ImageHeap);
+            NativeMemoryTracking.singleton().trackReserve(ImageHeapProvider.get().getImageHeapReservedBytes(), NmtCategory.ImageHeap);
+            NativeMemoryTracking.singleton().trackCommit(ImageHeapProvider.get().getImageHeapMappedBytes(), NmtCategory.ImageHeap);
         };
     }
 
@@ -325,8 +324,9 @@ public class NativeMemoryTracking {
         };
     }
 
-    private void printStatistics() {
+    public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
+            System.out.println();
             System.out.println(generateReportString());
         }
     }
@@ -335,7 +335,6 @@ public class NativeMemoryTracking {
         String lineBreak = System.lineSeparator();
 
         StringBuilder result = new StringBuilder(3000);
-        result.append(lineBreak);
         result.append("Native memory tracking").append(lineBreak).append(lineBreak);
 
         result.append("Total").append(lineBreak);

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -366,7 +367,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    private static class MyLanguageException extends RuntimeException {
+    private static final class MyLanguageException extends RuntimeException {
 
     }
 
@@ -1383,7 +1384,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Registration(id = "testUsedTagNotRequired1", services = Object.class)
     public static class TestUsedTagNotRequired1 extends TruffleInstrument {
 
-        private static class Foobar {
+        private static final class Foobar {
 
         }
 
@@ -1497,12 +1498,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertEquals(1, service.onCreateCalls);
 
         final Map<String, ? extends Instrument> instruments = forked.getEngine().getInstruments();
-        assertSame(instrument, instruments.get("testIsNodeTaggedWith1"));
+        assertEquals(instrument, instruments.get("testIsNodeTaggedWith1"));
         assertSame(service, instruments.get("testIsNodeTaggedWith1").lookup(TestIsNodeTaggedWith1.class));
 
         assertEquals(instruments.size(), engine.getInstruments().size());
         for (String key : instruments.keySet()) {
-            assertSame(engine.getInstruments().get(key), instruments.get(key));
+            assertEquals(engine.getInstruments().get(key), instruments.get(key));
         }
 
         assertEquals(0, service.onDisposeCalls);
@@ -2415,6 +2416,34 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         run(source);
         instrumentationFinished.await();
         run(Source.create(InstrumentationTestLanguage.ID, "JOIN()"));
+    }
+
+    @Test
+    public void testEquals() {
+        Instrument instrument1 = engine.getInstruments().get(EqualsInstrument1.ID);
+        Instrument instrument2 = engine.getInstruments().get(EqualsInstrument2.ID);
+        assertNotEquals(instrument1, instrument2);
+        assertEquals(instrument1, engine.getInstruments().get(EqualsInstrument1.ID));
+    }
+
+    @Registration(id = EqualsInstrument1.ID)
+    public static final class EqualsInstrument1 extends TruffleInstrument {
+
+        static final String ID = "EqualsInstrument1";
+
+        @Override
+        protected void onCreate(Env env) {
+        }
+    }
+
+    @Registration(id = EqualsInstrument2.ID)
+    public static final class EqualsInstrument2 extends TruffleInstrument {
+
+        static final String ID = "EqualsInstrument2";
+
+        @Override
+        protected void onCreate(Env env) {
+        }
     }
 
     public static class AsynchronousStacksInstrument extends ProxyInstrument {

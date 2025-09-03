@@ -55,7 +55,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ByteSequenceTest {
 
-    private static class ByteSequenceImpl implements ByteSequence {
+    private static final class ByteSequenceImpl implements ByteSequence {
 
         public int length() {
             return 4;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public class MemoryRegistry {
     private static final int INITIAL_MEMORIES_SIZE = 4;
@@ -86,7 +88,7 @@ public class MemoryRegistry {
     public MemoryRegistry duplicate() {
         final MemoryRegistry other = new MemoryRegistry();
         for (int i = 0; i < numMemories; i++) {
-            final WasmMemory memory = memory(i).duplicate();
+            final WasmMemory memory = WasmMemoryLibrary.getUncached().duplicate(memory(i));
             other.register(memory);
         }
         return other;

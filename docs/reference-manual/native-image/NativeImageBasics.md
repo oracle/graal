@@ -102,11 +102,11 @@ native-image HelloWorld --initialize-at-build-time=HelloWorld\$Greeter
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ========================================================================================================================
 Greeter is getting ready!
-[1/7] Initializing...                                                                                    (3.1s @ 0.15GB)
- Version info: 'GraalVM dev Java 11 EE'
- Java version info: '11.0.15+4-jvmci-22.1-b02'
- C compiler: gcc (linux, x86_64, 9.4.0)
- Garbage collector: Serial GC
+[1/8] Initializing...                                                                                    (3.1s @ 0.15GB)
+ Java version: 24+36, vendor version: Oracle GraalVM 24+36.1
+ Graal compiler: optimization level: 2, target machine: armv8.1-a, PGO: ML-inferred
+ C compiler: cc (apple, arm64, 16.0.0)
+ Garbage collector: Serial GC (max heap size: 80% of RAM)
 ...
 Finished generating 'helloworld' in 13.6s.
 ./helloworld 

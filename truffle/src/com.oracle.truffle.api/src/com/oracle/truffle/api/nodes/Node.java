@@ -68,10 +68,46 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Abstract base class for all Truffle nodes.
+ * Abstract base class for all nodes in the Truffle Abstract Syntax Tree (AST).
+ * <p>
+ * The {@code Node} class serves as the foundational class for all nodes within the Truffle
+ * framework. It provides the core functionality required to build interpreters for guest languages
+ * by allowing language implementers to define custom nodes representing language constructs.
+ * <p>
+ * Key responsibilities and features of the {@code Node} class include:
+ * <ul>
+ * <li>Managing the parent-child relationships between nodes, ensuring the integrity of the
+ * AST.</li>
+ * <li>Providing mechanisms for adopting and replacing child nodes within the AST, facilitating
+ * dynamic language features and optimizations.</li>
+ * <li>Handling source code associations, allowing nodes to represent specific segments of the guest
+ * language source code via {@link #getSourceSection()}.</li>
+ * <li>Supporting node cloning and deep copying, enabling the creation of modified copies of node
+ * trees.</li>
+ * <li>Facilitating node visitation patterns through the {@link #accept(NodeVisitor)} method and
+ * providing iteration over child nodes via {@link #getChildren()}.</li>
+ * <li>Ensuring thread safety and synchronization for modifications to the AST with atomic
+ * operations and locks via {@link #atomic(Runnable)} and {@link #getLock()}.</li>
+ * <li>Integrating with Truffle's instrumentation and debugging facilities, allowing for runtime
+ * observation and modification of AST nodes.</li>
+ * <li>Reporting polymorphic specializations through {@link #reportPolymorphicSpecialize()}, aiding
+ * in the optimization processes of the Truffle framework.</li>
+ * </ul>
+ * <p>
+ * Language implementers typically create subclasses of {@code Node} to represent specific language
+ * constructs and operations. Subclasses can use the {@link Child} and {@link Children} annotations
+ * to declare child nodes, which the Truffle framework manages automatically.
+ * <p>
+ * The {@code Node} class also provides important methods such as {@link #replace(Node)} for
+ * replacing nodes in the AST, {@link #getParent()} and {@link #getRootNode()} for navigating the
+ * tree, and {@link #getDescription()} for obtaining a user-readable description of the node.
  *
+ * @see RootNode
+ * @see NodeVisitor
+ * @see NodeInterface
  * @since 0.8 or earlier
  */
+// DefaultSymbol("$node")
 public abstract class Node implements NodeInterface, Cloneable {
 
     @CompilationFinal private volatile Node parent;
@@ -494,7 +530,16 @@ public abstract class Node implements NodeInterface, Cloneable {
         return NodeUtil.isReplacementSafe(getParent(), this, newNode);
     }
 
-    private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
+    /**
+     * Reports that {@code oldNode} was replaced with {@code newNode}, notifying any
+     * {@link ReplaceObserver replace observers} and invalidating any compiled call targets.
+     * <p>
+     * This method does not actually replace the nodes. Use {@link Node#replace(Node, CharSequence)}
+     * to replace nodes.
+     *
+     * @since 24.2
+     */
+    protected final void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         Node node = this;
         while (node != null) {
             boolean consumed = false;

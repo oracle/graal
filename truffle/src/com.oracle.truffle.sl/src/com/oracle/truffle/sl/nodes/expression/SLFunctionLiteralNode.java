@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -60,50 +62,34 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  * never changes. This is guaranteed by the {@link SLFunctionRegistry}.
  */
 @NodeInfo(shortName = "func")
-public final class SLFunctionLiteralNode extends SLExpressionNode {
+@NodeChild("functionName")
+@OperationProxy.Proxyable(allowUncached = true)
+public abstract class SLFunctionLiteralNode extends SLExpressionNode {
 
-    /** The name of the function. */
-    private final TruffleString functionName;
-
-    /**
-     * The resolved function. During parsing (in the constructor of this node), we do not have the
-     * {@link SLContext} available yet, so the lookup can only be done at {@link #executeGeneric
-     * first execution}. The {@link CompilationFinal} annotation ensures that the function can still
-     * be constant folded during compilation.
-     */
-    @CompilationFinal private SLFunction cachedFunction;
-
-    public SLFunctionLiteralNode(TruffleString functionName) {
-        this.functionName = functionName;
-    }
-
-    @Override
-    public SLFunction executeGeneric(VirtualFrame frame) {
-        SLLanguage l = SLLanguage.get(this);
-        CompilerAsserts.partialEvaluationConstant(l);
-
-        SLFunction function;
-        if (l.isSingleContext()) {
-            function = this.cachedFunction;
-            if (function == null) {
-                /* We are about to change a @CompilationFinal field. */
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                /* First execution of the node: lookup the function in the function registry. */
-                this.cachedFunction = function = SLContext.get(this).getFunctionRegistry().lookup(functionName, true);
-            }
+    @SuppressWarnings({"unused", "truffle-neverdefault"})
+    @Specialization
+    public static SLFunction perform(
+                    TruffleString functionName,
+                    @Bind Node node,
+                    @Cached(value = "lookupFunctionCached(functionName, node)", //
+                                    uncached = "lookupFunction(functionName, node)") SLFunction result) {
+        if (result == null) {
+            return lookupFunction(functionName, node);
         } else {
-            /*
-             * We need to rest the cached function otherwise it might cause a memory leak.
-             */
-            if (this.cachedFunction != null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.cachedFunction = null;
-            }
-            // in the multi-context case we are not allowed to store
-            // SLFunction objects in the AST. Instead we always perform the lookup in the hash map.
-            function = SLContext.get(this).getFunctionRegistry().lookup(functionName, true);
+            assert result.getName().equals(functionName) : "function name should be compilation constant";
+            return result;
         }
-        return function;
     }
 
+    public static SLFunction lookupFunction(TruffleString functionName, Node node) {
+        return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
+    }
+
+    public static SLFunction lookupFunctionCached(TruffleString functionName, Node node) {
+        if (SLLanguage.get(node).isSingleContext()) {
+            return lookupFunction(functionName, node);
+        } else {
+            return null;
+        }
+    }
 }

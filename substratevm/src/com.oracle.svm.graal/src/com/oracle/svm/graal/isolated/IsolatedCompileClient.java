@@ -24,15 +24,20 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Thread-local context object in a client isolate thread, that is, the isolate that has initiated a
@@ -40,7 +45,42 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
  *
  * @see IsolatedCompileContext
  */
-public final class IsolatedCompileClient {
+public final class IsolatedCompileClient extends IsolatedCompilationExceptionDispatch {
+
+    public static final class ExceptionRethrowCallerEpilogue implements CEntryPointOptions.CallerEpilogue {
+        static void callerEpilogue() {
+            IsolatedCompileClient.throwPendingException();
+        }
+    }
+
+    public static final class VoidExceptionHandler implements CEntryPoint.ExceptionHandler {
+        @Uninterruptible(reason = "Exception handler")
+        static void handle(Throwable t) {
+            get().handleException(t);
+        }
+    }
+
+    public static final class IntExceptionHandler implements CEntryPoint.ExceptionHandler {
+        @Uninterruptible(reason = "Exception handler")
+        static int handle(Throwable t) {
+            return get().handleException(t);
+        }
+    }
+
+    public static final class BooleanExceptionHandler implements CEntryPoint.ExceptionHandler {
+        @Uninterruptible(reason = "Exception handler")
+        static boolean handle(Throwable t) {
+            return get().handleException(t) != 0;
+        }
+    }
+
+    public static final class WordExceptionHandler implements CEntryPoint.ExceptionHandler {
+        @Uninterruptible(reason = "Exception handler")
+        static WordBase handle(Throwable t) {
+            int v = get().handleException(t);
+            return Word.signed(v);
+        }
+    }
 
     private static final FastThreadLocalObject<IsolatedCompileClient> currentClient = //
                     FastThreadLocalFactory.createObject(IsolatedCompileClient.class, "IsolatedCompileClient.currentClient");
@@ -66,6 +106,12 @@ public final class IsolatedCompileClient {
         return compiler;
     }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected IsolateThread getOtherIsolate() {
+        return compiler;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ThreadLocalHandles<ObjectHandle> getHandleSet() {
         return handles;
@@ -86,7 +132,8 @@ public final class IsolatedCompileClient {
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileContext.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileContext.ExceptionRethrowCallerEpilogue.class)
     private static CompilerHandle<String> createStringInCompiler0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CCharPointer cstr) {
         return IsolatedCompileContext.get().hand(CTypeConversion.toJavaString(cstr));
     }

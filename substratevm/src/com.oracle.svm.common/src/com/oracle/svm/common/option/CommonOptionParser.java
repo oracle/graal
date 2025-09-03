@@ -34,13 +34,18 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.StringUtil;
+
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -48,12 +53,13 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionsParser;
 
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
-
 public class CommonOptionParser {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final String HOSTED_OPTION_PREFIX = "-H:";
     public static final String RUNTIME_OPTION_PREFIX = "-R:";
+    public static final char PLUS_MINUS_BOOLEAN_OPTION_PREFIX = '\u00b1';
+    public static final String MISMATCH_BOOLEAN_OPTION = "Boolean option %s must have " + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + " prefix. Use '" + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + "%s' format.";
+    public static final String MISMATCH_NON_BOOLEAN_OPTION = "Non-boolean option %s can not use " + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + " prefix. Use '%s=<value>' format.";
 
     public static final int PRINT_OPTION_INDENTATION = 2;
     public static final int PRINT_OPTION_WIDTH = 45;
@@ -139,7 +145,7 @@ public class CommonOptionParser {
                 return showAll || svmOption && printFlags.contains(d.getOptionType());
             }
             if (!optionNameFilter.isEmpty()) {
-                if (optionNameFilter.contains(EXTRA_HELP_OPTIONS_WILDCARD) && !d.getExtraHelp().isEmpty()) {
+                if (optionNameFilter.contains(EXTRA_HELP_OPTIONS_WILDCARD) && d.getHelp().size() > 1) {
                     return true;
                 }
                 return optionNameFilter.contains(d.getName());
@@ -167,7 +173,7 @@ public class CommonOptionParser {
         }
     }
 
-    public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
+    public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
         for (OptionDescriptors optionDescriptor : optionDescriptors) {
             for (OptionDescriptor descriptor : optionDescriptor) {
                 optionDescriptorConsumer.accept(descriptor);
@@ -239,7 +245,7 @@ public class CommonOptionParser {
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
-                return OptionParseResult.error("Boolean option " + current + " must have +/- prefix");
+                return OptionParseResult.error(MISMATCH_BOOLEAN_OPTION.formatted(current, current.name));
             }
             if (valueString == null) {
                 return OptionParseResult.error("Missing value for option " + current);
@@ -254,7 +260,7 @@ public class CommonOptionParser {
             }
         } else {
             if (optionType != Boolean.class) {
-                return OptionParseResult.error("Non-boolean option " + current + " can not use +/- prefix. Use '" + current.name + "=<value>' format");
+                return OptionParseResult.error(MISMATCH_NON_BOOLEAN_OPTION.formatted(current, current.name));
             }
         }
 
@@ -351,15 +357,15 @@ public class CommonOptionParser {
     }
 
     public static long parseLong(String v) {
-        String valueString = v.trim().toLowerCase();
+        String valueString = v.trim();
         long scale = 1;
-        if (valueString.endsWith("k")) {
+        if (valueString.endsWith("k") || valueString.endsWith("K")) {
             scale = 1024L;
-        } else if (valueString.endsWith("m")) {
+        } else if (valueString.endsWith("m") || valueString.endsWith("M")) {
             scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
+        } else if (valueString.endsWith("g") || valueString.endsWith("G")) {
             scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
+        } else if (valueString.endsWith("t") || valueString.endsWith("T")) {
             scale = 1024L * 1024L * 1024L * 1024L;
         }
 
@@ -483,7 +489,8 @@ public class CommonOptionParser {
         sortedDescriptors.sort(Comparator.comparing(OptionDescriptor::getName));
 
         for (OptionDescriptor descriptor : sortedDescriptors) {
-            String helpMsg = descriptor.getHelp();
+            List<String> helpLines = descriptor.getHelp();
+            String helpMsg = helpLines.getFirst();
             // ensure helpMsg ends with dot
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
@@ -522,9 +529,9 @@ public class CommonOptionParser {
             }
             // handle extra help
             String verboseHelp = "";
-            if (!descriptor.getExtraHelp().isEmpty()) {
+            if (helpLines.size() > 1) {
                 if (verbose) {
-                    verboseHelp = System.lineSeparator() + String.join(System.lineSeparator(), descriptor.getExtraHelp());
+                    verboseHelp = System.lineSeparator() + String.join(System.lineSeparator(), helpLines.subList(1, helpLines.size()));
                 } else {
                     verboseHelp = " [Extra help available]";
                 }
@@ -542,7 +549,7 @@ public class CommonOptionParser {
                         helpMsg += "Default: - (disabled).";
                     }
                 }
-                printOption(out, prefix + "\u00b1" + descriptor.getName(), helpMsg + verboseHelp, verbose, wrapWidth);
+                printOption(out, prefix + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + descriptor.getName(), helpMsg + verboseHelp, verbose, wrapWidth);
             } else { // print all other options
                 if (defaultValue == null) {
                     if (helpLen != 0) {

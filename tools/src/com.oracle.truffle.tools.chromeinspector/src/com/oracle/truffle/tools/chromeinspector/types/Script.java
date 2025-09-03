@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.chromeinspector.types;
 
 import java.text.MessageFormat;
+import java.util.Base64;
 
 import com.oracle.truffle.api.source.Source;
 
@@ -62,9 +63,26 @@ public final class Script {
         return sourceLoaded;
     }
 
+    public boolean hasWasmSource() {
+        return source.hasBytes() && "application/wasm".equals(source.getMimeType());
+    }
+
     public CharSequence getCharacters() {
         if (source.hasCharacters()) {
             return source.getCharacters();
+        } else {
+            return MessageFormat.format("Can not load source from {0}\n" +
+                            "Please use the --inspect.SourcePath option to point to the source locations.\n" +
+                            "Example: --inspect.SourcePath=/home/joe/project/src\n", source.getURI().toString());
+        }
+    }
+
+    /**
+     * @return A base64 encoded representation of the wasm bytecode inside this script.
+     */
+    public CharSequence getWasmBytecode() {
+        if (source.hasBytes()) {
+            return Base64.getEncoder().encodeToString(source.getBytes().toByteArray());
         } else {
             return MessageFormat.format("Can not load source from {0}\n" +
                             "Please use the --inspect.SourcePath option to point to the source locations.\n" +

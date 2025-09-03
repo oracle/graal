@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -205,12 +206,18 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.FreeGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceExpressionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMInsertValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMWithElementPtrLoadNodeFactory.LLVMWithElementPtrLoadI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMWithElementPtrLoadNodeFactory.LLVMWithElementPtrLoadI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMWithElementPtrLoadNodeFactory.LLVMWithElementPtrLoadI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMWithElementPtrLoadNodeFactory.LLVMWithElementPtrLoadI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMWithElementPtrStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ProtectReadOnlyGlobalsBlockNodeGen;
@@ -474,13 +481,49 @@ public class BasicNodeFactory implements NodeFactory {
         throw new AssertionError(resultType + " is not supported for shufflevector");
     }
 
+    private static <T extends LLVMInstrumentableNode> T transferStatementTag(T target, LLVMInstrumentableNode source) {
+        target.setHasStatementTag(source.hasStatementTag());
+        return target;
+    }
+
     @Override
     public LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
+        if (loadTarget instanceof LLVMGetElementPtrNode) {
+            LLVMGetElementPtrNode ptr = (LLVMGetElementPtrNode) loadTarget;
+            if (resolvedResultType instanceof PrimitiveType) {
+                switch (((PrimitiveType) resolvedResultType).getPrimitiveKind()) {
+                    case I8:
+                        return transferStatementTag(LLVMWithElementPtrLoadI8NodeGen.create(ptr.getTypeWidth(), ptr.getBase(), ptr.getOffset()), ptr);
+                    case I16:
+                        return transferStatementTag(LLVMWithElementPtrLoadI16NodeGen.create(ptr.getTypeWidth(), ptr.getBase(), ptr.getOffset()), ptr);
+                    case I32:
+                        return transferStatementTag(LLVMWithElementPtrLoadI32NodeGen.create(ptr.getTypeWidth(), ptr.getBase(), ptr.getOffset()), ptr);
+                    case I64:
+                        return transferStatementTag(LLVMWithElementPtrLoadI64NodeGen.create(ptr.getTypeWidth(), ptr.getBase(), ptr.getOffset()), ptr);
+                    case FLOAT:
+                    case DOUBLE:
+                    case X86_FP80:
+                        // fallthrough
+                }
+            }
+        }
         return CommonNodeFactory.createLoad(resolvedResultType, loadTarget);
     }
 
     @Override
     public LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        if (pointerNode instanceof LLVMGetElementPtrNode) {
+            LLVMGetElementPtrNode ptr = (LLVMGetElementPtrNode) pointerNode;
+            LLVMOffsetStoreNode offsetStore;
+            try {
+                offsetStore = createOffsetMemoryStore(type, valueNode);
+            } catch (TypeOverflowException e) {
+                return Type.handleOverflowStatement(e);
+            }
+            if (offsetStore != null) {
+                return transferStatementTag(LLVMWithElementPtrStoreNodeGen.create(offsetStore, ptr.getTypeWidth(), ptr.getBase(), ptr.getOffset()), pointerNode);
+            }
+        }
         try {
             return createMemoryStore(pointerNode, valueNode, type);
         } catch (TypeOverflowException e) {
@@ -1582,10 +1625,13 @@ public class BasicNodeFactory implements NodeFactory {
                      */
                     return args[1];
                 case "llvm.va_start":
+                case "llvm.va_start.p0":
                     return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
                 case "llvm.va_end":
+                case "llvm.va_end.p0":
                     return LLVMVAEndNodeGen.create(args[1]);
                 case "llvm.va_copy":
+                case "llvm.va_copy.p0":
                     return LLVMVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
                 case "llvm.eh.sjlj.longjmp":
                 case "llvm.eh.sjlj.setjmp":
@@ -1607,6 +1653,7 @@ public class BasicNodeFactory implements NodeFactory {
                     // the other dbg.* intrinsics.
                     return LLVMNoOpNodeGen.create();
                 case "llvm.eh.typeid.for":
+                case "llvm.eh.typeid.for.p0":
                     return LLVMTypeIdForExceptionNodeGen.create(args[1]);
                 case "llvm.expect.i1": {
                     boolean expectedValue = LLVMTypesGen.asBoolean(args[2].executeGeneric(null));

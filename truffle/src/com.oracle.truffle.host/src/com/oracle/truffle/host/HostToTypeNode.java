@@ -255,13 +255,13 @@ abstract class HostToTypeNode extends Node {
             return false;
         }
 
-        HostLanguage language = HostLanguage.get(interop);
+        HostLanguage language = hostContext != null ? HostLanguage.get(interop) : null;
         if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
                 return false;
             }
             return true;
-        } else if (targetType == language.valueClass && hostContext != null) {
+        } else if (language != null && targetType == language.valueClass && hostContext != null) {
             return true;
         } else if (isPrimitiveOrBigIntegerTarget(hostContext, targetType)) {
             Object convertedValue = HostUtil.convertLossLess(value, targetType, interop);
@@ -299,7 +299,7 @@ abstract class HostToTypeNode extends Node {
             return interop.isTimeZone(value);
         } else if (targetType == Duration.class) {
             return interop.isDuration(value);
-        } else if (targetType == language.polyglotExceptionClass) {
+        } else if (language != null && targetType == language.polyglotExceptionClass) {
             return interop.isException(value);
         }
 

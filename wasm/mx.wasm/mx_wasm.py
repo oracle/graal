@@ -39,6 +39,8 @@
 # SOFTWARE.
 #
 import os
+import pathlib
+import re
 import shutil
 import stat
 import tempfile
@@ -48,6 +50,8 @@ from collections import defaultdict
 import mx
 import mx_benchmark
 import mx_sdk_vm
+import mx_sdk_vm_ng
+import mx_truffle
 import mx_unittest
 import mx_util
 # noinspection PyUnresolvedReferences
@@ -55,11 +59,14 @@ import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
+
 _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
 gcc_dir = mx.get_env("GCC_DIR", "")
-wabt_dir = mx.get_env("WABT_DIR", None)
+wabt_dir = mx.get_env("WABT_DIR", "")
 
 NODE_BENCH_DIR = "node"
 NATIVE_BENCH_DIR = "native"
@@ -79,9 +86,26 @@ microbenchmarks = [
 
 def get_jdk(forBuild=False):
     if not forBuild and mx.suite('compiler', fatalIfMissing=False):
-        return mx.get_jdk(tag='jvmci')
+        return mx.get_jdk(tag='graalvm')
     else:
         return mx.get_jdk()
+
+# Called from suite.py
+def graalwasm_standalone_deps():
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+
+def libwasmvm_build_args():
+    image_build_args = []
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+        image_build_args.extend([
+            '--exclude-config',
+            r'wasm\.jar',
+            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
+            '--initialize-at-build-time=org.graalvm.wasm',
+            '-H:MaxRuntimeCompileMethods=2000',
+        ])
+    return image_build_args
 
 #
 # Gate runners.
@@ -94,36 +118,45 @@ class GraalWasmDefaultTags:
     wasmbenchtest = "wasmbenchtest"
     coverage = "coverage"
 
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    if register_project and register_distribution:
+        isolate_build_options = []
+        meta_pom = [p for p in _suite.dists if p.name == 'WASM_POM'][0]
+        mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'wasm',
+                                        'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
+                                        isolate_build_options=isolate_build_options)
 
-def wat2wasm_binary():
-    return mx.exe_suffix("wat2wasm")
 
 def wabt_test_args():
     if not wabt_dir:
         mx.warn("No WABT_DIR specified")
         return []
-    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary())]
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, mx.exe_suffix("wat2wasm")), "-Dwasmtest.watToWasmVerbose=true"]
 
 
 def graal_wasm_gate_runner(args, tasks):
+    unittest_args = []
+    if mx.suite('compiler', fatalIfMissing=False) is not None:
+        unittest_args = ["--use-graalvm"]
+
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
         if t:
-            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     with Task("CoverageTests", tasks, tags=[GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest(["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
@@ -152,13 +185,27 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         # Disable DefaultRuntime warning
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         vmArgs += ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
+        mx_truffle.enable_truffle_native_access(vmArgs)
+        # GR-59703: This is needed for Truffle since JEP 498: Warn upon Use of Memory-Access Methods in sun.misc.Unsafe
+        mx_truffle.enable_sun_misc_unsafe(vmArgs)
         # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
         if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx4g']
+        # Export GraalWasm implementation to JUnit test runner
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=org.graalvm.wasm.test']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.closedtestcases']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.debugtests']
         return (vmArgs, mainClass, mainClassArgs)
+
+    def processDeps(self, deps):
+        super().processDeps(deps)
+        truffle_runtime_dist_names = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True)
+        mx.logv(f"Adding Truffle runtime distributions {', '.join(truffle_runtime_dist_names)} to unittest dependencies.")
+        deps.update((mx.distribution(d) for d in truffle_runtime_dist_names))
 
 
 mx_unittest.register_unittest_config(WasmUnittestConfig())
@@ -272,19 +319,23 @@ class WatBuildTask(GraalWasmBuildTask):
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
-        if not wabt_dir:
-            mx.abort("No WABT_DIR specified - the source programs will not be compiled to .wasm.")
-        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
 
-        wat2wasm_version_cmd = [wat2wasm_cmd] + ["--version"]
+        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
         out = mx.OutputCapture()
         bulk_memory_option = None
-        mx.run(wat2wasm_version_cmd, nonZeroIsFatal=False, out=out)
-        wat2wasm_version = str(out.data).split(".")
-        major = int(wat2wasm_version[0])
-        build = int(wat2wasm_version[2])
-        if major <= 1 and build <= 24:
-            bulk_memory_option = "--enable-bulk-memory"
+        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False, out=out) != 0:
+            if not wabt_dir:
+                mx.warn("No WABT_DIR specified.")
+            mx.abort("Could not check the wat2wasm version.")
+
+        try:
+            wat2wasm_version = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', str(out.data)).groups()
+
+            major, minor, build = wat2wasm_version
+            if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
+                bulk_memory_option = "--enable-bulk-memory"
+        except:
+            mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
 
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
@@ -402,12 +453,17 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wasm.")
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         gcc_cmd = os.path.join(gcc_dir, "gcc")
+        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
+        wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
         if mx.run([emcc_cmd, "-v"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the emcc version.")
         if mx.run([gcc_cmd, "--version"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the gcc version.")
-        if not wabt_dir:
-            mx.abort("Set WABT_DIR if you want the binary to include .wat files.")
+        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False) != 0:
+            if not wabt_dir:
+                mx.warn("No WABT_DIR specified.")
+            mx.abort("Could not check the wat2wasm version.")
+
         mx.log("Building files from the source dir: " + source_dir)
         cc_flags = ["-g2", "-O3"]
         include_flags = []
@@ -443,7 +499,6 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
                     # Step 1: compile the .wat file to .wasm.
-                    wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
                     build_cmd_line = [wat2wasm_cmd, "-o", output_wasm_path, source_path]
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not translate " + filename + " to binary format.")
@@ -469,7 +524,6 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             if mustRebuild:
                 if filename.endswith(".c"):
                     # Step 4: produce the .wat files, for easier debugging.
-                    wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
                     if mx.run([wasm2wat_cmd, "-o", output_wat_path, output_wasm_path], nonZeroIsFatal=False) != 0:
                         mx.abort("Could not compile .wat file for " + filename)
                 elif filename.endswith(".wat"):
@@ -517,6 +571,13 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
 
+class GraalVmWatProject(WatProject):
+    def getSourceDir(self):
+        return os.path.join(self.dir, self.subDir)
+
+    def isBenchmarkProject(self):
+        return True
+
 #
 # Launchers and other components.
 #
@@ -527,15 +588,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
-    standalone_dependencies={
-        'gwal': ('', []), # GraalWasm license files
-    },
-    standalone_dependencies_enterprise={
-        'gwal': ('', []), # GraalWasm license files
-        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
-    },
     license_files=[],
     third_party_license_files=[],
     dependencies=[
@@ -553,7 +605,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             language="wasm",
         ),
     ],
-    installable=True,
     stability="experimental",
 ))
 
@@ -568,7 +619,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
     priority=5,
-    installable=True,
     stability="experimental",
 ))
 
@@ -584,7 +634,10 @@ def emscripten_init(args):
     parser = ArgumentParser(prog='mx emscripten-init', description='initialize the Emscripten environment.')
     parser.add_argument('config_path', help='path of the config file to be generated')
     parser.add_argument('emsdk_path', help='path of the emsdk')
-    parser.add_argument('--local', action='store_true', help='Generates config file for local dev environment')
+
+    path_mode_group = parser.add_mutually_exclusive_group()
+    path_mode_group.add_argument('--detect', action='store_true', help='Try to detect the necessary directories in the emsdk automatically')
+    path_mode_group.add_argument('--local', action='store_true', help='Generates config file for local dev environment')
     args = parser.parse_args(args)
     config_path = os.path.join(os.getcwd(), args.config_path)
     emsdk_path = args.emsdk_path
@@ -593,6 +646,21 @@ def emscripten_init(args):
     binaryen_root = os.path.join(emsdk_path, "binaryen", "master_64bit_binaryen")
     emscripten_root = os.path.join(emsdk_path, "emscripten", "master")
     node_js = os.path.join(emsdk_path, "node", "12.9.1_64bit", "bin", "node")
+
+    def find_executable(exe_name):
+        for root, _, files in os.walk(args.emsdk_path):
+            if exe_name in files:
+                full_path = pathlib.Path(root, exe_name)
+                if os.access(full_path, os.X_OK):
+                    return full_path
+
+        mx.abort(f"Unable to find {exe_name} in {args.emsdk_path}")
+
+    if args.detect:
+        llvm_root = str(find_executable("llvm-ar").parent)
+        binaryen_root = str(find_executable("binaryen-lit").parent.parent)
+        emscripten_root = str(find_executable("emcc").parent)
+        node_js = str(find_executable("node"))
 
     if args.local:
         llvm_root = os.path.join(emsdk_path, "upstream", "bin")
@@ -630,13 +698,22 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
+
     vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
+    vmArgs += ['--enable-native-access=org.graalvm.truffle']
+    # GR-59703: This is needed for Truffle since JEP 498: Warn upon Use of Memory-Access Methods in sun.misc.Unsafe
+    mx_truffle.enable_sun_misc_unsafe(vmArgs)
+
     path_args = mx.get_runtime_jvm_args([
-        "TRUFFLE_API",
-        "org.graalvm.wasm",
-        "org.graalvm.wasm.launcher",
+        *mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True),
+        "WASM",
+        "WASM_LAUNCHER",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
+
+    main_dist = mx.distribution('WASM_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return mx.run_java(vmArgs + path_args + [main_class_arg] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):

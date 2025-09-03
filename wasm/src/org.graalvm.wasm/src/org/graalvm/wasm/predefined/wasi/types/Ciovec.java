@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** A region of memory for scatter/gather writes. */
 public final class Ciovec {
@@ -59,23 +60,23 @@ public final class Ciovec {
     public static final int BYTES = 8;
 
     /** Reads the address of the buffer to be written. */
-    public static int readBuf(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 0);
+    public static int readBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 0);
     }
 
     /** Writes the address of the buffer to be written. */
-    public static void writeBuf(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 0, value);
+    public static void writeBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 0, value);
     }
 
     /** Reads the length of the buffer to be written. */
-    public static int readBufLen(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 4);
+    public static int readBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 4);
     }
 
     /** Writes the length of the buffer to be written. */
-    public static void writeBufLen(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 4, value);
+    public static void writeBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 4, value);
     }
 
 }

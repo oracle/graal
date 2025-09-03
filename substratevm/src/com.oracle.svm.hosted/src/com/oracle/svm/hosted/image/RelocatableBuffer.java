@@ -37,7 +37,8 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
+import com.oracle.svm.core.meta.MethodRef;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.site.Reference;
@@ -96,7 +97,7 @@ public final class RelocatableBuffer {
             this.targetObject = targetObject;
 
             /* Sanity check for allowed groups of target objects. */
-            assert targetObject instanceof Reference || targetObject instanceof MethodPointer || targetObject instanceof ImageHeapConstant : targetObject;
+            assert targetObject instanceof Reference || targetObject instanceof MethodRef || targetObject instanceof CGlobalDataBasePointer || targetObject instanceof ImageHeapConstant : targetObject;
         }
 
         public int getRelocationSize() {

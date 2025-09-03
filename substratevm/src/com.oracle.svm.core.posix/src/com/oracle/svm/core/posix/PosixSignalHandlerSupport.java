@@ -46,7 +46,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -178,7 +177,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
             sigset_tPointer sigset = UnsafeStackValue.get(sigset_tPointer.class);
             Signal.NoTransitions.sigemptyset(sigset);
             Signal.NoTransitions.sigaddset(sigset, sig);
-            Signal.NoTransitions.sigprocmask(Signal.SIG_UNBLOCK(), sigset, WordFactory.nullPointer());
+            Signal.NoTransitions.sigprocmask(Signal.SIG_UNBLOCK(), sigset, Word.nullPointer());
 
             return dispatcherToHandler(oldDispatcher);
         } finally {
@@ -290,7 +289,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
         } else if (nativeH == ERROR_HANDLER) {
             return Signal.SIG_ERR();
         } else {
-            return WordFactory.pointer(nativeH);
+            return Word.pointer(nativeH);
         }
     }
 
@@ -351,7 +350,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
 
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
-        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        LibC.memset(act, Word.signed(0), Word.unsigned(structSigActionSize));
         act.sa_flags(flags);
         act.sa_handler(handler);
 
@@ -370,11 +369,11 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
 
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
-        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        LibC.memset(act, Word.signed(0), Word.unsigned(structSigActionSize));
         act.sa_flags(Signal.SA_SIGINFO() | flags);
         act.sa_sigaction(handler);
 
-        int result = sigaction(signum, act, WordFactory.nullPointer(), isSignalHandlingAllowed);
+        int result = sigaction(signum, act, Word.nullPointer(), isSignalHandlingAllowed);
         PosixUtils.checkStatusIs0(result, "sigaction failed in installSignalHandler().");
     }
 
@@ -383,7 +382,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
         assert NativeSpinLockUtils.isLocked(LOCK.get());
 
         Signal.sigaction handler = UnsafeStackValue.get(Signal.sigaction.class);
-        Signal.sigaction(sig, WordFactory.nullPointer(), handler);
+        Signal.sigaction(sig, Word.nullPointer(), handler);
         if ((handler.sa_flags() & Signal.SA_SIGINFO()) != Signal.SA_SIGINFO()) {
             return handler.sa_sigaction();
         }
@@ -523,8 +522,8 @@ final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
     }
 
     private static boolean isFirst() {
-        Word expected = WordFactory.zero();
-        Word actual = NOOP_HANDLERS_INSTALLED.get().compareAndSwapWord(0, expected, WordFactory.unsigned(1), LocationIdentity.ANY_LOCATION);
+        Word expected = Word.zero();
+        Word actual = NOOP_HANDLERS_INSTALLED.get().compareAndSwapWord(0, expected, Word.unsigned(1), LocationIdentity.ANY_LOCATION);
         return expected == actual;
     }
 

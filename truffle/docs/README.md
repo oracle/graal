@@ -9,21 +9,37 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/
 The Truffle language implementation framework (Truffle) is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
 Together with the open source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
-The Truffle artifacts are uploaded to [Maven central](https://mvnrepository.com/artifact/org.graalvm.truffle). 
+The Truffle artifacts are uploaded to [Maven Central - Sonatype](https://central.sonatype.com/artifact/org.graalvm.truffle/truffle-api){:target="_blank"}.
 You can use them from your `pom.xml` file as:
 
 ```xml
+<properties>
+    <graalvm.version>24.2.0</graalvm.version> <!-- or any later version -->
+</properties>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>24.0.2</version> <!-- or any later version -->
+    <version>${graalvm.version}</version> <!-- or any later version -->
 </dependency>
-<dependency>
-    <groupId>org.graalvm.truffle</groupId>
-    <artifactId>truffle-dsl-processor</artifactId>
-    <version>24.0.2</version>
-    <scope>provided</scope>
-</dependency>
+<build>
+    <plugins>
+        <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.14.0</version>
+            <configuration>
+                <source>21</source>
+                <target>21</target>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.graalvm.truffle</groupId>
+                        <artifactId>truffle-dsl-processor</artifactId>
+                        <version>${graalvm.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 ```
 
 ## Implement Your Language
@@ -34,7 +50,7 @@ It simplifies language implementation by automatically deriving high-performance
 ### Getting Started
 
 We provide extensive [Truffle API documentation](http://graalvm.org/truffle/javadoc/).
-Start by looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which you should subclass to start developing a language. 
+Start by looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which you should subclass to start developing a language.
 Truffle comes with the Graal Compiler and several language implementations as part of GraalVM.
 
 A good way to start implementing your language with Truffle is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
@@ -75,5 +91,5 @@ The latest additions and changes can be seen in the [changelog](https://github.c
 
 ## Modifying Truffle
 
-To understand how to modify Truffle, check [this file](https://github.com/oracle/graal/blob/master/truffle/README.md). 
+To understand how to modify Truffle, check [this file](https://github.com/oracle/graal/blob/master/truffle/README.md).
 If you would like to contribute to Truffle, consult the [contribution documentation](https://github.com/oracle/graal/blob/master/truffle/CONTRIBUTING.md).

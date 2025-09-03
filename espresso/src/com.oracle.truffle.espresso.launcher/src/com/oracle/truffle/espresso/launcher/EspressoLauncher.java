@@ -25,11 +25,13 @@ package com.oracle.truffle.espresso.launcher;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,11 +61,13 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         new EspressoLauncher().launch(args);
     }
 
+    private final boolean launcherDebug = System.getenv("_JAVA_LAUNCHER_DEBUG") != null;
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private LaunchMode launchMode = LaunchMode.LM_CLASS;
     private boolean pauseOnExit = false;
     private VersionAction versionAction = VersionAction.None;
+    private boolean versionToErr = true;
     private final Map<String, String> espressoOptions = new HashMap<>();
 
     private final class Arguments {
@@ -179,8 +183,20 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
+        int javaAgentIndex = 0;
+        boolean heapDumpOnOutOfMemoryError = false;
+        String heapDumpPath = null;
+        boolean ignoreUnrecognized = false;
 
         List<String> expandedArguments = expandAtFiles(arguments);
+
+        if (launcherDebug) {
+            println("Command line args:");
+            println("argv[0] = " + getProgramName());
+            for (int i = 0; i < expandedArguments.size(); i++) {
+                println(String.format("argv[%d] = %s", i + 1, expandedArguments.get(i)));
+            }
+        }
 
         Arguments args = new Arguments(expandedArguments);
         while (args.next()) {
@@ -209,6 +225,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "--enable-native-access":
                     parseNumberedOption(args, "java.EnableNativeAccess", "module");
                     break;
+                case "--illegal-native-access":
+                    espressoOptions.put("java.IllegalNativeAccess", args.getValue(arg, "illegal native access"));
+                    break;
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */
@@ -216,14 +235,24 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     espressoOptions.put("java.Module", mainClassName);
                     launchMode = LaunchMode.LM_MODULE;
                     break;
+                case "--limit-modules":
+                    espressoOptions.put("java.Properties.jdk.module.limitmods", args.getValue(arg, "limit-modules"));
+                    break;
                 case "-jar":
                     jarFileName = args.getValue(arg, "jar file");
+                    break;
+                case "--version":
+                    versionToErr = false;
+                    versionAction = VersionAction.PrintAndExit;
                     break;
                 case "-version":
                     versionAction = VersionAction.PrintAndExit;
                     break;
-                case "-showversion":
                 case "--show-version":
+                    versionToErr = false;
+                    versionAction = VersionAction.PrintAndContinue;
+                    break;
+                case "-showversion":
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
@@ -259,13 +288,21 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xint":
                     espressoOptions.put("engine.Compilation", "false");
                     break;
-                case "-Xshare:auto":
-                case "-Xshare:off":
-                    // ignore
-                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
+                    break;
+                case "-XX:+HeapDumpOnOutOfMemoryError":
+                    heapDumpOnOutOfMemoryError = true;
+                    break;
+                case "-XX:-HeapDumpOnOutOfMemoryError":
+                    heapDumpOnOutOfMemoryError = false;
+                    break;
+                case "-XX:+IgnoreUnrecognizedVMOptions":
+                    ignoreUnrecognized = true;
+                    break;
+                case "-XX:-IgnoreUnrecognizedVMOptions":
+                    ignoreUnrecognized = false;
                     break;
 
                 case "--engine.RelaxStaticObjectSafetyChecks":
@@ -297,7 +334,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put("java.JDWPOptions", value);
                     } else if (arg.startsWith("-javaagent:")) {
                         String value = arg.substring("-javaagent:".length());
-                        espressoOptions.put(JAVA_AGENT, value);
+                        espressoOptions.put(JAVA_AGENT + "." + javaAgentIndex++, value);
                         mergeOption("java.AddModules", "java.instrument");
                     } else if (arg.startsWith("-agentlib:")) {
                         String[] split = splitEquals(arg.substring("-agentlib:".length()));
@@ -305,13 +342,20 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-agentpath:")) {
                         String[] split = splitEquals(arg.substring("-agentpath:".length()));
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
-                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
+                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss") || arg.startsWith("-XX:MaxHeapSize=")) {
                         unrecognized.add("--vm." + arg.substring(1));
+                    } else if (arg.startsWith("-Xshare:")) {
+                        String value = arg.substring("-Xshare:".length());
+                        espressoOptions.put("java.CDS", value);
+                    } else if (arg.startsWith("--sun-misc-unsafe-memory-access")) {
+                        String value = args.getValue(arg, "sun.misc.Unsafe memory access");
+                        espressoOptions.put("java.SunMiscUnsafeMemoryAccess", value);
+                    } else if (arg.startsWith("-XX:HeapDumpPath=")) {
+                        heapDumpPath = arg.substring("-XX:HeapDumpPath=".length());
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
-                    } else
-                    // -Dsystem.property=value
-                    if (arg.startsWith("-D")) {
+                    } else if (arg.startsWith("-D")) {
+                        // -Dsystem.property=value
                         String key = arg.substring("-D".length());
                         int splitAt = key.indexOf("=");
                         String value = "";
@@ -385,23 +429,95 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             espressoOptions.put("engine.RelaxStaticObjectSafetyChecks", "true");
         }
 
+        if (heapDumpOnOutOfMemoryError) {
+            unrecognized.add("--vm.XX:+HeapDumpOnOutOfMemoryError");
+        }
+        if (heapDumpPath != null) {
+            unrecognized.add("--vm.XX:HeapDumpPath=" + heapDumpPath);
+        }
+
+        if (ignoreUnrecognized) {
+            // We remove the unrecognized -XX options from the list to ignore them:
+            Iterator<String> unrecognizedIt = unrecognized.iterator();
+            while (unrecognizedIt.hasNext()) {
+                String option = unrecognizedIt.next();
+                if (option.startsWith("-XX")) {
+                    unrecognizedIt.remove();
+                }
+            }
+        }
         return unrecognized;
     }
 
     private List<String> expandAtFiles(List<String> arguments) {
+        // Expand @arg-file arguments until we reach application arguments
         List<String> expanded = null;
-        for (int i = 0; i < arguments.size(); i++) {
+        int i = 0;
+        for (; i < arguments.size(); i++) {
             String arg = arguments.get(i);
-            if (arg.startsWith("@")) {
+            if (arg.startsWith("@") && arg.length() > 1) {
                 if (expanded == null) {
                     expanded = new ArrayList<>(arguments.subList(0, i));
                 }
-                parseArgFile(arg.substring(1, arg.length()), expanded);
-            } else if (expanded != null) {
-                expanded.add(arg);
+                String argArg = arg.substring(1);
+                if (arg.charAt(1) == '@') {
+                    // escaped argument
+                    expanded.add(argArg);
+                } else {
+                    // Note, at the moment we don't detect the end of VM arguments
+                    // inside the arg file itself
+                    parseArgFile(argArg, expanded);
+                }
+            } else {
+                if (arg.startsWith("-")) {
+                    if (isWhiteSpaceOption(arg)) {
+                        // Skip the argument that follows this option
+                        if (expanded != null) {
+                            expanded.add(arg);
+                        }
+                        i++;
+                        arg = arguments.get(i);
+                    } else if ("--disable-@files".equals(arg) || arg.startsWith("--module=")) {
+                        break;
+                    }
+                } else {
+                    // We have reached the main class or the jar
+                    break;
+                }
+                if (expanded != null) {
+                    expanded.add(arg);
+                }
             }
         }
+        if (expanded != null && i < arguments.size()) {
+            expanded.addAll(arguments.subList(i, arguments.size()));
+        }
         return expanded == null ? arguments : expanded;
+    }
+
+    private static boolean isWhiteSpaceOption(String arg) {
+        return switch (arg) {
+            case "--module-path",
+                            "-p",
+                            "--upgrade-module-path",
+                            "--add-modules",
+                            "--enable-native-access",
+                            "--limit-modules",
+                            "--add-exports",
+                            "--add-opens",
+                            "--add-reads",
+                            "--patch-module",
+                            "--describe-module",
+                            "-d",
+                            "--source",
+                            "--module",
+                            "-m",
+                            "-classpath",
+                            "-cp",
+                            "--class-path" ->
+                true;
+            default -> false;
+        };
     }
 
     private void parseArgFile(String pathArg, List<String> expanded) {
@@ -413,6 +529,15 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             throw abort(new RuntimeException("Cannot open @argfile", e), 1);
         }
     }
+
+    private static final Set<String> knownPassThroughOptions = Set.of(
+                    "SharedArchiveFile",
+                    "WhiteBoxAPI",
+                    "EnableJVMCI");
+
+    private static final Set<String> ignoredXXOptions = Set.of(
+                    "UseJVMCICompiler",
+                    "EnableDynamicAgentLoading");
 
     private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
         String arg = fullArg.substring("-XX:".length());
@@ -430,12 +555,21 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             name = arg.substring(0, idx);
             value = arg.substring(idx + 1);
         }
+        if (ignoredXXOptions.contains(name)) {
+            getError().println("Ignoring " + arg);
+            return;
+        }
+        if (knownPassThroughOptions.contains(name)) {
+            espressoOptions.put("java." + name, value);
+            return;
+        }
         switch (name) {
             case "UnlockDiagnosticVMOptions", "UnlockExperimentalVMOptions" -> unrecognized.add("--experimental-options=" + value);
-            case "WhiteBoxAPI" -> espressoOptions.put("java." + name, value);
             case "TieredStopAtLevel" -> {
                 if ("0".equals(value)) {
                     espressoOptions.put("engine.Compilation", "false");
+                } else if ("1".equals(value)) {
+                    espressoOptions.put("engine.Mode", "latency");
                 } else {
                     unrecognized.add(fullArg);
                 }
@@ -604,7 +738,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     version = context.getBindings("java").getMember("java.lang.VersionProps");
                     if (version.hasMember("print/(Z)V")) {
                         Value printMethod = version.getMember("print/(Z)V");
-                        printMethod.execute(/* print to stderr = */false);
+                        printMethod.execute(versionToErr);
                     } else {
                         // print is probably private
                         // fallback until we have an embedded API to call private members
@@ -614,6 +748,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 if (versionAction == VersionAction.PrintAndExit) {
                     throw exit(0);
                 }
+            }
+
+            boolean dumpSharedSpaces = "dump".equals(espressoOptions.get("java.CDS")); // -Xshare:dump
+            if (dumpSharedSpaces) {
+                context.initialize("java");
+                exit();
             }
 
             if (mainClassName == null) {
@@ -671,9 +811,15 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String javVMInfo = system.invokeMember("getProperty", "java.vm.info").asString();
         String launcherName = "espresso";
 
+        PrintStream output = versionToErr ? getError() : getOutput();
+
         /* First line: platform version. */
-        /* Use a format more in line with GNU conventions */
-        getOutput().println(launcherName + " " + javaVersion + " " + javaVersionDate + (isLTS ? " LTS" : ""));
+        if (versionToErr) {
+            output.println(launcherName + " version \"" + javaVersion + "\" " + javaVersionDate + (isLTS ? " LTS" : ""));
+        } else {
+            /* Use a format more in line with GNU conventions */
+            output.println(launcherName + " " + javaVersion + " " + javaVersionDate + (isLTS ? " LTS" : ""));
+        }
 
         /* Second line: runtime version (ie, libraries). */
         if ("release".equals(debugLevel)) {
@@ -685,10 +831,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
         vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
 
-        getOutput().println(javaRuntimeName + vendorVersion + " (" + debugLevel + "build " + javaRuntimeVersion + ")");
+        output.println(javaRuntimeName + vendorVersion + " (" + debugLevel + "build " + javaRuntimeVersion + ")");
 
         /* Third line: JVM information. */
-        getOutput().println(javaVMName + vendorVersion + " (" + debugLevel + "build " + javaVMVersion + ", " + javVMInfo + ")");
+        output.println(javaVMName + vendorVersion + " (" + debugLevel + "build " + javaVMVersion + ", " + javVMInfo + ")");
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {

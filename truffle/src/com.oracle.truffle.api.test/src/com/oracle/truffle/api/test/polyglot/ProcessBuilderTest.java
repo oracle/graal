@@ -181,14 +181,24 @@ public class ProcessBuilderTest {
             ByteArrayOutputStream stderr = new ByteArrayOutputStream();
             TruffleProcessBuilder builder = env.newProcessBuilder(toStringArray(frameArguments));
             Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
-            if (!p.waitFor(30, TimeUnit.SECONDS)) {
+            if (!p.waitFor(2, TimeUnit.MINUTES)) {
                 p.destroy();
                 Assert.fail("Process did not finish in expected time.");
             }
-            Assert.assertEquals(0, p.exitValue());
-            Assert.assertEquals(Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
-            Assert.assertEquals(Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
+            Assert.assertEquals(formatErrorMessage("Expected 0 subprocess exit code.", stdout, stderr), 0, p.exitValue());
+            Assert.assertEquals(formatErrorMessage("Expected stdout content.", stdout, stderr), Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
+            Assert.assertEquals(formatErrorMessage("Expected stderr content.", stdout, stderr), Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
             return null;
+        }
+
+        private static String formatErrorMessage(String reason, ByteArrayOutputStream stdout, ByteArrayOutputStream stderr) {
+            return String.format("""
+                            %s
+                            stdout:
+                            %s
+                            stderr:
+                            %s
+                            """, reason, stdout, stderr);
         }
     }
 
@@ -545,7 +555,7 @@ public class ProcessBuilderTest {
         return map;
     }
 
-    private static class MockProcessHandler implements ProcessHandler {
+    private static final class MockProcessHandler implements ProcessHandler {
 
         private ProcessCommand lastCommand;
 
@@ -630,11 +640,11 @@ public class ProcessBuilderTest {
         }
 
         static String expectedStdOut() {
-            return repeat(STDOUT, 10_000);
+            return repeat(STDOUT, 100);
         }
 
         static String expectedStdErr() {
-            return repeat(STDERR, 10_000);
+            return repeat(STDERR, 100);
         }
 
         private static String repeat(String pattern, int count) {

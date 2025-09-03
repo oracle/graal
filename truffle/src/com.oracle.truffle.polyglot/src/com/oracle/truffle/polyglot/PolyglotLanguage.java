@@ -63,11 +63,12 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Object api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
 
     private volatile OptionDescriptors options;
+    private volatile OptionDescriptors sourceOptions;
+    private volatile OptionValuesImpl emptySourceOptions;
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
 
@@ -132,9 +133,28 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         }
     }
 
+    public OptionDescriptors getSourceOptions() {
+        try {
+            engine.checkState();
+            return getSourceOptionsInternal();
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(this.engine, e);
+        }
+    }
+
     OptionDescriptors getOptionsInternal() {
         ensureInitialized();
         return options;
+    }
+
+    OptionDescriptors getSourceOptionsInternal() {
+        ensureInitialized();
+        return sourceOptions;
+    }
+
+    OptionValuesImpl getEmptySourceOptionsInternal() {
+        ensureInitialized();
+        return emptySourceOptions;
     }
 
     private void ensureInitialized() {
@@ -197,10 +217,11 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
                 if (!initialized) {
                     try {
                         this.options = LANGUAGE.describeOptions(instance.spi, cache.getId());
+                        this.sourceOptions = LANGUAGE.describeSourceOptions(instance.spi, cache.getId());
+                        this.emptySourceOptions = new OptionValuesImpl(sourceOptions, SandboxPolicy.TRUSTED, false, false);
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
-
                     initialized = true;
                 }
             }

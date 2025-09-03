@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
@@ -38,9 +40,8 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.StringHelperIntrinsics;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
-import org.junit.Test;
-
 import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
+import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
  * Tests support for
@@ -67,7 +68,6 @@ public class PrintIntrinsicsTest extends SubprocessTest {
         assertLineInOutput(subprocess, "</Intrinsics>");
 
         // Random selection of intrinsics that should be stable.
-        assertLineInOutput(subprocess, "java.lang.Class.getModifiers()");
         assertLineInOutput(subprocess, "java.lang.Byte.valueOf(byte)");
         assertLineInOutput(subprocess, "java.lang.System.nanoTime()");
         assertLineInOutput(subprocess, "java.lang.Thread.currentThread()");
@@ -92,7 +92,7 @@ public class PrintIntrinsicsTest extends SubprocessTest {
                         AssertionSnippets.class.getPackageName(),
                         CreateExceptionStub.class.getPackageName()
         };
-        Set<String> forcedIntrinsicPrefixExceptions = Set.of(
+        Set<String> forcedIntrinsicPrefixExceptions = CollectionsUtil.setOf(
                         StringHelperIntrinsics.class.getName() + ".getByte(byte[];int)",
                         StringUTF16Snippets.class.getName() + ".getChar(byte[];int)");
         for (String line : subprocess.output) {

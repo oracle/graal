@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StringTable;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -48,7 +48,7 @@ public interface ContextAccess extends LanguageAccess {
         return getContext().getVM();
     }
 
-    default ThreadsAccess getThreadAccess() {
+    default ThreadAccess getThreadAccess() {
         return getContext().getThreadAccess();
     }
 

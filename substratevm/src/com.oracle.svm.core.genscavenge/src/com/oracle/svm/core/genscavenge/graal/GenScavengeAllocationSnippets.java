@@ -26,24 +26,6 @@ package com.oracle.svm.core.genscavenge.graal;
 
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.SnippetAnchorNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.AllocationSnippets;
-import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
-import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
@@ -60,6 +42,23 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.AllocationSnippets;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class GenScavengeAllocationSnippets implements Snippets {
@@ -130,11 +129,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(providers, GenScavengeAllocationSnippets.class, "formatArraySnippet");
             formatStoredContinuation = ContinuationSupport.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
-            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers,
-                            GenScavengeAllocationSnippets.class,
-                            "formatPodSnippet",
-                            NamedLocationIdentity.getArrayLocation(JavaKind.Byte))
-                            : null;
+            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte)) : null;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -148,32 +143,32 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
+        private final class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
             @Override
             public void lower(FormatObjectNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatObject, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class FormatArrayLowering implements NodeLoweringProvider<FormatArrayNode> {
+        private final class FormatArrayLowering implements NodeLoweringProvider<FormatArrayNode> {
             @Override
             public void lower(FormatArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatArray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatArray, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("length", node.getLength());
@@ -181,41 +176,41 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class FormatStoredContinuationLowering implements NodeLoweringProvider<FormatStoredContinuationNode> {
+        private final class FormatStoredContinuationLowering implements NodeLoweringProvider<FormatStoredContinuationNode> {
             @Override
             public void lower(FormatStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatStoredContinuation, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("length", node.getLength());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
-                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class FormatPodLowering implements NodeLoweringProvider<FormatPodNode> {
+        private final class FormatPodLowering implements NodeLoweringProvider<FormatPodNode> {
             @Override
             public void lower(FormatPodNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatPod, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatPod, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
@@ -223,10 +218,10 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
-                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

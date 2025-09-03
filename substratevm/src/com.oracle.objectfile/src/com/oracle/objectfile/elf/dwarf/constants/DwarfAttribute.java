@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -47,16 +47,16 @@ public enum DwarfAttribute {
     DW_AT_artificial(0x34),
     DW_AT_count(0x37),
     DW_AT_data_member_location(0x38),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_AT_decl_column(0x39),
     DW_AT_decl_file(0x3a),
     DW_AT_decl_line(0x3b),
     DW_AT_declaration(0x3c),
     DW_AT_encoding(0x3e),
     DW_AT_external(0x3f),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_AT_return_addr(0x2a),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_AT_frame_base(0x40),
     DW_AT_specification(0x47),
     DW_AT_type(0x49),
@@ -66,7 +66,9 @@ public enum DwarfAttribute {
     DW_AT_call_file(0x58),
     DW_AT_call_line(0x59),
     DW_AT_object_pointer(0x64),
-    DW_AT_linkage_name(0x6e);
+    DW_AT_signature(0x69),
+    DW_AT_linkage_name(0x6e),
+    DW_AT_loclists_base(0x8c);
 
     private final int value;
 

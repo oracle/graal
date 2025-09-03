@@ -80,11 +80,11 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
      */
     public static final byte FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
     public static final byte FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
-    private static final byte FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
-    private static final byte FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
-    private static final byte FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
-    private static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
-    private static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
+    public static final byte FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
+    public static final byte FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
+    public static final byte FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
+    public static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
+    public static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
     public static final byte FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
     public static final byte FrameSlotKindStaticTag = 8; // FrameSlotKind.Static.tag
 
@@ -188,16 +188,24 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         this.frameDefaultValue = ConstantNode.forConstant(defaultValue, metaAccess, graph);
 
         JavaConstant indexedTagsArray = constantReflection.readFieldValue(types.FrameDescriptor_indexedSlotTags, frameDescriptor);
-        this.indexedFrameSize = constantReflection.readArrayLength(indexedTagsArray);
+        if (types.FrameDescriptor_indexedSlotCount == null) {
+            this.indexedFrameSize = constantReflection.readArrayLength(indexedTagsArray);
+        } else {
+            this.indexedFrameSize = constantReflection.readFieldValue(types.FrameDescriptor_indexedSlotCount, frameDescriptor).asInt();
+        }
 
         byte[] indexedFrameSlotKindsCandidate = new byte[indexedFrameSize];
-        final int indexedTagsArrayLength = constantReflection.readArrayLength(indexedTagsArray);
-        for (int i = 0; i < indexedTagsArrayLength; i++) {
-            final int slot = constantReflection.readArrayElement(indexedTagsArray, i).asInt();
-            if (slot == FrameSlotKindStaticTag) {
-                indexedFrameSlotKindsCandidate[i] = FrameSlotKindStaticTag;
-            } else {
-                indexedFrameSlotKindsCandidate[i] = FrameSlotKindLongTag;
+        if (indexedTagsArray.isNull()) {
+            Arrays.fill(indexedFrameSlotKindsCandidate, FrameSlotKindLongTag);
+        } else {
+            final int indexedTagsArrayLength = constantReflection.readArrayLength(indexedTagsArray);
+            for (int i = 0; i < indexedTagsArrayLength; i++) {
+                final int slot = constantReflection.readArrayElement(indexedTagsArray, i).asInt();
+                if (slot == FrameSlotKindStaticTag) {
+                    indexedFrameSlotKindsCandidate[i] = FrameSlotKindStaticTag;
+                } else {
+                    indexedFrameSlotKindsCandidate[i] = FrameSlotKindLongTag;
+                }
             }
         }
         this.indexedFrameSlotKinds = indexedFrameSlotKindsCandidate;
@@ -298,8 +306,20 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             ValueNode[] indexedPrimitiveArrayEntryState = new ValueNode[indexedFrameSize];
             ValueNode[] indexedTagArrayEntryState = new ValueNode[indexedFrameSize];
 
-            Arrays.fill(indexedObjectArrayEntryState, frameDefaultValue);
-            Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(0));
+            JavaConstant illegalDefaultValue = null;
+            // the field may not be defined in older Truffle versions.
+            if (types.FrameDescriptor_illegalDefaultValue != null) {
+                illegalDefaultValue = tool.getConstantReflection().readFieldValue(types.FrameDescriptor_illegalDefaultValue, null);
+            }
+
+            if (illegalDefaultValue != null && tool.getConstantReflection().constantEquals(frameDefaultValue.asJavaConstant(), illegalDefaultValue)) {
+                Arrays.fill(indexedObjectArrayEntryState, ConstantNode.defaultForKind(JavaKind.Object, graph()));
+                Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(FrameSlotKindIllegalTag));
+            } else {
+                Arrays.fill(indexedObjectArrayEntryState, frameDefaultValue);
+                Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(0));
+            }
+
             Arrays.fill(indexedPrimitiveArrayEntryState, defaultLong);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_OBJECT_ARRAY), indexedObjectArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY), indexedPrimitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition,

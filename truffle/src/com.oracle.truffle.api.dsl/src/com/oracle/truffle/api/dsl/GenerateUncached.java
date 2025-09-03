@@ -53,26 +53,25 @@ import java.lang.annotation.Target;
  * GenerateUncached is inherited to subclasses if {@link #inherit()} is set to <code>true</code>
  * (default <code>false</code>).
  * <p>
- * The generated code for the uncached version is based on the specialization closure. The
- * specialization closure only includes specializations that were are not replaced by others. This,
- * for example, automatically excludes inline caches from the closure. Uses of the {@link Cached}
- * annotation will automatically use {@linkplain Cached#uncached() getUncached} instead of a cached
- * version to initialize the cache.
- * <p>
  * A node subclass must fullfill the following requirements in order to be uncachable:
  * <ul>
  * <li>At least one specialization and one execute method must be specified.
  * <li>The node has no instance fields.
  * <li>All {@link Cached} parameters provide valid {@linkplain Cached#uncached() uncached}
  * initializers.
- * <li>All specializations of the closure must not use {@linkplain Specialization#rewriteOn()
- * rewriteOn} attribute.
  * <li>All guards/cache/limit expressions must not bind the node receiver.
  * </ul>
  * If any of these requirements are violated then an error will be shown. If node uses the
  * {@link NodeChild} or {@link NodeField} annotations then they will return constant
  * <code>null</code> or the primitive equivalent for the uncached node.
  * <p>
+ * * By default every specialization is included for {@link GenerateUncached}, except
+ * specializations that require a {@link Specialization#limit() limit} and are
+ * {@link Specialization#replaces() replaced}, those are excluded by default. By setting
+ * {@link Specialization#excludeForUncached()} explicitly the default behavior can be overridden,
+ * e.g. to include or exclude a specialization for uncached.
+ * <p>
+ *
  * <b>Example:</b>
  *
  * <pre>
@@ -81,7 +80,7 @@ import java.lang.annotation.Target;
  *
  *     abstract Object execute(Object arg);
  *
- *     &#64;Specialization(guards = "v == cachedV")
+ *     &#64;Specialization(guards = "v == cachedV", limit = "3")
  *     static Object doCached(int v, &#64;Cached("v") int cachedV) {
  *         // do cached
  *     }
@@ -107,7 +106,11 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
+ * Note that the <code>doCached</code> specialization is removed from the uncached version by
+ * default. This behavior can be customized by setting {@link Specialization#excludeForUncached()}.
+ *
  * @see Cached
+ * @see Specialization#excludeForUncached()
  * @since 19.0
  */
 @Retention(RetentionPolicy.CLASS)

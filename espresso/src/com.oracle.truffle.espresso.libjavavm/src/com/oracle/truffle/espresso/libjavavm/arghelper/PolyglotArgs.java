@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.libjavavm.arghelper;
 
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
@@ -149,7 +148,7 @@ class PolyglotArgs {
 
     private OptionDescriptor findOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
-        if (group.equals("engine")) {
+        if ("engine".equals(group) || "compiler".equals(group)) {
             descriptors = getTempEngine().getOptions();
         } else {
             Engine engine = getTempEngine();

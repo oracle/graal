@@ -41,17 +41,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.tables.EntryTable;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.impl.EntryTable;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -151,22 +151,37 @@ public final class GuestAllocator implements LanguageAccess {
     public StaticObject createClass(Klass klass) {
         assert klass != null;
         CompilerAsserts.neverPartOfCompilation();
-        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
+        EspressoContext ctx = klass.getContext();
+        Meta meta = ctx.getMeta();
+        EspressoLanguage lang = ctx.getLanguage();
+
+        ObjectKlass guestClass = meta.java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
+
         initInstanceFields(newObj, guestClass);
 
-        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
-        if (klass.getContext().getJavaVersion().modulesEnabled()) {
+        meta.java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
+        if (ctx.getJavaVersion().modulesEnabled()) {
             setModule(newObj, klass);
         }
         // The Class.componentType field is only available on 9+.
-        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
-            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
+        if (klass.isArray() && meta.java_lang_Class_componentType != null) {
+            meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+        meta.HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+
+        if (lang.getJavaVersion().java25OrLater()) {
+            assert meta.java_lang_Class_modifiers != null && meta.java_lang_Class_primitive != null;
+            meta.java_lang_Class_modifiers.setChar(newObj, (char) klass.getClassModifiers());
+            meta.java_lang_Class_primitive.setBoolean(newObj, klass.isPrimitive());
+        }
+        if (lang.getJavaVersion().java26OrLater()) {
+            assert meta.java_lang_Class_classFileAccessFlags != null;
+            meta.java_lang_Class_classFileAccessFlags.setChar(newObj, (char) VM.getClassAccessFlags(klass));
+        }
         return trackAllocation(klass, newObj);
     }
 
@@ -234,7 +249,7 @@ public final class GuestAllocator implements LanguageAccess {
         assert AllocationChecks.canAllocateNewArray(length);
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
-        return wrapArrayAs(componentKlass.getArrayClass(), arr);
+        return wrapArrayAs(componentKlass.getArrayKlass(), arr);
     }
 
     /**
@@ -318,7 +333,7 @@ public final class GuestAllocator implements LanguageAccess {
         if (interopLibrary.isNull(foreignObject)) {
             return createForeignNull(lang, foreignObject);
         }
-        return createForeign(lang, klass, foreignObject);
+        return doCreateForeign(lang, klass, foreignObject);
     }
 
     /**
@@ -326,7 +341,7 @@ public final class GuestAllocator implements LanguageAccess {
      */
     public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(lang, null, foreignObject);
+        return doCreateForeign(lang, null, foreignObject);
     }
 
     private static void initInstanceFields(StaticObject obj, ObjectKlass thisKlass) {
@@ -397,7 +412,7 @@ public final class GuestAllocator implements LanguageAccess {
         }
     }
 
-    private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
+    private static StaticObject doCreateForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
         assert klass == null || !klass.isAbstract() || klass.isArray();
         assert klass == null || klass != klass.getMeta().java_lang_Class;
@@ -412,7 +427,7 @@ public final class GuestAllocator implements LanguageAccess {
     @SuppressWarnings("try")
     private static void setModule(StaticObject obj, Klass klass) {
         StaticObject module = klass.module().module();
-        if (StaticObject.isNull(module)) {
+        if (module == null) {
             // This can happen during initialization, before java.base is defined
             // This can be concurrent so we check whether java base is indeed defined or not
             // We use the bootloader's package table lock to deal with races between this code and
@@ -435,6 +450,7 @@ public final class GuestAllocator implements LanguageAccess {
             }
 
         } else {
+            assert StaticObject.notNull(module);
             klass.getContext().getMeta().java_lang_Class_module.setObject(obj, module);
         }
     }

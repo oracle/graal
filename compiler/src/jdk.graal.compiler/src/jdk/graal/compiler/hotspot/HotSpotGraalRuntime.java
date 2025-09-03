@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.services.Services;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -47,18 +46,20 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationListenerProfiler;
 import jdk.graal.compiler.core.common.CompilerProfiler;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
@@ -66,11 +67,11 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.VMSupport;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -120,23 +121,39 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final CompilerProfiler compilerProfiler;
 
     /**
+     * The interface for recording/replaying compilations or {@code null} if disabled.
+     */
+    private final ReplayCompilationSupport replayCompilationSupport;
+
+    /**
      * @param nameQualifier a qualifier to be added to this runtime's {@linkplain #getName() name}
      * @param compilerConfigurationFactory factory for the compiler configuration
      *            {@link CompilerConfigurationFactory#selectFactory}
+     * @param replaySupport replay compilation support if this is a runtime for a recording or
+     *            replaying compiler
      */
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(String nameQualifier, HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {
+    HotSpotGraalRuntime(String nameQualifier, HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions,
+                    ReplayCompilationSupport replaySupport) {
         this.runtimeName = getClass().getSimpleName() + ":" + nameQualifier;
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
-        config = new GraalHotSpotVMConfig(store);
+        HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(store);
+        GraalHotSpotVMConfig selectedConfig = new GraalHotSpotVMConfig(access, Platform.ofCurrentHost());
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
-        if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
-            options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
-        } else {
-            options = initialOptions;
+        OptionValues selectedOptions = initialOptions;
+        if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && selectedConfig.printInlining) {
+            selectedOptions = new OptionValues(selectedOptions, HotSpotPrintInlining, true);
         }
 
+        replayCompilationSupport = replaySupport;
+        if (replayCompilationSupport != null) {
+            access = replayCompilationSupport.decorateVMConfigAccess(access);
+            selectedConfig = new GraalHotSpotVMConfig(access, replayCompilationSupport.targetPlatform());
+            selectedOptions = replayCompilationSupport.filterOptions(selectedOptions);
+        }
+        options = selectedOptions;
+        config = selectedConfig;
         outputDirectory = new DiagnosticsOutputDirectory(options);
         compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
@@ -153,6 +170,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             HotSpotBackendFactory factory = backendMap.getBackendFactory(hostArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
+            }
+            if (replayCompilationSupport != null) {
+                factory = replayCompilationSupport.decorateBackendFactory(factory);
             }
             hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
@@ -191,9 +211,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         runtimeStartTime = System.nanoTime();
         bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
 
-        this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
+        CompilerProfiler selectedCompilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
+        if (replayCompilationSupport != null) {
+            selectedCompilerProfiler = replayCompilationSupport.decorateCompilerProfiler(selectedCompilerProfiler);
+        }
+        this.compilerProfiler = selectedCompilerProfiler;
 
-        VMSupport.startupLibGraal();
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.initialize();
+        }
     }
 
     /**
@@ -205,9 +232,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial("UseSerialGC"),
         Parallel("UseParallelGC"),
         G1("UseG1GC"),
-        // non-generational ZGC
-        X(flagIsSet("UseZGC").and(flagIsNotSet("ZGenerational"))),
-        Z(flagIsSet("UseZGC").and(flagIsSet("ZGenerational"))),
+        Z(true, true, flagIsSet("UseZGC")),
         Epsilon(true, true, flagIsSet("UseEpsilonGC")),
 
         // Unsupported GCs
@@ -215,10 +240,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         HotSpotGC(String flag) {
             this(true, true, flagIsSet(flag));
-        }
-
-        HotSpotGC(Predicate<GraalHotSpotVMConfig> predicate) {
-            this(true, true, predicate);
         }
 
         HotSpotGC(boolean supported, boolean expectNamePresent, Predicate<GraalHotSpotVMConfig> predicate) {
@@ -229,11 +250,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         private static Predicate<GraalHotSpotVMConfig> flagIsSet(String flag) {
             final boolean notPresent = false;
-            return config1 -> config1.getFlag(flag, Boolean.class, notPresent, true);
-        }
-
-        private static Predicate<GraalHotSpotVMConfig> flagIsNotSet(String flag) {
-            return flagIsSet(flag).negate();
+            return config -> config.getFlag(flag, Boolean.class, notPresent, true);
         }
 
         /**
@@ -263,17 +280,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
          */
         static HotSpotGC forName(int name, GraalHotSpotVMConfig config) {
             for (HotSpotGC gc : HotSpotGC.values()) {
-                if (gc == X || gc == Z) {
-                    // CollectedHeap::X is not defined in HotSpot. Query CollectedHeap::Z instead
-                    // and the ZGenerational flag.
-                    if (config.getConstant("CollectedHeap::Z", Integer.class, -1, gc.expectNamePresent) == name) {
-                        if (config.getFlag("ZGenerational", Boolean.class, false, true)) {
-                            return Z;
-                        } else {
-                            return X;
-                        }
-                    }
-                } else if (config.getConstant("CollectedHeap::" + gc.name(), Integer.class, -1, gc.expectNamePresent) == name) {
+                if (config.getConstant("CollectedHeap::" + gc.name(), Integer.class, -1, gc.expectNamePresent) == name) {
                     return gc;
                 }
             }
@@ -299,7 +306,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     @Override
-    public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugHandlersFactory> factories, PrintStream logStream) {
+    public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugDumpHandlersFactory> factories, PrintStream logStream) {
 
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
         Builder builder = new Builder(compilationOptions, factories).//
@@ -415,7 +422,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
     }
 
-    synchronized void shutdown() {
+    public synchronized void shutdown() {
         shutdown = true;
 
         for (Runnable r : shutdownHooks) {
@@ -439,18 +446,20 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
+            String callbackClassName = null;
+            String callbackMethodName = null;
             if (callback != null) {
                 int lastDot = callback.lastIndexOf('.');
                 if (lastDot < 1 || lastDot == callback.length() - 1) {
                     throw new IllegalArgumentException(HotSpotGraalCompiler.Options.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
                 }
-                String cbClassName = callback.substring(0, lastDot);
-                String cbMethodName = callback.substring(lastDot + 1);
-                VMSupport.invokeShutdownCallback(cbClassName, cbMethodName);
+                callbackClassName = callback.substring(0, lastDot);
+                callbackMethodName = callback.substring(lastDot + 1);
             }
-            VMSupport.shutdownLibGraal();
+            libgraal.shutdown(callbackClassName, callbackMethodName);
         }
     }
 
@@ -483,5 +492,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @Override
     public Map<ExceptionAction, Integer> getCompilationProblemsPerAction() {
         return compilationProblemsPerAction;
+    }
+
+    @Override
+    public ReplayCompilationSupport getReplayCompilationSupport() {
+        return replayCompilationSupport;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,28 @@
  */
 package org.graalvm.wasm;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents the state of a WebAssembly module.
  */
 @SuppressWarnings("static-method")
 public abstract class RuntimeState {
-    private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
 
-    private final WasmContext context;
+    private final WasmStore store;
     private final WasmModule module;
 
     /**
@@ -66,16 +70,7 @@ public abstract class RuntimeState {
     private final CallTarget[] targets;
     private final WasmFunctionInstance[] functionInstances;
 
-    /**
-     * This array is monotonically populated from the left. An index i denotes the i-th global in
-     * this module. The value at index i denotes the address of the global in the memory space for
-     * all the globals from all the modules (see {@link GlobalRegistry}).
-     * <p>
-     * This separation of global indices is done because the index spaces of the globals are
-     * module-specific, and the globals can be imported across modules. Thus, the address-space of
-     * the globals is not the same as the module-specific index-space.
-     */
-    @CompilationFinal(dimensions = 1) private int[] globalAddresses;
+    private final GlobalRegistry globals;
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th table in
@@ -112,11 +107,13 @@ public abstract class RuntimeState {
 
     @CompilationFinal private int startFunctionIndex;
 
-    private void ensureGlobalsCapacity(int index) {
-        while (index >= globalAddresses.length) {
-            final int[] nGlobalAddresses = new int[globalAddresses.length * 2];
-            System.arraycopy(globalAddresses, 0, nGlobalAddresses, 0, globalAddresses.length);
-            globalAddresses = nGlobalAddresses;
+    static final VarHandle LINK_STATE;
+
+    static {
+        try {
+            LINK_STATE = MethodHandles.lookup().findVarHandle(RuntimeState.class, "linkState", Linker.LinkState.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
         }
     }
 
@@ -136,10 +133,10 @@ public abstract class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
-        this.context = context;
+    public RuntimeState(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
+        this.store = store;
         this.module = module;
-        this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        this.globals = new GlobalRegistry(module.numInternalGlobals(), module.numExternalGlobals());
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
@@ -153,50 +150,73 @@ public abstract class RuntimeState {
 
     private void checkNotLinked() {
         // The symbol table must be read-only after the module gets linked.
-        if (linkState == Linker.LinkState.linked) {
+        Linker.LinkState state = linkState();
+        if (state == Linker.LinkState.linked || state == Linker.LinkState.failed) {
             throw CompilerDirectives.shouldNotReachHere("The engine tried to modify the instance after linking.");
         }
     }
 
     public void setLinkInProgress() {
-        if (linkState != Linker.LinkState.nonLinked) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to in-progress state when not linked.");
-        }
-        this.linkState = Linker.LinkState.inProgress;
+        setLinkState(Linker.LinkState.nonLinked, Linker.LinkState.inProgress, "Can only switch to in-progress state when not linked.");
     }
 
     public void setLinkCompleted() {
-        if (linkState != Linker.LinkState.inProgress) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to linked state when linking is in-progress.");
-        }
-        this.linkState = Linker.LinkState.linked;
+        setLinkState(Linker.LinkState.inProgress, Linker.LinkState.linked, "Can only switch to linked state when linking is in-progress.");
     }
 
     public void setLinkFailed() {
-        if (linkState != Linker.LinkState.inProgress) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to failed state when linking is in-progress.");
-        }
-        this.linkState = Linker.LinkState.failed;
+        setLinkState(Linker.LinkState.inProgress, Linker.LinkState.failed, "Can only switch to failed state when linking is in-progress.");
+    }
+
+    public WasmStore store() {
+        return store;
     }
 
     public WasmContext context() {
-        return context;
+        return store().context();
+    }
+
+    public Linker.LinkState linkState() {
+        CompilerAsserts.neverPartOfCompilation();
+        return (Linker.LinkState) LINK_STATE.getVolatile(this);
+    }
+
+    private void setLinkState(Linker.LinkState expectedState, Linker.LinkState newState, String message) {
+        assert expectedState != Linker.LinkState.linked && expectedState != Linker.LinkState.failed : expectedState;
+        assert Thread.holdsLock(store());
+        if (!LINK_STATE.compareAndSet(this, expectedState, newState)) {
+            /*
+             * setLinkState is always invoked while the linker is holding a store lock, so we should
+             * always see the expected state here and the CAS should never fail.
+             */
+            throw CompilerDirectives.shouldNotReachHere(message);
+        }
     }
 
     public boolean isNonLinked() {
-        return linkState == Linker.LinkState.nonLinked;
+        return linkState() == Linker.LinkState.nonLinked;
     }
 
     public boolean isLinkInProgress() {
-        return linkState == Linker.LinkState.inProgress;
+        return linkState() == Linker.LinkState.inProgress;
     }
 
     public boolean isLinkCompleted() {
+        return linkState() == Linker.LinkState.linked;
+    }
+
+    /**
+     * Non-volatile link state check for use in compiled code. May read a stale value, which is OK,
+     * since in that case we'll just (deoptimize and) enter the slow path, and check again. Once
+     * this method has returned true, i.e., we've reached the state {@link Linker.LinkState#linked},
+     * we can safely rely on the module to be linked, and stay linked, since it is a final state.
+     */
+    public boolean isLinkCompletedFastPath() {
         return linkState == Linker.LinkState.linked;
     }
 
     public boolean isLinkFailed() {
-        return linkState == Linker.LinkState.failed;
+        return linkState() == Linker.LinkState.failed;
     }
 
     public SymbolTable symbolTable() {
@@ -219,16 +239,18 @@ public abstract class RuntimeState {
         targets[index] = target;
     }
 
-    public int globalAddress(int index) {
-        final int result = globalAddresses[index];
-        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized global at index: " + index;
-        return result;
+    public final GlobalRegistry globals() {
+        return globals;
     }
 
-    public void setGlobalAddress(int globalIndex, int address) {
-        ensureGlobalsCapacity(globalIndex);
-        checkNotLinked();
-        globalAddresses[globalIndex] = address;
+    public WasmGlobal externalGlobal(int globalIndex) {
+        assert symbolTable().globalExternal(globalIndex) : globalIndex;
+        return globals.externalGlobal(symbolTable().globalAddress(globalIndex));
+    }
+
+    public void setExternalGlobal(int globalIndex, WasmGlobal global) {
+        assert symbolTable().globalExternal(globalIndex) : globalIndex;
+        globals.setExternalGlobal(symbolTable().globalAddress(globalIndex), global);
     }
 
     public int tableAddress(int index) {
@@ -257,9 +279,15 @@ public abstract class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
-            functionInstances[functionIndex] = functionInstance;
+            functionInstance = allocateFunctionInstance(function, functionIndex);
         }
+        return functionInstance;
+    }
+
+    @TruffleBoundary
+    private WasmFunctionInstance allocateFunctionInstance(WasmFunction function, int functionIndex) {
+        WasmFunctionInstance functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
+        functionInstances[functionIndex] = functionInstance;
         return functionInstance;
     }
 
@@ -296,21 +324,22 @@ public abstract class RuntimeState {
         dataInstances[index] = droppedDataInstanceOffset;
     }
 
-    public void dropUnsafeDataInstance(int index) {
-        final long address = dataInstanceAddress(index);
-        if (address != 0) {
-            NativeDataInstanceUtil.freeNativeInstance(address);
-        }
-        dataInstances[index] = droppedDataInstanceOffset;
-    }
-
     public int dataInstanceOffset(int index) {
         if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        final int lengthLength = switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return bytecodeOffset + 1 + lengthLength;
     }
 
     public int dataInstanceLength(int index) {
@@ -339,28 +368,6 @@ public abstract class RuntimeState {
                 throw CompilerDirectives.shouldNotReachHere();
         }
         return length;
-    }
-
-    public long dataInstanceAddress(int index) {
-        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
-            return 0;
-        }
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final byte encoding = bytecode[bytecodeOffset];
-        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-        switch (lengthEncoding) {
-            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     public int droppedDataInstanceOffset() {

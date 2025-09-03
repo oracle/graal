@@ -52,8 +52,7 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
          */
     }
 
-    @SuppressWarnings("unused")
-    public void testWithAVX3Threshold(String testSelector, Class<? extends GraalCompilerTest> testClass) {
+    public void testWithAVX3Threshold(Class<? extends GraalCompilerTest> testClass) {
         Runnable nopRunnable = () -> {
             /*
              * The runnable is only relevant when running a test in the same class as the parent
@@ -62,7 +61,7 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
         };
         SubprocessUtil.Subprocess subprocess = null;
         try {
-            subprocess = launchSubprocess(testClass, nopRunnable, "-XX:UseAVX=3", "-XX:+UnlockDiagnosticVMOptions", "-XX:AVX3Threshold=0");
+            subprocess = launchSubprocess(testClass, ALL_TESTS, nopRunnable, "-XX:UseAVX=3", "-XX:+UnlockDiagnosticVMOptions", "-XX:AVX3Threshold=0");
         } catch (IOException | InterruptedException e) {
             Assert.fail("subprocess exception: " + e);
         }
@@ -71,17 +70,21 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
 
     @Test
     public void compressInflate() {
-        testWithAVX3Threshold("compressInflate", StringCompressInflateTest.class);
+        testWithAVX3Threshold(StringCompressInflateTest.class);
     }
 
     @Test
-    public void compareTo() {
-        testWithAVX3Threshold("compareTo", StringCompareToTest.class);
-        testWithAVX3Threshold("compareTo", StringCompareToAVX512Test.class);
+    public void compareTo1() {
+        testWithAVX3Threshold(StringCompareToTest.class);
+    }
+
+    @Test
+    public void compareTo2() {
+        testWithAVX3Threshold(StringCompareToAVX512Test.class);
     }
 
     @Test
     public void countPositives() {
-        testWithAVX3Threshold("countPositives", CountPositivesTest.class);
+        testWithAVX3Threshold(CountPositivesTest.class);
     }
 }

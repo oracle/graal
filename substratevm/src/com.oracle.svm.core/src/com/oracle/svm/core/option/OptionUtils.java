@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -45,8 +45,12 @@ import jdk.graal.compiler.options.OptionKey;
  */
 public class OptionUtils {
 
+    public static List<String> resolveOptionValuesRedirection(OptionKey<?> option, ValueWithOrigin<String> valueWithOrigin) {
+        return resolveOptionValuesRedirection(option, valueWithOrigin.value(), valueWithOrigin.origin());
+    }
+
     public static List<String> resolveOptionValuesRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
-        return Arrays.asList(SubstrateUtil.split(optionValue, ",")).stream()
+        return Arrays.stream(SubstrateUtil.split(optionValue, ","))
                         .flatMap(entry -> resolveOptionValueRedirection(option, optionValue, origin, entry))
                         .collect(Collectors.toList());
     }
@@ -55,14 +59,14 @@ public class OptionUtils {
         if (entry.trim().startsWith("@")) {
             Path valuesFile = Path.of(entry.substring(1));
             if (valuesFile.isAbsolute()) {
-                throw UserError.abort("Option '%s' provided by %s contains value redirection file '%s' that is an absolute path.",
-                                SubstrateOptionsParser.commandArgument(option, optionValue), origin, valuesFile);
+                throw new AssertionError("Option '" + SubstrateOptionsParser.commandArgument(option, optionValue) + "' provided by " + origin +
+                                " contains value redirection file '" + valuesFile + "' that is an absolute path.");
             }
             try {
                 return origin.getRedirectionValues(valuesFile).stream();
             } catch (IOException e) {
-                throw UserError.abort(e, "Option '%s' provided by %s contains invalid option value redirection.",
-                                SubstrateOptionsParser.commandArgument(option, optionValue), origin);
+                throw new AssertionError("Option '" + SubstrateOptionsParser.commandArgument(option, optionValue) + "' provided by " + origin +
+                                " contains invalid option value redirection.", e);
             }
         } else {
             return Stream.of(entry);

@@ -140,7 +140,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         if (code == installedCode) {
             return;
         }
-        installedCode.invalidateWithoutDeoptimization();
+        installedCode.makeNonEntrant();
         installedCode = code;
     }
 

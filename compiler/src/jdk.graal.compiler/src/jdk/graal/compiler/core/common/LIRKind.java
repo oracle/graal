@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -382,6 +382,22 @@ public class LIRKind extends ValueKind<LIRKind> {
      */
     public AllocatableValue getDerivedReferenceBase() {
         return derivedReferenceBase;
+    }
+
+    /**
+     * Gets the location of object references in the value. If the value is a vector type, each bit
+     * represents one component of the vector.
+     */
+    protected int getReferenceMask() {
+        return referenceMask;
+    }
+
+    /**
+     * Gets a bitmask with bits set to 1 indicating which references in {@link #referenceMask} are
+     * compressed.
+     */
+    protected int getReferenceCompressionMask() {
+        return referenceCompressionMask;
     }
 
     /**

@@ -51,4 +51,9 @@ public interface HotSpotRegistersProvider {
      * Gets the register whose value is always 0.
      */
     Register getZeroValueRegister(GraalHotSpotVMConfig config);
+
+    /**
+     * Determines whether the given register is one of the reserved special registers.
+     */
+    boolean isReservedRegister(Register r);
 }

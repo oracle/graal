@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,24 +26,19 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugEnumTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import jdk.graal.compiler.debug.DebugContext;
+public final class EnumClassEntry extends ClassEntry {
 
-public class EnumClassEntry extends ClassEntry {
-    public EnumClassEntry(String typeName, FileEntry fileEntry, int size) {
-        super(typeName, fileEntry, size);
+    // The typedef name if this is a representation of a c enum type
+    private final String typedefName;
+
+    public EnumClassEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader, String typedefName) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.typedefName = typedefName;
     }
 
-    @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.ENUM;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert debugTypeInfo instanceof DebugEnumTypeInfo;
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+    public String getTypedefName() {
+        return typedefName;
     }
 }

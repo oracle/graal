@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 
@@ -46,14 +47,6 @@ public class AArch64CPUFeatureAccess extends CPUFeatureAccessImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public AArch64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         super(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
-    }
-
-    /**
-     * We include all flags which currently impact AArch64 performance.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static EnumSet<AArch64.Flag> enabledAArch64Flags() {
-        return EnumSet.of(AArch64.Flag.UseLSE);
     }
 
     @Override
@@ -93,7 +86,7 @@ public class AArch64CPUFeatureAccess extends CPUFeatureAccessImpl {
     }
 
     @Override
-    public void enableFeatures(Architecture runtimeArchitecture) {
+    public void enableFeatures(Architecture runtimeArchitecture, LoweringProvider runtimeLowerer) {
         AArch64 architecture = (AArch64) runtimeArchitecture;
         EnumSet<AArch64.CPUFeature> features = determineHostCPUFeatures();
         architecture.getFeatures().addAll(features);

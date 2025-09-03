@@ -190,7 +190,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
+    public synchronized void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
         compilations++;
         final CurrentCompilationStatistics times = new CurrentCompilationStatistics(task.tier());
         currentCompilationStatistics.set(times);
@@ -291,7 +291,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+    public synchronized void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         if (bailout) {
             if (permanentBailout) {
                 permanentBailouts++;
@@ -309,7 +309,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onEngineClosed(EngineData runtimeData) {
+    public synchronized void onEngineClosed(EngineData runtimeData) {
         printStatistics(runtimeData);
     }
 

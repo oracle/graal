@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -67,7 +66,7 @@ public final class CIsolateDataStorage {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSize(UnsignedWord size) {
         assert managedIsolateSectionData == null;
-        UnsignedWord allocationSize = size.add(WordFactory.unsigned(ALIGNMENT - 1));
+        UnsignedWord allocationSize = size.add(Word.unsigned(ALIGNMENT - 1));
         managedIsolateSectionData = new byte[UnsignedUtils.safeToInt(allocationSize)];
     }
 
@@ -79,7 +78,7 @@ public final class CIsolateDataStorage {
     @Fold
     protected static UnsignedWord arrayBaseOffset() {
         int offset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
-        return UnsignedUtils.roundUp(WordFactory.unsigned(offset), WordFactory.unsigned(ALIGNMENT));
+        return UnsignedUtils.roundUp(Word.unsigned(offset), Word.unsigned(ALIGNMENT));
     }
 
     @SuppressWarnings("unchecked")

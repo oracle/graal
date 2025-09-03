@@ -34,8 +34,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -180,8 +182,34 @@ public class StaticObject implements TruffleObject, Cloneable {
         return language.getForeignProperty().getObject(this);
     }
 
+    public final EspressoType[] getTypeArguments(EspressoLanguage language) {
+        assert isForeignObject();
+        return (EspressoType[]) language.getTypeArgumentProperty().getObject(this);
+    }
+
     public final boolean isStaticStorage() {
         return this == getKlass().getStatics();
+    }
+
+    public final long getObjectSize(EspressoLanguage language) {
+        if (isNull(this)) {
+            return 0L;
+        }
+        long size = 0L;
+        size += JavaKind.Long.getByteCount(); // Klass storage
+        size += JavaKind.Long.getByteCount(); // Monitor storage
+        if (isForeignObject()) {
+            size += JavaKind.Long.getByteCount(); // Foreign storage
+            size += JavaKind.Long.getByteCount(); // Type Argument storage
+        } else if (getKlass() instanceof ArrayKlass k) {
+            JavaKind componentKind = k.getComponentType().getJavaKind();
+            size += (long) (componentKind == JavaKind.Object ? JavaKind.Long.getByteCount() : componentKind.getByteCount()) * length(language);
+        } else if (getKlass() instanceof ObjectKlass k) {
+            size += k.getInstanceSize();
+        } else {
+            EspressoContext.get(null).getLogger().warning(() -> "Unknown static object with class " + getKlass());
+        }
+        return size;
     }
 
     /**
@@ -195,7 +223,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public final boolean isMirrorKlass() {
-        return getKlass().getType() == Type.java_lang_Class && !isStaticStorage();
+        return getKlass().getType() == Types.java_lang_Class && !isStaticStorage();
     }
 
     /**
@@ -283,6 +311,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         return language.getArrayProperty().getObject(this);
     }
 
+    /**
+     * Returns a Java array based on this static object, which must be a guest array.
+     */
     @SuppressWarnings("unchecked")
     public final <T> T unwrap(EspressoLanguage language) {
         checkNotForeign();

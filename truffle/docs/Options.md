@@ -50,6 +50,8 @@ They are useful to users and language and tool implementers.
 ```shell
 - `--engine.PreinitializeContexts` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
+- `--engine.SourceCacheStatisticDetails` : Print source cache statistics for an engine when the engine is closed. With the details enabled, statistics for all individual sources are printed.
+- `--engine.SourceCacheStatistics` : Print source cache statistics for an engine when the engine is closed.
 - `--engine.SynchronousThreadLocalActionMaxWait=[0, inf)` : How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.
 - `--engine.SynchronousThreadLocalActionPrintStackTraces` : Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.
 - `--engine.TraceSourceCache` : Print information for source cache misses/evictions/failures.
@@ -72,6 +74,7 @@ The accepted values are:
 - `--engine.FirstTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 400).
 - `--engine.FirstTierMinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled in the first tier (default: 1)
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 10000).
+- `--engine.MaximumCompilations=(-inf, inf)` : Maximum number of successful compilations for a single call target before a permanent bailout. Exceeding the limit will result in a compilation failure with the appropriate reason and there will be no further attempts to compile the call target. (negative integer means no limit, default: 100)
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
 - `--engine.Mode=latency|throughput` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
 - `--engine.MultiTier=true|false` : Whether to use multiple Truffle compilation tiers by default. (default: true)
@@ -81,6 +84,7 @@ The accepted values are:
 - `--engine.PartialBlockMaximumSize=[1, inf)` : Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes (default: 10000).
 - `--engine.SingleTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier (default: 1000).
 - `--engine.Splitting=true|false` : Enable automatic duplication of compilation profiles (splitting) (default: true).
+- `--engine.StoppedCompilationRetryDelay=<ms>` : Before the Truffle runtime submits an OptimizedCallTarget for compilation, it checks for the compilation activity mode in the host VM. If the activity mode indicates a full code cache, no new compilation requests are submitted and the compilation queue is flushed. After 'StoppedCompilationRetryDelay' milliseconds new compilations will be submitted again (which might trigger a sweep of the code cache and a reset of the compilation activity mode in the host JVM). The option is only supported on the HotSpot Truffle runtime. On runtimes which don't support it the option has no effect. default: 5000
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--compiler.EncodedGraphCache` : Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).
 - `--compiler.FirstTierUseEconomy` : Whether to use the economy configuration in the first-tier compilations. (default: true, syntax: true|false)
@@ -140,7 +144,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.CompileOnly=<name>,<name>,...` : Restrict compilation to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.
 - `--engine.DynamicCompilationThresholds=true|false` : Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).
 - `--engine.DynamicCompilationThresholdsMaxNormalLoad=[1, inf)` : The desired maximum compilation queue load. When the load rises above this value, the compilation thresholds are increased. The load is scaled by the number of compiler threads.  (default: 10)
-- `--engine.DynamicCompilationThresholdsMinNormalLoad=[1, inf)` : The desired minimum compilation queue load. When the load falls bellow this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).
+- `--engine.DynamicCompilationThresholdsMinNormalLoad=[1, inf)` : The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).
 - `--engine.DynamicCompilationThresholdsMinScale=[0.0, inf)` : The minimal scale the compilation thresholds can be reduced to (default: 0.1).
 - `--engine.OSRCompilationThreshold=[1, inf)` : Number of loop iterations until on-stack-replacement compilation is triggered (default 100352).
 - `--engine.OSRMaxCompilationReAttempts=[0, inf)` : Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.
@@ -168,7 +172,12 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingCompilationQueue=true|false` : Use a traversing compilation queue. (default: true)
 - `--engine.TraversingQueueFirstTierBonus=[0.0, inf)` : Controls how much of a priority should be given to first tier compilations (default 15.0).
 - `--engine.TraversingQueueFirstTierPriority` : Traversing queue gives first tier compilations priority.
+- `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
+- `--engine.TraversingQueueOSRBonus=[0.0, inf)` : Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
+- `--compiler.CompilationTimeout` : Time limit in seconds before a compilation expires and throws a bailout (0 to disable the limit). 
+- `--compiler.DeoptCycleDetectionAllowedRepeats` : Maximum allowed repeats of the same compiled code for the same compilable. Works only if the detection of repeated compilation is enabled after DeoptCycleDetectionThreshold has been reached for the compilable. (negative integer means 0, default: 0)
+- `--compiler.DeoptCycleDetectionThreshold` : Threshold for enabling deopt cycle detection for a call target. When the number of successful compilation of the call target reaches the threshold, deopt cycle detection is enabled for the call target. (negative integer means the detection is never enabled, default: 15)
 - `--compiler.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--compiler.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)
 - `--compiler.FirstTierInliningPolicy` : Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.
@@ -184,7 +193,7 @@ These are internal options for debugging language implementations and tools.
 - `--compiler.InstrumentationTableSize` : Maximum number of instrumentation counters available (default: 10000, syntax: [1, inf))
 - `--compiler.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
 - `--compiler.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
-- `--compiler.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
+- `--compiler.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size, disabled if < 0. (default: -1, syntax: [-inf, inf))
 - `--compiler.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
   Accepted values are:
       true - Collect data for the default tier 'truffleTier'.
@@ -224,7 +233,6 @@ These are internal options for debugging language implementations and tools.
 - `--compiler.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--compiler.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--compiler.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
-- `--engine.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--engine.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)
 - `--engine.FirstTierInliningPolicy` : Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.
 - `--engine.InlineAcrossTruffleBoundary` : Enable inlining across Truffle boundary
@@ -238,8 +246,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.InstrumentFilter` : Method filter for host methods in which to add instrumentation (syntax: <method>,<method>,....)
 - `--engine.InstrumentationTableSize` : Maximum number of instrumentation counters available (default: 10000, syntax: [1, inf))
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
-- `--engine.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
-- `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
+- `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size, disabled if < 0. (default: -1, syntax: [-inf, inf))
 - `--engine.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
   Accepted values are:
       true - Collect data for the default tier 'truffleTier'.
@@ -279,6 +286,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--engine.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--engine.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
+- `--engine.IsolateLauncher=<path>` : Path to the external isolate launcher.
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
 ```
 <!-- END: internal-engine-options -->

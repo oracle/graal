@@ -241,7 +241,7 @@ public final class DataEncoding {
         };
     }
 
-    private static class Forms {
+    private static final class Forms {
         private static final int ADDR = 0x01;
         private static final int BLOCK2 = 0x03;
         private static final int BLOCK4 = 0x04;

@@ -246,10 +246,10 @@ public final class Encodings {
 
                 if (e == TruffleString.Encoding.UTF_16BE) {
                     encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1, ByteOrder.BIG_ENDIAN);
-                    codepointsBroken = new int[]{0xfffd};
+                    codepointsBroken = new int[]{Character.MIN_LOW_SURROGATE};
                 } else if (e == TruffleString.Encoding.UTF_32BE) {
                     encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2, ByteOrder.BIG_ENDIAN);
-                    codepointsBroken = new int[]{0xfffd};
+                    codepointsBroken = new int[]{Character.MIN_LOW_SURROGATE};
                 }
 
                 testData[e.ordinal()] = new TestData(
@@ -454,7 +454,7 @@ public final class Encodings {
         return new TestData(
                         new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                                         (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff},
-                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xdc, (byte) 0x00}, new int[]{0xdc00});
     }
 
     static TestData dataUTF16LE() {
@@ -471,7 +471,7 @@ public final class Encodings {
         assert TruffleString.Encoding.UTF_16BE.ordinal() == 3;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x2, 0x4, 0x6}, null, null, null,
                         new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff},
-                        new byte[]{(byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
+                        new byte[]{(byte) 0xdc, (byte) 0x00}, new int[]{0xdc00});
     }
 
     static TestData dataISO88591() {

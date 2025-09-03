@@ -109,7 +109,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
         for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
             for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {
-                if (loopEndNode.canGuestSafepoint()) {
+                if (loopEndNode.getGuestSafepointState().canSafepoint()) {
                     try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                         insertSafepoint(graph, loopEndNode);
                     }

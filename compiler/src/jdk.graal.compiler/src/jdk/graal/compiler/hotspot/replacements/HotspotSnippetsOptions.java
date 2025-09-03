@@ -26,33 +26,28 @@ package jdk.graal.compiler.hotspot.replacements;
 
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * Options related to HotSpot snippets in this package.
- *
- * Note: This must be a top level class to work around for
- * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
 public class HotspotSnippetsOptions {
-
     // @formatter:off
-    @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
-                   "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info", type = OptionType.Debug)
-    public static final OptionKey<Double> TypeCheckMinProfileHitProbability = new OptionKey<>(0.5);
-
-    @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
-                    "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Debug)
-    public static final OptionKey<Integer> TypeCheckMaxHints = new OptionKey<>(2);
-
     @Option(help = "Use a VM runtime call to load and clear the exception object from the thread at the start of a compiled exception handler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoadExceptionObjectInVM = new OptionKey<>(false);
 
     @Option(help = "Enable profiling of allocation sites.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ProfileAllocations = new OptionKey<>(false);
 
-    @Option(help = "file:doc-files/ProfileAllocationsContextHelp.txt", type = OptionType.Debug)
+    @Option(help = """
+                   Control the naming and granularity of the counters when using ProfileAllocations.
+                   The accepted values are:
+                           AllocatingMethod - a counter per method
+                            InstanceOrArray - one counter for all instance allocations and
+                                              one counter for all array allocations
+                              AllocatedType - one counter per allocated type
+                     AllocatedTypesInMethod - one counter per allocated type, per method""", type = OptionType.Debug)
     public static final EnumOptionKey<HotSpotAllocationSnippets.ProfileContext> ProfileAllocationsContext = new EnumOptionKey<>(HotSpotAllocationSnippets.ProfileContext.AllocatingMethod);
 
     @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)

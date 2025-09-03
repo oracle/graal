@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,19 +79,26 @@ public class CommandGroup<C extends Command> extends OptionValue<C> {
     }
 
     @Override
-    public void printHelp(PrintWriter writer, int indentLevel) {
+    public void printUsage(PrintWriter writer, boolean detailed) {
         if (value != null) {
-            value.printHelp(writer, indentLevel);
+            value.printUsage(writer);
             return;
         }
+        super.printUsage(writer, detailed);
+    }
+
+    @Override
+    public void printHelp(PrintWriter writer, int indentLevel) {
         boolean separate = false;
         for (C command : subCommands.getValues()) {
             if (separate) {
                 writer.println();
             }
-            OptionValue.printIndented(writer, command.getName(), indentLevel + 1);
-            OptionValue.printIndented(writer, command.getDescription(), indentLevel + 2);
+            printIndented(writer, command.getName(), indentLevel);
+            printIndented(writer, command.getDescription(), indentLevel + 1);
             separate = true;
         }
+        writer.println();
+        printIndented(writer, "Pass the --help flag after " + getUsage(false) + " for more help on the selected subcommand.", indentLevel);
     }
 }

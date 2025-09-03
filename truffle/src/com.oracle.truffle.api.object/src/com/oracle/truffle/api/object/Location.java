@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * @see DynamicObject
  * @since 0.8 or earlier
  */
-public abstract class Location {
+public abstract sealed class Location permits LocationImpl {
     /**
      * Constructor for subclasses.
      *
@@ -205,8 +205,11 @@ public abstract class Location {
     /**
      * Returns {@code true} if this is a final location, i.e. readonly once set.
      *
+     * @see #isAssumedFinal()
      * @since 0.8 or earlier
+     * @deprecated Use {@link #isAssumedFinal()} instead or replace by {@code false}.
      */
+    @Deprecated(since = "26.0")
     public boolean isFinal() {
         return false;
     }
@@ -285,7 +288,7 @@ public abstract class Location {
      */
     @SuppressWarnings("deprecation")
     public boolean isPrimitive() {
-        return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation || this instanceof BooleanLocation;
+        return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation;
     }
 
     /**

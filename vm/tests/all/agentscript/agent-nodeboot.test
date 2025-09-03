@@ -32,7 +32,7 @@
 < console.log("World");
 > cd ${TMP_DIR}
 >[6] node --no-extra-info-on-fatal-exception --insight=agent.js script.js
-.*agent.js:3
+.*agent.js:2
    console.log("Hello");
    ^
 

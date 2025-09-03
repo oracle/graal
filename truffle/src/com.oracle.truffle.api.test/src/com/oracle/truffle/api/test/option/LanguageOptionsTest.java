@@ -79,7 +79,6 @@ public class LanguageOptionsTest {
     }
 
     @TruffleLanguage.Registration
-    @Option.Group("com_oracle_truffle_api_test_option_languageoptionstest_readoptionsfromsystempropertieslanguage")
     public static final class ReadOptionsFromSystemPropertiesLanguage extends AbstractExecutableTestLanguage {
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "Test option") static final OptionKey<String> Option = new OptionKey<>("unset");

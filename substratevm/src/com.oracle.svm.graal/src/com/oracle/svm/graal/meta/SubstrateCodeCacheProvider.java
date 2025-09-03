@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
@@ -48,7 +49,7 @@ public class SubstrateCodeCacheProvider extends SharedCodeCacheProvider {
 
     @Override
     @SuppressFBWarnings(value = {"BC_UNCONFIRMED_CAST"}, justification = "We know what we are doing.")
-    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode predefinedInstalledCode, SpeculationLog log, boolean isDefault) {
+    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode predefinedInstalledCode, SpeculationLog log, boolean isDefault, boolean profileDeopt) {
         VMError.guarantee(!isDefault);
 
         SubstrateInstalledCode substrateInstalledCode;
@@ -60,6 +61,10 @@ public class SubstrateCodeCacheProvider extends SharedCodeCacheProvider {
         CompilationResult compResult = ((SubstrateCompiledCode) compiledCode).getCompilationResult();
         substrateInstalledCode.setCompilationId(compResult.getCompilationId());
         RuntimeCodeInstaller.install((SharedRuntimeMethod) method, compResult, substrateInstalledCode);
+        DebugContext debug = DebugContext.forCurrentThread();
+        if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+            debug.dump(DebugContext.BASIC_LEVEL, substrateInstalledCode, "After code installation");
+        }
         return predefinedInstalledCode;
     }
 }

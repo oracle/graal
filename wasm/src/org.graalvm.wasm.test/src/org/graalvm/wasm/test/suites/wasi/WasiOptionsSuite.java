@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,7 @@ public class WasiOptionsSuite {
         };
     }
 
-    private static class TestFileSystem implements FileSystem {
+    private static final class TestFileSystem implements FileSystem {
 
         @Override
         public Path parsePath(URI uri) {
@@ -189,8 +189,7 @@ public class WasiOptionsSuite {
         contextBuilder.option("wasm.WasiMapDirs", dir);
         try (Context context = contextBuilder.build()) {
             final Source s = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(source), "main").build();
-            context.eval(s);
-            final Value main = context.getBindings(WasmLanguage.ID).getMember("main");
+            final Value main = context.eval(s).newInstance().getMember("exports");
             final Value relative = main.getMember("relative");
             final Value direct = main.getMember("direct");
             final Value absolute = main.getMember("absolute");

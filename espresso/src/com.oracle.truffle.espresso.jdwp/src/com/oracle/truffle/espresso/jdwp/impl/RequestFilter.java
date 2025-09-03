@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,21 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntUnaryOperator;
 
-import java.util.Arrays;
-import java.util.regex.Pattern;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public final class RequestFilter {
 
     private final int requestId;
     private final byte eventKind;
     private final byte suspendPolicy;
-    private Pattern[] classExcludePatterns = new Pattern[0];
-    private KlassRef[] klassRefPatterns = new KlassRef[0];
-    private int count = 0;
-    private Object thread;
-    private Pattern[] positivePatterns = new Pattern[0];
+    private final List<Filter> filters = new ArrayList<>();
+    private volatile boolean active = true;
     private BreakpointInfo breakpointInfo;
-    private long thisFilterId = 0;
     private StepInfo stepInfo;
 
     public RequestFilter(int requestId, byte eventKind, byte suspendPolicy) {
@@ -55,10 +53,12 @@ public final class RequestFilter {
         return eventKind;
     }
 
-    public void addExcludePattern(Pattern pattern) {
-        int length = classExcludePatterns.length;
-        classExcludePatterns = Arrays.copyOf(classExcludePatterns, length + 1);
-        classExcludePatterns[length] = pattern;
+    public void addIncludePattern(String pattern) {
+        filters.add(new Filter.ClassNameInclude(pattern));
+    }
+
+    public void addExcludePattern(String pattern) {
+        filters.add(new Filter.ClassNameExclude(pattern));
     }
 
     public void setStepInfo(StepInfo info) {
@@ -69,55 +69,16 @@ public final class RequestFilter {
         return stepInfo;
     }
 
-    public void addRefTypeLimit(KlassRef klassRef) {
-        int length = klassRefPatterns.length;
-        klassRefPatterns = Arrays.copyOf(klassRefPatterns, length + 1);
-        klassRefPatterns[length] = klassRef;
-    }
-
-    public boolean isKlassExcluded(KlassRef klass) {
-        for (Pattern pattern : classExcludePatterns) {
-            if (pattern != null) {
-                if (pattern.matcher(klass.getNameAsString().replace('/', '.')).matches()) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    public void addRefTypeOnly(KlassRef klassRef) {
+        filters.add(new Filter.ClassOnly(klassRef));
     }
 
     public void addEventCount(int eventCount) {
-        this.count = eventCount;
-    }
-
-    public int getIgnoreCount() {
-        return count;
+        filters.add(new Count(eventCount));
     }
 
     public void addThread(Object guestThread) {
-        this.thread = guestThread;
-    }
-
-    public Object getThread() {
-        return thread;
-    }
-
-    public void addPositivePattern(Pattern pattern) {
-        int length = positivePatterns.length;
-        positivePatterns = Arrays.copyOf(positivePatterns, length + 1);
-        positivePatterns[length] = pattern;
-    }
-
-    public Pattern[] getIncludePatterns() {
-        return positivePatterns;
-    }
-
-    public Pattern[] getExcludePatterns() {
-        return classExcludePatterns;
-    }
-
-    public KlassRef[] getKlassRefPatterns() {
-        return klassRefPatterns;
+        filters.add(new Filter.ThreadId(guestThread));
     }
 
     public void addBreakpointInfo(BreakpointInfo info) {
@@ -129,14 +90,179 @@ public final class RequestFilter {
     }
 
     public void addThisFilterId(long thisId) {
-        this.thisFilterId = thisId;
-    }
-
-    public long getThisFilterId() {
-        return thisFilterId;
+        filters.add(new Filter.This(thisId));
     }
 
     public byte getSuspendPolicy() {
         return suspendPolicy;
+    }
+
+    public boolean isHit(EventInfo event) {
+        for (Filter filter : filters) {
+            if (!filter.isHit(event)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean matchesType(KlassRef klass) {
+        for (Filter filter : filters) {
+            if (!filter.matchesType(klass)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    final class Count extends Filter implements IntUnaryOperator {
+
+        private final AtomicInteger hitCount;
+
+        Count(int count) {
+            hitCount = new AtomicInteger(count);
+        }
+
+        @Override
+        boolean isHit(EventInfo event) {
+            int count = hitCount.updateAndGet(this);
+            if (count <= 0) {
+                // Deactivate the filter
+                RequestFilter.this.active = false;
+            }
+            return count == 0;
+        }
+
+        @Override
+        public int applyAsInt(int lastHitCount) {
+            if (lastHitCount > 0) {
+                return lastHitCount - 1;
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    private abstract static class Filter {
+
+        abstract boolean isHit(EventInfo event);
+
+        boolean matchesType(@SuppressWarnings("unused") KlassRef classType) {
+            return true;
+        }
+
+        static final class ThreadId extends Filter {
+
+            private final Object guestThread;
+
+            ThreadId(Object guestThread) {
+                this.guestThread = guestThread;
+            }
+
+            @Override
+            boolean isHit(EventInfo event) {
+                return event.getThread() == guestThread;
+            }
+        }
+
+        static final class ClassOnly extends Filter {
+
+            private final KlassRef type;
+
+            ClassOnly(KlassRef type) {
+                this.type = type;
+            }
+
+            @Override
+            boolean isHit(EventInfo event) {
+                return type.isAssignable(event.getType());
+            }
+
+            @Override
+            boolean matchesType(KlassRef eventType) {
+                return type.isAssignable(eventType);
+            }
+        }
+
+        static class ClassNameInclude extends Filter {
+
+            private final String pattern;
+            private final ClassNameMatchKind matchKind;
+
+            enum ClassNameMatchKind {
+                EXACT,
+                STARTS,
+                ENDS
+            }
+
+            ClassNameInclude(String classNamePattern) {
+                int length = classNamePattern.length();
+                if (length > 0 && classNamePattern.charAt(0) == '*') {
+                    pattern = classNamePattern.substring(1);
+                    matchKind = ClassNameMatchKind.ENDS;
+                } else if (length > 0 && classNamePattern.charAt(length - 1) == '*') {
+                    pattern = classNamePattern.substring(0, length - 1);
+                    matchKind = ClassNameMatchKind.STARTS;
+                } else {
+                    pattern = classNamePattern;
+                    matchKind = ClassNameMatchKind.EXACT;
+                }
+            }
+
+            @Override
+            boolean isHit(EventInfo event) {
+                return matchesTypeName(event.getType());
+            }
+
+            @Override
+            boolean matchesType(KlassRef klass) {
+                return matchesTypeName(klass);
+            }
+
+            private boolean matchesTypeName(KlassRef klass) {
+                String name = klass.getNameAsString().replace('/', '.');
+                return switch (matchKind) {
+                    case EXACT -> name.equals(pattern);
+                    case STARTS -> name.startsWith(pattern);
+                    case ENDS -> name.endsWith(pattern);
+                    default -> throw new IllegalStateException("Unknown match kind " + matchKind);
+                };
+            }
+        }
+
+        static final class ClassNameExclude extends ClassNameInclude {
+
+            ClassNameExclude(String classNamePattern) {
+                super(classNamePattern);
+            }
+
+            @Override
+            boolean isHit(EventInfo event) {
+                return !super.isHit(event);
+            }
+
+            @Override
+            boolean matchesType(KlassRef eventType) {
+                return !super.matchesType(eventType);
+            }
+        }
+
+        static final class This extends Filter {
+
+            private final long objectId;
+
+            This(long objectId) {
+                this.objectId = objectId;
+            }
+
+            @Override
+            boolean isHit(EventInfo event) {
+                return event.getThisId() == objectId;
+            }
+        }
     }
 }

@@ -26,8 +26,6 @@ package com.oracle.svm.core.c.function;
 
 import java.util.List;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
@@ -37,8 +35,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -49,10 +45,15 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class IsolateSupportImpl implements IsolateSupport {
     private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
                     SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+") + " option.";
@@ -85,7 +86,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
             // Prepare argc and argv.
             int argc = 0;
-            CCharPointerPointer argv = WordFactory.nullPointer();
+            CCharPointerPointer argv = Word.nullPointer();
 
             List<String> args = parameters.getArguments();
             CTypeConversion.CCharPointerHolder[] pointerHolders = null;
@@ -96,7 +97,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 // the name of the binary. We use null when isolates are created manually.
                 argc = isolateArgCount + 1;
                 argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Internal);
-                argv.write(0, WordFactory.nullPointer());
+                argv.write(0, Word.nullPointer());
 
                 pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];
                 for (int i = 0; i < isolateArgCount; i++) {
@@ -119,7 +120,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
-            int result = CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr);
+            int result = CEntryPointNativeFunctions.createIsolate(params, Word.nullPointer(), isolateThreadPtr);
             IsolateThread isolateThread = isolateThreadPtr.read();
 
             // Cleanup all native memory related to argv.
@@ -171,32 +172,5 @@ public final class IsolateSupportImpl implements IsolateSupport {
             String message = CEntryPointErrors.getDescription(code);
             throw new IsolateException(message);
         }
-    }
-
-    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
-
-    private volatile long isolateId = 0;
-
-    @Override
-    public long getIsolateID() {
-        if (isolateId == 0) {
-            synchronized (this) {
-                if (isolateId == 0) {
-                    Pointer p = nextIsolateId.get();
-                    long value;
-                    long nextValue;
-                    do {
-                        value = p.readLong(0);
-                        nextValue = value + 1;
-                        if (nextValue == 0) {
-                            // Avoid setting id to reserved 0 value after long integer overflow
-                            nextValue = 1;
-                        }
-                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
-                    isolateId = value;
-                }
-            }
-        }
-        return isolateId;
     }
 }

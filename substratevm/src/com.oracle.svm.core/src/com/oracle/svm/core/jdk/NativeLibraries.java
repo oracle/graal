@@ -31,11 +31,11 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -58,7 +58,7 @@ public abstract class NativeLibraries {
                 return entry;
             }
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     /** The path of the directory containing the native image. */

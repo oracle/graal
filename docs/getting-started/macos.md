@@ -46,7 +46,7 @@ Install GraalVM from an archive (_.tar.gz_) for the current user into any locati
 
 3. Move the downloaded package to its proper location, the _/Library/Java/JavaVirtualMachines/_ directory. Since this is a system directory, `sudo` is required:
     ```bash
-    sudo mv graalvm-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
+    sudo mv graalvm-jdk-<version> /Library/Java/JavaVirtualMachines
     ```
     To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
@@ -92,8 +92,7 @@ xcode-select --install
 
 ### On JAVA_HOME Command
 
-The information property file, _Info.plist_, is in the top level _Contents/_ directory. 
-This means that GraalVM participates in the macOS-specific `/usr/libexec/java_home` mechanism. 
-Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v23` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`. 
-You can run `/usr/libexec/java_home -v23 -V` to see the complete list of JVMs available to the `java_home` command. 
-This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
+The information property file, _Info.plist_, is located in the top-level _Contents/_ directory.
+This allows GraalVM to integrate with the macOS-specific `/usr/libexec/java_home` mechanism.
+Depending on other installed JDKs, running `/usr/libexec/java_home -v<version>` may return `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+To view all JVMs recognized by `java_home`, run `/usr/libexec/java_home -V`. This command lists JVMs in descending version order.

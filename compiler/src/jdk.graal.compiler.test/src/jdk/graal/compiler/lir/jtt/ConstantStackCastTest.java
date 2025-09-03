@@ -57,7 +57,7 @@ public class ConstantStackCastTest extends LIRTest {
         stackCopyByte.srcKind = LIRKind.fromJavaKind(getBackend().getTarget().arch, JavaKind.Byte);
     }
 
-    private static class LoadConstantStackSpec extends LIRTestSpecification {
+    private static final class LoadConstantStackSpec extends LIRTestSpecification {
         LIRKind dstKind;
         LIRKind srcKind;
 

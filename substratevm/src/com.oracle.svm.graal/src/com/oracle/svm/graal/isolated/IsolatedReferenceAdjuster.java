@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -120,8 +120,8 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
         data.setAddresses(addresses);
         data.setHandles(handles);
 
-        addresses = WordFactory.nullPointer();
-        handles = WordFactory.nullPointer();
+        addresses = Word.nullPointer();
+        handles = Word.nullPointer();
         count = 0;
 
         return data;

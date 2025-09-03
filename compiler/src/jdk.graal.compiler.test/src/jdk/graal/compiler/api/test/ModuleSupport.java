@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import jdk.graal.compiler.debug.DebugOptions;
-
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.internal.module.Modules;
 
 public class ModuleSupport {
@@ -100,7 +99,7 @@ public class ModuleSupport {
         List<String> classNames = new ArrayList<>();
         FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
         Module graalModule = DebugOptions.class.getModule();
-        Set<String> graalModuleSet = new HashSet<>();
+        Set<String> graalModuleSet = new EconomicHashSet<>();
         graalModuleSet.add(graalModule.getName());
         for (Module module : graalModule.getLayer().modules()) {
             if (requires(module, graalModule)) {
@@ -110,7 +109,7 @@ public class ModuleSupport {
 
         Path top = fs.getPath("/modules/");
         Files.find(top, Integer.MAX_VALUE,
-                        (path, attrs) -> attrs.isRegularFile()).forEach(p -> {
+                        (_, attrs) -> attrs.isRegularFile()).forEach(p -> {
                             int nameCount = p.getNameCount();
                             if (nameCount > 2) {
                                 String base = p.getName(nameCount - 1).toString();

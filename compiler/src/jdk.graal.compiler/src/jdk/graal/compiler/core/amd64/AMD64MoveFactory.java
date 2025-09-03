@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
             JavaConstant c = (JavaConstant) con;
             switch (c.getJavaKind()) {
                 case Long:
-                    return NumUtil.isInt(c.asLong());
+                    return c instanceof PrimitiveConstant && NumUtil.isInt(c.asLong());
                 case Float:
                 case Double:
                     return false;

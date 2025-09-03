@@ -25,22 +25,36 @@
 package jdk.graal.compiler.replacements;
 
 import java.util.EnumMap;
+import java.util.List;
+
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ProfileData;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.extended.AbstractBoxingNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -225,8 +239,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         static Class<?> getCacheClass(JavaKind kind) {
-            Class<?>[] innerClasses = null;
-            innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+            Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
             for (Class<?> innerClass : innerClasses) {
                 if (innerClass.getSimpleName().equals(kind.toBoxedJavaClass().getSimpleName() + "Cache")) {
                     return innerClass;
@@ -249,22 +262,92 @@ public class BoxingSnippets implements Snippets {
 
         public void lower(BoxNode box, LoweringTool tool) {
             SnippetTemplate.Arguments args = null;
-            args = new SnippetTemplate.Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
+            args = new SnippetTemplate.Arguments(boxSnippets.get(box.getBoxingKind()), box.graph(), tool.getLoweringStage());
             args.add("value", box.getValue());
-            args.addConst("valueOfCounter", valueOfCounter);
+            args.add("valueOfCounter", valueOfCounter);
             SnippetTemplate template = template(tool, box, args);
             box.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-            template.instantiate(tool.getMetaAccess(), box, SnippetTemplate.DEFAULT_REPLACER, args);
+
+            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), box, SnippetTemplate.DEFAULT_REPLACER, args);
+            assignPrimitiveCacheProfiles(box.getBoxingKind(), duplicates);
         }
 
         public void lower(UnboxNode unbox, LoweringTool tool) {
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph(), tool.getLoweringStage());
             args.add("value", unbox.getValue());
-            args.addConst("valueCounter", valueCounter);
+            args.add("valueCounter", valueCounter);
 
             SnippetTemplate template = template(tool, unbox, args);
             unbox.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
             template.instantiate(tool.getMetaAccess(), unbox, SnippetTemplate.DEFAULT_REPLACER, args);
         }
+    }
+
+    /**
+     * Boxing primitive values typically utilizes a primitive cache, but profiling information for
+     * this cache is absent within snippets. This function injects the necessary profiles to address
+     * that gap.
+     */
+    private static void assignPrimitiveCacheProfiles(JavaKind kind, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        NodeBitMap controlFlow = null;
+        for (Node originalNode : duplicates.getKeys()) {
+            if (originalNode instanceof IfNode originalIf) {
+                if (isBoundsCheck(originalIf)) {
+                    // Ignore the bounds check of the cache, that is not relevant
+                    continue;
+                }
+                if (controlFlow == null) {
+                    controlFlow = originalIf.graph().createNodeBitMap();
+                }
+                controlFlow.mark(originalIf);
+                ProfileData.ProfileSource source = originalIf.getProfileData().getProfileSource();
+                assert source.isUnknown() || source.isInjected() : Assertions.errorMessage(originalIf, originalIf.getProfileData(), "Profile should be unknown inside the snippet");
+            }
+        }
+        if (controlFlow == null) {
+            return;
+        }
+        GraalError.guarantee(controlFlow.count() == 1, "Must only have a single control flow element - the branch into the cache but found more %s", controlFlow);
+
+        IfNode cacheIf = (IfNode) controlFlow.first();
+        IfNode inlinedNode = (IfNode) duplicates.get(cacheIf);
+
+        ProfileData.BranchProbabilityData b = null;
+        switch (kind) {
+            case Byte:
+                // cache contains all byte values, should not see any control flow and thus never
+                // enter this branch
+                throw GraalError.shouldNotReachHere("Byte.valueOf should all go to cache and never contain control flow " + controlFlow);
+            case Boolean:
+                // only two cases, truly 50 / 50
+                b = ProfileData.BranchProbabilityData.injected(0.5);
+                break;
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+                AbstractBeginNode trueSucc = cacheIf.trueSuccessor();
+                GraalError.guarantee(trueSucc.next() instanceof IfNode, "Must have the bounds check next but found %s", trueSucc.next());
+                IfNode boundsIf = (IfNode) trueSucc.next();
+                GraalError.guarantee(isBoundsCheck(boundsIf), "Must have the bounds check next but found %s", boundsIf);
+                List<Node> anchored = boundsIf.trueSuccessor().anchored().snapshot();
+                GraalError.guarantee(anchored.stream().filter(x -> x instanceof MemoryAccess m && NamedLocationIdentity.isArrayLocation(m.getLocationIdentity())).count() == 1,
+                                "Remaining control flow should read from the cache but is %s", boundsIf.trueSuccessor());
+
+                b = ProfileData.BranchProbabilityData.injected(BranchProbabilityNode.FREQUENT_PROBABILITY);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere("Unknown control flow in boxing code, did a JDK change trigger this error? Consider adding new logic to set the profile of " + controlFlow);
+        }
+        inlinedNode.setTrueSuccessorProbability(b);
+        inlinedNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, inlinedNode.graph(), "After updating profile of %s", inlinedNode);
+    }
+
+    private static boolean isBoundsCheck(IfNode ifNode) {
+        if (ifNode.condition() instanceof CompareNode) {
+            AbstractBeginNode fs = ifNode.falseSuccessor();
+            return fs.next() instanceof DeoptimizeNode deopt && deopt.getReason() == DeoptimizationReason.BoundsCheckException;
+        }
+        return false;
     }
 }

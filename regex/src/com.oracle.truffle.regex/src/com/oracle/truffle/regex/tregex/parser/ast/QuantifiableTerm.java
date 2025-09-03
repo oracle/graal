@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
@@ -59,7 +60,11 @@ public abstract class QuantifiableTerm extends Term {
 
     QuantifiableTerm(QuantifiableTerm copy) {
         super(copy);
-        this.quantifier = copy.quantifier;
+        if (copy.hasQuantifier()) {
+            this.quantifier = new Token.Quantifier(copy.quantifier);
+        } else {
+            this.quantifier = null;
+        }
     }
 
     @Override
@@ -67,6 +72,10 @@ public abstract class QuantifiableTerm extends Term {
 
     public boolean hasQuantifier() {
         return quantifier != null;
+    }
+
+    public boolean hasMin0Quantifier() {
+        return hasQuantifier() && quantifier.getMin() == 0;
     }
 
     /**
@@ -79,7 +88,7 @@ public abstract class QuantifiableTerm extends Term {
     /**
      * Returns {@code true} iff the parser should try to unroll this term's quantifier.
      */
-    public abstract boolean isUnrollingCandidate();
+    public abstract boolean isUnrollingCandidate(RegexOptions options);
 
     public Token.Quantifier getQuantifier() {
         return quantifier;

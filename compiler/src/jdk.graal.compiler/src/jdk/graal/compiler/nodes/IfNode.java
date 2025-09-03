@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -71,12 +70,10 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -84,6 +81,7 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.SwitchFoldable;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactOverflowNode;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -103,10 +101,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
-    /*
-     * Any change to successor fields (reordering, renaming, adding or removing) would need an
-     * according update to SimplifyingGraphDecoder#earlyCanonicalization.
+    /**
+     * Number of {@link IfNode}'s {@linkplain NodeClass#getSuccessorEdges() successor edges}.
      */
+    public static final long SUCCESSOR_EDGES_COUNT = TYPE.getSuccessorEdges().getCount();
+
+    /**
+     * Index of the {@link #trueSuccessor} in {@link IfNode}'s
+     * {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long TRUE_SUCCESSOR_EDGE_INDEX = TYPE.getSuccessorEdges().getIndex(IfNode.class, "trueSuccessor");
+
+    /**
+     * Index of the {@link #falseSuccessor} in {@link IfNode}'s
+     * {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long FALSE_SUCCESSOR_EDGE_INDEX = TYPE.getSuccessorEdges().getIndex(IfNode.class, "falseSuccessor");
+
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
@@ -246,7 +257,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
         if (tool.allUsagesAvailable() && trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages()) {
 
-            pushNodesThroughIf(tool);
+            pullNodesThroughIf(tool);
 
             if (checkForUnsignedCompare(tool) || removeOrMaterializeIf(tool)) {
                 return;
@@ -1143,54 +1154,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private void pushNodesThroughIf(SimplifierTool tool) {
+    private void pullNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor(), "trueSuccUsages", trueSuccessor().usages());
         assert falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "falseSucc", falseSuccessor(), "falseSuccUsages", falseSuccessor().usages());
-        // push similar nodes upwards through the if, thereby deduplicating them
-        do {
-            CompilationAlarm.checkProgress(graph());
-            AbstractBeginNode trueSucc = trueSuccessor();
-            AbstractBeginNode falseSucc = falseSuccessor();
-            if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
-                FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
-                FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
-                NodeClass<?> nodeClass = trueNext.getNodeClass();
-                if (trueNext.getClass() == falseNext.getClass()) {
-                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored || trueNext instanceof MemoryAnchorNode) {
-                        /*
-                         * Cannot do this optimization for begin nodes, because it could move guards
-                         * above the if that need to stay below a branch.
-                         *
-                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
-                         * are anchored in their control-flow position, and should not be moved
-                         * upwards.
-                         */
-                    } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
-                        falseNext.replaceAtUsages(trueNext);
-                        graph().removeFixed(falseNext);
-                        GraphUtil.unlinkFixedNode(trueNext);
-                        graph().addBeforeFixed(this, trueNext);
-                        for (Node usage : trueNext.usages().snapshot()) {
-                            if (usage.isAlive()) {
-                                NodeClass<?> usageNodeClass = usage.getNodeClass();
-                                if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
-                                    Node newNode = graph().findDuplicate(usage);
-                                    if (newNode != null) {
-                                        usage.replaceAtUsagesAndDelete(newNode);
-                                    }
-                                }
-                                if (usage.isAlive()) {
-                                    tool.addToWorkList(usage);
-                                }
-                            }
-                        }
-                        continue;
-                    }
-                }
-            }
-            break;
-        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
-                        // longer possible.
+        GraphUtil.tryDeDuplicateSplitSuccessors(this, tool);
     }
 
     /**
@@ -1659,12 +1626,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (schedule == null) {
             return null;
         }
-        if (schedule.getCFG().getNodeToBlock().isNew(successor)) {
-            // This can occur when nodes were created after the last schedule.
-            return null;
-        }
-        HIRBlock block = schedule.getCFG().blockFor(successor);
+        HIRBlock block = schedule.blockFor(successor, true);
         if (block == null) {
+            // This can occur when nodes were created after the last schedule.
             return null;
         }
         return schedule.nodesFor(block);
@@ -1704,6 +1668,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return null;
         }
         if (trueValue.getStackKind() != JavaKind.Int && trueValue.getStackKind() != JavaKind.Long) {
+            return null;
+        }
+        if (condition() instanceof IntegerExactOverflowNode) {
+            /*
+             * An exact overflow node is tightly coupled to the if node that uses it. It must not be
+             * used as the condition in a conditional node.
+             */
             return null;
         }
         if (isSafeConditionalInput(trueValue, trueSuccessor) && isSafeConditionalInput(falseValue, falseSuccessor)) {
@@ -2256,19 +2227,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void connectEnds(List<EndNode> ends, ValuePhiNode phi, EconomicMap<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
             // If there was a value proxy usage, then the proxy needs a new value.
-            ValueProxyNode valueProxy = null;
+            List<Node> valueProxies;
             if (successor instanceof LoopExitNode) {
-                for (Node usage : phi.usages()) {
-                    if (usage instanceof ValueProxyNode && ((ValueProxyNode) usage).proxyPoint() == successor) {
-                        valueProxy = (ValueProxyNode) usage;
-                    }
-                }
+                /*
+                 * In rare cases the ValueProxyNodes might not have GVN'ed so handle as many
+                 * matching ValueProxyNodes as exist.
+                 */
+                valueProxies = phi.usages().filter(u -> u instanceof ValueProxyNode && ((ValueProxyNode) u).proxyPoint() == successor).snapshot();
+            } else {
+                valueProxies = null;
             }
-            final ValueProxyNode proxy = valueProxy;
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
-                if (proxy != null) {
-                    phi.replaceAtUsages(phiValues.get(end), n -> n == proxy);
+                if (valueProxies != null) {
+                    phi.replaceAtUsages(phiValues.get(end), valueProxies::contains);
                 }
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
@@ -2281,8 +2253,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(view), newMerge));
 
-                if (proxy != null) {
-                    phi.replaceAtUsages(newPhi, n -> n == proxy);
+                if (valueProxies != null) {
+                    phi.replaceAtUsages(newPhi, valueProxies::contains);
                 }
 
                 for (EndNode end : ends) {

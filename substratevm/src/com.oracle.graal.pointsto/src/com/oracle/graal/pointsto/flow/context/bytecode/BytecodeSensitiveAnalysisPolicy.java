@@ -430,12 +430,12 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
-        return new ContextSensitiveSingleTypeState(bb, canBeNull, type, objects);
+        return PointsToStats.registerTypeState(bb, new ContextSensitiveSingleTypeState(canBeNull, type, objects));
     }
 
     @Override
     public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects) {
-        return new ContextSensitiveMultiTypeState(bb, canBeNull, typesBitSet, typesCount, objects);
+        return PointsToStats.registerTypeState(bb, new ContextSensitiveMultiTypeState(canBeNull, typesBitSet, typesCount, objects));
     }
 
     @Override
@@ -466,7 +466,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             assert !Arrays.equals(resultObjects, s1.objects) && !Arrays.equals(resultObjects, s2.objects) : resultObjects;
 
             /* Create the resulting exact type state. */
-            SingleTypeState result = new ContextSensitiveSingleTypeState(bb, resultCanBeNull, s1.exactType(), resultObjects);
+            SingleTypeState result = singleTypeState(bb, resultCanBeNull, s1.exactType(), resultObjects);
             assert !s1.equals(result) && !s2.equals(result) : result;
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
@@ -482,7 +482,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             /* We know the types, construct the types bit set without walking the objects. */
             BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
             assert typesBitSet.cardinality() == 2 : typesBitSet;
-            TypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, typesBitSet, 2, resultObjects);
+            TypeState result = multiTypeState(bb, resultCanBeNull, typesBitSet, 2, resultObjects);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -542,7 +542,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             System.arraycopy(so1, typeRange.right(), resultObjects, typeRange.left() + unionObjects.length, so1.length - typeRange.right());
 
             /* The types bit set of the result and s1 are the same. */
-            MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, s1.bitSet(), s1.typesCount(), resultObjects);
+            MultiTypeState result = multiTypeState(bb, resultCanBeNull, s1.bitSet(), s1.typesCount(), resultObjects);
             assert !result.equals(s1) : result;
             /*
              * No need to check the result size against the all-instantiated since the type count
@@ -576,7 +576,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             BitSet typesBitSet = TypeStateUtils.set(s1.bitSet(), s2.exactType().getId());
             int typesCount = s1.typesCount() + 1;
             assert typesCount == typesBitSet.cardinality() : typesCount;
-            MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, typesBitSet, typesCount, resultObjects);
+            MultiTypeState result = multiTypeState(bb, resultCanBeNull, typesBitSet, typesCount, resultObjects);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -621,7 +621,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             BitSet resultTypesBitSet = TypeStateUtils.or(s1.bitSet(), s2.bitSet());
             int typesCount = s1.typesCount() + s2.typesCount();
             assert typesCount == resultTypesBitSet.cardinality() : typesCount;
-            MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
+            MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
 
@@ -635,7 +635,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             BitSet resultTypesBitSet = TypeStateUtils.or(s1.bitSet(), s2.bitSet());
             int typesCount = s1.typesCount() + s2.typesCount();
             assert typesCount == resultTypesBitSet.cardinality() : typesCount;
-            MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
+            MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -824,7 +824,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
             /* Logical OR the type bit sets. */
             BitSet resultTypesBitSet = TypeStateUtils.or(s1.bitSet(), s2.bitSet());
-            MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(),
+            MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(),
                             resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]));
             assert !result.equals(s1) : "speculation code should prevent this case";
 
@@ -874,7 +874,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             AnalysisObject[] resultObjects = ((ContextSensitiveMultiTypeState) s1).objectsArray(s2.exactType());
             /* All objects must have the same type. */
             assert TypeStateUtils.holdsSingleTypeState(resultObjects);
-            return new ContextSensitiveSingleTypeState(bb, resultCanBeNull, s2.exactType(), resultObjects);
+            return singleTypeState(bb, resultCanBeNull, s2.exactType(), resultObjects);
         } else {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
@@ -900,7 +900,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doIntersection0(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doIntersection0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState doIntersection0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
         if (s1.bitSet().equals(s2.bitSet())) {
@@ -916,7 +916,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doIntersection1(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doIntersection1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState doIntersection1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /*
          * Speculate that s2 contains all types of s1, i.e., the filter is broader than s1, thus the
          * result is s1.
@@ -964,7 +964,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     private static ThreadLocal<ListUtils.UnsafeArrayListClosable<AnalysisObject>> intersectionArrayListTL = new ThreadLocal<>();
 
-    private static TypeState doIntersection2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
+    private TypeState doIntersection2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
 
         try (ListUtils.UnsafeArrayListClosable<AnalysisObject> tlArrayClosable = ListUtils.getTLArrayList(intersectionArrayListTL, 256)) {
             ListUtils.UnsafeArrayList<AnalysisObject> resultObjects = tlArrayClosable.list();
@@ -1007,11 +1007,11 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
                 if (TypeStateUtils.holdsSingleTypeState(objects, objects.length)) {
                     /* Multiple objects of the same type. */
-                    return new ContextSensitiveSingleTypeState(bb, resultCanBeNull, objects[0].type(), objects);
+                    return singleTypeState(bb, resultCanBeNull, objects[0].type(), objects);
                 } else {
                     /* Logical AND the type bit sets. */
                     BitSet resultTypesBitSet = TypeStateUtils.and(s1.bitSet(), s2.bitSet());
-                    MultiTypeState result = new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(), objects);
+                    MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(), objects);
 
                     /*
                      * The result can be equal to s1 if and only if s1 and s2 have the same type
@@ -1077,15 +1077,15 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             System.arraycopy(s1.objects, typeRange.right(), resultObjects, typeRange.left(), s1.objects.length - typeRange.right());
 
             if (resultObjects.length == 1) {
-                return new ContextSensitiveSingleTypeState(bb, resultCanBeNull, resultObjects[0].type(), resultObjects[0]);
+                return singleTypeState(bb, resultCanBeNull, resultObjects[0].type(), resultObjects[0]);
             } else if (TypeStateUtils.holdsSingleTypeState(resultObjects)) {
                 /* Multiple objects of the same type. */
-                return new ContextSensitiveSingleTypeState(bb, resultCanBeNull, resultObjects[0].type(), resultObjects);
+                return singleTypeState(bb, resultCanBeNull, resultObjects[0].type(), resultObjects);
             } else {
                 BitSet resultTypesBitSet = TypeStateUtils.clear(s1.bitSet(), s2.exactType().getId());
                 int typesCount = s1.typesCount() - 1;
                 assert typesCount == resultTypesBitSet.cardinality() : typesCount;
-                return new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
+                return multiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount, resultObjects);
             }
 
         } else {
@@ -1110,7 +1110,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doSubtraction0(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doSubtraction0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState doSubtraction0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
         if (s1.bitSet().equals(s2.bitSet())) {
@@ -1126,7 +1126,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doSubtraction1(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doSubtraction1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState doSubtraction1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /*
          * Speculate that s1 and s2 have no overlap, i.e., they don't have any objects in common. In
          * that case, the result is just s1.
@@ -1162,7 +1162,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doSubtraction2(bb, s1, s2, resultCanBeNull, idx1, idx2);
     }
 
-    private static TypeState doSubtraction2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
+    private TypeState doSubtraction2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
         try (ListUtils.UnsafeArrayListClosable<AnalysisObject> tlArrayClosable = ListUtils.getTLArrayList(intersectionArrayListTL, 256)) {
             ListUtils.UnsafeArrayList<AnalysisObject> resultObjects = tlArrayClosable.list();
 
@@ -1207,14 +1207,14 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
                 if (TypeStateUtils.holdsSingleTypeState(objects, totalLength)) {
                     /* Multiple objects of the same type. */
-                    return new ContextSensitiveSingleTypeState(bb, resultCanBeNull, objects[0].type(), objects);
+                    return singleTypeState(bb, resultCanBeNull, objects[0].type(), objects);
                 } else {
                     BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.bitSet(), s2.bitSet());
                     /*
                      * Don't need to check if the result is close-to-all-instantiated since result
                      * <= s1.
                      */
-                    return new ContextSensitiveMultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(), objects);
+                    return multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(), objects);
                 }
             }
         }

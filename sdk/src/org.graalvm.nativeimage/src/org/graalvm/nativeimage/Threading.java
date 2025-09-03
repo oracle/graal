@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,13 +55,22 @@ public final class Threading {
     }
 
     /**
+     * This method is intended for expert users.
+     * <p>
      * Registers a {@link RecurringCallback callback handler} that is called by the current thread
-     * approximately at the provided interval. Only one callback can be active per thread. Each
-     * thread can have its own callback with a different interval (or none at all). No guarantees
-     * are made about the actual interval. For example, when the thread is waiting for a lock or
-     * executing native code, no callback can be done. Exceptions that are thrown during the
-     * execution of the callback are caught and ignored, unless they are thrown via a call to
-     * {@link RecurringCallbackAccess#throwException(Throwable)}.
+     * approximately at the provided interval. This functionality is only supported if the native
+     * binary is built with {@code -H:+SupportRecurringCallback}. Note that only carefully crafted,
+     * uninterruptible code can execute safely in a recurring callback. Executing any other code
+     * easily results in deadlocks, crashes, and difficult-to-debug anomalies.
+     * <p>
+     * Only one callback can be active per thread. Each thread can have its own callback with a
+     * different interval (or none at all). No guarantees are made about the actual interval. For
+     * example, when the thread is waiting for a lock or executing native code, no callback can be
+     * done.
+     * <p>
+     * Exceptions that are thrown during the execution of the callback and that are not caught in
+     * the callback are ignored. {@link RecurringCallbackAccess#throwException} can be used to
+     * explicitly throw an exception that is not ignored.
      * <p>
      * Specifying {@code null} for {@code callback} clears the current thread's callback (in which
      * case, the values of {@code interval} and {@code unit} are ignored).

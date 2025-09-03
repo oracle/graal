@@ -99,7 +99,7 @@ final class BundleSupport {
     private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
-    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
+    static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
     private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
@@ -118,7 +118,6 @@ final class BundleSupport {
     boolean useContainer;
 
     private static final String DEFAULT_DOCKERFILE = getDockerfile("Dockerfile");
-    private static final String DEFAULT_DOCKERFILE_MUSLIB = getDockerfile("Dockerfile_muslib_extension");
 
     private static String getDockerfile(String name) {
         return NativeImage.getResource("/container-default/" + name);
@@ -212,9 +211,6 @@ final class BundleSupport {
     void createDockerfile(Path dockerfile) {
         nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
         String dockerfileText = DEFAULT_DOCKERFILE;
-        if (nativeImage.staticExecutable && "musl".equals(nativeImage.targetLibC)) {
-            dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
-        }
         try {
             Files.writeString(dockerfile, dockerfileText);
             dockerfile.toFile().deleteOnExit();
@@ -300,7 +296,7 @@ final class BundleSupport {
         outputDir = rootDir.resolve("output");
 
         Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
-        nativeImage.archiveSupport().expandJarToDir(e -> relativizeBundleEntry(getOriginalOutputDirName(), e), bundleFilePath, rootDir, deleteBundleRoot);
+        nativeImage.archiveSupport().expandJarToDir(e -> relativizeBundleEntry(getOriginalOutputDirName(), e), bundleFilePath, rootDir, deleteBundleRoot::get);
 
         if (deleteBundleRoot.get()) {
             /* Abort image build request without error message and exit with 0 */
@@ -454,6 +450,11 @@ final class BundleSupport {
             return rootDir.resolve(previousRelativeSubstitutedPath);
         }
 
+        if (!this.writeBundle && destinationDir != auxiliaryOutputDir) {
+            /* If this is bundle-apply only, no new substitutions needed for input paths. */
+            return origPath;
+        }
+
         if (origPath.startsWith(nativeImage.config.getJavaHome())) {
             /* If origPath comes from native-image itself, substituting is not needed. */
             return origPath;
@@ -582,7 +583,7 @@ final class BundleSupport {
         }
 
         if (writeOutput) {
-            Path externalOutputDir = bundlePath.resolve(bundleName + "." + outputDir.getFileName());
+            Path externalOutputDir = getExternalOutputDir();
             copyFiles(outputDir, externalOutputDir, true);
             nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
         }
@@ -595,6 +596,12 @@ final class BundleSupport {
         } finally {
             nativeImage.showNewline();
         }
+    }
+
+    Path getExternalOutputDir() {
+        Objects.requireNonNull(bundlePath);
+        Objects.requireNonNull(bundleName);
+        return bundlePath.resolve(bundleName + '.' + outputDir.getFileName());
     }
 
     void updateBundleLocation(Path bundleFile, boolean redefine) {

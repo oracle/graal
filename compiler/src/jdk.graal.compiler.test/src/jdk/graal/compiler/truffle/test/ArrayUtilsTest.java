@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,17 @@ package jdk.graal.compiler.truffle.test;
 import java.util.ArrayList;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
+import jdk.graal.compiler.truffle.test.strings.TStringTest;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -41,7 +50,7 @@ public class ArrayUtilsTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
+        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins);
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -132,6 +141,26 @@ public class ArrayUtilsTest extends GraalCompilerTest {
 
     public static int indexOfByteArray(byte[] haystack, int fromIndex, int maxIndex, byte... needle) {
         return ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle);
+    }
+
+    @Override
+    protected void checkLowTierGraph(StructuredGraph graph) {
+        if (TStringTest.isSupportedArchitecture(getArchitecture())) {
+            for (Node node : graph.getNodes()) {
+                if (node instanceof ArrayIndexOfNode) {
+                    return;
+                }
+            }
+            Assert.fail("intrinsic not found in graph!");
+        }
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (method.getDeclaringClass().getUnqualifiedName().equals("ArrayUtils") && !method.getName().startsWith("stub")) {
+            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
+        }
+        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 
     private static byte[] toByteArray(String s) {

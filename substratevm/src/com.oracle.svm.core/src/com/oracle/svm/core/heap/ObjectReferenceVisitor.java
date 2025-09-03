@@ -24,34 +24,48 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-/** Visitor for object references. */
+/**
+ * Visitor for object references in Java heap objects, Java stack frames, or off-heap data
+ * structures.
+ */
 public interface ObjectReferenceVisitor {
     /**
-     * Visit an object reference.
+     * Visits a sequence of object references. Implementors of this method must loop over the
+     * references, which involves some boilerplate code. This code duplication is intentional as it
+     * reduces the number of virtual dispatches.
      *
-     * @param objRef Address of object reference to visit (not address of the referenced object).
-     * @param compressed True if the reference is in compressed form, false otherwise.
+     * @param firstObjRef Address where the first object reference is stored.
+     * @param compressed true if the references are regular Java references (like an instance
+     *            field), false if they are absolute word-sized pointers (like an uncompressed
+     *            pointer on the stack).
+     * @param referenceSize size in bytes of one reference
      * @param holderObject The object containing the reference, or {@code null} if the reference is
-     *            not part of an object.
-     * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
+     *            not part of a Java object (e.g., the reference is on the stack or in a data
+     *            structure that is located in native memory).
+     * @param count The number of object references.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject);
+    void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count);
 
     /**
-     * @param innerOffset If the reference is a {@linkplain CodeReferenceMapDecoder derived
-     *            reference}, a positive integer that must be subtracted from the address to which
-     *            the object reference points in order to get the start of the referenced object.
+     * Visits a derived reference. Derived references can only be on the stack or in a
+     * {@link StoredContinuation}.
+     *
+     * @param baseObjRef Address where the base reference is stored.
+     * @param derivedObjRef Address where the derived reference is stored.
+     * @param holderObject The object containing the reference, or {@code null} if the reference is
+     *            not part of a Java object (e.g., the reference is on the stack or in a data
+     *            structure that is located in native memory).
      */
-    @AlwaysInline("GC performance")
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    default boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        VMError.guarantee(innerOffset == 0, "visitor does not support derived references");
-        return visitObjectReference(objRef, compressed, holderObject);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    default void visitDerivedReference(@SuppressWarnings("unused") Pointer baseObjRef, @SuppressWarnings("unused") Pointer derivedObjRef, @SuppressWarnings("unused") Object holderObject) {
+        throw VMError.shouldNotReachHere("Derived references are not supported by this visitor.");
     }
 }

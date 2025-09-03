@@ -26,16 +26,18 @@ package jdk.graal.compiler.phases;
 
 import static jdk.graal.compiler.debug.DebugOptions.PrintUnmodifiedGraphs;
 
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -43,6 +45,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.CompilerPhaseScope;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
@@ -61,8 +64,10 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.contract.PhaseSizeContract;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -157,7 +162,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          * If {@code graphState} is after stage {@code flag}, returns a {@link NotApplicable}
          * explaining that {@code phase} must be run after stage {@code flag}. Otherwise, returns
          * {@link #ALWAYS_APPLICABLE}.
-         *
+         * <p>
          * This is equivalent to {@link #unlessRunBefore} but is preferred to identify phases that
          * can be applied at most once.
          */
@@ -190,48 +195,28 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     }
 
+    /**
+     * Options applying to all phases. This class is not named {@code Options} to avoid collision
+     * with options defined in subclasses of {@link BasePhase}.
+     */
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
         @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
-        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a " +
-                        "method filter. Multiple exclusions can be specified separated by ':'. " +
-                        "Phase names are matched as substrings, e.g.: " +
-                        "CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes PartialEscapePhase " +
-                        "from all compilations and any phase containing 'Loop' in its name from " +
-                        "compilations of all methods in class A and of method B.foo.", type = OptionType.Debug)
-        public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
+        @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
+        public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
+        @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);
+        @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<>("HighTierLoweringPhase");
+        @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetrics = new OptionKey<>(null);
         // @formatter:on
     }
 
-    /**
-     * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final TimerKey timer;
-
-    /**
-     * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey executionCount;
-
-    /**
-     * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
-     * {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey inputNodesCount;
-
-    /**
-     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
-     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey edgeModificationCount;
-
-    /**
-     * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final MemUseTrackerKey memUseTracker;
+    private final BasePhaseStatistics statistics;
 
     public static class BasePhaseStatistics {
         /**
@@ -268,6 +253,27 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
             edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
+
+        public DebugCloseable start(StructuredGraph graph, DebugContext debug) {
+            if (debug.areTimersEnabled() || debug.areCountersEnabled() || debug.areMemUseTrackersEnabled()) {
+                return new DebugCloseable() {
+                    final int edgesBefore = graph.getEdgeModificationCount();
+                    final DebugCloseable t = timer.start(debug);
+                    final DebugCloseable m = memUseTracker.start(debug);
+                    final int nodeCount = graph.getNodeCount();
+
+                    @Override
+                    public void close() {
+                        inputNodesCount.add(debug, nodeCount);
+                        executionCount.increment(debug);
+                        edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
+                        t.close();
+                        m.close();
+                    }
+                };
+            }
+            return null;
+        }
     }
 
     private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
@@ -282,12 +288,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected BasePhase() {
-        BasePhaseStatistics statistics = getBasePhaseStatistics(getClass());
-        timer = statistics.timer;
-        executionCount = statistics.executionCount;
-        memUseTracker = statistics.memUseTracker;
-        inputNodesCount = statistics.inputNodesCount;
-        edgeModificationCount = statistics.edgeModificationCount;
+        this.statistics = getBasePhaseStatistics(getClass());
     }
 
     /**
@@ -317,7 +318,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      * applying} this phase to a graph whose state is {@code graphState}.
      *
      * @param graphState the state of graph to which the caller wants to apply this phase
-     *
      * @return a {@link NotApplicable} detailing why this phase cannot be applied or a value equal
      *         to {@link Optional#empty} if the phase can be applied
      */
@@ -391,7 +391,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     /**
      * Return an {@link ApplyScope} which will surround all the work performed by the call to
-     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclaseses to
+     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclasses to
      * inject work which will performed before and after the application of this phase.
      */
     @SuppressWarnings("unused")
@@ -399,7 +399,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return null;
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unchecked", "rawtypes"})
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         DebugContext debug = graph.getDebug();
         OptionValues options = graph.getOptions();
@@ -434,16 +434,16 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
         }
 
-        if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
-            TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
+        if (PhaseOptions.CompilationExcludePhases.matches(options, this, graph)) {
+            String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+            TTY.println("excluding " + getName() + " during compilation of " + label);
             return;
         }
 
         try (DebugContext.Scope s = debug.scope(getName(), this);
-                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName(), graph) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
-                        DebugCloseable a = timer.start(debug);
-                        DebugCloseable c = memUseTracker.start(debug)) {
+                        DebugCloseable a = statistics.start(graph, debug)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();
@@ -458,7 +458,26 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
-            inputNodesCount.add(debug, graph.getNodeCount());
+
+            String reportHotMetricsMethodFilter = PhaseOptions.ReportHotMetrics.getValue(options);
+            boolean logHotMetricsForGraph = false;
+            if (reportHotMetricsMethodFilter != null) {
+                MethodFilter hotMetricsMethodFilter = null;
+                hotMetricsMethodFilter = MethodFilter.parse(reportHotMetricsMethodFilter);
+                logHotMetricsForGraph = graph.method() != null && hotMetricsMethodFilter.matches(graph.method());
+                if (!logHotMetricsForGraph) {
+                    CompilationIdentifier id = graph.compilationId();
+                    JavaMethod idMethod = id.asJavaMethod();
+                    logHotMetricsForGraph = idMethod != null && hotMetricsMethodFilter.matches(idMethod);
+                }
+                if (logHotMetricsForGraph) {
+                    if (PhaseOptions.ReportHotMetricsBeforePhases.getValue(graph.getOptions()).equals(getClass().getSimpleName())) {
+                        String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                        TTY.println("Reporting hot metrics before " + getName() + " during compilation of " + label);
+                        new ReportHotCodePhase().apply(graph, context);
+                    }
+                }
+            }
 
             // This is a manual version of a try/resource pattern since the close operation might
             // want to know whether the run call completed with an exception or not.
@@ -476,8 +495,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 }
             }
 
-            executionCount.increment(debug);
-            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
@@ -488,19 +505,35 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpAfter(graph, isTopLevel, dumpedBefore);
             }
-            if (debug.isVerifyEnabled()) {
-                debug.verify(graph, "%s", getName());
-            }
 
             // Only verify inputs if the graph edges have changed
             assert graph.verify(graph.getEdgeModificationCount() != edgesBefore);
             /*
              * Reset the progress-based compilation alarm to ensure that progress tracking happens
              * for each phase in isolation. This prevents false alarms where the same progress state
-             * is seen in subsequent phases, e.g., during graph verification a the end of each
+             * is seen in subsequent phases, e.g., during graph verification at the end of each
              * phase.
              */
             CompilationAlarm.resetProgressDetection();
+
+            if (GraalCompilerOptions.DumpHeapAfter.matches(options, this, graph)) {
+                try {
+                    final String path = debug.getDumpPath("_" + getName() + ".hprof", false);
+                    GraalServices.dumpHeap(path, false);
+                } catch (IOException | UnsupportedOperationException e) {
+                    e.printStackTrace(System.out);
+                }
+            }
+
+            if (logHotMetricsForGraph) {
+                String reportAfterPhase = PhaseOptions.ReportHotMetricsAfterPhases.getValue(graph.getOptions());
+                if (reportAfterPhase != null && reportAfterPhase.equals(getClass().getSimpleName())) {
+                    String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                    TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
+                    new ReportHotCodePhase().apply(graph, context);
+                }
+            }
+
         } catch (Throwable t) {
             throw debug.handle(t);
         }
@@ -543,7 +576,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 try (DebugContext.Scope s2 = debug.sandbox("GraphChangeListener", null)) {
                     run(graphCopy, context);
                 } catch (Throwable t) {
-                    debug.handle(t);
+                    throw debug.handle(t);
                 }
             }
             return listener.changed;
@@ -564,7 +597,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Override
         public void changed(NodeEvent e, Node node) {
             if (!graph.isNew(mark, node) && node.isAlive()) {
-                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.ZERO_USAGES) {
+                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.CONTROL_FLOW_CHANGED || e == NodeEvent.ZERO_USAGES) {
                     changed = true;
                 }
             }
@@ -587,88 +620,42 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return 1.25f;
     }
 
-    private static final class ExcludePhaseFilter {
+    /**
+     * A phase filter parsed from a single phase specification.
+     */
+    static final class PhaseFilter {
 
         /**
-         * Contains the excluded phases and the corresponding methods to exclude.
+         * @see PhaseFilterKey#phaselessGraphFilterToken
          */
-        private final EconomicMap<Pattern, MethodFilter> filters;
+        private final GraphFilter phaselessGraphFilter;
 
         /**
-         * Cache instances of this class to avoid parsing the same option string more than once.
+         * A map from a phase pattern to a method pattern.
          */
-        private static final ConcurrentHashMap<String, ExcludePhaseFilter> instances;
-
-        static {
-            instances = new ConcurrentHashMap<>();
-        }
+        private final EconomicMap<Pattern, GraphFilter> filters;
 
         /**
-         * Determines whether the phase should be excluded from running on the given method based on
-         * the given option values.
+         * Determines whether this filter matches {@code phase} and {@code graph}.
          */
-        protected static boolean exclude(OptionValues options, BasePhase<?> phase, JavaMethod method) {
-            String compilationExcludePhases = PhaseOptions.CompilationExcludePhases.getValue(options);
-            if (compilationExcludePhases == null) {
+        boolean matches(BasePhase<?> phase, StructuredGraph graph) {
+            if (graph == null) {
                 return false;
-            } else {
-                return getInstance(compilationExcludePhases).exclude(phase, method);
             }
-        }
-
-        /**
-         * Gets an instance of this class for the given option values. This will typically be a
-         * cached instance.
-         */
-        private static ExcludePhaseFilter getInstance(String compilationExcludePhases) {
-            return instances.computeIfAbsent(compilationExcludePhases, excludePhases -> ExcludePhaseFilter.parse(excludePhases));
-        }
-
-        /**
-         * Determines whether the given phase should be excluded from running on the given method.
-         */
-        protected boolean exclude(BasePhase<?> phase, JavaMethod method) {
-            if (method == null) {
-                return false;
+            if (phase == null) {
+                return phaselessGraphFilter.matches(graph);
             }
             String phaseName = phase.getClass().getSimpleName();
-            for (Pattern excludedPhase : filters.getKeys()) {
-                if (excludedPhase.matcher(phaseName).matches()) {
-                    return filters.get(excludedPhase).matches(method);
+            for (Pattern phasePattern : filters.getKeys()) {
+                if (phasePattern.matcher(phaseName).matches()) {
+                    return filters.get(phasePattern).matches(graph);
                 }
             }
             return false;
         }
 
-        /**
-         * Creates a phase filter based on a specification string. The string is a colon-separated
-         * list of phase names or {@code phase_name=filter} pairs. Phase names match any phase of
-         * which they are a substring. Filters follow {@link MethodFilter} syntax.
-         */
-        private static ExcludePhaseFilter parse(String compilationExcludePhases) {
-            EconomicMap<Pattern, MethodFilter> filters = EconomicMap.create();
-            String[] parts = compilationExcludePhases.trim().split(":");
-            for (String part : parts) {
-                String phaseName;
-                MethodFilter methodFilter;
-                if (part.contains("=")) {
-                    String[] pair = part.split("=");
-                    if (pair.length != 2) {
-                        throw new IllegalArgumentException("expected phase_name=filter pair in: " + part);
-                    }
-                    phaseName = pair[0];
-                    methodFilter = MethodFilter.parse(pair[1]);
-                } else {
-                    phaseName = part;
-                    methodFilter = MethodFilter.matchAll();
-                }
-                Pattern phasePattern = Pattern.compile(".*" + MethodFilter.createGlobString(phaseName) + ".*");
-                filters.put(phasePattern, methodFilter);
-            }
-            return new ExcludePhaseFilter(filters);
-        }
-
-        private ExcludePhaseFilter(EconomicMap<Pattern, MethodFilter> filters) {
+        PhaseFilter(EconomicMap<Pattern, GraphFilter> filters, GraphFilter phaselessMethodFilter) {
+            this.phaselessGraphFilter = phaselessMethodFilter;
             this.filters = filters;
         }
     }

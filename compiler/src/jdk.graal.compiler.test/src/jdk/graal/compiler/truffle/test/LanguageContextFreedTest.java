@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,6 @@ import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
-
 import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -51,6 +47,9 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class LanguageContextFreedTest {
 
@@ -154,8 +153,8 @@ public class LanguageContextFreedTest {
 
     public abstract static class Base extends TruffleLanguage<LanguageContext> {
 
-        final ContextLocal<ContextLocalValue> contextLocal = locals.createContextLocal((e) -> new ContextLocalValue());
-        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> contextLocal = locals.createContextLocal((_) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((_, _) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {
@@ -222,7 +221,7 @@ public class LanguageContextFreedTest {
 
     }
 
-    private static class ContextLocalValue {
+    private static final class ContextLocalValue {
     }
 
 }

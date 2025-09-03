@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,6 @@ package jdk.graal.compiler.truffle.test;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -43,6 +40,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
+
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.contract.NodeCostUtil;
 
 public class NodeLimitTest extends PartialEvaluationTest {
 
@@ -66,8 +67,13 @@ public class NodeLimitTest extends PartialEvaluationTest {
         expectAllOK(NodeLimitTest::createRootNode);
     }
 
+    // test that the timeout function during PE works
     @Test(expected = PermanentBailoutException.class)
-    public void testDefaultLimit() {
+    public void testTimeOutLimit() {
+        // note the timeout may be subject to scaling (up) because we are running with assertions
+        final int secondTimeout = 2;
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.CompilationTimeout", String.valueOf(secondTimeout)).build());
+
         // NOTE: the following code is intentionally written to explode during partial evaluation!
         // It is wrong in almost every way possible.
         final RootNode rootNode = new TestRootNode() {
@@ -80,7 +86,42 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
             @ExplodeLoop
             private void recurse() {
-                for (int i = 0; i < 100; i++) {
+                for (int i = 0; i < 1000; i++) {
+                    getF().apply(0);
+                }
+            }
+
+            private Function<Integer, Integer> getF() {
+                return new Function<>() {
+                    @Override
+                    public Integer apply(Integer integer) {
+                        return integer < 500 ? getF().apply(integer + 1) : 0;
+                    }
+                };
+            }
+        };
+        partialEval((OptimizedCallTarget) rootNode.getCallTarget(), new Object[]{});
+    }
+
+    // test the limit by setting a small one, normally the limit is not enabled
+    @Test(expected = PermanentBailoutException.class)
+    public void testSetLimit() {
+        // a small resonable default to ensure if a user sets it the functionality works
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.MaximumGraalGraphSize", String.valueOf(5000)).build());
+
+        // NOTE: the following code is intentionally written to explode during partial evaluation!
+        // It is wrong in almost every way possible.
+        final RootNode rootNode = new TestRootNode() {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                recurse();
+                foo();
+                return null;
+            }
+
+            @ExplodeLoop
+            private void recurse() {
+                for (int i = 0; i < 1000; i++) {
                     getF().apply(0);
                 }
             }
@@ -171,7 +212,6 @@ public class NodeLimitTest extends PartialEvaluationTest {
         return NodeCostUtil.computeGraphSize(baselineGraph);
     }
 
-    @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, Supplier<RootNode> rootNodeFactory) {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootCallTarget target = rootNodeFactory.get().getCallTarget();

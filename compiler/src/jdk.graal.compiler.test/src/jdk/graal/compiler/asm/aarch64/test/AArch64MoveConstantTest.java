@@ -30,6 +30,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.aarch64.test.AArch64TestMacroAssembler;
 import jdk.graal.compiler.test.GraalTest;
 import org.junit.Assume;
 import org.junit.Before;
@@ -52,9 +53,9 @@ public class AArch64MoveConstantTest extends GraalTest {
         // Setup AArch64 MacroAssembler and Assembler.
         TargetDescription target = JVMCI.getRuntime().getHostJVMCIBackend().getTarget();
         Assume.assumeTrue("AArch64-specific test", target.arch instanceof AArch64);
-        masm = new AArch64MacroAssembler(target);
+        masm = new AArch64TestMacroAssembler(target);
         asm = new TestProtectedAssembler(target);
-        dst = AArch64.r10;
+        dst = AArch64.r11;
         zr = AArch64.zr;
     }
 

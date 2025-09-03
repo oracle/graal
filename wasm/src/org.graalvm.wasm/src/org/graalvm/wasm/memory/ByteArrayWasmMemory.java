@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,66 +41,83 @@
 package org.graalvm.wasm.memory;
 
 import static java.lang.Long.compareUnsigned;
-import static java.lang.StrictMath.addExact;
-import static java.lang.StrictMath.multiplyExact;
+import static java.lang.Math.addExact;
+import static java.lang.Math.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
+@ExportLibrary(WasmMemoryLibrary.class)
 final class ByteArrayWasmMemory extends WasmMemory {
     private byte[] dynamicBuffer;
 
-    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
-        this.dynamicBuffer = allocateStatic(initialSize * MEMORY_PAGE_SIZE);
+    public static final long MAX_ALLOWED_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
+
+    @TruffleBoundary
+    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
+        this.dynamicBuffer = allocateBuffer(initialSize * MEMORY_PAGE_SIZE);
     }
 
-    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
+    @TruffleBoundary
+    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, Math.min(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64);
     }
 
     private byte[] buffer() {
         return dynamicBuffer;
     }
 
-    @Override
+    @ExportMessage
     public long size() {
         return byteSize() / MEMORY_PAGE_SIZE;
     }
 
-    @Override
+    @ExportMessage
     public long byteSize() {
         return buffer().length;
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public synchronized long grow(long extraPageSize) {
         long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return previousSize;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
-            // ensure computation of targetByteSize does not overflow.
-            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
+            /*
+             * Condition above and limit on maxAllowedSize (see
+             * ByteArrayWasmMemory#MAX_ALLOWED_SIZE) ensure computation of targetByteSize does not
+             * overflow.
+             */
+            final long targetPageSize = addExact(previousSize, extraPageSize);
+            final long targetByteSize = multiplyExact(targetPageSize, MEMORY_PAGE_SIZE);
             final byte[] currentBuffer = buffer();
-            allocate(targetByteSize);
-            System.arraycopy(currentBuffer, 0, buffer(), 0, currentBuffer.length);
-            currentMinSize = size() + extraPageSize;
+            final byte[] newBuffer;
+            try {
+                newBuffer = allocateBuffer(targetByteSize);
+            } catch (WasmException oome) {
+                return -1;
+            }
+            System.arraycopy(currentBuffer, 0, newBuffer, 0, currentBuffer.length);
+            dynamicBuffer = newBuffer;
+            currentMinSize = targetPageSize;
             invokeGrowCallback();
             return previousSize;
         } else {
@@ -108,14 +125,23 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public void reset() {
-        allocate(declaredMinSize * MEMORY_PAGE_SIZE);
+        dynamicBuffer = allocateBuffer(declaredMinSize * MEMORY_PAGE_SIZE);
         currentMinSize = declaredMinSize;
     }
 
-    @Override
+    private void validateAddress(Node node, long address, long length) {
+        validateAddress(node, address, length, byteSize());
+    }
+
+    private WasmException trapOutOfBounds(Node node, long address, long length) {
+        return trapOutOfBounds(node, address, length, byteSize());
+    }
+
+    // Checkstyle: stop
+    @ExportMessage
     public int load_i32(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getInt(buffer(), address);
@@ -124,7 +150,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getLong(buffer(), address);
@@ -133,7 +159,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public float load_f32(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getFloat(buffer(), address);
@@ -142,7 +168,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public double load_f64(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getDouble(buffer(), address);
@@ -151,7 +177,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_8s(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getByte(buffer(), address);
@@ -160,7 +186,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_8u(Node node, long address) {
         try {
             return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer(), address);
@@ -169,7 +195,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_16s(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getShort(buffer(), address);
@@ -178,7 +204,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_16u(Node node, long address) {
         try {
             return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer(), address);
@@ -187,7 +213,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_8s(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getByte(buffer(), address);
@@ -196,7 +222,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_8u(Node node, long address) {
         try {
             return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer(), address);
@@ -205,7 +231,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_16s(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getShort(buffer(), address);
@@ -214,7 +240,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_16u(Node node, long address) {
         try {
             return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer(), address);
@@ -223,7 +249,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_32s(Node node, long address) {
         try {
             return ByteArraySupport.littleEndian().getInt(buffer(), address);
@@ -232,7 +258,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_32u(Node node, long address) {
         try {
             return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer(), address);
@@ -241,16 +267,16 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
-    public Vector128 load_i128(Node node, long address) {
+    @ExportMessage
+    public Object load_i128(Node node, long address) {
         if (ByteArraySupport.littleEndian().inBounds(buffer(), address, Vector128.BYTES)) {
-            return new Vector128(Arrays.copyOfRange(buffer(), (int) address, (int) address + Vector128.BYTES));
+            return Vector128Ops.SINGLETON_IMPLEMENTATION.fromArray(buffer(), (int) address);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i32(Node node, long address, int value) {
         try {
             ByteArraySupport.littleEndian().putInt(buffer(), address, value);
@@ -259,7 +285,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i64(Node node, long address, long value) {
         try {
             ByteArraySupport.littleEndian().putLong(buffer(), address, value);
@@ -269,7 +295,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
 
     }
 
-    @Override
+    @ExportMessage
     public void store_f32(Node node, long address, float value) {
         try {
             ByteArraySupport.littleEndian().putFloat(buffer(), address, value);
@@ -278,7 +304,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_f64(Node node, long address, double value) {
         try {
             ByteArraySupport.littleEndian().putDouble(buffer(), address, value);
@@ -287,7 +313,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i32_8(Node node, long address, byte value) {
         try {
             ByteArraySupport.littleEndian().putByte(buffer(), address, value);
@@ -296,7 +322,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i32_16(Node node, long address, short value) {
         try {
             ByteArraySupport.littleEndian().putShort(buffer(), address, value);
@@ -305,7 +331,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_8(Node node, long address, byte value) {
         try {
             ByteArraySupport.littleEndian().putByte(buffer(), address, value);
@@ -314,7 +340,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_16(Node node, long address, short value) {
         try {
             ByteArraySupport.littleEndian().putShort(buffer(), address, value);
@@ -323,7 +349,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_32(Node node, long address, int value) {
         try {
             ByteArraySupport.littleEndian().putInt(buffer(), address, value);
@@ -332,23 +358,16 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
-    public void store_i128(Node node, long address, Vector128 value) {
+    @ExportMessage
+    public void store_i128(Node node, long address, Object value) {
         if (ByteArraySupport.littleEndian().inBounds(buffer(), address, 16)) {
-            System.arraycopy(value.getBytes(), 0, buffer(), (int) address, 16);
+            Vector128Ops.SINGLETON_IMPLEMENTATION.intoArray(Vector128Ops.cast(value), buffer(), (int) address);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
     }
 
-    private static void validateAtomicAddress(Node node, long address, int length) {
-        if ((address & (length - 1)) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw trapUnalignedAtomic(node, address, length);
-        }
-    }
-
-    @Override
+    @ExportMessage
     public int atomic_load_i32(Node node, long address) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -358,7 +377,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64(Node node, long address) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -368,7 +387,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_load_i32_8u(Node node, long address) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -378,7 +397,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_load_i32_16u(Node node, long address) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -388,7 +407,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_8u(Node node, long address) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -398,7 +417,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_16u(Node node, long address) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -408,7 +427,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_32u(Node node, long address) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -418,7 +437,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -428,7 +447,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -438,7 +457,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32_8(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -448,7 +467,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32_16(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -458,7 +477,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_8(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -468,7 +487,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_16(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -478,7 +497,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -488,7 +507,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -498,7 +517,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -508,7 +527,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -518,7 +537,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -528,7 +547,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -538,7 +557,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -548,7 +567,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -558,7 +577,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -568,7 +587,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -578,7 +597,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -588,7 +607,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -598,7 +617,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -608,7 +627,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -618,7 +637,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -628,7 +647,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -638,7 +657,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -648,7 +667,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -658,7 +677,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -668,7 +687,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -678,7 +697,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -688,7 +707,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -698,7 +717,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -708,7 +727,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -718,7 +737,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -728,7 +747,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -738,7 +757,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -748,7 +767,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -758,7 +777,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -768,7 +787,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -778,7 +797,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -788,7 +807,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -798,7 +817,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -808,7 +827,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -818,7 +837,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -828,7 +847,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -838,7 +857,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -848,7 +867,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -858,7 +877,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -868,7 +887,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_8u(Node node, long address, byte value) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -878,7 +897,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_16u(Node node, long address, short value) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -888,7 +907,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_32u(Node node, long address, int value) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -898,7 +917,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64(Node node, long address, long value) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -908,7 +927,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -918,7 +937,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -928,7 +947,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -938,7 +957,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement) {
         validateAtomicAddress(node, address, 1);
         try {
@@ -948,7 +967,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement) {
         validateAtomicAddress(node, address, 2);
         try {
@@ -958,7 +977,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement) {
         validateAtomicAddress(node, address, 4);
         try {
@@ -968,7 +987,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement) {
         validateAtomicAddress(node, address, 8);
         try {
@@ -978,123 +997,119 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_notify(Node node, long address, int count) {
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        if (outOfBounds(address, 4)) {
-            throw trapOutOfBounds(node, address, 4);
-        }
         if (!this.isShared()) {
             return 0;
         }
         return invokeNotifyCallback(node, address, count);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        if (outOfBounds(address, 4)) {
-            throw trapOutOfBounds(node, address, 4);
-        }
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
         return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
+        validateAddress(node, address, 4, 8);
         validateAtomicAddress(node, address, 8);
-        if (outOfBounds(address, 8)) {
-            throw trapOutOfBounds(node, address, 8);
-        }
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
         return invokeWaitCallback(node, address, expected, timeout, true);
     }
+    // Checkstyle: resume
 
-    @Override
-    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
-        assert destinationOffset + length <= byteSize();
+    @ExportMessage
+    public void initialize(Node node, byte[] source, int sourceOffset, long destinationOffset, int length) {
+        validateLength(node, length);
+        validateAddress(node, destinationOffset, length);
+        if (sourceOffset < 0 || sourceOffset > source.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, sourceOffset, length, source.length);
+        }
         System.arraycopy(source, sourceOffset, buffer(), (int) destinationOffset, length);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
-    public void fill(long offset, long length, byte value) {
-        assert offset + length <= byteSize();
+    public void fill(Node node, long offset, long length, byte value) {
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         Arrays.fill(buffer(), (int) offset, (int) (offset + length), value);
     }
 
-    @Override
-    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
+    @ExportMessage
+    public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof ByteArrayWasmMemory;
-        assert destinationOffset < byteSize();
         ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        validateLength(node, length);
+        s.validateAddress(node, sourceOffset, length);
+        validateAddress(node, destinationOffset, length);
         System.arraycopy(s.buffer(), (int) sourceOffset, buffer(), (int) destinationOffset, (int) length);
     }
 
-    @Override
+    @ExportMessage
     public WasmMemory duplicate() {
-        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64, shared);
+        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64);
         System.arraycopy(buffer(), 0, other.buffer(), 0, (int) byteSize());
         return other;
     }
 
-    @Override
+    @ExportMessage
     public void close() {
         dynamicBuffer = null;
     }
 
-    @Override
-    public ByteBuffer asByteBuffer() {
-        return null;
-    }
-
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         return stream.read(buffer(), offset, length);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         stream.write(buffer(), offset, length);
     }
 
-    @Override
+    @ExportMessage
     public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
-        if (outOfBounds(srcOffset, length)) {
-            throw trapOutOfBounds(node, srcOffset, length);
+        validateLength(node, length);
+        validateAddress(node, srcOffset, length);
+        if (dstOffset < 0 || dstOffset > dst.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, dstOffset, length, dst.length);
         }
         System.arraycopy(buffer(), (int) srcOffset, dst, dstOffset, length);
     }
 
     @TruffleBoundary
-    private void allocate(long byteSize) {
-        dynamicBuffer = null;
-        dynamicBuffer = allocateStatic(byteSize);
-    }
-
-    @TruffleBoundary
-    private static byte[] allocateStatic(long byteSize) {
-        assert byteSize <= Integer.MAX_VALUE : byteSize;
-        final int effectiveByteSize = (int) byteSize;
+    private static byte[] allocateBuffer(long byteSize) {
         try {
-            return new byte[effectiveByteSize];
+            return new byte[Math.toIntExact(byteSize)];
         } catch (OutOfMemoryError error) {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
+    }
+
+    @ExportMessage
+    public static boolean freed(@SuppressWarnings("unused") ByteArrayWasmMemory memory) {
+        return true;
     }
 }

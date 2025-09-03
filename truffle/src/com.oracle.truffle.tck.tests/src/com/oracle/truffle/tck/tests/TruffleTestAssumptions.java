@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 
-import java.util.regex.Pattern;
-
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
+    private static final boolean externalIsolate = "external".equals(System.getProperty("polyglot.engine.IsolateMode"));
     private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     public static void assumeWeakEncapsulation() {
@@ -59,6 +60,10 @@ public class TruffleTestAssumptions {
 
     public static void assumeOptimizingRuntime() {
         Assume.assumeTrue(isOptimizingRuntime());
+    }
+
+    public static void assumeEnterpriseRuntime() {
+        Assume.assumeTrue(isEnterpriseRuntime());
     }
 
     public static void assumeFallbackRuntime() {
@@ -110,6 +115,19 @@ public class TruffleTestAssumptions {
         return spawnIsolate;
     }
 
+    public static boolean isExternalIsolate() {
+        return externalIsolate;
+    }
+
+    public static boolean isLinux() {
+        return System.getProperty("os.name").toLowerCase().equals("linux");
+    }
+
+    public static boolean isAarch64() {
+        String osArch = System.getProperty("os.arch").toLowerCase();
+        return osArch.equals("aarch64") || osArch.equals("arm64"); // some JVMs use arm64
+    }
+
     public static void assumeAOT() {
         Assume.assumeTrue(aot);
     }
@@ -126,4 +144,11 @@ public class TruffleTestAssumptions {
         return !aot;
     }
 
+    public static boolean isDeoptLoopDetectionAvailable() {
+        return Runtime.version().feature() >= 25;
+    }
+
+    public static void assumeDeoptLoopDetectionAvailable() {
+        Assume.assumeTrue(isDeoptLoopDetectionAvailable());
+    }
 }

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -169,20 +170,6 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
-
-    /**
-     * Note that if this method is implemented, the
-     * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object) preferred one} will not be
-     * used.
-     *
-     * @since 21.3
-     * @deprecated since 22.2
-     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
-     */
-    @Deprecated(since = "22.2")
-    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target);
-    }
 
     /**
      * Copies the contents of the {@code parentFrame} into the {@code osrFrame} used to execute OSR.
@@ -314,14 +301,48 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param osrNode the node to report a back-edge for.
      * @return whether to try OSR.
      * @since 21.3
+     * @deprecated use {@link #pollOSRBackEdge(BytecodeOSRNode, int)} instead. It is recommended to
+     *             batch up polls in the interpreter implementation. Important note:
+     *             {@link #pollOSRBackEdge(BytecodeOSRNode)} did implicitly
+     *             {@link TruffleSafepoint#poll(Node) poll} Truffle safepoints. The new method is no
+     *             longer doing that. Make sure your bytecode interpreter contains a call to
+     *             {@link TruffleSafepoint#poll(Node)} on loop back-edges when migrating.
      */
+    @Deprecated(since = "25.0")
     static boolean pollOSRBackEdge(BytecodeOSRNode osrNode) {
         if (!CompilerDirectives.inInterpreter()) {
             return false;
         }
         assert BytecodeOSRValidation.validateNode(osrNode);
         return NodeAccessor.RUNTIME.pollBytecodeOSRBackEdge(osrNode);
+    }
 
+    /**
+     * Reports a back edge, returning whether to try performing OSR.
+     *
+     * <p>
+     * An interpreter must ensure this method returns {@code true} immediately before calling
+     * {@link BytecodeOSRNode#tryOSR}. For example:
+     *
+     * <pre>
+     * if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
+     *   Object osrResult = BytecodeOSRNode.tryOSR(...);
+     *   ...
+     * }
+     * </pre>
+     *
+     * @param osrNode the node to report a back-edge for.
+     * @param loopCountIncrement the number iterations incremented. Value must be > 0.
+     * @return whether to try OSR.
+     * @since 25.0
+     */
+    static boolean pollOSRBackEdge(BytecodeOSRNode osrNode, int loopCountIncrement) {
+        if (!CompilerDirectives.inInterpreter()) {
+            return false;
+        }
+        assert loopCountIncrement >= 1 : "invalid loop count increment provided";
+        assert BytecodeOSRValidation.validateNode(osrNode);
+        return NodeAccessor.RUNTIME.pollBytecodeOSRBackEdge(osrNode, loopCountIncrement);
     }
 
     /**

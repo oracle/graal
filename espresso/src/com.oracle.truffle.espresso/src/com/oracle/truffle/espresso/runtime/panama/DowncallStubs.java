@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.runtime.panama;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -40,16 +41,20 @@ import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class DowncallStubs {
     private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, DowncallStubs.class);
     public static final int MAX_STUB_COUNT = Integer.MAX_VALUE - 8;
+
     private final Platform platform;
     private DowncallStub[] stubs;
-    private int nextId = 0;
+    private final AtomicInteger nextId = new AtomicInteger(1); // 0 is reserved for null stub.
 
     public DowncallStubs(Platform platform) {
         this.platform = platform;
@@ -57,15 +62,12 @@ public final class DowncallStubs {
 
     @TruffleBoundary
     public long makeStub(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask, boolean needsTransition) {
-        int id;
-        synchronized (this) {
-            id = nextId++;
-        }
+        int id = nextId.getAndIncrement();
         DowncallStub stub = create(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask, needsTransition);
 
         synchronized (this) {
             if (stubs == null) {
-                assert id == 0;
+                assert id == 1;
                 stubs = new DowncallStub[8];
             } else if (id >= stubs.length) {
                 long newSize = stubs.length * 2L;
@@ -133,6 +135,9 @@ public final class DowncallStubs {
         for (int i = 0; i < pTypes.length; i++) {
             Klass pType = pTypes[i];
             VMStorage inputReg = inputRegs[i];
+            if (inputReg == null) {
+                continue;
+            }
             StorageType regType = inputReg.type(platform);
             if (regType.isPlaceholder()) {
                 switch (inputReg.getStubLocation(platform)) {
@@ -155,8 +160,9 @@ public final class DowncallStubs {
                 }
                 int index = argsCalc.getNextInputIndex(inputReg, pType, nextInputReg, nextPType);
                 if (index >= 0) {
-                    shuffle[nativeIndex] = i;
-                    nativeParamTypes[nativeIndex] = inputReg.asNativeType(platform, pType);
+                    NativeType nativeType = inputReg.asNativeType(platform, pType);
+                    nativeParamTypes[nativeIndex] = nativeType;
+                    shuffle[nativeIndex] = Shuffle.encode(i, nativeType);
                     nativeIndex++;
                 } else if (index != ArgumentsCalculator.SKIP && !platform.ignoreDownCallArgument(inputReg)) {
                     throw EspressoError.shouldNotReachHere("Cannot understand argument " + i + " in downcall: " + inputReg + " for type " + pType + " calc: " + argsCalc);
@@ -208,6 +214,11 @@ public final class DowncallStubs {
     public boolean freeStub(long downcallStub) {
         // TODO maybe trim this when possible.
         int id = Math.toIntExact(downcallStub);
+        if (id <= 0 || id >= stubs.length) {
+            LOGGER.warning(() -> "Unknown Stub handle in free downcall stub: " + id);
+            // JDK will throw InternalError when we return false.
+            return false;
+        }
         if (stubs[id] == null) {
             return false;
         }
@@ -215,18 +226,54 @@ public final class DowncallStubs {
         return true;
     }
 
-    public DowncallStub getStub(long downcallStub) {
+    public DowncallStub getStub(long downcallStub, EspressoContext ctx) {
         int id = Math.toIntExact(downcallStub);
-        return stubs[id];
+        DowncallStub stub;
+        if (id <= 0 || id >= stubs.length) {
+            stub = null;
+        } else {
+            stub = stubs[id];
+        }
+        if (stub == null) {
+            // We don't expect to recover.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Meta meta = ctx.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Unable to locate downcall stub with id: " + id);
+        }
+        return stub;
+    }
+
+    public static final class Shuffle {
+        private static final int POINTER_ARG_FLAG = 1 << 31;
+        private static final int INDEX_ARG_MASK = 0x7FFF_FFFF;
+
+        private static int encode(int idx, NativeType type) {
+            int res = idx;
+            assert res == (res & INDEX_ARG_MASK);
+            if (type == NativeType.POINTER) {
+                res |= POINTER_ARG_FLAG;
+            }
+            return res;
+        }
+
+        private static int decodeIndex(int encoded) {
+            return encoded & INDEX_ARG_MASK;
+        }
+
+        private static boolean decodeFlag(int encoded, int flag) {
+            return (encoded & flag) != 0;
+        }
     }
 
     public static final class DowncallStub {
         private final int targetIndex;
-        @CompilationFinal(dimensions = 1) private final int[] shuffle;
+        @CompilationFinal(dimensions = 1) //
+        private final int[] shuffle;
         final NativeSignature signature;
         private final int captureIndex;
         private final int captureMask;
         @CompilationFinal private Object callableSignature;
+        @CompilationFinal private Object fallbackCallableSignature;
 
         public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature, int captureIndex, EnumSet<CapturableState> capturedStates) {
             this.targetIndex = targetIndex;
@@ -246,12 +293,28 @@ public final class DowncallStubs {
         }
 
         @ExplodeLoop
-        public Object[] processArgs(Object[] args) {
+        public Object[] processArgs(Object[] args, RawBuffer.Buffers buffers, EspressoContext ctx) {
             Object[] nativeArgs = new Object[shuffle.length];
             for (int i = 0; i < shuffle.length; i++) {
-                nativeArgs[i] = args[shuffle[i]];
+                int encoded = shuffle[i];
+                Object arg = args[Shuffle.decodeIndex(encoded)];
+                if (Shuffle.decodeFlag(encoded, Shuffle.POINTER_ARG_FLAG)) {
+                    assert arg instanceof StaticObject;
+                    arg = handlePointerArg(buffers, ctx, (StaticObject) arg);
+                }
+                nativeArgs[i] = arg;
             }
             return nativeArgs;
+        }
+
+        private static Object handlePointerArg(RawBuffer.Buffers buffers, EspressoContext ctx, StaticObject obj) {
+            if (!obj.isArray()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw ctx.getMeta().throwExceptionWithMessage(ctx.getMeta().java_lang_InternalError, "Unsupported java heap access in downcall stub: " + obj.getKlass());
+            }
+            RawBuffer buffer = RawBuffer.getNativeHeapPointer(obj, ctx);
+            buffers.add(buffer, obj);
+            return buffer.pointer();
         }
 
         @TruffleBoundary
@@ -264,14 +327,32 @@ public final class DowncallStubs {
             return resolveTarget(targetHandle, context);
         }
 
+        private Object getCallableSignature(NativeAccess access, boolean forFallbackSymbol) {
+            if (forFallbackSymbol) {
+                return getFallbackCallableSignature(access);
+            } else {
+                return getCallableSignature(access);
+            }
+        }
+
         private Object getCallableSignature(NativeAccess access) {
             if (callableSignature == null) {
                 if (CompilerDirectives.isPartialEvaluationConstant(this)) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                callableSignature = access.getCallableSignature(signature, true);
+                callableSignature = access.getCallableSignature(signature, false);
             }
             return callableSignature;
+        }
+
+        private Object getFallbackCallableSignature(NativeAccess access) {
+            if (fallbackCallableSignature == null) {
+                if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                fallbackCallableSignature = access.getCallableSignature(signature, true);
+            }
+            return fallbackCallableSignature;
         }
 
         public void captureState(Object[] args, InteropLibrary interop, EspressoContext context) {
@@ -287,11 +368,13 @@ public final class DowncallStubs {
             return captureIndex >= 0;
         }
 
+        @SuppressWarnings("try") // Throwable.addSuppressed blocklisted by SVM.
         public Object uncachedCall(Object[] args, EspressoContext context) {
             TruffleObject target = getTarget(args, context);
             NativeAccess access = context.getNativeAccess();
+            RawBuffer.Buffers bb = new RawBuffer.Buffers();
             try {
-                Object result = access.callSignature(getCallableSignature(access), target, processArgs(args));
+                Object result = access.callSignature(getCallableSignature(access, access.isFallbackSymbol(target)), target, processArgs(args, bb, context));
                 if (hasCapture()) {
                     captureState(args, InteropLibrary.getUncached(), context);
                 }
@@ -299,6 +382,8 @@ public final class DowncallStubs {
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
+            } finally {
+                bb.writeBack(context);
             }
         }
     }

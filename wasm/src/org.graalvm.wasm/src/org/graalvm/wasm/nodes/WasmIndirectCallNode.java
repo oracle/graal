@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,23 +42,23 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.nodes.UnadoptableNode;
 
-@GenerateUncached
 @GenerateInline(false)
-@NodeField(name = "bytecodeOffset", type = int.class)
 public abstract class WasmIndirectCallNode extends WasmCallNode {
 
     static final int INLINE_CACHE_LIMIT = 5;
 
-    public abstract Object execute(CallTarget target, Object[] args);
+    protected WasmIndirectCallNode(int bytecodeOffset) {
+        super(bytecodeOffset);
+    }
 
-    @Override
-    public abstract int getBytecodeOffset();
+    public abstract Object execute(CallTarget target, Object[] args);
 
     @Specialization(guards = "target == cachedTarget", limit = "INLINE_CACHE_LIMIT")
     final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args,
@@ -76,4 +76,29 @@ public abstract class WasmIndirectCallNode extends WasmCallNode {
         return WasmIndirectCallNodeGen.create(bytecodeOffset);
     }
 
+    @NeverDefault
+    public static WasmIndirectCallNode create() {
+        return create(NO_BYTECODE_INDEX);
+    }
+
+    @NeverDefault
+    public static WasmIndirectCallNode getUncached() {
+        return Uncached.UNCACHED;
+    }
+
+    @GenerateCached(false)
+    @DenyReplace
+    private static final class Uncached extends WasmIndirectCallNode implements UnadoptableNode {
+
+        static final Uncached UNCACHED = new Uncached();
+
+        private Uncached() {
+            super(NO_BYTECODE_INDEX);
+        }
+
+        @Override
+        public Object execute(CallTarget arg0Value, Object[] arg1Value) {
+            return doIndirect(arg0Value, arg1Value);
+        }
+    }
 }

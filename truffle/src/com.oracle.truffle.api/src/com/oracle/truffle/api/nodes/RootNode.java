@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.nodes;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -50,11 +51,14 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
@@ -124,6 +128,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.8 or earlier
  */
+// @DefaultSymbol("$rootNode")
 public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
@@ -470,6 +475,7 @@ public abstract class RootNode extends ExecutableNode {
         if (this.callTarget != null) {
             throw CompilerDirectives.shouldNotReachHere(message);
         }
+        prepareForCall();
         this.callTarget = callTarget;
 
         // Call notifyOnLoad() after the callTarget field is set, so the invariant that if a
@@ -499,6 +505,83 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
+     * Prepares this {@link RootNode} to be called with a {@link CallTarget}. This method will be
+     * called exactly once when a {@link #getCallTarget() call target is requested} for the first
+     * time. This method can be used to lazily initialize parts of a root node, or to validate that
+     * a root node can be used as a call target.
+     * 
+     * @since 25.0
+     */
+    protected void prepareForCall() {
+        // no default implementation
+    }
+
+    /**
+     * Prepares this {@link RootNode} for compilation. This method is guaranteed to be called at
+     * least once before any code paths are executed as compiled code (see
+     * {@link CompilerDirectives#inCompiledCode()}) for a given compilation tier. It may be called
+     * multiple times per compilation and can be invoked concurrently by multiple compiler threads
+     * without synchronization; therefore, it must be thread-safe.
+     *
+     * By default, this method returns <code>true</code> to indicate sufficient profiling for
+     * compilation, but implementations can return <code>false</code> if not. Returning
+     * <code>false</code> for root compilations will defer the compilation to allow for additional
+     * profiling, whereas otherwise returning <code>false</code> during inlining will disable
+     * inlining for this call site. Any exception thrown will fail the compilation for this
+     * {@link RootNode} permanently.
+     *
+     * Compilations are initiated by the runtime for optimization through partial evaluation and
+     * compilation. The timing and threading of compilations are runtime-specific and should not be
+     * relied upon. This method is not called for Truffle runtimes that do not support compilation,
+     * such as the fallback runtime.
+     *
+     * Compilations may be initiated for the following reasons:
+     * <ul>
+     * <li>The {@link CallTarget} for this {@link RootNode} has been invoked frequently enough to
+     * trigger compilation.
+     * <li>A {@link LoopNode} or {@link BytecodeOSRNode} has executed frequently enough to trigger
+     * OSR compilation.
+     * <li>The compiler is exploring inlining during compilation, preparing to inline a
+     * {@link DirectCallNode} or an indirect call with a partially evaluated constant
+     * {@link CallTarget}.
+     * </ul>
+     *
+     * Work performed in this method counts towards compilation time, not interpretation time.
+     * Implementing this method can help offload expensive computations to compiler threads. Cache
+     * any preparation work to avoid repeating it for every compilation and inlining. To prevent
+     * deadlocks when using synchronization, adhere to the following guidelines:
+     * <ul>
+     * <li>Do not execute guest code or invoke {@link CallTarget#call(Object...)} within this
+     * method.
+     * <li>Avoid acquiring locks shared with execution threads, especially across call boundaries or
+     * loop back-edges when OSR compilation is enabled.
+     * <li>Use {@link AtomicReferenceFieldUpdater} CAS-locking for caching non-expensive preparation
+     * work to minimize contention.
+     * <li>Ensure all synchronization primitives are released upon method exit; use finally blocks
+     * for safety.
+     * </ul>
+     *
+     * Note that during the execution of this method, no language context is entered. Therefore, you
+     * cannot use {@link ContextThreadLocal}, {@link ContextLocal}, {@link LanguageReference}, or
+     * {@link ContextReference}.
+     *
+     * @param rootCompilation <code>true</code> if this is a root compilation; <code>false</code> if
+     *            inlining this root.
+     * @param compilationTier the current compilation tier, as per
+     *            {@link FrameInstance#getCompilationTier()}.
+     * @param lastTier <code>true</code> if this is the last compilation tier for which this
+     *            {@link RootNode} is prepared; <code>false</code> otherwise. Useful for performing
+     *            preparation only at the highest tier.
+     * @return <code>true</code> if the method is sufficiently profiled; <code>false</code>
+     *         otherwise.
+     *
+     * @since 24.2
+     */
+    protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        return true;
+    }
+
+    /**
      * Is this root node to be considered trivial by the runtime.
      *
      * A trivial root node is defined as a root node that:
@@ -520,17 +603,63 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
+     * Prepares a root node for use with the Truffle instrumentation framework. This is similar to
+     * materialization of syntax nodes in an InstrumentableNode, but this method should be preferred
+     * if the root node is updated as a whole and the individual materialization of nodes is not
+     * needed. Another advantage of this method is that it is always invoked before
+     * {@link #getSourceSection()} by the instrumentation framework. This allows to perform the
+     * materialization of sources and tags in one operation.
+     * <p>
+     * This method is invoked repeatedly and should not perform any operation if a set of tags was
+     * already prepared before. In other words, this method should stabilize and eventually not
+     * perform any operation if the same tags were observed before.
+     *
+     * @since 24.2
+     */
+    protected void prepareForInstrumentation(@SuppressWarnings("unused") Set<Class<?>> tags) {
+        // no default implementation
+    }
+
+    /**
+     * Returns an instrumentable call node from a node and frame. By default, returns the given
+     * <code>callNode</code>. If the returned node is not instrumentable, the
+     * {@link Node#getParent() parent} chain of the node may be traversed until an instrumentable
+     * node is found (thus, the returned node should be adopted).
+     * <p>
+     * This method should be implemented if the instrumentable call node is not reachable through
+     * the {@link Node#getParent() parent} chain of a {@link FrameInstance#getCallNode() call node}.
+     * For example, in bytecode interpreters instrumentable nodes may be stored in a side data
+     * structure and the instrumentable node must be looked up using the bytecode index. This method
+     * is intended to be overridden to implement specify such behavior.
+     * <p>
+     * A {@link Frame frame} parameter is only provided if {@link #isCaptureFramesForTrace(boolean)}
+     * returns <code>true</code>. If the frame is not captured then the frame parameter is
+     * <code>null</code>.
+     * <p>
+     * The <code>bytecodeIndex</code> parameter takes on the value produced by calling
+     * {@link #findBytecodeIndex(Node, Frame)} (<code>-1</code> unless overridden).
+     *
+     * @param callNode the top-most node of the activation or <code>null</code>
+     * @param frame the current frame of the activation or <code>null</code>
+     * @param bytecodeIndex the current bytecode index of the activation or a negative number
+     * @since 24.2
+     */
+    protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+        return callNode;
+    }
+
+    /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when
-     * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide
-     * asynchronous frames or longer list of frames when it's of no performance penalty, or if
-     * requested by other options. This method is invoked on slow-paths only and with a context
+     * {@link TruffleLanguage#getAsynchronousStackDepth()} is positive. The language is free to
+     * provide asynchronous frames or longer list of frames when it's of no performance penalty, or
+     * if requested by other options. This method is invoked on slow-paths only and with a context
      * entered.
      *
      * @param frame A frame, never <code>null</code>
      * @return a list of {@link TruffleStackTraceElement}, or <code>null</code> when no asynchronous
      *         stack is available.
-     * @see Env#getAsynchronousStackDepth()
+     * @see TruffleLanguage#getAsynchronousStackDepth()
      * @since 20.1.0
      */
     protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
@@ -587,7 +716,9 @@ public abstract class RootNode extends ExecutableNode {
      * any thread, even threads unknown to the guest language implementation. It is allowed to
      * create new {@link CallTarget call targets} during preparation of the root node or perform
      * modifications to the {@link TruffleLanguage language} of this root node.
+     * <p>
      *
+     * @see #prepareForCompilation(boolean, int, boolean)
      * @since 20.3
      */
     protected ExecutionSignature prepareForAOT() {

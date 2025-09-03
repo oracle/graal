@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -38,17 +38,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Nightly Spring Tests
+name: Weekly Spring Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/spring.yml'
   pull_request:
     paths:
       - '.github/workflows/spring.yml'
   schedule:
-  - cron: '0 4 * * *'
+  - cron: '0 4 * * 1'
   workflow_dispatch:
 
 env:
@@ -61,7 +58,7 @@ permissions:
 jobs:
   build-graalvm-and-spring:
     name: Native Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal

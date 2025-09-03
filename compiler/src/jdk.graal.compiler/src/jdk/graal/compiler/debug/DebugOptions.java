@@ -90,38 +90,82 @@ public class DebugOptions {
     }
 
     // @formatter:off
-    @Option(help = "Comma separated names of timers that are enabled irrespective of the value for Time option. " +
+    @Option(help = "Comma separated names of timers that are enabled. " +
                    "An empty value enables all timers unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> Timers = new OptionKey<>(null);
-    @Option(help = "Comma separated names of counters that are enabled irrespective of the value for Count option. " +
+    @Option(help = "Comma separated names of counters that are enabled. " +
                    "An empty value enables all counters unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> Counters = new OptionKey<>(null);
-    @Option(help = "Comma separated names of memory usage trackers that are enabled irrespective of the value for TrackMemUse option. " +
+    @Option(help = "Comma separated names of memory usage trackers that are enabled. " +
                    "An empty value enables all memory usage trackers unconditionally.", type = OptionType.Debug)
     public static final OptionKey<String> MemUseTrackers = new OptionKey<>(null);
+    @Option(help = """
+                   Filter pattern for specifying scopes in which dumping is enabled.
 
-    @Option(help = "Pattern for specifying scopes in which counters are enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all counters unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> Count = new OptionKey<>(null);
-    @Option(help = "Pattern for specifying scopes in which memory use tracking is enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> TrackMemUse = new OptionKey<>(null);
-    @Option(help = "Pattern for specifying scopes in which timing is enabled. " +
-                   "See the Dump option for the pattern syntax. " +
-                   "An empty value enables all timers unconditionally.", type = OptionType.Debug)
-    public static final OptionKey<String> Time = new OptionKey<>(null);
+                   A filter is a list of comma-separated terms of the form:
 
-    @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
-                   "See the Dump option for the pattern syntax.", type = OptionType.Debug)
-    public static final OptionKey<String> Verify = new OptionKey<>(null);
-    @Option(help = "file:doc-files/DumpHelp.txt", type = OptionType.Debug, stability = OptionStability.STABLE)
+                     <pattern>[:<level>]
+
+                   If <pattern> contains a "*" or "?" character, it is interpreted as a glob pattern.
+                   Otherwise, it is interpreted as a substring. If <pattern> is empty, it
+                   matches every scope. If :<level> is omitted, it defaults to 1. The term
+                   ~<pattern> is a shorthand for <pattern>:0 to disable a debug facility for a pattern.
+
+                   The default log level is 0 (disabled). Terms with an empty pattern set
+                   the default log level to the specified value. The last
+                   matching term with a non-empty pattern selects the level specified. If
+                   no term matches, the log level is the default level. A filter with no
+                   terms matches every scope with a log level of 1.
+
+                   Examples of debug filters:
+                   ---------
+                     (empty string)
+
+                     Matches any scope with level 1.
+                   ---------
+                     :1
+
+                     Matches any scope with level 1.
+                   ---------
+                     *
+
+                     Matches any scope with level 1.
+                   ---------
+                     CodeGen,CodeInstall
+
+                     Matches scopes containing "CodeGen" or "CodeInstall", both with level 1.
+                   ---------
+                     CodeGen:2,CodeInstall:1
+
+                     Matches scopes containing "CodeGen" with level 2, or "CodeInstall" with level 1.
+                   ---------
+                     Outer:2,Inner:0}
+
+                     Matches scopes containing "Outer" with log level 2, or "Inner" with log level 0. If the scope
+                     name contains both patterns then the log level will be 0. This is useful for silencing subscopes.
+                   ---------
+                     :1,Dead:2
+
+                     Matches scopes containing "Dead" with level 2, and all other scopes with level 1.
+                   ---------
+                     Dead:0,:1
+
+                     Matches all scopes with level 1, except those containing "Dead".   Note that the location of
+                     the :1 doesn't matter since it's specifying the default log level so it's the same as
+                     specifying :1,Dead:0.
+                   ---------
+                     Code*
+
+                     Matches scopes starting with "Code" with level 1.
+                   ---------
+                     Code,~Dead
+
+                     Matches scopes containing "Code" but not "Dead", with level 1.""", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<String> Dump = new OptionKey<>(null);
     @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
                    "See the Dump option for the pattern syntax.", type = OptionType.Debug)
     public static final OptionKey<String> Log = new OptionKey<>(null);
-    @Option(help = "file:doc-files/MethodFilterHelp.txt")
+    @Option(help = jdk.graal.compiler.debug.MethodFilter.HELP)
     public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
     @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> MethodFilterRootOnly = new OptionKey<>(false);
@@ -133,11 +177,31 @@ public class DebugOptions {
                    "Note that this only lists the metrics that were initialized during the VM execution and so " +
                    "will not include metrics for compiler code that is not executed.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ListMetrics = new OptionKey<>(false);
-    @Option(help = "file:doc-files/MetricsFileHelp.txt", type = OptionType.Debug)
+    @Option(help = """
+                   File to which metrics are dumped per compilation at shutdown.
+                   A %p in the name will be replaced with a string identifying the process, usually the process id.
+                   A CSV format is used if the file ends with .csv otherwise a more human readable format is used.
+                   An empty argument causes metrics to be dumped to the console.
+                   
+                   The fields in the CSV format are:
+                              compilable - method being compiled
+                     compilable_identity - identity hash code of compilable
+                          compilation_nr - where this compilation lies in the ordered
+                                           sequence of all compilations identified by
+                                           compilable_identity
+                          compilation_id - runtime issued identifier for the compilation
+                             metric_name - name of metric
+                            metric_value - value of metric""", type = OptionType.Debug)
      public static final OptionKey<String> MetricsFile = new OptionKey<>(null);
-    @Option(help = "File to which aggregated metrics are dumped at shutdown. A CSV format is used if the file ends with .csv " +
-                   "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
+    @Option(help = """
+                   File to which aggregated metrics are dumped at shutdown.
+                   A %p in the name will be replaced with a string identifying the process, usually the process id.
+                   A CSV format is used if the file ends with .csv otherwise a more human readable format is used.
+                   An empty argument causes metrics to be dumped to the console.""", type = OptionType.Debug)
     public static final OptionKey<String> AggregatedMetricsFile = new OptionKey<>(null);
+
+    @Option(help = "Omit metrics with a zero value when writing CSV files.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> OmitZeroMetrics = new OptionKey<>(true);
 
     @Option(help = "Enable debug output for stub code generation and snippet preparation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
@@ -168,7 +232,13 @@ public class DebugOptions {
     @Option(help ="Enables dumping of basic blocks relative PC and frequencies in the dump directory.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBBInfo = new OptionKey<>(false);
 
-    @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
+    @Option(help = """
+                   Where IdealGraphVisualizer graph dumps triggered by Dump or DumpOnError should be written.
+                   The accepted values are:
+                         File - Dump IGV graphs to the local file system (see DumpPath).
+                      Network - Dump IGV graphs to the network destination specified by PrintGraphHost and PrintGraphPort.
+                                If a network connection cannot be opened, dumping falls back to file dumping.
+                      Disable - Do not dump IGV graphs.""", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
     @Option(help = "Dump a graph even if it has not changed since it was last dumped.  " +
@@ -203,11 +273,22 @@ public class DebugOptions {
     @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
-    @Option(help = "file:doc-files/OptimizationLogHelp.txt", type = OptionType.Debug)
+    @Option(help = """
+                   Enable the structured optimization log and specify where it is printed.
+                   The accepted values are:
+                     Directory - Format the structured optimization log as JSON and print it to files in a directory.
+                                 The directory is specified by OptimizationLogPath. If OptimizationLogPath is not set,
+                                 the target directory is DumpPath/optimization_log.
+                        Stdout - Print the structured optimization log to the standard output.
+                          Dump - Dump optimization trees for IdealGraphVisualizer according to the PrintGraph option.
+                   It is possible to specify multiple comma-separated values.""", type = OptionType.Debug)
     public static final EnumMultiOptionKey<OptimizationLogTarget> OptimizationLog = new EnumMultiOptionKey<>(OptimizationLogTarget.class, null);
     @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
             "Directories are created if they do no exist.", type = OptionType.Debug)
     public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
+
+    @Option(help = "Record the compilations matching the method filter for replay compilation.", type = OptionType.Debug)
+    public static final OptionKey<String> RecordForReplay = new OptionKey<>(null);
     // @formatter:on
 
     /**
@@ -252,7 +333,7 @@ public class DebugOptions {
             dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
-            SimpleDateFormat formatter = new SimpleDateFormat("YYYY.MM.dd.HH.mm.ss.SSS");
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
             dumpDir = getPath(DumpPath.getValue(options), formatter.format(date));
         }
         dumpDir = getAbsolutePath(dumpDir);

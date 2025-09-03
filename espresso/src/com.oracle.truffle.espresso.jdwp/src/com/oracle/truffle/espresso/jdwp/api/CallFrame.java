@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -34,16 +35,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 public final class CallFrame {
-
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     public static final Object INVALID_VALUE = new Object();
 
     private final byte typeTag;
     private final long classId;
-    private final MethodRef method;
+    private final MethodVersionRef methodVersion;
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
@@ -53,28 +52,29 @@ public final class CallFrame {
     private final DebugStackFrame debugStackFrame;
     private final DebugScope debugScope;
     private final JDWPContext context;
-    private final DebuggerController controller;
     private Object scope;
+    private final TruffleLogger logger;
 
-    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
-                    DebugStackFrame debugStackFrame, JDWPContext context, DebuggerController controller) {
+    public CallFrame(long threadId, byte typeTag, long classId, MethodVersionRef methodVersion, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
+                    DebugStackFrame debugStackFrame, JDWPContext context, TruffleLogger logger) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
-        this.method = method;
+        this.methodVersion = methodVersion;
         this.methodId = methodId;
-        this.codeIndex = method != null && method.isObsolete() ? -1 : codeIndex;
+        this.codeIndex = methodVersion != null && methodVersion.isObsolete() ? -1 : codeIndex;
         this.frame = frame;
         this.currentNode = currentNode;
         this.rootNode = rootNode;
         this.debugStackFrame = debugStackFrame;
         this.debugScope = debugStackFrame != null ? debugStackFrame.getScope() : null;
         this.context = context;
-        this.controller = controller;
+        this.logger = logger;
     }
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
-        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null, null);
+    // used for tests in comparisons only
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, TruffleLogger logger) {
+        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null, logger);
     }
 
     public byte getTypeTag() {
@@ -85,15 +85,22 @@ public final class CallFrame {
         return classId;
     }
 
+    public MethodVersionRef getMethodVersion() {
+        return methodVersion;
+    }
+
     public MethodRef getMethod() {
-        return method;
+        if (methodVersion != null) {
+            return methodVersion.getMethod();
+        }
+        return null;
     }
 
     public long getMethodId() {
-        if (method == null) {
+        if (methodVersion == null) {
             return methodId;
         }
-        return method.isObsolete() ? 0 : methodId;
+        return methodVersion.isObsolete() ? 0 : methodId;
     }
 
     public long getCodeIndex() {
@@ -124,9 +131,7 @@ public final class CallFrame {
             }
             return INTEROP.readMember(theScope, "0");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            if (controller != null) {
-                controller.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
-            }
+            logger.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
             return INVALID_VALUE;
         }
     }
@@ -144,9 +149,7 @@ public final class CallFrame {
         try {
             INTEROP.writeMember(theScope, identifier, value);
         } catch (Exception e) {
-            if (controller != null) {
-                controller.warning(() -> "Unable to write member " + identifier + " from variables");
-            }
+            logger.warning(() -> "Unable to write member " + identifier + " from variables");
         }
     }
 
@@ -164,14 +167,10 @@ public final class CallFrame {
             try {
                 scope = NodeLibrary.getUncached().getScope(node, frame, true);
             } catch (UnsupportedMessageException e) {
-                if (controller != null) {
-                    controller.warning(() -> "Unable to get scope for " + currentNode.getClass());
-                }
+                logger.warning(() -> "Unable to get scope for " + currentNode.getClass());
             }
         } else {
-            if (controller != null) {
-                controller.warning(() -> "Unable to get scope for " + currentNode.getClass());
-            }
+            logger.warning(() -> "Unable to get scope for " + currentNode.getClass());
         }
         return scope;
     }

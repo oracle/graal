@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Executable;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.SnippetObjectConstant;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
@@ -47,7 +47,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 
@@ -63,7 +62,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (inRuntimeCode()) {
             HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(object.getClass());
             // This can only be a compiler object when in libgraal.
             return new SnippetObjectConstant(object);
@@ -144,6 +143,10 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         Objects.requireNonNull(field);
         GraalError.guarantee(field instanceof HotSpotResolvedJavaField, "Unexpected implementation class: %s", field.getClass());
 
+        if (field.isInternal()) {
+            /* internal fields never have a corresponding java.lang.reflect.Field. */
+            return null;
+        }
         return runtime().getMirror(field);
     }
 }

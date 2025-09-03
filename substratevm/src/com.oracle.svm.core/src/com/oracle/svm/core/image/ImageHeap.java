@@ -24,14 +24,12 @@
  */
 package com.oracle.svm.core.image;
 
-import java.util.Collection;
-
 public interface ImageHeap {
-    Collection<? extends ImageHeapObject> getObjects();
+    Iterable<? extends ImageHeapObject> getObjects();
 
     ImageHeapObject addLateToImageHeap(Object object, Object reason);
 
     ImageHeapObject addFillerObject(int size);
 
-    int countDynamicHubs();
+    int countPatchAndVerifyDynamicHubs();
 }

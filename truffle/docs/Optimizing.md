@@ -4,6 +4,7 @@ toc_group: truffle
 link_title: Optimizing Truffle Interpreters
 permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
 ---
+
 # Optimizing Truffle Interpreters
 
 This document discusses tools for optimizing or debugging Truffle interpreters for peak temporal performance.
@@ -43,45 +44,49 @@ Note: Most options also require the additional `--experimental-options` flag set
 The `--engine.TraceCompilation` command prints a line each time a method is compiled:
 
 ```shell
-[engine] opt done   id=244   EqualityConstraint.execute                         |Tier 1|Time   268( 220+47  )ms|AST   17|Inlined   0Y   2N|IR    238/   437|CodeSize    1874|Timestamp 758868036671903|Src octane-deltablue.js:528
+[engine] opt done   engine=2  id=213   EqualityConstraint.execute                         |Tier 1|Time    14(  11+3   )ms|AST   31|Inlined   0Y   2N|IR    218/   365|CodeSize    1386|Addr 0x782dd1fb9300|CompId 23519  |UTC 2025-07-08T08:25:20.339|Src octane-deltablue.js:528 0xb0b56c7b
 ```
 
 Here is a quick overview of the information provided in these logs:
+- `engine` - Unique identifier of the engine the compilation is done for.
 - `id` - Unique identifier of the call target.
-- `Tier` - For which compilation tier was the targed scheduled.
+- `Tier` - For which compilation tier was the target scheduled.
 - `Time` - How long did the compilation last, with separation between the Truffle tier (mainly partial evaluation) and the Graal Tiers.
 - `AST` - The targets non-trivial node count.
 - `Inlined` - How many calls were inlined and how many remained calls after inlining.
 - `IR` - Graal node count after partial evaluation and after compilation.
 - `CodeSize` - The size of the code generated for the call target.
-- `Timestamp` - The time when the event happened as reported by `System.nanoTime()`.
-- `Src` - Abbreviated source section of the call target.
+- `Addr` - The address of the compiled code.
+- `CompId` - VM specific compilation ID of the compilation.
+- `UTC` - The time when the event happened.
+- `Src` - Abbreviated source section of the call target and the hash code of the source.
 
 The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, unqueued, started, or completed:
 
 ```shell
-[engine] opt queued id=237   BinaryConstraint.output                            |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865671350686|Src octane-deltablue.js:416
-[engine] opt start  id=237   BinaryConstraint.output                            |Tier 1|Priority        25|Rate 0.000000|Queue: Size    0 Change +0  Load  0.06 Time     0us|Timestamp 758865708273384|Src octane-deltablue.js:416
-[engine] opt queued id=239   OrderedCollection.size                             |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865727664193|Src octane-deltablue.js:71
-[engine] opt queued id=52    Array.prototype.push                               |Tier 1|Count/Thres         25/       50|Queue: Size    2 Change +1  Load  0.13 Time     0us|Timestamp 758865744191674|Src <builtin>:1
+[engine] opt queued engine=2  id=206   BinaryConstraint.output                            |Tier 1|Count/Thres         75/      100|Queue: Size    3 Change +1  Load  0,25 Time     0us                                   |UTC 2025-07-08T08:25:19.974|Src octane-deltablue.js:416 0xb0b56c7b
+[engine] opt queued engine=2  id=208   OrderedCollection.size                             |Tier 1|Count/Thres        100/      125|Queue: Size    4 Change +1  Load  0,31 Time     0us                                   |UTC 2025-07-08T08:25:19.997|Src octane-deltablue.js:71 0xb0b56c7b
+[engine] opt queued engine=2  id=32    Array.prototype.push                               |Tier 1|Count/Thres        125/      175|Queue: Size    5 Change +1  Load  0,44 Time     0us                                   |UTC 2025-07-08T08:25:20.025|Src <builtin>:1 0xe756ac41
+[engine] opt start  engine=2  id=206   BinaryConstraint.output                            |Tier 1|Priority     93750|Rate 0,000003|Queue: Size    4 Change -1  Load  0,50 Time   195us                                   |UTC 2025-07-08T08:25:20.039|Src octane-deltablue.js:416 0xb0b56c7b|Bonuses first tier
 ... more log ...
-[engine] opt start  id=239   OrderedCollection.size                             |Tier 1|Priority    181875|Rate 0.000001|Queue: Size   11 Change -1  Load  0.63 Time   575us|Timestamp 758866381654116|Src octane-deltablue.js:71
-[engine] opt done   id=237   BinaryConstraint.output                            |Tier 1|Time   717( 654+64  )ms|AST   19|Inlined   0Y   0N|IR    143/   220|CodeSize     882|Timestamp 758866435391354|Src octane-deltablue.js:416
-[engine] opt start  id=236   BinaryConstraint.input                             |Tier 1|Priority    144000|Rate 0.000001|Queue: Size   10 Change -1  Load  0.56 Time    48us|Timestamp 758866452554530|Src octane-deltablue.js:409
+[engine] opt done   engine=2  id=206   BinaryConstraint.output                            |Tier 1|Time   126( 122+4   )ms|AST   32|Inlined   0Y   0N|IR    138/   169|CodeSize     608|Addr 0x782dd1ecec00|CompId 22170  |UTC 2025-07-08T08:25:20.170|Src octane-deltablue.js:416 0xb0b56c7b
+[engine] opt start  engine=2  id=208   OrderedCollection.size                             |Tier 1|Priority    323626|Rate 0,000005|Queue: Size    8 Change -1  Load  0,88 Time    17us                                   |UTC 2025-07-08T08:25:20.173|Src octane-deltablue.js:71 0xb0b56c7b|Bonuses first tier
+[engine] opt queued engine=2  id=215   OrderedCollection.at                               |Tier 1|Count/Thres        350/      325|Queue: Size    9 Change +1  Load  0,81 Time     0us                                   |UTC 2025-07-08T08:25:20.185|Src octane-deltablue.js:67 0xb0b56c7b
 ... more log ...
-[engine] opt queued id=239   OrderedCollection.size                             |Tier 2|Count/Thres       8750/     8125|Queue: Size   18 Change +1  Load  0.81 Time     0us|Timestamp 758867756295139|Src octane-deltablue.js:71
-[engine] opt queued id=237   BinaryConstraint.output                            |Tier 2|Count/Thres       8499/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758867758263099|Src octane-deltablue.js:416
-[engine] opt start  id=244   EqualityConstraint.execute                         |Tier 1|Priority   2618289|Rate 0.000015|Queue: Size   19 Change -1  Load  0.88 Time   180us|Timestamp 758867767116908|Src octane-deltablue.js:528
+[engine] opt queued engine=2  id=208   OrderedCollection.size                             |Tier 2|Count/Thres      10000/    10000|Queue: Size   19 Change +1  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:20.274|Src octane-deltablue.js:71 0xb0b56c7b
+[engine] opt queued engine=2  id=206   BinaryConstraint.output                            |Tier 2|Count/Thres      10000/    10000|Queue: Size   20 Change +1  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:20.277|Src octane-deltablue.js:416 0xb0b56c7b
+[engine] opt done   engine=2  id=214   Planner.addConstraintsConsumingTo                  |Tier 1|Time    90(  68+22  )ms|AST   79|Inlined   0Y   5N|IR    467/   841|CodeSize    3515|Addr 0x782dd1f74e80|CompId 23040  |UTC 2025-07-08T08:25:20.293|Src octane-deltablue.js:743 0xb0b56c7b
+[engine] opt start  engine=2  id=205   BinaryConstraint.input                             |Tier 1|Priority   4087953|Rate 0,000111|Queue: Size   19 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:20.294|Src octane-deltablue.js:409 0xb0b56c7b|Bonuses first tier
 ... more log ...
-[engine] opt done   id=246   OrderedCollection.at                               |Tier 2|Time    89(  80+9   )ms|AST   15|Inlined   0Y   0N|IR     50/   110|CodeSize     582|Timestamp 758873628915755|Src octane-deltablue.js:67
-[engine] opt start  id=237   BinaryConstraint.output                            |Tier 2|Priority    173536|Rate 0.000054|Queue: Size   18 Change -1  Load  0.94 Time    18us|Timestamp 758873629411012|Src octane-deltablue.js:416
-[engine] opt queued id=238   Planner.addPropagate                               |Tier 2|Count/Thres       9375/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758873663196884|Src octane-deltablue.js:696
-[engine] opt queued id=226   Variable.addConstraint                             |Tier 2|Count/Thres       8771/     9375|Queue: Size   20 Change +1  Load  0.94 Time     0us|Timestamp 758873665823697|Src octane-deltablue.js:556
-[engine] opt done   id=293   change                                             |Tier 1|Time   167( 130+37  )ms|AST   60|Inlined   0Y   6N|IR    576/  1220|CodeSize    5554|Timestamp 758873669483749|Src octane-deltablue.js:867
-[engine] opt start  id=270   Plan.execute                                       |Tier 2|Priority    157871|Rate 0.000072|Queue: Size   19 Change -1  Load  1.00 Time    17us|Timestamp 758873669912101|Src octane-deltablue.js:778
-[engine] opt done   id=237   BinaryConstraint.output                            |Tier 2|Time    58(  52+6   )ms|AST   19|Inlined   0Y   0N|IR    103/   181|CodeSize     734|Timestamp 758873687678394|Src octane-deltablue.js:416
+[engine] opt done   engine=2  id=215   OrderedCollection.at                               |Tier 2|Time     5(   2+2   )ms|AST   23|Inlined   0Y   0N|IR     49/    94|CodeSize     485|Addr 0x782dd23b7980|CompId 26009  |UTC 2025-07-08T08:25:21.228|Src octane-deltablue.js:67 0xb0b56c7b
+[engine] opt start  engine=2  id=206   BinaryConstraint.output                            |Tier 2|Priority   1723949|Rate 0,003724|Queue: Size   82 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:21.228|Src octane-deltablue.js:416 0xb0b56c7b|Bonuses
+[engine] opt done   engine=2  id=206   BinaryConstraint.output                            |Tier 2|Time     6(   3+2   )ms|AST   32|Inlined   0Y   0N|IR    100/   144|CodeSize     639|Addr 0x782dd23b8300|CompId 26014  |UTC 2025-07-08T08:25:21.234|Src octane-deltablue.js:416 0xb0b56c7b
+[engine] opt start  engine=2  id=240   Plan.size                                          |Tier 2|Priority   1565159|Rate 0,003621|Queue: Size   81 Change -1  Load  1,00 Time    23us                                   |UTC 2025-07-08T08:25:21.234|Src octane-deltablue.js:770 0xb0b56c7b|Bonuses
+[engine] opt done   engine=2  id=240   Plan.size                                          |Tier 2|Time     6(   4+2   )ms|AST   19|Inlined   1Y   0N|IR     43/   112|CodeSize     463|Addr 0x782dd23bdc00|CompId 26018  |UTC 2025-07-08T08:25:21.240|Src octane-deltablue.js:770 0xb0b56c7b
+[engine] opt start  engine=2  id=239   Plan.execute                                       |Tier 2|Priority   1591366|Rate 0,004334|Queue: Size   80 Change -1  Load  1,00 Time    27us                                   |UTC 2025-07-08T08:25:21.240|Src octane-deltablue.js:778 0xb0b56c7b|Bonuses
+[engine] opt done   engine=2  id=239   Plan.execute                                       |Tier 2|Time    45(  28+17  )ms|AST   53|Inlined   9Y   0N|IR    609/   552|CodeSize    1583|Addr 0x782dd23c5d00|CompId 26052  |UTC 2025-07-08T08:25:21.285|Src octane-deltablue.js:778 0xb0b56c7b
 ... more log ...
-[engine] opt unque. id=304   Date.prototype.valueOf                             |Tier 2|Count/Thres      80234/     3125|Queue: Size    4 Change  0  Load  0.31 Time     0us|Timestamp 758899904132076|Src <builtin>:1|Reason Target inlined into only caller
+[engine] opt unque. engine=2  id=266   Date.prototype.valueOf                             |Tier 2|Count/Thres     145950/    10000|Queue: Size   15 Change  0  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:26.409|Src <builtin>:1 0xe756ac41|Reason Target inlined into only caller
 ```
 
 Here is a quick overview of the information added in these logs:
@@ -263,6 +268,75 @@ The `--engine.CompilationStatisticDetails` command prints histogram information 
       AMD64AddressNode                              : count= 166, sum=   20072, min=       0, average=      120.92, max=    1960, maxTarget=MeasureDefault
       ...
 ```
+
+The `--engine.TraceSourceCache` command prints a line for each source cache miss, eviction, or failure. `--engine.TraceSourceCacheDetails` additionally prints a line for each source cache hit or uncache miss:
+
+```shell
+[engine] source-cache-miss  0xb0b56c7b octane-deltablue.js                               |ParseTime  294 ms|Engine 2 |Layer 1 |CallTarget 27   |Lang js        |Policy EXCLUSIVE|WEAK    |UTC 2025-07-08T08:25:19.042
+[engine] source-cache-hit   0xb0b56c7b octane-deltablue.js                               |Hits            1|Engine 2 |Layer 1 |CallTarget 27   |Lang js        |Policy EXCLUSIVE|WEAK    |UTC 2025-07-08T08:25:19.280
+[engine] source-cache-evict 0xb0b56c7b octane-deltablue.js                               |Hits            7|Engine 2 |Layer 1 |CallTarget 27   |Lang js        |Policy EXCLUSIVE|WEAK    |UTC 2025-07-08T08:25:21.007
+```
+Repeated source cache evictions of the same sources may lead to repeated parsing and compilation of the same sources under different call target IDs. This usually points at a bug on the embedder size - missing or insufficient caching of sources.
+
+The `--engine.SourceCacheStatistics` command prints statistics on source cache for an engine when the engine is closed:
+
+```shell
+[engine] Polyglot source cache statistics for engine 2
+--- SHARING LAYER 1; WEAK CACHE -------------------------
+    Languages                                  :
+         regex                                 :
+            Character Based Sources Stats      :
+                Sources                        : count=             14
+                    Size (C)                   : count=             14, sum=                     384, min=      20, avg=    27,43, max=         33, maxSource=0xde3bf656 /^--warmup-iterations(?:=(.*))?$/
+                    Biggest Sources            :
+                        0xc34c7396             : size=              33, name=/^--show-intermediate(?:=(.*))?$/
+                        0xde3bf656             : size=              33, name=/^--warmup-iterations(?:=(.*))?$/
+                        0x58e35256             : size=              30, name=/^--profile-memory(?:=(.*))?$/
+                        ...
+                Cache                          : parse time(ms)=   193, parse rate(C/s)=     1989,64, hits=      0, misses=    14, evictions=    0, failures=    0, hit rate= 0%
+                    Parse Successful           : count=             14
+                        Time (ms)              : count=             14, sum=                     193, min=       4, avg=    13,79, max=         51, maxSource=0x5618ad36 /^--iterations(?:=(.*))?$/
+                        Size (C)               : count=             14, sum=                     384, min=      20, avg=    27,43, max=         33, maxSource=0xde3bf656 /^--warmup-iterations(?:=(.*))?$/
+                    Sources With Most Hits     :
+                        0xbb7ccb96             : parse time(ms)=     5, parse rate(C/s)=     4600,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--buckets(?:=(.*))?$/
+                        0x8facaf76             : parse time(ms)=    14, parse rate(C/s)=     2071,43, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--deterministic(?:=(.*))?$/
+                        0x8abc7416             : parse time(ms)=    10, parse rate(C/s)=     2500,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--dump-heap(?:=(.*))?$/
+                        ...
+                    Sources With Most Misses   :
+                        0xbb7ccb96             : parse time(ms)=     5, parse rate(C/s)=     4600,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--buckets(?:=(.*))?$/
+                        0x8facaf76             : parse time(ms)=    14, parse rate(C/s)=     2071,43, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--deterministic(?:=(.*))?$/
+                        0x8abc7416             : parse time(ms)=    10, parse rate(C/s)=     2500,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--dump-heap(?:=(.*))?$/
+                        ...
+                    Sources With Most Evictions:
+                        0xbb7ccb96             : parse time(ms)=     5, parse rate(C/s)=     4600,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--buckets(?:=(.*))?$/
+                        0x8facaf76             : parse time(ms)=    14, parse rate(C/s)=     2071,43, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--deterministic(?:=(.*))?$/
+                        0x8abc7416             : parse time(ms)=    10, parse rate(C/s)=     2500,00, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=/^--dump-heap(?:=(.*))?$/
+                        ...
+                    Failures                   : count=              0
+         js                                    :
+            Character Based Sources Stats      :
+                Sources                        : count=              2
+                    Size (C)                   : count=              2, sum=                   53256, min=   25744, avg= 26628,00, max=      27512, maxSource=0x0e851a37 harness.js
+                    Biggest Sources            :
+                        0x0e851a37             : size=           27512, name=harness.js
+                        0xb0b56c7b             : size=           25744, name=octane-deltablue.js
+                Cache                          : parse time(ms)=   649, parse rate(C/s)=    82058,55, hits=      0, misses=     2, evictions=    0, failures=    0, hit rate= 0%
+                    Parse Successful           : count=              2
+                        Time (ms)              : count=              2, sum=                     649, min=     294, avg=   324,50, max=        355, maxSource=0x0e851a37 harness.js
+                        Size (C)               : count=              2, sum=                   53256, min=   25744, avg= 26628,00, max=      27512, maxSource=0x0e851a37 harness.js
+                    Sources With Most Hits     :
+                        0x0e851a37             : parse time(ms)=   355, parse rate(C/s)=    77498,59, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=harness.js
+                        0xb0b56c7b             : parse time(ms)=   294, parse rate(C/s)=    87564,63, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=octane-deltablue.js
+                    Sources With Most Misses   :
+                        0x0e851a37             : parse time(ms)=   355, parse rate(C/s)=    77498,59, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=harness.js
+                        0xb0b56c7b             : parse time(ms)=   294, parse rate(C/s)=    87564,63, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=octane-deltablue.js
+                    Sources With Most Evictions:
+                        0x0e851a37             : parse time(ms)=   355, parse rate(C/s)=    77498,59, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=harness.js
+                        0xb0b56c7b             : parse time(ms)=   294, parse rate(C/s)=    87564,63, hits=      0, misses=     1, evictions=    0, failures=    0, hit rate= 0%, name=octane-deltablue.js
+                    Failures                   : count=              0
+```
+
+The `--engine.SourceCacheStatisticDetails` command prints statistics on source cache for an engine when the engine is closed. Statistics for all individual sources are printed.
 
 The `--engine.TraceMethodExpansion=truffleTier` command prints a tree of all expanded Java methods with statistics after each compilation:
 
@@ -484,7 +558,7 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 The `--engine.SpecializationStatistics` command prints detailed histograms about Node classes and their usage of Truffle DSL specializations.
 See [`Specialization Statistics`](SpecializationHistogram.md) for a tutorial on how to use it.
 
-Note: Specialization statistics require a recompilation of the interpeter.
+Note: Specialization statistics require a recompilation of the interpreter.
 
 ```shell
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -648,6 +722,78 @@ That id can be searched via `id=NUMBER` in IGV's `Search in Nodes` search box,
 then selecting `Open Search for node NUMBER in Node Searches window`,
 and then clicking the `Search in following phases` button.
 
+## Automatic Detection of Deoptimization Cycles
+
+Since the version 25, Truffle has an automatic deoptimization cycle detection feature. This feature is available and enabled by default when running optimized on JDK 25 and later.
+Whenever a deoptimization cycle is detected, the compilation fails with a permanent bailout that contains the Java stacktrace of the location, if available.
+
+Compilation failures are not printed by default. One way of printing compilation failures is to set the option `engine.CompilationFailureAction` to `Print`. This also prints an approximated stack trace of the deoptimization location.
+
+> Note: To get the approximated stack trace of the deoptimization location in a native image, the image has to be built with `-H:+IncludeNodeSourcePositions`.
+
+Deoptimization cycle detection can be completely disabled by setting `compiler.DeoptCycleDetectionThreshold` to `-1`.
+
+**Example:**
+
+The following is a simple program that causes a deoptimization cycle.
+```java
+public class DeoptCycleDetectionTest {
+    static class InvalidArgumentProfilingNode extends RootNode {
+        @CompilerDirectives.CompilationFinal
+        boolean cachedValue;
+
+        protected InvalidArgumentProfilingNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            boolean arg = (boolean) frame.getArguments()[0];
+            if (this.cachedValue != arg) {
+                // Bug: repeated non-stabilizing deoptimization
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.cachedValue = arg;
+            }
+            return this.cachedValue;
+        }
+    }
+
+    public static void main(String[] args) {
+        try (Context context = Context.create()) {
+            context.enter();
+            CallTarget callTarget = new InvalidArgumentProfilingNode().getCallTarget();
+            for (int i = 0; i < Integer.MAX_VALUE; i++) {
+                callTarget.call(i % 2 == 0);
+            }
+        }
+    }
+}
+```
+In general, when no new code to compile is introduced, Truffle compilations should eventually stabilize and no new compilations/deoptimizations should be produced. However, the above root node
+`InvalidArgumentProfilingNode` contains a bug which causes a deoptimization cycle. When the root node is executed repeatedly and the argument keeps changing, the number of deoptimizations/recompilations is unlimited.
+The following command executes the program with the default deoptimization cycle detection and a deopt stacktrace printing for any detected repeated deoptimization.
+```commandline
+java -Dpolyglot.engine.CompilationFailureAction=Print DeoptCycleDetectionTest
+```
+The expected output is
+```
+[engine] opt fail     DeoptCycleDetectionTest.InvalidArgumentProfilingNode@761490b0|AST      1
+jdk.graal.compiler.code.SourceStackTraceBailoutException$1:jdk.graal.compiler.code.SourceStackTraceBailoutException:jdk.graal.compiler.core.common.PermanentBailoutException:jdk.graal.compiler.core.common.GraalBailoutException:jdk.vm.ci.code.BailoutException:java.lang.RuntimeException:java.lang.Exception:
+jdk.graal.compiler.code.SourceStackTraceBailoutException$1: Deopt taken too many times: 270|Deopt. This could indicate a deopt cycle, which typically hints at a bug in the language implementation or Truffle.
+	at DeoptCycleDetectionTest$InvalidArgumentProfilingNode.execute(DeoptCycleDetectionTest.java:19)
+	at com.oracle.truffle.runtime.OptimizedCallTarget.executeRootNode(OptimizedCallTarget.java:823)
+	at com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot(OptimizedCallTarget.java:747)
+```
+This tells us that a deopt cycle was detected and the stacktrace points to the if condition testing the argument as the location of the repeated deopt. The information about the precise location of the `CompilerDirectives.transferToInterpreterAndInvalidate()` is lost, but the compiler knows one branch of the if statement leads to the repeated deopt that causes the deopt cycle and so the if condition is determined as the location of the deopt. If the compilation was dumped, the appropriate compilation graph would show the deoptimization node with id `270` is in the `false` branch of the if statement:
+
+![Deoptimization Cycle location](./deoptcycle.png "Deoptimization cycle location")
+
+The sensitivity of the deoptimization cycle detection can be fine-tuned by the options `compiler.DeoptCycleDetectionThreshold` and `compiler.DeoptCycleDetectionAllowedRepeats`.
+
+After the number of successful compilations of a call target reaches `compiler.DeoptCycleDetectionThreshold`, the subsequent Truffle compilations of the call target execute an extra deoptimization cycle detection phase that adds information to the compilation framework which allows it to later detect that the exactly same compiled code was deoptimized at the exatly same location repeatedly. If that happens the compilation fails with a permanent bailout. If `compiler.DeoptCycleDetectionAllowedRepeats` is set to a higher value than the default `0`, the compilation will only fail after the same deopt is repeated more times than the allowed count.
+
+See [Deoptimization Cycle Patterns](./DeoptCyclePatterns.md) to learn about common patterns that cause deoptimization cycles and thus should be avoided.
+
 ## Debugging Invalidations
 
 Invalidations happen when a compiled CallTarget is thrown away.
@@ -658,6 +804,53 @@ The most common causes are:
   Use `--engine.TraceAssumptions` to trace those with more details.
 
 The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
+
+## Uncovering Optimization Barriers: Compiler-Level Insights for Truffle Apps
+
+Once you are comfortable profiling Truffle applications and analyzing results (see [Profiling](Profiling.md)), you may reach a point where you wonder, “Why is this benchmark slower than expected?” 
+After determining that the majority of execution time is spent in compiled code, the next step is a deeper analysis of the generated machine code.
+
+Start by identifying “hot” compilation units and addressing any Truffle performance warnings (see Step 4 of this document). 
+However, you may still encounter limitations in performance even after resolving these.
+
+In such cases, reviewing compiler-level performance warnings can be insightful. 
+While in-depth knowledge of Graal compiler internals is not required here, some warnings surfaced at the compiler level can be actionable by Truffle developers.
+
+The Graal compiler offers a compiler analysis phase that emits performance warnings during code compilation. 
+These are similar to Truffle performance warnings but may surface later in the pipeline and are not always directly actionable.
+
+### Enabling Compiler-Level Metrics
+To enable reporting of these metrics, launch your application with:
+```
+--vm.Djdk.graal.ReportHotMetrics=<method filter>
+```
+This prints warnings and hot spots to `stdout` for all compilation units.
+
+To narrow the output to specific methods or functions, use known method names like `*wasm-function:5311*`:
+```
+--vm.Djdk.graal.ReportHotMetrics='*wasm-function:5311*'
+```
+To improve the quality of the generated data, run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
+
+### Example Output
+```
+Reporting hot metrics before HighTierLoweringPhase during compilation of wasm-function:5311
+[Hot Code Warning] Unknown profile for 704|If with f=241.99984874999717 in hot loop Loop (depth=1) 4951258|LoopBegin, node source position is 
+        at org.graalvm.wasm.nodes.WasmFunctionNode.executeBodyFromOffset(WasmFunctionNode.java:363) [bci: 1654]
+        at org.graalvm.wasm.nodes.WasmFunctionNode.execute(WasmFunctionNode.java:241) [bci: 15]
+        [...cut for brevity...]
+        Potential Action Item: Add profile to the top-of-stack source location.
+```
+
+### Interpreting Results:
+* `[Hot Code Info]` lines highlight the hottest basic blocks and loops.
+  * “Local frequency” is the number of times the block is executed per loop iteration.
+  * “Global frequency” is across the entire method. A value of 1 means the basic block executes once per method invocation.
+* `[Hot Code Warning]` denotes locations or IR patterns that may inhibit optimization.
+  * Warnings include, for example, missing profile data in hot paths (for example, `unknown profile for 704|If …`), which is a common actionable warning.
+
+Some warnings may be actionable, while others are for informational purposes. If you encounter frequent or unexplained compiler warnings in your hottest methods and are unsure how to proceed, please reach out to the Truffle community via our Slack channels for advice.
+
 
 ## Ideal Graph Visualizer
 

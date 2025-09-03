@@ -61,7 +61,7 @@ import jdk.vm.ci.code.BytecodeFrame;
  */
 public class FrameStateAssignmentPhase extends Phase {
 
-    private static class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
+    private static final class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
 
         @Override
         protected FrameState processNode(FixedNode node, FrameState previousState) {
@@ -146,6 +146,10 @@ public class FrameStateAssignmentPhase extends Phase {
         assert !hasFloatingDeopts(graph);
         ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
         GraphUtil.killAllWithUnusedFloatingInputs(graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()), false);
+        if (graph.hasLoops() && graph.isLastCFGValid()) {
+            // CFGLoops are computed differently after FSA, see CFGLoop#getLoopExits().
+            graph.getLastCFG().resetLoopInformation();
+        }
     }
 
     @Override

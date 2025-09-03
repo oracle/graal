@@ -91,16 +91,17 @@ public class TypedDataOutputStream extends DataOutputStream {
             this.writeByte('D');
             this.writeDouble((Double) value);
         } else if (valueClz == String.class) {
-            writeStringValue((String) value);
+            this.writeByte('U');
+            this.writeStringValue((String) value);
         } else if (valueClz.isEnum()) {
-            writeStringValue(((Enum<?>) value).name());
+            this.writeByte('U');
+            this.writeStringValue(((Enum<?>) value).name());
         } else {
             throw new IllegalArgumentException(String.format("Unsupported type: Value: %s, Value type: %s", value, valueClz));
         }
     }
 
-    private void writeStringValue(String value) throws IOException {
-        this.writeByte('U');
+    protected void writeStringValue(String value) throws IOException {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         this.writeInt(bytes.length);
         this.write(bytes);

@@ -273,7 +273,7 @@ SUNWprivate_1.1 {
                 JVM_Write;
                 JVM_Yield;
                 JVM_handle_linux_signal;
-                
+
                 # JDK 11
                 JVM_AddModuleExports;
                 JVM_AddModuleExportsToAll;
@@ -340,10 +340,6 @@ SUNWprivate_1.1 {
                 JVM_SetStackWalkContinuation;
                 JVM_ReportFinalizationComplete;
                 JVM_IsFinalizationEnabled;
-                JVM_VirtualThreadMountBegin;
-                JVM_VirtualThreadMountEnd;
-                JVM_VirtualThreadUnmountBegin;
-                JVM_VirtualThreadUnmountEnd;
 
                 # JDK 20
                 JVM_VirtualThreadHideFrames;
@@ -361,21 +357,26 @@ SUNWprivate_1.1 {
                 JVM_VirtualThreadUnmount;
                 JVM_PrintWarningAtDynamicAgentLoad;
 
+                # JDK 25
+                JVM_SleepNanos;
+                JVM_ExpandStackFrameInfo;
+                JVM_IsContainerized;
+                JVM_GetCDSConfigStatus;
+                JVM_NeedsClassInitBarrierForCDS;
+                JVM_VirtualThreadDisableSuspend;
+                JVM_VirtualThreadPinnedEvent;
+                JVM_TakeVirtualThreadListToUnblock;
+                JVM_IsStaticallyLinked;
+                JVM_CreateThreadSnapshot;
+
+                # JDK 26
+                JVM_ReferenceGet;
+
                 # miscellaneous functions
                 jio_fprintf;
-                jio_printf;
                 jio_snprintf;
                 jio_vfprintf;
                 jio_vsnprintf;
-                fork1;
-                numa_warn;
-                numa_error;
-
-                # Needed because there is no JVM interface for this.
-                sysThreadAvailableStackWithSlack;
-
-                # This is for Forte Analyzer profiling support.
-                AsyncGetCallTrace;
 
 		# INSERT VTABLE SYMBOLS HERE
 

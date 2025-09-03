@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,28 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
+import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
+import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.graal.code.SubstrateVectorArchitectureFactory;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -31,21 +53,9 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
-import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
-import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.aarch64.VectorAArch64;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -75,13 +85,7 @@ class SubstrateAArch64Feature implements InternalFeature {
                 }
             });
 
-            ImageSingletons.add(SubstrateLoweringProviderFactory.class, new SubstrateLoweringProviderFactory() {
-                @Override
-                public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
-                                MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-                    return new SubstrateAArch64LoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
-                }
-            });
+            ImageSingletons.add(SubstrateLoweringProviderFactory.class, new SubstrateAArch64LoweringProviderFactory());
 
             ImageSingletons.add(TargetGraphBuilderPlugins.class, new AArch64GraphBuilderPlugins());
             ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateAArch64SuitesCreatorProvider());
@@ -93,5 +97,18 @@ class SubstrateAArch64Feature implements InternalFeature {
         if (!SubstrateOptions.useLLVMBackend()) {
             AArch64CalleeSavedRegisters.createAndRegister();
         }
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+class SubstrateAArch64LoweringProviderFactory extends SubstrateVectorArchitectureFactory implements SubstrateLoweringProviderFactory {
+
+    @Override
+    public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
+        VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(VectorAArch64::new, (AArch64) ConfigurationValues.getTarget().arch, !SubstrateOptions.useLLVMBackend(),
+                        ConfigurationValues.getObjectLayout().getReferenceSize(), ReferenceAccess.singleton().haveCompressedReferences(),
+                        ConfigurationValues.getObjectLayout().getAlignment());
+        return new SubstrateAArch64LoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, vectorArchitecture);
     }
 }

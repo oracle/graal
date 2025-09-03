@@ -100,11 +100,11 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
-import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -119,6 +119,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -132,7 +133,6 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -141,15 +141,19 @@ import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
 import jdk.graal.compiler.core.phases.HighTier;
@@ -164,6 +168,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
@@ -189,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides support for Truffle runtime compilation";
+        return "Provides internal support for Truffle runtime compilation";
     }
 
     public static class Options {
@@ -337,8 +342,17 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+        /*
+         * Both methods are needed in HostInliningPhase to not be optimized / strengthened. By
+         * specifying them as opaque we make sure that the original dominator tree is preserved. If
+         * we do not set these methods as opaque we might end up host inlining into paths that are
+         * not designed for PE/HostInlining.
+         */
+        config.registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(CompilerDirectives.class, "inInterpreter"));
+        config.registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(HostCompilerDirectives.class, "inInterpreterFastPath"));
+
+        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup(truffleRuntime, config.getMetaAccess()));
 
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
@@ -409,12 +423,16 @@ public class TruffleFeature implements InternalFeature {
         }
 
         /*
-         * The concrete subclass of OptimizedCallTarget needs to be registered as in heap for the
-         * forced compilation of frame methods to work. Forcing compilation of a method effectively
-         * adds it as a root and non-static root methods are only compiled if types implementing
-         * them or any of their subtypes are allocated.
+         * GR-57561: The constructor of the concrete subclass of OptimizedCallTarget needs to be
+         * seen by the analysis, otherwise the analysis will not see any writes to its fields
+         * (namely rootNode and engine), which will make a lot of Truffle code look unreachable.
+         * Since the createOptimizedCallTarget is a member method, we also need to ensure that an
+         * instance of TruffleSupport is always seen as instantiated, otherwise the method might not
+         * be considered reachable.
          */
-        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by " + TruffleFeature.class);
+        config.registerAsInHeap(TruffleSupport.singleton().getClass(), "Concrete subclass of TruffleSupport needs to be seen as instantiated, registered by " + TruffleFeature.class);
+        config.registerAsRoot(ReflectionUtil.lookupMethod(TruffleSupport.singleton().getClass(), "createOptimizedCallTarget", OptimizedCallTarget.class, RootNode.class), true,
+                        "The constructor of the concrete subclass of OptimizedCallTarget needs to be seen by the analysis, registered by " + TruffleFeature.class);
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
@@ -428,21 +446,16 @@ public class TruffleFeature implements InternalFeature {
         /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("org.graalvm.polyglot.io.IOHelper");
 
-        /* Support for deprecated bytecode osr frame transfer: GR-38296 */
-        config.registerSubtypeReachabilityHandler((acc, klass) -> {
-            DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
-            /* Pass known reachable classes to the initializer: it will decide there what to do. */
-            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
-                            "com.oracle.truffle.runtime.BytecodeOSRRootNode",
-                            "initializeClassUsingDeprecatedFrameTransfer",
-                            Collections.singleton(Class.class),
-                            klass);
-            if (modified != null && modified) {
-                if (!impl.concurrentReachabilityHandlers()) {
-                    impl.requireAnalysisIteration();
-                }
-            }
-        }, BytecodeOSRNode.class);
+        /* Support for deprecated bytecode osr frame transfer: GR-65788 */
+        if (TruffleBaseFeature.isStaticMethodPresent("com.oracle.truffle.runtime.BytecodeOSRRootNode", "initializeClassUsingDeprecatedFrameTransfer", Collections.singleton(Class.class))) {
+            config.registerSubtypeReachabilityHandler((acc, klass) -> {
+                /*
+                 * Pass known reachable classes to the initializer: it will decide there what to do.
+                 */
+                TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.runtime.BytecodeOSRRootNode", "initializeClassUsingDeprecatedFrameTransfer",
+                                Collections.singleton(Class.class), klass);
+            }, BytecodeOSRNode.class);
+        }
     }
 
     static class TruffleAllowInliningPredicate {
@@ -684,6 +697,59 @@ public class TruffleFeature implements InternalFeature {
 
         tempTargetAllowlistMethod(metaAccess, Object.class, "equals", Object.class);
         tempTargetAllowlistMethod(metaAccess, Object.class, "hashCode");
+
+        if (VectorAPIEnabled.getValue()) {
+            Class<?> abstractMaskClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractMask");
+            Class<?> abstractSpeciesClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractSpecies");
+            Class<?> abstractVectorClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractVector");
+            Class<?> laneTypeClass = ReflectionUtil.lookupClass("jdk.incubator.vector.LaneType");
+            Class<?> binaryClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$Binary");
+            Class<?> operatorImplClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$OperatorImpl");
+            Class<?> unaryClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$Unary");
+            Class<?> vectorClass = ReflectionUtil.lookupClass("jdk.incubator.vector.Vector");
+            Class<?> vectorIntrinsicsClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorIntrinsics");
+            Class<?> vectorShapeClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorShape");
+            Class<?> vectorSpeciesClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorSpecies");
+            Class<?> vectorSupportClass = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport");
+
+            /*
+             * The methods of the VectorSupport class have intrinsics in VectorAPIIntrinsics. On
+             * fast paths, those should be used instead of the Java fallback implementation. Since
+             * we do not rely on these methods on fast paths, we can omit them from PE to reduce the
+             * number of methods needed for runtime compilation and to avoid blocklist violations.
+             */
+            blocklistAllMethods(metaAccess, vectorSupportClass);
+            tempTargetAllowlistAllMethods(metaAccess, vectorSupportClass);
+
+            /*
+             * VectorMathLibrary is an extension to VectorSupport that has two more intrinsic
+             * candidates.
+             */
+            Class<?> vectorMathLibraryClass = ReflectionUtil.lookupClass(true, "jdk.incubator.vector.VectorMathLibrary");
+            if (vectorMathLibraryClass != null) {
+                markTruffleBoundary(metaAccess, vectorMathLibraryClass, "unaryMathOp", unaryClass, int.class, vectorSpeciesClass, IntFunction.class, vectorClass);
+                markTruffleBoundary(metaAccess, vectorMathLibraryClass, "binaryMathOp", binaryClass, int.class, vectorSpeciesClass, IntFunction.class, vectorClass, vectorClass);
+            }
+
+            /* Utils.isNonCapturingLambda is removed by VectorAPIIntrinsics */
+            Class<?> utilsClass = ReflectionUtil.lookupClass(true, "jdk.internal.vm.vector.Utils");
+            if (utilsClass != null) {
+                markTruffleBoundary(metaAccess, utilsClass, "isNonCapturingLambda", Object.class);
+            }
+
+            /* Vector API slow-path methods */
+            markTruffleBoundary(metaAccess, abstractMaskClass, "checkIndexFailed", long.class, int.class, long.class, int.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "badArrayBits", Object.class, boolean.class, long.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "badElementBits", long.class, Object.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "checkFailed", Object.class, Object.class);
+            markTruffleBoundary(metaAccess, abstractVectorClass, "wrongPart", abstractSpeciesClass, abstractSpeciesClass, boolean.class, int.class);
+            markTruffleBoundary(metaAccess, laneTypeClass, "badElementType", Class.class, Object.class);
+            markTruffleBoundary(metaAccess, operatorImplClass, "illegalOperation", int.class, int.class);
+            markTruffleBoundary(metaAccess, vectorIntrinsicsClass, "requireLengthFailed", int.class, int.class);
+
+            /* Made obsolete by VectorAPIFeature's precomputation of the species */
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "computeSpecies", laneTypeClass, vectorShapeClass);
+        }
     }
 
     private void blocklistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
@@ -703,12 +769,30 @@ public class TruffleFeature implements InternalFeature {
         }
     }
 
+    private void tempTargetAllowlistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
+        for (Executable m : clazz.getMethods()) {
+            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+        }
+        for (Executable m : clazz.getConstructors()) {
+            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+        }
+    }
+
     private void tempTargetAllowlistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
             tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
+
+    /**
+     * Effectively puts a {@link TruffleBoundary} on an existing method by {@link #blocklistMethod
+     * blocklisting} it and {@link #tempTargetAllowlistMethod allowlisting} it.
+     */
+    private void markTruffleBoundary(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
+        blocklistMethod(metaAccess, clazz, name, parameterTypes);
+        tempTargetAllowlistMethod(metaAccess, clazz, name, parameterTypes);
     }
 
     /**
@@ -766,14 +850,9 @@ public class TruffleFeature implements InternalFeature {
 
                 // Determine blocklist violations
                 if (!runtimeCompilationForbidden(candidate.getImplementationMethod())) {
-                    if (isBlocklisted(candidate.getImplementationMethod())) {
-                        boolean tempAllow = !candidate.getTargetMethod().equals(candidate.getImplementationMethod()) &&
-                                        tempTargetAllowlistMethods.contains(candidate.getTargetMethod()) &&
-                                        !isBlocklisted(candidate.getImplementationMethod());
-                        if (!tempAllow) {
-                            BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
-                            blocklistViolations.add(violation);
-                        }
+                    if (isBlocklisted(candidate.getImplementationMethod()) && !tempTargetAllowlistMethods.contains(candidate.getTargetMethod())) {
+                        BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
+                        blocklistViolations.add(violation);
                     }
                 }
             }
@@ -857,10 +936,17 @@ public class TruffleFeature implements InternalFeature {
                                     Frame.class.getTypeName(), SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-"),
                                     StringUtil.joinSingleQuoted(implementations.stream().map(m -> m.toJavaName(true)).toArray(String[]::new)));
                 } else {
-                    assert implementations.size() == 0 || implementations.iterator().next().equals(frameType.getSingleImplementor());
+                    assert implementations.isEmpty() || implementations.iterator().next().equals(frameType.getSingleImplementor()) : formatSingleImplementorError(implementations,
+                                    frameType.getSingleImplementor());
                 }
             }
         }
+    }
+
+    private static String formatSingleImplementorError(Collection<HostedType> implementations, HostedType singleImplementor) {
+        String implementationName = implementations.isEmpty() ? "null" : implementations.iterator().next().toJavaName();
+        String singleImplementorName = singleImplementor == null ? "null" : singleImplementor.toJavaName();
+        return String.format("Non-abstract Frame implementation: %s, Frame single implementor: %s", implementationName, singleImplementorName);
     }
 
     /**
@@ -992,8 +1078,20 @@ final class Target_com_oracle_truffle_runtime_OptimizedCallTarget {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     boolean compilationFailed;
     /*
+     * Re-enable the target for inlining when it was disabled during image generation.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = TransformToTrue.class) //
+    boolean canBeInlined = true;
+    /*
      * The initialized time stamp is not useful when collected during image generation.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long initializedTimestamp;
+
+    private static final class TransformToTrue implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return true;
+        }
+    }
 }

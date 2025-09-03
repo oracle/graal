@@ -57,6 +57,8 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
     @OptionalInput(State) FrameState stateAfter;
     protected final MemoryOrderMode memoryOrder;
 
+    private final boolean hasSideEffect;
+
     @Override
     public FrameState stateAfter() {
         return stateAfter;
@@ -71,7 +73,7 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
 
     @Override
     public boolean hasSideEffect() {
-        return true;
+        return hasSideEffect;
     }
 
     public ValueNode getExpectedValue() {
@@ -89,11 +91,18 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
 
     public AbstractCompareAndSwapNode(NodeClass<? extends AbstractCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
                     BarrierType barrierType, Stamp stamp, MemoryOrderMode memoryOrder) {
+        this(c, address, location, expectedValue, newValue, barrierType, stamp, memoryOrder, true);
+
+    }
+
+    protected AbstractCompareAndSwapNode(NodeClass<? extends AbstractCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
+                    BarrierType barrierType, Stamp stamp, MemoryOrderMode memoryOrder, boolean hasSideEffect) {
         super(c, address, location, stamp, barrierType);
         assert expectedValue.getStackKind() == newValue.getStackKind() : Assertions.errorMessageContext("c", c, "adr", address, "loc", location, "expected", expectedValue, "newVal", newValue);
         this.expectedValue = expectedValue;
         this.newValue = newValue;
         this.memoryOrder = memoryOrder;
+        this.hasSideEffect = hasSideEffect;
     }
 
     @Override

@@ -5,3 +5,4 @@ jdk.graal.compiler.lir.processor.SyncPortProcessor
 jdk.graal.compiler.core.match.processor.MatchProcessor
 jdk.graal.compiler.options.processor.OptionProcessor
 jdk.graal.compiler.serviceprovider.processor.ServiceProviderProcessor
+jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalProcessor

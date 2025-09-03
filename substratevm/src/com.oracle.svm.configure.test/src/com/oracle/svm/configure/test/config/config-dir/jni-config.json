@@ -55,6 +55,16 @@
       {
         "name": "method",
         "parameterTypes": []
+      },
+      {
+        "name": "method3",
+        "parameterTypes": []
+      }
+    ],
+    "queriedMethods": [
+      {
+        "name": "method2",
+        "parameterTypes": []
       }
     ]
   }

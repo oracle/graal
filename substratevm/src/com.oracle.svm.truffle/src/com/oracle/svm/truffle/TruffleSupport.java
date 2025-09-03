@@ -118,7 +118,7 @@ public class TruffleSupport {
                         TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders(), TruffleRuntimeCompilationSupport.getFullOptSuites(), TruffleRuntimeCompilationSupport.getLIRSuites(),
                         types);
         return new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, runtimeCompilationFeature.getHostedProviders().getSnippetReflection(), firstTier, lastTier, types,
-                        TruffleRuntimeCompilationSupport.getFullOptSuites());
+                        TruffleRuntimeCompilationSupport.getFullOptSuites(), null);
     }
 
     public static boolean isIsolatedCompilation() {

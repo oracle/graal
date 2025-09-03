@@ -51,18 +51,13 @@ import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 
 /**
  * Class that simplifies implementing a debugger on top of Truffle. Primarily used to implement
@@ -306,8 +301,8 @@ public final class Debugger {
      * Disable stepping on the current thread. The current thread must be in an entered context.
      * Assure that the stepping is restored again by calling {@link #restoreStepping()} like:
      *
-     * {@snippet file="com/oracle/truffle/api/debug/Debugger.java"
-     * region="DebuggerSnippets#disableStepping"}
+     * {@snippet file = "com/oracle/truffle/api/debug/Debugger.java" region =
+     * "DebuggerSnippets#disableStepping"}
      * <p>
      * The typical usage is to disable stepping on a specific code path. E.g. when a guest code is
      * executed as a safepoint action, which executes out of an apparent code flow. The calls to
@@ -421,25 +416,6 @@ public final class Debugger {
     }
 
     static final class AccessorDebug extends Accessor {
-
-        /*
-         * TODO GR-38632 get rid of this access and replace it with an API in {@link
-         * TruffleInstrument.Env}. I don't think {@link CallTarget} is the right return type here as
-         * we want to make it embeddable into the current AST.
-         */
-        protected CallTarget parse(Source code, Node context, String... argumentNames) {
-            RootNode rootNode = context.getRootNode();
-            return languageSupport().parse(engineSupport().getEnvForInstrument(rootNode.getLanguageInfo()), code, context, argumentNames);
-        }
-
-        /*
-         * TODO GR-38632 I initially moved this to TruffleInstrument.Env but decided against as a
-         * new API for inline parsing might replace it.
-         */
-        protected Object evalInContext(Source source, Node node, MaterializedFrame frame) {
-            return languageSupport().evalInContext(source, node, frame);
-        }
-
     }
 
     static final AccessorDebug ACCESSOR = new AccessorDebug();

@@ -32,7 +32,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.Decompressor;
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.ResourceDecompressor;
 

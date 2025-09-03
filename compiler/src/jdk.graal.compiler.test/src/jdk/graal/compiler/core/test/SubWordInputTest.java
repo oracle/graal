@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,35 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.constant.ConstantDescs.CD_boolean;
+import static java.lang.constant.ConstantDescs.CD_int;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Opcode;
+import java.lang.classfile.TypeKind;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
+import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class SubWordInputTest extends CustomizedBytecodePatternTest {
+public class SubWordInputTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
-    @Parameterized.Parameters(name = "{0}, {1}")
+    @Parameters(name = "{0}, {1}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         for (int i : new int[]{0xFFFF0000, 0xFFFF0001, 0x0000FFFF}) {
-            ret.add(new Object[]{JavaKind.Boolean, i});
-            ret.add(new Object[]{JavaKind.Byte, i});
-            ret.add(new Object[]{JavaKind.Short, i});
-            ret.add(new Object[]{JavaKind.Char, i});
+            ret.add(new Object[]{TypeKind.BOOLEAN, i});
+            ret.add(new Object[]{TypeKind.BYTE, i});
+            ret.add(new Object[]{TypeKind.SHORT, i});
+            ret.add(new Object[]{TypeKind.CHAR, i});
         }
         return ret;
     }
@@ -56,57 +60,45 @@ public class SubWordInputTest extends CustomizedBytecodePatternTest {
     private static final String GET = "get";
     private static final String WRAPPER = "wrapper";
 
-    private final JavaKind kind;
+    private final TypeKind kind;
     private final int value;
 
-    public SubWordInputTest(JavaKind kind, int value) {
+    public SubWordInputTest(TypeKind kind, int value) {
         this.kind = kind;
         this.value = value;
     }
 
     @Test
     public void testSubWordInput() throws ClassNotFoundException {
-        Class<?> testClass = getClass(SubWordInputTest.class.getName() + "$" + kind.toString() + "Getter");
+        Class<?> testClass = getClass(SubWordInputTest.class.getName() + "$" + kind.toString().toLowerCase() + "Getter");
         ResolvedJavaMethod wrapper = getResolvedJavaMethod(testClass, WRAPPER);
         Result expected = executeExpected(wrapper, null, value);
         // test standalone callee
         getCode(getResolvedJavaMethod(testClass, GET), null, false, true, getInitialOptions());
         assertEquals(executeExpected(wrapper, null, value), expected);
         // test with inlining
-        testAgainstExpected(wrapper, expected, Collections.<DeoptimizationReason> emptySet(), null, value);
+        testAgainstExpected(wrapper, expected, null, new Object[]{value});
     }
 
     @Override
-    protected byte[] generateClass(String internalClassName) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
+    public byte[] generateClass(String className) {
+        ClassDesc thisClass = ClassDesc.of(className);
+        ClassDesc targetType = kind.upperBound();
+        MethodTypeDesc getMethodTypeDesc = MethodTypeDesc.of(targetType, targetType);
 
-        final char typeChar = kind.getTypeChar();
-
-        // Generates a method that returns the input subword immediately.
-        String getDescriptor = "(" + typeChar + ")" + typeChar;
-        MethodVisitor get = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, GET, getDescriptor, null, null);
-        get.visitCode();
-        get.visitVarInsn(ILOAD, 0);
-        get.visitInsn(IRETURN);
-        get.visitMaxs(1, 1);
-        get.visitEnd();
-
-        // Genearates a method that compares the return value of the preceding method by passing the
-        // input value, and a manual masking of the input value.
-        MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, WRAPPER, "(I)Z", null, null);
-        snippet.visitCode();
-        snippet.visitVarInsn(ILOAD, 0);
-        snippet.visitMethodInsn(INVOKESTATIC, internalClassName, GET, getDescriptor, false);
-
-        snippet.visitVarInsn(ILOAD, 0);
-        SubWordTestUtil.convertToKind(snippet, kind);
-        SubWordTestUtil.testEqual(snippet);
-
-        snippet.visitMaxs(2, 1);
-        snippet.visitEnd();
-
-        cw.visitEnd();
-        return cw.toByteArray();
+        // @formatter:off
+        return ClassFile.of().build(thisClass, classBuilder -> classBuilder
+                        .withMethodBody(GET, getMethodTypeDesc, ACC_PUBLIC_STATIC, b -> b
+                                        .iload(0)
+                                        .ireturn())
+                        .withMethodBody(WRAPPER, MethodTypeDesc.of(CD_boolean, CD_int), ACC_PUBLIC_STATIC, b -> b
+                                        .iload(0)
+                                        .invokestatic(thisClass, GET, getMethodTypeDesc)
+                                        .iload(0)
+                                        .conversion(TypeKind.INT, kind)
+                                        .ifThenElse(Opcode.IF_ICMPEQ,
+                                                        thenBlock -> thenBlock.iconst_1().ireturn(),
+                                                        elseBlock -> elseBlock.iconst_0().ireturn())));
+        // @formatter:on
     }
 }

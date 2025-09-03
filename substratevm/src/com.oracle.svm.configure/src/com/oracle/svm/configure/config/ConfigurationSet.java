@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,9 +33,8 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonPrintable;
@@ -51,41 +47,41 @@ public class ConfigurationSet {
     }
 
     private final TypeConfiguration reflectionConfiguration;
-    private final TypeConfiguration jniConfiguration;
     private final ResourceConfiguration resourceConfiguration;
     private final ProxyConfiguration proxyConfiguration;
     private final SerializationConfiguration serializationConfiguration;
     private final PredefinedClassesConfiguration predefinedClassesConfiguration;
+    private final ForeignConfiguration foreignConfiguration;
 
-    public ConfigurationSet(TypeConfiguration reflectionConfiguration, TypeConfiguration jniConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
-                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration) {
+    public ConfigurationSet(TypeConfiguration reflectionConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
+                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration, ForeignConfiguration foreignConfiguration) {
         this.reflectionConfiguration = reflectionConfiguration;
-        this.jniConfiguration = jniConfiguration;
         this.resourceConfiguration = resourceConfiguration;
         this.proxyConfiguration = proxyConfiguration;
         this.serializationConfiguration = serializationConfiguration;
         this.predefinedClassesConfiguration = predefinedClassesConfiguration;
+        this.foreignConfiguration = foreignConfiguration;
     }
 
     public ConfigurationSet(ConfigurationSet other) {
-        this(other.reflectionConfiguration.copy(), other.jniConfiguration.copy(), other.resourceConfiguration.copy(), other.proxyConfiguration.copy(), other.serializationConfiguration.copy(),
-                        other.predefinedClassesConfiguration.copy());
+        this(other.reflectionConfiguration.copy(), other.resourceConfiguration.copy(), other.proxyConfiguration.copy(), other.serializationConfiguration.copy(),
+                        other.predefinedClassesConfiguration.copy(), other.foreignConfiguration.copy());
     }
 
     @SuppressWarnings("unchecked")
     public ConfigurationSet() {
-        this(new TypeConfiguration(REFLECTION_KEY), new TypeConfiguration(JNI_KEY), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false));
+        this(new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
+                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false), new ForeignConfiguration());
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
         TypeConfiguration reflectionConfig = mutator.apply(this.reflectionConfiguration, other.reflectionConfiguration);
-        TypeConfiguration jniConfig = mutator.apply(this.jniConfiguration, other.jniConfiguration);
         ResourceConfiguration resourceConfig = mutator.apply(this.resourceConfiguration, other.resourceConfiguration);
         ProxyConfiguration proxyConfig = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
         SerializationConfiguration serializationConfig = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
         PredefinedClassesConfiguration predefinedClassesConfig = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
-        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        ForeignConfiguration foreignConfig = mutator.apply(this.foreignConfiguration, other.foreignConfiguration);
+        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, foreignConfig);
     }
 
     public ConfigurationSet copyAndMerge(ConfigurationSet other) {
@@ -102,20 +98,16 @@ public class ConfigurationSet {
 
     public ConfigurationSet filter(ConditionalConfigurationPredicate filter) {
         TypeConfiguration reflectionConfig = this.reflectionConfiguration.copyAndFilter(filter);
-        TypeConfiguration jniConfig = this.jniConfiguration.copyAndFilter(filter);
         ResourceConfiguration resourceConfig = this.resourceConfiguration.copyAndFilter(filter);
         ProxyConfiguration proxyConfig = this.proxyConfiguration.copyAndFilter(filter);
         SerializationConfiguration serializationConfig = this.serializationConfiguration.copyAndFilter(filter);
         PredefinedClassesConfiguration predefinedClassesConfig = this.predefinedClassesConfiguration.copyAndFilter(filter);
-        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        ForeignConfiguration foreignConfig = this.foreignConfiguration.copyAndFilter(filter);
+        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, foreignConfig);
     }
 
     public TypeConfiguration getReflectionConfiguration() {
         return reflectionConfiguration;
-    }
-
-    public TypeConfiguration getJniConfiguration() {
-        return jniConfiguration;
     }
 
     public ResourceConfiguration getResourceConfiguration() {
@@ -134,6 +126,10 @@ public class ConfigurationSet {
         return predefinedClassesConfiguration;
     }
 
+    public ForeignConfiguration getForeignConfiguration() {
+        return foreignConfiguration;
+    }
+
     @SuppressWarnings("unchecked")
     public <T extends ConfigurationBase<T, ?>> T getConfiguration(ConfigurationFile configurationFile) {
         switch (configurationFile) {
@@ -141,16 +137,17 @@ public class ConfigurationSet {
                 return (T) proxyConfiguration;
             case RESOURCES:
                 return (T) resourceConfiguration;
-            case JNI:
-                return (T) jniConfiguration;
             case REFLECTION:
+            case JNI:
                 return (T) reflectionConfiguration;
             case SERIALIZATION:
                 return (T) serializationConfiguration;
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
+            case FOREIGN:
+                return (T) foreignConfiguration;
             default:
-                throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
+                throw new IllegalArgumentException("Unsupported configuration in configuration container: " + configurationFile);
         }
     }
 
@@ -164,7 +161,6 @@ public class ConfigurationSet {
         for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
             writtenFiles.add(path);
             JsonWriter writer = new JsonPrettyWriter(path);
-            writer.appendObjectStart();
             boolean first = true;
             for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
                 JsonPrintable configuration = configSupplier.apply(configFile);
@@ -185,24 +181,27 @@ public class ConfigurationSet {
                         continue;
                     }
                     if (first) {
+                        writer.appendObjectStart();
                         first = false;
                     } else {
                         writer.appendSeparator();
                     }
-                    if (!configFile.equals(ConfigurationFile.RESOURCES)) {
-                        /*
-                         * Resources are printed at the top level of the object, not in a defined
-                         * field
-                         */
-                        writer.quote(configFile.getFieldName()).appendFieldSeparator();
-                    }
-                    configSupplier.apply(configFile).printJson(writer);
+                    printConfigurationToCombinedFile(configSupplier.apply(configFile), configFile, writer);
                 }
             }
-            writer.appendObjectEnd();
+            if (first) {
+                writer.append("{}");
+            } else {
+                writer.appendObjectEnd();
+            }
             writer.close();
         }
         return writtenFiles;
+    }
+
+    public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
+        writer.quote(configFile.getFieldName()).appendFieldSeparator();
+        config.printJson(writer);
     }
 
     public List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver) throws IOException {
@@ -210,7 +209,7 @@ public class ConfigurationSet {
     }
 
     public boolean isEmpty() {
-        return reflectionConfiguration.isEmpty() && jniConfiguration.isEmpty() && resourceConfiguration.isEmpty() && proxyConfiguration.isEmpty() && serializationConfiguration.isEmpty() &&
+        return reflectionConfiguration.isEmpty() && resourceConfiguration.isEmpty() && proxyConfiguration.isEmpty() && serializationConfiguration.isEmpty() &&
                         predefinedClassesConfiguration.isEmpty();
     }
 }

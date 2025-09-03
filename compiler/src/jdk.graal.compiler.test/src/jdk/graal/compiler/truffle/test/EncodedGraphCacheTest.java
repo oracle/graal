@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,18 +128,18 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     }
 
     private static boolean encodedGraphCacheContains(TruffleCompilerImpl compiler, ResolvedJavaMethod method) {
-        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-        return cache.containsKey(method);
+        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache1 = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+        return cache1.containsKey(method);
     }
 
-    @SuppressWarnings("try")
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
         DebugContext debug = new DebugContext.Builder(compiler.getOrCreateCompilerOptions(target)).build();
-        try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
+        try (DebugContext.Scope _ = debug.scope("EncodedGraphCacheTest")) {
             TruffleCompilationTask task = newTask();
             try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
+                target.ensureInitialized();
                 getTruffleCompilerFromRuntime(target).compileAST(debug, target, compilation.getCompilationId(), task, null);
                 assertTrue(target.isValid());
             }
@@ -217,8 +217,8 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             boolean encodedGraphCache = true;
             testHelper(encodedGraphCache, 100_000, compiler -> {
                 runWithBooleanFlag(compiler, EncodedGraphCacheTest::disableEncodedGraphCachePurges, true, () -> {
-                    EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-                    nonEmptyGraphCache[0] = !cache.isEmpty();
+                    EconomicMap<?, ?> cache1 = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+                    nonEmptyGraphCache[0] = !cache1.isEmpty();
                 });
             });
         }

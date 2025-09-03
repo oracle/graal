@@ -32,7 +32,8 @@ import jdk.graal.compiler.jtt.JTTTest;
  */
 public class BC_invokevirtual01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
+        @SuppressWarnings("static-method")
         public boolean method() {
             return true;
         }

@@ -102,6 +102,6 @@ public class SubstrateDataBuilder extends DataBuilder {
     public int getMaxSupportedAlignment() {
         // See RuntimeCodeInstaller.prepareCodeMemory
         // Code and data are allocated in one go
-        return SubstrateOptions.codeAlignment();
+        return SubstrateOptions.runtimeCodeAlignment();
     }
 }

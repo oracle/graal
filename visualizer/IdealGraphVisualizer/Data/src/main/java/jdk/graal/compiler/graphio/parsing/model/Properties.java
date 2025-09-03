@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -208,7 +207,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
             }
         }
 
-        private class ArrayPropertiesIterator implements Iterator<Property<Object>> {
+        private final class ArrayPropertiesIterator implements Iterator<Property<Object>> {
             int index;
 
             @Override
@@ -494,7 +493,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
     }
 
     public Map<String, Object> toMap(Set<String> excludes, String... excludePrefixes) {
-        return toMap(new HashMap<>(), excludes, excludePrefixes);
+        return toMap(new LinkedHashMap<>(), excludes, excludePrefixes);
     }
 
     public boolean isEmpty() {
@@ -575,7 +574,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
         }
     }
 
-    private static class PropertyCache {
+    private static final class PropertyCache {
         static final WeakHashMap</* Shared */ Properties, WeakReference<SharedProperties>> immutableCache = new WeakHashMap<>();
 
         static synchronized SharedProperties intern(Properties properties) {

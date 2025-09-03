@@ -1,0 +1,7 @@
+[[rule]]
+files = "*"
+all = [
+    "marko.spasic@oracle.com",
+    "peter.hofer@oracle.com",
+    "bernhard.urban-forster@oracle.com",
+]

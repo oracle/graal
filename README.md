@@ -9,7 +9,11 @@ The project website at [https://www.graalvm.org/][website] describes how to [get
 
 ## Documentation
 
-Please refer to the [GraalVM website for documentation][docs]. You can find most of the documentation sources in the [_docs/_](docs/) directory in the same hierarchy as displayed on the website. Additional documentation including developer instructions for individual components can be found in corresponding _docs/_ sub-directories. The documentation for the Truffle framework, for example, is in [_truffle/docs/_](truffle/docs/). This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
+Please refer to the [GraalVM website for documentation][docs].
+You can find most of the documentation sources in the [_docs/_](docs/) directory in the same hierarchy as displayed on the website.
+Additional documentation including developer instructions for individual components can be found in corresponding _docs/_ sub-directories.
+The documentation for the Truffle framework, for example, is in [_truffle/docs/_](truffle/docs/).
+This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
 
 ## Get Support
 
@@ -46,11 +50,20 @@ Name         | Description
 [FastR] | Implementation of the R language.
 [GraalJS] | Implementation of JavaScript and Node.js.
 [GraalPy] | Implementation of the Python language.
-[GraalVM Demos][graalvm-demos] | Several example applications illustrating GraalVM capabilities.
 [Native Build Tools][native-build-tools] | Build tool plugins for GraalVM Native Image.
 [SimpleLanguage] | A simple example language built with the Truffle framework.
-[SimpleTool] | A simple example tool built with the Truffle framework. 
+[SimpleTool] | A simple example tool built with the Truffle framework.
 [TruffleRuby] | Implementation of the Ruby language.
+
+## Examples and Tutorials
+
+Explore practical examples, deep-dive workshops, and language-specific demos for working with GraalVM.
+
+Name         | Description
+------------ | -------------
+[GraalVM Demos][graalvm-demos] | Example applications highlighting GraalVM key features and best practices.
+[GraalVM Workshops and Tutorials][graalvm-workshops] | Workshops and tutorials to help you learn and apply GraalVM tools and capabilities.
+[Graal Languages - Demos and Guides][graal-languages-demos] | Demo applications and guides for GraalJS, GraalPy, GraalWasm, and other Graal Languages.
 
 ## License
 
@@ -81,6 +94,8 @@ Component(s) | License
 [graaljs]: https://github.com/oracle/graaljs
 [graalpy]: https://github.com/oracle/graalpython
 [graalvm-demos]: https://github.com/graalvm/graalvm-demos
+[graal-languages-demos]: https://github.com/graalvm/graal-languages-demos/
+[graalvm-workshops]: https://github.com/graalvm/workshops
 [graalvm-sdk]: https://www.graalvm.org/sdk/javadoc/
 [igv]: https://www.graalvm.org/latest/tools/igv/
 [issues]: https://github.com/oracle/graal/issues

@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import org.junit.Assert;
 import org.junit.Assume;
 
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
@@ -72,7 +72,7 @@ public class StringSubstitutionTestBase extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethod.getName());
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null) {
             assertInGraph(graph, expectedNode);
         }

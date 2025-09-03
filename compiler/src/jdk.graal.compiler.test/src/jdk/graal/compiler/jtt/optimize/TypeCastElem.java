@@ -24,8 +24,9 @@
  */
 package jdk.graal.compiler.jtt.optimize;
 
-import jdk.graal.compiler.jtt.JTTTest;
 import org.junit.Test;
+
+import jdk.graal.compiler.jtt.JTTTest;
 
 /*
  */
@@ -108,6 +109,7 @@ public class TypeCastElem extends JTTTest {
         return 3;
     }
 
+    @SuppressWarnings("cast")
     public static int test2(Object o) {
         Object b = o;
         if (o instanceof ClassB) {

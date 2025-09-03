@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
+import static com.oracle.svm.configure.ConditionalConfigurationParser.CONDITIONAL_KEY;
+import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
 import java.io.IOException;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 

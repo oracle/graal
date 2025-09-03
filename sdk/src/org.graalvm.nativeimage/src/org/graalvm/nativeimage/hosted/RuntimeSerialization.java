@@ -81,7 +81,9 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
-        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), classes);
+        for (Class<?> clazz : classes) {
+            RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
+        }
     }
 
     /**
@@ -92,11 +94,16 @@ public final class RuntimeSerialization {
      * {@code ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)}
      * where the passed `constructorToCall` differs from what would automatically be used if regular
      * deserialization of `cl` would happen. This method exists to also support such usecases.
+     * 
+     * @deprecated Use {@link #register(Class[])} instead. All possible custom constructors will be
+     *             registered automatically.
      *
      * @since 21.3
      */
+    @Deprecated(since = "24.2")
+    @SuppressWarnings("unused")
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        RuntimeSerializationSupport.singleton().registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
+        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
     }
 
     /**

@@ -35,6 +35,10 @@ public final class VM {
     public final String vendorUrl;
     public final String vendorVersion;
 
+    /* Preformatted version strings based on the values above. */
+    public final String formattedVmVersion;
+    public final String formattedJdkVersion;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public VM(String vmInfo) {
         info = vmInfo;
@@ -42,6 +46,9 @@ public final class VM {
         vendor = getVendor();
         vendorUrl = getVendorUrl();
         vendorVersion = getVendorVersion();
+
+        formattedVmVersion = vendorVersion + " (" + info + ")";
+        formattedJdkVersion = "JDK " + version;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

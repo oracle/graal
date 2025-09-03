@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
@@ -33,6 +32,7 @@ import java.util.Map;
 import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.jvmti.JvmtiPhase;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -59,11 +58,11 @@ final class AgentLibraries extends ContextAccessImpl {
         super(context);
     }
 
-    TruffleObject bind(Method method, String mangledName) {
+    TruffleObject lookupSymbol(String mangledName) {
         for (AgentLibrary agent : agents) {
-            TruffleObject bound = method.lookupAndBind(agent.lib, mangledName);
-            if (bound != null) {
-                return bound;
+            TruffleObject symbol = getNativeAccess().lookupSymbol(agent.lib, mangledName);
+            if (symbol != null) {
+                return symbol;
             }
         }
         return null;
@@ -128,8 +127,15 @@ final class AgentLibraries extends ContextAccessImpl {
         }
         agent.lib = library;
 
-        TruffleObject onLoad = getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE);
-        return onLoad;
+        return getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE, true, true);
+    }
+
+    public void noSupportWarning(TruffleLogger logger) {
+        assert !agents.isEmpty();
+        logger.warning("Native agent support is currently disabled in Espresso.");
+        for (AgentLibrary agent : agents) {
+            logger.warning("Ignoring passed native agent: " + agent.name);
+        }
     }
 
     private static class AgentLibrary {
@@ -146,6 +152,5 @@ final class AgentLibraries extends ContextAccessImpl {
             this.options = options;
             this.isAbsolutePath = isAbsolutePath;
         }
-
     }
 }

@@ -32,9 +32,6 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
@@ -43,6 +40,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.hosted.image.LLVMToolchain;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 
 public class LLVMToolchainUtils {
     public static void llvmOptimize(DebugContext debug, String outputPath, String inputPath, Path basePath, Function<String, String> outputPathFormat) {
@@ -78,7 +78,7 @@ public class LLVMToolchainUtils {
             LLVMToolchain.runLLVMCommand("opt", basePath, args);
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
-            throw new GraalError("LLVM optimization failed for " + outputPathFormat.apply(inputPath) + ": " + e.getStatus() + "\nCommand: opt " + String.join(" ", args));
+            throw new GraalError("LLVM optimization failed for " + outputPathFormat.apply(inputPath) + ": " + e.getStatus() + System.lineSeparator() + "Command: opt " + String.join(" ", args));
         }
     }
 
@@ -104,7 +104,7 @@ public class LLVMToolchainUtils {
             LLVMToolchain.runLLVMCommand("llc", basePath, args);
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
-            throw new GraalError("LLVM compilation failed for " + outputPathFormat.apply(inputPath) + ": " + e.getStatus() + "\nCommand: llc " + String.join(" ", args));
+            throw new GraalError("LLVM compilation failed for " + outputPathFormat.apply(inputPath) + ": " + e.getStatus() + System.lineSeparator() + "Command: llc " + String.join(" ", args));
         }
     }
 
@@ -162,7 +162,7 @@ public class LLVMToolchainUtils {
             LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
-            throw new GraalError("Removing stack maps failed for " + inputPath + ": " + e.getStatus() + "\nCommand: llvm-objcopy " + String.join(" ", args));
+            throw new GraalError("Removing stack maps failed for " + inputPath + ": " + e.getStatus() + System.lineSeparator() + "Command: llvm-objcopy " + String.join(" ", args));
         }
     }
 

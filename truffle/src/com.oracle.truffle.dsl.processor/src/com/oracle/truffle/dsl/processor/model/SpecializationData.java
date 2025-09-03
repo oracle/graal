@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.Element;
@@ -63,6 +64,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
+import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -94,9 +96,13 @@ public final class SpecializationData extends TemplateMethod {
     private final boolean reportPolymorphism;
     private final boolean reportMegamorphism;
 
+    private boolean excludeForUncached;
+
     private Double localActivationProbability;
 
     private boolean aotReachable;
+
+    private final List<SpecializationData> boxingOverloads = new ArrayList<>();
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
                     boolean reportPolymorphism, boolean reportMegamorphism) {
@@ -154,6 +160,30 @@ public final class SpecializationData extends TemplateMethod {
         return copy;
     }
 
+    public void setExcludeForUncached(Boolean value) {
+        this.excludeForUncached = value;
+    }
+
+    public boolean isExcludeForUncached() {
+        return excludeForUncached;
+    }
+
+    public List<TypeGuard> getImplicitTypeGuards() {
+        TypeSystemData typeSystem = getNode().getTypeSystem();
+        if (typeSystem.getImplicitCasts().isEmpty()) {
+            return List.of();
+        }
+        int signatureIndex = 0;
+        List<TypeGuard> implicitTypeChecks = new ArrayList<>();
+        for (Parameter p : getDynamicParameters()) {
+            if (typeSystem.hasImplicitSourceTypes(p.getType())) {
+                implicitTypeChecks.add(new TypeGuard(typeSystem, p.getType(), signatureIndex));
+            }
+            signatureIndex++;
+        }
+        return implicitTypeChecks;
+    }
+
     public boolean isNodeReceiverVariable(VariableElement var) {
         if (getNode().isGenerateInline()) {
             Parameter p = findByVariable(var);
@@ -166,7 +196,29 @@ public final class SpecializationData extends TemplateMethod {
         }
 
         String simpleString = var.getSimpleName().toString();
-        return (simpleString.equals("this") || simpleString.equals(NodeParser.NODE_KEYWORD)) && ElementUtils.typeEquals(var.asType(), types.Node);
+        return (simpleString.equals(NodeParser.SYMBOL_THIS) || simpleString.equals(NodeParser.SYMBOL_NODE)) && ElementUtils.typeEquals(var.asType(), types.Node);
+    }
+
+    public boolean isNodeReceiverBoundInAnyExpression() {
+        for (GuardExpression guard : getGuards()) {
+            if (isNodeReceiverBound(guard.getExpression())) {
+                return true;
+            }
+        }
+        for (CacheExpression cache : getCaches()) {
+            if (isNodeReceiverBound(cache.getDefaultExpression())) {
+                return true;
+            }
+        }
+        for (AssumptionExpression assumption : getAssumptionExpressions()) {
+            if (isNodeReceiverBound(assumption.getExpression())) {
+                return true;
+            }
+        }
+        if (isNodeReceiverBound(getLimitExpression())) {
+            return true;
+        }
+        return false;
     }
 
     public boolean isNodeReceiverBound(DSLExpression expression) {
@@ -276,6 +328,15 @@ public final class SpecializationData extends TemplateMethod {
 
     public SpecializationData getUncachedSpecialization() {
         return uncachedSpecialization;
+    }
+
+    public boolean hasFrameParameter() {
+        for (Parameter p : getSignatureParameters()) {
+            if (ElementUtils.typeEquals(p.getType(), types.VirtualFrame) || ElementUtils.typeEquals(p.getType(), types.Frame)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean needsVirtualFrame() {
@@ -617,82 +678,91 @@ public final class SpecializationData extends TemplateMethod {
         if (assumptionExpressions != null) {
             sinks.addAll(assumptionExpressions);
         }
+        sinks.addAll(getBoxingOverloads());
         return sinks;
     }
 
-    public boolean needsState(ProcessorContext context) {
-        if (needsRewrite(context)) {
-            /*
-             * If there is a rewrite we need at least one state bit. This covers most cases for
-             * state.
-             */
-            return true;
-        }
-        if (!getCaches().isEmpty()) {
-            for (CacheExpression cache : getCaches()) {
-                if (!cache.isAlwaysInitialized()) { // @Bind
-                    return true;
-                }
-                /*
-                 * This is reachable typically for inlined cached values. They do not require a
-                 * rewrite, but need state.
-                 */
-            }
-        }
-        return false;
-    }
-
-    public boolean needsRewrite(ProcessorContext context) {
-        if (!getExceptions().isEmpty()) {
-            return true;
-        }
-        if (!getGuards().isEmpty()) {
-            return true;
-        }
+    /**
+     * Returns <code>true</code> if this specialization needs lazy initialization of cached fields.
+     */
+    boolean needsSpecialize() {
         if (!getAssumptionExpressions().isEmpty()) {
             return true;
         }
+
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
-                if (cache.isEagerInitialize()) {
-                    continue;
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
                 if (cache.getInlinedNode() != null) {
-                    continue;
+                    continue; // @Cached but inlined so no init state needed
                 }
-                if (!cache.isAlwaysInitialized()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
             }
         }
 
-        int signatureIndex = 0;
-        for (Parameter parameter : getSignatureParameters()) {
-            for (ExecutableTypeData executableType : node.getExecutableTypes()) {
-                List<TypeMirror> evaluatedParameters = executableType.getEvaluatedParameters();
-                if (signatureIndex < evaluatedParameters.size()) {
-                    TypeMirror evaluatedParameterType = evaluatedParameters.get(signatureIndex);
-                    if (ElementUtils.needsCastTo(evaluatedParameterType, parameter.getType())) {
-                        return true;
-                    }
-                }
-            }
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
 
-            NodeChildData child = parameter.getSpecification().getExecution().getChild();
-            if (child != null) {
-                ExecutableTypeData type = child.findExecutableType(parameter.getType());
-                if (type == null) {
-                    type = child.findAnyGenericExecutableType(context);
+    boolean needsState() {
+        if (!getAssumptionExpressions().isEmpty()) {
+            return true;
+        }
+
+        if (!getCaches().isEmpty()) {
+            for (CacheExpression cache : getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
-                if (type.hasUnexpectedValue()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
-                if (ElementUtils.needsCastTo(type.getReturnType(), parameter.getType())) {
-                    return true;
-                }
             }
+        }
 
-            signatureIndex++;
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
+
+    private boolean isImplicitTypeGuardUsed(TypeGuard guard) {
+        int signatureIndex = guard.getSignatureIndex();
+        for (ExecutableTypeData executable : node.getExecutableTypes()) {
+            List<TypeMirror> parameters = executable.getSignatureParameters();
+            if (signatureIndex >= parameters.size()) {
+                // dynamically executed can be any type.
+                return true;
+            }
+            TypeMirror polymorphicParameter = parameters.get(signatureIndex);
+            TypeMirror specializationType = this.getSignatureParameters().get(signatureIndex).getType();
+            if (ElementUtils.needsCastTo(polymorphicParameter, specializationType)) {
+                return true;
+            }
         }
         return false;
     }
@@ -939,6 +1009,11 @@ public final class SpecializationData extends TemplateMethod {
         Iterator<GuardExpression> currentGuards = getGuards().iterator();
         while (prevGuards.hasNext()) {
             GuardExpression prevGuard = prevGuards.next();
+            if (prev.isGuardBoundWithCache(prevGuard)) {
+                // if a guard with cache is bound the next specialization is always reachable
+                return true;
+            }
+
             GuardExpression currentGuard = currentGuards.hasNext() ? currentGuards.next() : null;
             if (currentGuard == null || !currentGuard.implies(prevGuard)) {
                 return true;
@@ -1017,6 +1092,113 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+    }
+
+    public boolean isBoxingOverloadable(SpecializationData other) {
+        if (!ElementUtils.isPrimitive(other.getReturnType().getType()) && !ElementUtils.isVoid(other.getReturnType().getType())) {
+            return false;
+        }
+
+        List<Parameter> signature = getSignatureParameters();
+        List<Parameter> otherSignature = other.getSignatureParameters();
+        if (signature.size() != otherSignature.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < signature.size(); i++) {
+            Parameter parameter = signature.get(i);
+            Parameter otherParameter = otherSignature.get(i);
+            if (!ElementUtils.typeEquals(parameter.getType(), otherParameter.getType())) {
+                return false;
+            }
+        }
+        if (!Objects.equals(getLimitExpression(), other.getLimitExpression())) {
+            return false;
+        }
+        if (!hasSameGuards(other)) {
+            return false;
+        }
+        if (!hasSameCaches(other)) {
+            return false;
+        }
+        if (!hasSameAssumptions(other)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean hasSameGuards(SpecializationData other) {
+        if (this.guards.size() != other.guards.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < guards.size(); i++) {
+            GuardExpression guard = guards.get(i);
+            GuardExpression otherGuard = other.guards.get(i);
+            if (!guard.getExpression().equals(otherGuard.getExpression())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean hasSameCaches(SpecializationData other) {
+        if (this.caches.size() != other.caches.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < caches.size(); i++) {
+            CacheExpression cache = caches.get(i);
+            CacheExpression otherCache = other.caches.get(i);
+            if (!cache.isSameCache(otherCache)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean hasSameAssumptions(SpecializationData other) {
+        if (this.assumptionExpressions.size() != other.assumptionExpressions.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < assumptionExpressions.size(); i++) {
+            AssumptionExpression assumption = assumptionExpressions.get(i);
+            AssumptionExpression otherAssumptions = other.assumptionExpressions.get(i);
+            if (!assumption.getExpression().equals(otherAssumptions.getExpression())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public List<SpecializationData> getBoxingOverloads() {
+        return boxingOverloads;
+    }
+
+    public SpecializationData lookupBoxingOverload(ExecutableTypeData type) {
+        if (!type.hasUnexpectedValue()) {
+            return null;
+        }
+        for (SpecializationData specialization : getBoxingOverloads()) {
+            if (ElementUtils.typeEquals(specialization.getReturnType().getType(), type.getReturnType())) {
+                return specialization;
+            }
+        }
+        return null;
+    }
+
+    public TypeMirror lookupBoxingOverloadReturnType(ExecutableTypeData type) {
+        SpecializationData specializationData = lookupBoxingOverload(type);
+        if (specializationData == null) {
+            return getReturnType().getType();
+        } else {
+            return specializationData.getReturnType().getType();
+        }
+
     }
 
 }

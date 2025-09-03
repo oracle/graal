@@ -23,12 +23,12 @@ Providing the builder with correct and exhaustive reachability metadata guarante
 
 Metadata can be provided to the `native-image` builder in the following ways:
 - By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/\<group.Id>\/\<artifactId>\/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
-- For more advanced use cases, where classpath scanning or build-time initialization is needed, by using the [public API](#public-api).
+- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/&lt;group.Id&gt;/&lt;artifactId&gt;/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- For more advanced use cases, where classpath scanning or build-time initialization is needed.
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
-> To enable the new user-friendly reachability-metadata mode for your application pass the option `--exact-reachability-metadata` at build time. To enable the user-friendly mode only for concrete packages, pass `--exact-reachability-metadata=<comma-separated-list-of-packages>`.
+> To enable the new user-friendly reachability-metadata mode for your application, pass the option `--exact-reachability-metadata` at build time. To enable the user-friendly mode only for concrete packages, pass `--exact-reachability-metadata=<comma-separated-list-of-packages>`.
 > 
 > To get an overview of all places in your code where missing registrations occur, without committing to the exact behavior, you can pass `-XX:MissingRegistrationReportingMode=Warn` when starting the application.
 >
@@ -43,6 +43,7 @@ Metadata can be provided to the `native-image` builder in the following ways:
 * [Metadata Types](#metadata-types)
 * [Reflection (Including Dynamic Proxies)](#reflection)
 * [Java Native Interface](#java-native-interface)
+* [Foreign Function and Memory API](#foreign-function-and-memory-api)
 * [Resources](#resources)
 * [Resource Bundles](#resource-bundles)
 * [Serialization](#serialization)
@@ -123,17 +124,14 @@ Computing metadata in code can be achieved in two ways:
 ## Specifying Metadata with JSON
 
 All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
-The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json).
+The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json).
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).
 The _reachability-metadata.json_ configuration contains a single object with one field for each type of metadata. Each field in the top-level object contains an array of *metadata entries*:
 ```json
 {
   "reflection":[],
-  "resources":[],
-  "bundles":[],
-  "serialization":[],
-  "jni":[]
+  "resources":[]
 }
 ```
 
@@ -243,6 +241,40 @@ Metadata, for proxy classes, is in the form an ordered collection of interfaces 
   }
 }
 ```
+
+To provide metadata for a lambda class, the following metadata must be added to the `reflection` array in
+_reachability-metadata.json_
+
+```json
+{
+  "type": {
+    "lambda": {
+      "declaringClass": "FullyQualifiedLambdaDeclaringType",
+      "declaringMethod": {
+        "name": "declaringMethodName",
+        "parameterType": [
+          "FullyQualifiedParameterType1",
+          "...",
+          "FullyQualifiedParameterType2"
+        ]
+      },
+      "interfaces": [
+        "FullyQualifiedLambdaInterface1",
+        "...",
+        "FullyQualifiedLamdbaInterface2"
+      ]
+    }
+  }
+}
+```
+
+The `"declaringClass"` field specifies in which class, and the optional `"declaringMethod"` field specifies in which
+method the lambda is defined.
+If `"declaringMethod"` is not specified, the lambda class is searched through all methods of the specified declaring
+class.
+The `"interfaces"` field specifies which interfaces are implemented by the lambda class.
+Such a definition can match multiple lambda classes. If that is the case, the registration entry applies to all those
+classes.
 
 Invocation of methods above without the provided metadata will result in throwing `MissingReflectionRegistrationError` which extends `java.lang.Error` and
 should not be handled. Note that even if a type does not exist on the classpath, the methods above will throw a `MissingReflectionRegistrationError`.
@@ -377,12 +409,14 @@ jclass clazz = FindClass(env, "jni/accessed/Type");
 ```
 looks up the `jni.accessed.Type` class, which can then be used to instantiate `jni.accessed.Type`, invoke its methods or access its fields.
 
-The metadata entry for the above call can *only* be provided via _reachability-metadata.json_. Specify the `type` entry in the `jni` field:
+The metadata entry for the above call can *only* be provided via _reachability-metadata.json_. Specify
+the `jniAccessible` field in the `type` entry in the `reflection` section:
 ```json
 {
-  "jni":[
+  "reflection": [
     {
-      "type": "jni.accessed.Type"
+      "type": "jni.accessed.Type",
+      "jniAccessibleType": true
     }
   ]
 }
@@ -394,6 +428,7 @@ To access field values, we need to provide field names:
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "fields": [{"name": "value"}]
 }
 ```
@@ -401,6 +436,7 @@ To access all fields one can use the following attributes:
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "allDeclaredFields": true,
   "allPublicFields": true
 }
@@ -411,6 +447,7 @@ To call Java methods from JNI, we must provide metadata for the method signature
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "methods": [
     {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
     {"name": "<methodName2>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
@@ -421,6 +458,7 @@ As a convenience, one can allow method invocation for groups of methods by addin
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "allDeclaredConstructors": true,
   "allPublicConstructors": true,
   "allDeclaredMethods": true,
@@ -430,7 +468,8 @@ As a convenience, one can allow method invocation for groups of methods by addin
 `allDeclaredConstructors` and `allDeclaredMethods` allow calls invocations of methods declared on a given type.
 `allPublicConstructors` and `allPublicMethods` allow invocations of all public methods defined on a type and all of its supertypes.
 
-To allocate objects of a type with `AllocObject`, the metadata must be stored in the `reflection` section:
+To allocate objects of a type with `AllocObject`, the `unsafeAllocated` field must be set, but the `jniAccessible` field
+is not required:
 ```json
 {
   "reflection": [
@@ -445,6 +484,19 @@ To allocate objects of a type with `AllocObject`, the metadata must be stored in
 Failing to provide metadata for an element that is dynamically accessed from native code will result in an exception (`MissingJNIRegistrationError`).
 
 > Note that most libraries that use JNI do not handle exceptions properly, so to see which elements are missing `--exact-reachability-metadata` in combination with `-XX:MissingRegistrationReportingMode=Warn` must be used.   
+
+## Foreign Function and Memory API
+
+The [Foreign Function and Memory (FFM) API](FFM-API.md) is an interface that enables Java code to interact with native code and vice versa.
+
+In particular, it allows you to create _downcall handles_ and _upcall stubs_.
+* A downcall handle is a method handle that refers to a native function. Invoking it results in a call to the native function.
+* An upcall stub is executable code generated at run time that can be passed as a function pointer to native code. Calling this function pointer results in the execution of a Java method handle.
+
+To perform downcalls or upcalls at run time, supporting code must be generated at image build time.
+Therefore, the `native-image` builder must be provided with descriptors that characterize the functions with which downcalls or upcalls can be performed at run time.
+
+If the necessary metadata is not provided, a `MissingForeignRegistrationError` will be thrown at run time.
 
 ## Resources
 
@@ -557,13 +609,13 @@ For each registered resource you get:
 Java localization support (`java.util.ResourceBundle`) enables to load L10N resources and show messages localized for a specific _locale_.
 Native Image needs knowledge of the resource bundles that your application uses so that it can include appropriate resources and program elements to the application.
 
-A simple bundle can be specified in the `bundles` section of _reachability-metadata.json_:
+A simple bundle can be specified in the `resources` section of _reachability-metadata.json_:
 
 ```json
 {
-  "bundles": [
+  "resources": [
     {
-      "name":"your.pkg.Bundle"
+      "bundle": "your.pkg.Bundle"
     }
   ]
 }
@@ -572,26 +624,16 @@ A simple bundle can be specified in the `bundles` section of _reachability-metad
 To request a bundle from a specific module:
 ```json
 {
-  "bundles": [
+  "resources": [
     {
-      "name":"app.module:module.pkg.Bundle"
+      "module": "app.module"
+      "bundle": "your.pkg.Bundle"
     }
   ]
 }
 ```
 
-By default, resource bundles are included for all locales that are [included into the image](#locales). 
-Below is the example how to include only specific locales for a bundle:
-```json
-{
-  "bundles": [
-    {
-      "name": "specific.locales.Bundle",
-      "locales": ["en", "de", "sk"]
-    }
-  ]
-}
-```
+Resource bundles are included for all locales that are [included into the image](#locales).
 
 ### Locales
 
@@ -640,14 +682,15 @@ To create a custom constructor for serialization use:
 Proxy classes can only be registered for serialization via the JSON files. 
 
 ### Serialization Metadata in JSON
-Serialization metadata is specified in the `serialization` section of _reachability-metadata.json_.
+Serialization metadata is specified in the `reflection` section of _reachability-metadata.json_.
  
 To specify a regular `serialized.Type` use 
 ```json
 {
-  "serialization": [
+  "reflection": [
     {
-      "type": "serialized.Type"
+      "type": "serialized.Type",
+      "serializable": true
     }
   ]
 }
@@ -656,10 +699,11 @@ To specify a regular `serialized.Type` use
 To specify a proxy class for serialization, use the following entry:
 ```json 
 {
-  "serialization": [
+  "reflection": [
     {
       "type": {
-        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"]
+        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"],
+        "serializable": true
       }
     }
   ]
@@ -670,21 +714,9 @@ In rare cases an application might explicitly make calls to:
 ```java
     ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall);
 ```
-In which the passed `constructorToCall` differs from what would automatically be used if regular serialization of `cl`.
-
-To also support such serialization use cases, it is possible to register serialization for a class with a
-custom `constructorToCall`.
-For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$hadoopFile$1`, use the declared constructor of `java.lang.Object` as a custom `targetConstructor`, use:
-```json
-{
-  "serialization": [
-    {
-      "type": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
-    }
-  ]
-}
-```
+The specified `constructorToCall` differs from the one that would be automatically used during regular serialization of `cl`.
+When a class is registered for run-time serialization, all potential custom constructors are automatically registered.
+As a result, this use case does not require any additional metadata.
 
 ## Sample Reachability Metadata
 
@@ -712,7 +744,8 @@ See below is a sample reachability metadata configuration that you can use in _r
       "allPublicFields": true,
       "allDeclaredMethods": true,
       "allPublicMethods": true,
-      "unsafeAllocated": true
+      "unsafeAllocated": true,
+      "serializable": true
     }
   ],
   "jni": [
@@ -741,20 +774,33 @@ See below is a sample reachability metadata configuration that you can use in _r
     {
       "module": "optional.module.of.a.resource",
       "glob": "path1/level*/**"
+    },
+    {
+      "bundle": "fully.qualified.bundle.name"
     }
   ],
-  "bundles": [
-    {
-      "name": "fully.qualified.bundle.name",
-      "locales": ["en", "de", "other_optional_locales"]
-    }
-  ],
-  "serialization": [
-    {
-      "type": "serialized.Type",
-      "customTargetConstructorClass": "optional.serialized.super.Type"
-    }
-  ]
+  "foreign": {
+    "downcalls": [
+      {
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ],
+    "upcalls": [
+      {
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ],
+    "directUpcalls": [
+      {
+        "class": "org.example.SomeClass",
+        "method": "method1",
+        "returnType": "<return-type>",
+        "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
+      }
+    ]
+  }
 }
 ```
 

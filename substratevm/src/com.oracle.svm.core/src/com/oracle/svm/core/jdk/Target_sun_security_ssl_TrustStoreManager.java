@@ -32,13 +32,14 @@ import java.util.Set;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -89,13 +90,15 @@ final class TrustStoreManagerFeature implements InternalFeature {
          */
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtBuildTime("sun.security.util.UntrustedCertificates", "Required for TrustStoreManager");
-        /*
-         * All security providers must be registered (and initialized) at buildtime (see
-         * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from
-         * certificate files while generating X509Certificates.
-         */
-        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for TrustStoreManager");
-        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI$ProviderService", "Required for TrustStoreManager");
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+            /*
+             * All security providers must be registered (and initialized) at buildtime (see
+             * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from
+             * certificate files while generating X509Certificates.
+             */
+            rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for TrustStoreManager");
+            rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI$ProviderService", "Required for TrustStoreManager");
+        }
     }
 }
 

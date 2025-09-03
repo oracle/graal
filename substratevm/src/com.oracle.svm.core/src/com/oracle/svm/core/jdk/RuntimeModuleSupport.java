@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.Function;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * Runtime module support singleton, containing the runtime boot module layer. The boot module layer
@@ -42,17 +46,15 @@ import com.oracle.svm.core.heap.UnknownObjectField;
  * counterpart. The lookup function is implemented inside the module layer synthesis feature. See
  * {@code ModuleLayerFeature} for more information.
  */
+@AutomaticallyRegisteredImageSingleton(onlyWith = LastImageBuildPredicate.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
 public final class RuntimeModuleSupport {
-
-    public static RuntimeModuleSupport instance() {
+    public static RuntimeModuleSupport singleton() {
         return ImageSingletons.lookup(RuntimeModuleSupport.class);
     }
 
     @UnknownObjectField(availability = AfterHostedUniverse.class) //
     private ModuleLayer bootLayer;
-
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private Function<Module, Module> hostedToRuntimeModuleMapper;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     public void setBootLayer(ModuleLayer bootLayer) {
@@ -62,14 +64,4 @@ public final class RuntimeModuleSupport {
     public ModuleLayer getBootLayer() {
         return bootLayer;
     }
-
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    public void setHostedToRuntimeModuleMapper(Function<Module, Module> hostedToRuntimeModuleMapper) {
-        this.hostedToRuntimeModuleMapper = hostedToRuntimeModuleMapper;
-    }
-
-    public Module getRuntimeModuleForHostedModule(Module hostedModule) {
-        return hostedToRuntimeModuleMapper.apply(hostedModule);
-    }
-
 }

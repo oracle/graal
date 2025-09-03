@@ -72,6 +72,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         if (!SubstrateOptions.PreserveFramePointer.getValue() && !fromMethodWithCalleeSavedRegisters) {
             /* No need to restore anything in the frame of the new stack pointer. */
             masm.movq(AMD64.rsp, asRegister(sp));
+            masm.movq(masm.makeAddress(AMD64.rsp, -FrameAccess.returnAddressSize()), asRegister(ip));
             masm.jmp(asRegister(ip));
             return;
         }
