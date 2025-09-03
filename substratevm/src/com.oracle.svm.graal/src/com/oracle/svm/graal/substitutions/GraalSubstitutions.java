@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -371,6 +372,15 @@ final class Target_jdk_vm_ci_code_TargetDescription {
             receiver.inlineObjectsValue = value;
         }
     }
+}
+
+@TargetClass(className = "jdk.graal.compiler.graphio.GraphProtocol")
+final class Target_jdk_graal_compiler_graphio_GraphProtocol {
+
+    /** GraphProtocol.badToString can capture hosted only types such as ImageHeapInstance. */
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Set<Class<?>> badToString;
 }
 
 /** Dummy class to have a class with the file's name. Do not remove. */
