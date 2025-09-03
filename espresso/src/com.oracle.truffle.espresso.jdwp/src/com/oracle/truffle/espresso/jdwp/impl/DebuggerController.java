@@ -899,6 +899,8 @@ public final class DebuggerController {
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
+        private final ThreadLocal<SuspendedLine> lastSuspendedLine = new ThreadLocal<>();
+
         @Override
         public void onSuspend(SuspendedEvent event) {
             Thread hostThread = Thread.currentThread();
@@ -914,6 +916,7 @@ public final class DebuggerController {
             Object currentThread = getContext().asGuestThread(hostThread);
             fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 
+            SuspendedLine suspendedLine = null;
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
             if (steppingInfo != null) {
                 if (steppingInfo.isForceEarlyReturn()) {
@@ -927,10 +930,12 @@ public final class DebuggerController {
                 if (callFrames.length > 0) {
                     callFrame = callFrames[0];
                 }
+                suspendedLine = getSuspendedLine(callFrame);
                 EventInfo eventInfo = callFrame != null ? new EventInfo.Frame(context, callFrame, currentThread) : null;
-                if (checkExclusionFilters(steppingInfo, event, eventInfo)) {
+                if (isOnPreviousLine(suspendedLine) || checkExclusionFilters(steppingInfo, eventInfo)) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
+                    continueStepping(event, steppingInfo);
                     RequestFilter requestFilter = eventFilters.getRequestFilter(steppingInfo.getRequestId());
                     if (requestFilter != null && requestFilter.isActive()) {
                         commandRequestIds.put(currentThread, steppingInfo);
@@ -975,8 +980,33 @@ public final class DebuggerController {
             if (result.skipSuspend) {
                 return;
             }
+            if (suspendedLine == null && callFrames.length > 0) {
+                suspendedLine = getSuspendedLine(callFrames[0]);
+            }
+            lastSuspendedLine.set(suspendedLine);
             // now, suspend the current thread until resumed by e.g. a debugger command
             suspend(currentThread, result.suspendPolicy, jobs, result.breakpointHit || event.isStep() || event.isUnwind());
+        }
+
+        private static SuspendedLine getSuspendedLine(CallFrame callFrame) {
+            if (callFrame == null) {
+                return null;
+            }
+            long bci = callFrame.getCodeIndex();
+            int line = callFrame.getMethod().bciToLineNumber((int) bci);
+            if (line >= 0) {
+                return new SuspendedLine(callFrame.getMethodId(), line);
+            } else {
+                return null;
+            }
+        }
+
+        private boolean isOnPreviousLine(SuspendedLine currentLine) {
+            if (currentLine != null) {
+                return currentLine.equals(lastSuspendedLine.get());
+            } else {
+                return false;
+            }
         }
 
         private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, SuspendedInfo suspendedInfo, Object currentThread, CallFrame[] callFrames) {
@@ -1086,10 +1116,9 @@ public final class DebuggerController {
             return new BreakpointHitResult(hit, suspendPolicy, false);
         }
 
-        private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, EventInfo eventInfo) {
+        private boolean checkExclusionFilters(SteppingInfo info, EventInfo eventInfo) {
             if (info != null) {
                 if (isSingleSteppingSuspended()) {
-                    continueStepping(event, info);
                     return true;
                 }
                 if (eventInfo == null) {
@@ -1101,7 +1130,6 @@ public final class DebuggerController {
                     // we're currently stepping, so check if suspension point
                     // matches any exclusion filters
                     if (!requestFilter.isHit(eventInfo)) {
-                        continueStepping(event, info);
                         return true;
                     }
                 }
@@ -1189,6 +1217,9 @@ public final class DebuggerController {
                 this.suspendPolicy = suspendPolicy;
                 this.skipSuspend = skipSuspend;
             }
+        }
+
+        private static record SuspendedLine(long methodId, int line) {
         }
     }
 
