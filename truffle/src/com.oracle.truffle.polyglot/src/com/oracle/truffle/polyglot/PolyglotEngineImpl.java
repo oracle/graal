@@ -1366,6 +1366,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         synchronized (this.lock) {
             closed = true;
+            // We want to flush as early as possible to make sure we start cancelling fast.
+            // this also makes sure we are no longer accepting any compilations from this engine
+            if (runtimeData != null) {
+                EngineAccessor.RUNTIME.shutdownCompilationForEngine(runtimeData);
+            }
             closingThread = null;
             this.lock.notifyAll();
             if (!activeSystemThreads.isEmpty()) {
@@ -1409,10 +1414,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
 
             polyglotHostService.notifyEngineClosed(this, force);
-
-            if (runtimeData != null) {
-                EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
-            }
             getAPIAccess().engineClosed(weakAPI);
         }
     }

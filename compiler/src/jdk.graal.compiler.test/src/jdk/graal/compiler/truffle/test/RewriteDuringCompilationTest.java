@@ -195,7 +195,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
                     throws IOException, InterruptedException, ExecutionException {
         // DetectInvalidCodeNode.invalidTwice does not work with multi-tier
         // code can remain active of another tier with local invalidation.
-        setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.MultiTier", "false"), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.MultiTier", "false").option("engine.MaximumCompilations", "-1"), new ProxyLanguage() {
             private CallTarget target;
 
             @Override

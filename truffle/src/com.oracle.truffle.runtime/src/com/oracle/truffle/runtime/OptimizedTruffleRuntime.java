@@ -42,6 +42,7 @@ package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
+import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
@@ -842,10 +843,25 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     private void shutdown() {
+        flushCompilations(null);
         getListener().onShutdown();
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {
             tcp.shutdown();
+        }
+    }
+
+    public final void shutdownCompilationForEngine(EngineData engine) {
+        Objects.requireNonNull(engine);
+        engine.ensureClosed();
+        flushCompilations(engine);
+    }
+
+    public void flushCompilations(EngineData engine) {
+        BackgroundCompileQueue queue = getCompileQueue();
+        // compile queue might be null if no call target was yet created
+        if (queue != null) {
+            queue.flush(engine);
         }
     }
 
@@ -1063,6 +1079,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // The logger can be null if the engine is closed.
         if (logger != null) {
             logger.log(Level.INFO, message);
+        } else {
+            /*
+             * If you need to debug an issue with suppressed log messages enable this option.
+             */
+            if (Boolean.getBoolean("truffle.PrintSuppressedLogMessages")) {
+                // avoid findbugs warning, this is just a debug feature
+                PrintStream out = System.out;
+                out.println("Suppressed log [" + loggerId + "] " + message);
+            }
         }
     }
 
@@ -1491,4 +1516,5 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected CompilationActivityMode getCompilationActivityMode() {
         return CompilationActivityMode.RUN_COMPILATION;
     }
+
 }
