@@ -38,7 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Weekly Spring Tests
+name: Weekly Spring Tests (--future-defaults=all)
 
 on:
   pull_request:
@@ -52,3 +52,5 @@ on:
 jobs:
   call-template:
     uses: './.github/workflows/spring-template.yml'
+    with:
+      NATIVE_IMAGE_OPTIONS: '--future-defaults=all'
