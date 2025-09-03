@@ -303,9 +303,7 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @TruffleBoundary
-    protected static boolean putUncached(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags) {
-        Shape s = object.getShape();
-        Property existingProperty = s.getProperty(key);
+    protected static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
         if (existingProperty == null && Flags.isSetExisting(putFlags)) {
             return false;
         }
@@ -313,11 +311,12 @@ abstract class DynamicObjectLibraryImpl {
             getLocation(existingProperty).setSafe(object, value, false, false);
             return true;
         } else {
-            return putUncachedSlow(object, key, value, newPropertyFlags, putFlags);
+            return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
         }
     }
 
-    private static boolean putUncachedSlow(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags) {
+    private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
+                    Shape initialShape, Property propertyOfInitialShape) {
         CompilerAsserts.neverPartOfCompilation();
         updateShapeImpl(object);
         Shape oldShape;
@@ -326,7 +325,11 @@ abstract class DynamicObjectLibraryImpl {
         Property property;
         do {
             oldShape = object.getShape();
-            existingProperty = oldShape.getProperty(key);
+            if (oldShape == initialShape) {
+                existingProperty = propertyOfInitialShape;
+            } else {
+                existingProperty = oldShape.getProperty(key);
+            }
             if (existingProperty == null) {
                 if (Flags.isSetExisting(putFlags)) {
                     return false;
@@ -720,7 +723,7 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, int propertyFlags, int putFlags) {
-            return putUncached(object, key, value, propertyFlags, putFlags);
+            return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, cachedShape.getProperty(key));
         }
 
         @Override
@@ -1297,7 +1300,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return putUncached(object, key, value, propertyFlags, putFlags);
+                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1335,7 +1338,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return putUncached(object, key, value, propertyFlags, putFlags);
+                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1403,7 +1406,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return putUncached(object, key, value, propertyFlags, putFlags);
+                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1452,7 +1455,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return putUncached(object, key, value, propertyFlags, putFlags);
+                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {

@@ -1354,7 +1354,7 @@ final class TStringInternalNodes {
         final boolean isUTF16Or32;
 
         IndexOfCodePointSetNode(IndexOfCodePointSet.IndexOfNode[] indexOfNodes, Encoding encoding) {
-            this.indexOfNodes = insert(indexOfNodes);
+            this.indexOfNodes = indexOfNodes;
             this.encoding = encoding;
             this.isUTF16Or32 = isUTF16Or32(encoding);
         }
