@@ -150,7 +150,8 @@ public class ProgressReporter {
      */
     private enum BuildStage {
         INITIALIZING("Initializing"),
-        ANALYSIS("Performing analysis", true, false),
+        ANALYSIS("Performing points-to analysis", true, false),
+        ABSTRACT_INTERPRETATION("Performing abstract interpretation", true, true),
         UNIVERSE("Building universe"),
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
@@ -439,6 +440,10 @@ public class ProgressReporter {
 
     public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
         return print(TimerCollection.Registry.ANALYSIS, BuildStage.ANALYSIS, () -> printAnalysisStatistics(universe, libraries));
+    }
+
+    public ReporterClosable printAbstractInterpretation() {
+        return print(TimerCollection.Registry.ABSTRACT_INTERPRETATION, BuildStage.ABSTRACT_INTERPRETATION);
     }
 
     private ReporterClosable print(TimerCollection.Registry registry, BuildStage buildStage) {
@@ -1148,7 +1153,7 @@ public class ProgressReporter {
     }
 
     abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
-        private static final int PROGRESS_BAR_START = 30;
+        private static final int PROGRESS_BAR_START = 50;
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;

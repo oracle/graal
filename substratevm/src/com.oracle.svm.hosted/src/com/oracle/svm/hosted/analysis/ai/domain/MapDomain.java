@@ -1,0 +1,110 @@
+package com.oracle.svm.hosted.analysis.ai.domain;
+
+import com.oracle.svm.hosted.analysis.ai.domain.value.MapValue;
+
+import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+/**
+ * This abstract domain maps elements (variables, memory locations, etc.) to a common
+ * abstract domain.
+ * One example could be mapping variables to intervals, signs, etc.
+ * In order to minimize the size of the used map,
+ * if a Key is not present, we return TOP value of the {@link AbstractDomain}
+ */
+public abstract class MapDomain<
+        Key,
+        Domain extends AbstractDomain<Domain>,
+        Self extends MapDomain<Key, Domain, Self>>
+        extends LatticeDomain<MapValue<Key, Domain>, Self> {
+
+    private final Domain initialDomain;
+
+    public MapDomain(Domain initialDomain) {
+        super(() -> new MapValue<>(initialDomain));
+        this.initialDomain = initialDomain;
+    }
+
+    @SuppressWarnings("this-escape")
+    public MapDomain(Map<Key, Domain> map, Domain initialDomain) {
+        super(() -> new MapValue<>(initialDomain));
+        this.initialDomain = initialDomain.copyOf();
+        map.forEach(this::put);
+    }
+
+    public MapDomain(MapDomain<Key, Domain, Self> other) {
+        super(other.getKind(), () -> new MapValue<>(other.getValue()));
+        this.initialDomain = other.initialDomain.copyOf();
+    }
+
+    public Domain get(Key key) {
+        return getValue().getDomainAtKey(key);
+    }
+
+    public void removeIf(Predicate<Map.Entry<Key, Domain>> predicate) {
+        getValue().removeIf(predicate);
+        updateKind();
+    }
+
+    public void transform(Function<Domain, Domain> function) {
+        getValue().transform(function);
+        updateKind();
+    }
+
+    public void update(Function<Domain, Domain> function, Key key) {
+        getValue().update(function, key);
+        updateKind();
+    }
+
+    public void put(Key key, Domain value) {
+        getValue().insertOrAssign(key, value);
+        updateKind();
+    }
+
+    public void remove(Key key) {
+        getValue().remove(key);
+        updateKind();
+    }
+
+    public void removeAllKeys() {
+        getValue().clear();
+        updateKind();
+    }
+
+    public void eraseAllMatching(Key key) {
+        getValue().eraseAllMatching(key);
+        updateKind();
+    }
+
+    public void unionWith(MapDomain<Key, Domain, Self> other) {
+        getValue().unionWith(Domain::join, other.getValue());
+        updateKind();
+    }
+
+    public void intersectionWith(MapDomain<Key, Domain, Self> other) {
+        getValue().intersectionWith(Domain::meet, other.getValue());
+        updateKind();
+    }
+
+    public void differenceWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+        getValue().differenceWith(combine, other);
+        updateKind();
+    }
+
+    public int getSize() {
+        return getValue().getSize();
+    }
+
+    @Override
+    public String toString() {
+        return "map: " + getValue().toString() +
+                System.lineSeparator() +
+                "kind: " + getKind();
+    }
+
+    /* NOTE: implement this in derived classes */
+    @Override
+    public abstract Self copyOf();
+}
