@@ -122,6 +122,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private final int primitiveStartOffset;
     private final int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
+    private final boolean buildingImageLayer;
+    private final int layerNumber;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
                     RuntimeConfiguration runtimeConfiguration) {
@@ -143,6 +145,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
+
+        buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+        layerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
     }
 
     @SuppressWarnings("unused")
@@ -589,14 +594,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
 
         for (ResolvedJavaField field : type.getStaticFields()) {
-            assert field instanceof HostedField;
+            HostedField hField = (HostedField) field;
             /*
              * If we are in a layered build only add debug info for a static field if it is
              * installed in the current layer.
              */
-            if (!ImageLayerBuildingSupport.buildingImageLayer() ||
-                            (((HostedField) field).hasInstalledLayerNum() && DynamicImageLayerInfo.getCurrentLayerNumber() == StaticFieldsSupport.getInstalledLayerNum(field))) {
-                structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+            if (!buildingImageLayer || (hField.hasInstalledLayerNum() && layerNumber == hField.getInstalledLayerNum())) {
+                structureTypeEntry.addField(createFieldEntry(hField, structureTypeEntry));
             }
         }
     }
