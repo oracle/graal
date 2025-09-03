@@ -665,7 +665,7 @@ public final class CompilerInterfaceDeclarations {
         new RegistrationBuilder<>(CompilerProfiler.class).setSingleton(true)
                 .setStrategy(CompilerProfilerProxy.getTicksMethod, MethodStrategy.Passthrough)
                 .setStrategy(CompilerProfilerProxy.notifyCompilerPhaseEventMethod, MethodStrategy.Passthrough)
-                .setDefaultValueStrategy(CompilerProfilerProxy.notifyCompilerInlingEventMethod, null)
+                .setDefaultValueStrategy(CompilerProfilerProxy.notifyCompilerInliningEventMethod, null)
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotResolvedObjectType.class, HotSpotResolvedJavaType.class)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getNameMethod, HotSpotResolvedObjectTypeProxy.getNameInvokable)
