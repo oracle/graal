@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc.phases;
 
-import com.oracle.svm.hosted.webimage.codegen.phase.OutlineRuntimeChecksPhase;
 import com.oracle.svm.hosted.webimage.codegen.phase.ReconstructionVerificationPhase;
 import com.oracle.svm.hosted.webimage.codegen.phase.WebImageLowTier;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierReconstructionPhase;
@@ -66,8 +65,6 @@ public class WebImageWasmGCLowTier extends WebImageLowTier {
 
         // TODO GR-59392 temporarily disable this because it fails some tests.
         removePhase(ReconstructionVerificationPhase.class);
-
-        removePhase(OutlineRuntimeChecksPhase.class);
     }
 
     @Override
