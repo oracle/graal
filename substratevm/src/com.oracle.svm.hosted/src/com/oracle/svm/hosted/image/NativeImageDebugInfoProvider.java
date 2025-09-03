@@ -589,14 +589,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
 
         for (ResolvedJavaField field : type.getStaticFields()) {
-            assert field instanceof HostedField;
+            HostedField hField = (HostedField) field;
             /*
              * If we are in a layered build only add debug info for a static field if it is
              * installed in the current layer.
              */
             if (!ImageLayerBuildingSupport.buildingImageLayer() ||
-                            (((HostedField) field).hasInstalledLayerNum() && DynamicImageLayerInfo.getCurrentLayerNumber() == StaticFieldsSupport.getInstalledLayerNum(field))) {
-                structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+                            (hField.hasInstalledLayerNum() && DynamicImageLayerInfo.getCurrentLayerNumber() == hField.getInstalledLayerNum())) {
+                structureTypeEntry.addField(createFieldEntry(hField, structureTypeEntry));
             }
         }
     }

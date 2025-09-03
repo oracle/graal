@@ -154,9 +154,17 @@ public class PrettyPrinterTest {
         lambda.apply("test");
     }
 
+    @NeverInline("Prevent constant folding")
+    private static boolean alwaysFalse() {
+        return false;
+    }
+
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testClassType(Class<?> clazz, Holder dyn) {
+        if (alwaysFalse()) {
+            staticHolder = null; // Prevent constant folding of staticHolder.
+        }
         blackhole(clazz, dyn, staticHolder.c, staticHolder.o);
     }
 
@@ -197,6 +205,5 @@ public class PrettyPrinterTest {
 
         testLambda(str -> str);
         testClassType(String.class, new Holder(String.class, String.class));
-        staticHolder = null;
     }
 }
