@@ -38,12 +38,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Weekly Quarkus Tests
+name: Weekly Quarkus Tests (--future-defaults=all)
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/quarkus.yml'
+      - '.github/workflows/quarkus-future-defaults.yml'
       - '.github/workflows/quarkus-template.yml'
   schedule:
   - cron: '0 3 * * 1'
@@ -52,3 +52,5 @@ on:
 jobs:
   call-template:
     uses: './.github/workflows/quarkus-template.yml'
+    with:
+      NATIVE_IMAGE_OPTIONS: '--future-defaults=all'

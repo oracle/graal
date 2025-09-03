@@ -1,0 +1,182 @@
+#
+# Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# The Universal Permissive License (UPL), Version 1.0
+#
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
+#
+# (a) the Software, and
+#
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+#
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+#
+# This license is subject to the following condition:
+#
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+on:
+  workflow_call:
+    inputs:
+      NATIVE_IMAGE_OPTIONS:
+        required: false
+        type: string
+
+env:
+  COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
+  DB_NAME: hibernate_orm_test
+  DB_PASSWORD: hibernate_orm_test
+  DB_USER: hibernate_orm_test
+  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=6g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
+  QUARKUS_JAVA_VERSION: 17 # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
+  QUARKUS_PATH: ${{ github.workspace }}/quarkus
+
+name: Weekly Quarkus Tests
+
+permissions: {}
+jobs:
+  build-quarkus-and-graalvm:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Nightly Quarkus and GraalVM build${{ inputs.NATIVE_IMAGE_OPTIONS && format(' ({0})', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+    runs-on: ubuntu-22.04
+    if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v4
+    - name: Build GraalVM JDK
+      uses: ./.github/actions/build-graalvm
+      with:
+        java-version: ${{ env.QUARKUS_JAVA_VERSION }}
+    - name: Get latest Quarkus release
+      run: |
+        export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+        echo Getting Quarkus $QUARKUS_VERSION
+        curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
+        mkdir ${QUARKUS_PATH}
+        tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
+    - uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    - name: Tar GraalVM JDK
+      shell: bash
+      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
+    - name: Persist GraalVM JDK build
+      uses: actions/upload-artifact@v4
+      with:
+        name: graalvm
+        path: graalvm.tgz
+    - name: Build Quarkus
+      run: |
+        cd ${QUARKUS_PATH}
+        eval ./mvnw -e -B -Dquickly
+    - name: Read json file with native-tests matrix
+      id: read
+      run: |
+        json=$(tr -d '\n' < ${QUARKUS_PATH}/.github/native-tests.json )
+        echo $json
+        echo "matrix=${json}" >> $GITHUB_OUTPUT
+    - name: Tar Maven Repo
+      shell: bash
+      run: tar -czvf maven-repo.tgz -C ~ .m2/repository
+    - name: Persist Maven Repo
+      uses: actions/upload-artifact@v4
+      with:
+        name: maven-repo
+        path: maven-repo.tgz
+
+  native-tests:
+    name: Native Tests - ${{matrix.category}}${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with options ({0})', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+    needs: build-quarkus-and-graalvm
+    runs-on: ubuntu-latest
+    env:
+      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/actions/build-graalvm
+    # Ignore the following YAML Schema error
+    timeout-minutes: ${{matrix.timeout}}
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix: ${{ fromJson(needs.build-quarkus-and-graalvm.outputs.matrix) }}
+    steps:
+      - name: Download GraalVM JDK build
+        if: startsWith(matrix.os-name, 'ubuntu')
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: graalvm
+          path: .
+      - name: Extract GraalVM JDK build
+        if: startsWith(matrix.os-name, 'ubuntu')
+        shell: bash
+        run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
+      - name: Get latest Quarkus release
+        if: startsWith(matrix.os-name, 'ubuntu')
+        run: |
+          export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+          echo Getting Quarkus $QUARKUS_VERSION
+          curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
+          mkdir ${QUARKUS_PATH}
+          tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
+      - name: Reclaim Disk Space
+        if: startsWith(matrix.os-name, 'ubuntu')
+        run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
+      - name: Download Maven Repo
+        if: startsWith(matrix.os-name, 'ubuntu')
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: maven-repo
+          path: .
+      - name: Extract Maven Repo
+        if: startsWith(matrix.os-name, 'ubuntu')
+        shell: bash
+        run: tar -xzf maven-repo.tgz -C ~
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'oracle'
+          java-version: '17'
+      - name: Build with Maven
+        if: startsWith(matrix.os-name, 'ubuntu')
+        env:
+          TEST_MODULES: ${{matrix.test-modules}}
+        run: |
+          cd ${QUARKUS_PATH}
+          ${GRAALVM_HOME}/bin/native-image --version
+          ./mvnw $COMMON_MAVEN_ARGS -f integration-tests -pl "$TEST_MODULES" $NATIVE_TEST_MAVEN_ARGS
+      - name: Prepare failure archive (if maven failed)
+        if: failure()
+        shell: bash
+        run: find . -type d -name '*-reports' -o -wholename '*/build/reports/tests/functionalTest' | tar -czf test-reports.tgz -T -
+      - name: Upload failure Archive (if maven failed)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports-native-${{matrix.category}}
+          path: 'test-reports.tgz'
