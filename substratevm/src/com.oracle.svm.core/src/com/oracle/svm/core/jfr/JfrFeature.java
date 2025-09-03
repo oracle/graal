@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -154,7 +154,7 @@ public class JfrFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ThreadListenerSupportFeature.class, JfrEmergencyDumpFeature.class);
+        return Collections.singletonList(ThreadListenerSupportFeature.class);
     }
 
     @Override

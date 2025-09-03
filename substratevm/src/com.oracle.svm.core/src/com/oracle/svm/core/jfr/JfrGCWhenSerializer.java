@@ -39,6 +39,7 @@ public class JfrGCWhenSerializer implements JfrSerializer {
     public void write(JfrChunkWriter writer) {
         writer.writeCompressedLong(JfrType.GCWhen.getId());
         writer.writeCompressedLong(values.length);
+        // noinspection ForLoopReplaceableByForEach: must be allocation free.
         for (int i = 0; i < values.length; i++) {
             writer.writeCompressedLong(values[i].getId());
             writer.writeString(values[i].getText());

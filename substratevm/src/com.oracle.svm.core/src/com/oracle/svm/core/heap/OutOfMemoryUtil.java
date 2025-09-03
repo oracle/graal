@@ -73,7 +73,7 @@ public class OutOfMemoryUtil {
             HeapDumping.singleton().dumpHeapOnOutOfMemoryError();
         }
         if (VMInspectionOptions.hasJfrSupport()) {
-            SubstrateJVM.get().vmErrorRotation();
+            SubstrateJVM.get().vmOutOfMemoryErrorRotation();
         }
 
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {

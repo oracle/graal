@@ -144,6 +144,7 @@ public class JfrArgumentParser {
     }
 
     public enum FlightRecorderOptionsArgument implements JfrArgument {
+        DumpPath("dumppath"),
         GlobalBufferSize("globalbuffersize"),
         MaxChunkSize("maxchunksize"),
         MemorySize("memorysize"),

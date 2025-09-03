@@ -104,6 +104,8 @@ public class JfrManager {
         Integer stackDepth = parseInteger(optionsArgs, FlightRecorderOptionsArgument.StackDepth);
         Boolean preserveRepository = parseBoolean(optionsArgs, FlightRecorderOptionsArgument.PreserveRepository);
         Long threadBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.ThreadBufferSize);
+        String dumpPath = optionsArgs.get(FlightRecorderOptionsArgument.DumpPath);
+
 
         if (globalBufferSize != null) {
             Options.setGlobalBufferSize(globalBufferSize);
@@ -143,6 +145,16 @@ public class JfrManager {
 
         if (threadBufferSize != null) {
             Options.setThreadBufferSize(threadBufferSize);
+        }
+
+        try {
+            if (dumpPath != null) {
+                Options.setDumpPath(Paths.get(dumpPath));
+            } else {
+                Options.setDumpPath(null);
+            }
+        } catch (Throwable e) {
+            throw new JfrArgumentParsingFailed("Could not use " + dumpPath + " as emergency dump path. " + e.getMessage(), e);
         }
     }
 

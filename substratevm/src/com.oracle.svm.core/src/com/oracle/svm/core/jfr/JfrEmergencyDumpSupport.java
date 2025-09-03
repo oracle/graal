@@ -31,6 +31,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/**
+ * JFR emergency dumps are snapshots generated when the VM shuts down due to unexpected
+ * circumstances such as OOME or VM crash. Currently, only dumping on OOME is supported. Emergency
+ * dumps are a best effort attempt to persist in-flight data and consolidate data in the on-disk JFR
+ * chunk repository into a snapshot. This process is allocation free.
+ */
 public interface JfrEmergencyDumpSupport {
     @Fold
     static boolean isPresent() {

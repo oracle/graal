@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -94,7 +93,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private long notificationThreshold;
 
-    private String filename;
+    private String fileToOpen;
     private RawFileDescriptor fd;
     private long chunkStartTicks;
     private long chunkStartNanos;
@@ -152,37 +151,31 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     }
 
     @Override
-    public void setFilename(String filename) {
+    public void setFilename(String fileToOpen) {
         assert lock.isOwner();
-        this.filename = filename;
+        this.fileToOpen = fileToOpen;
     }
 
     @Override
     public void maybeOpenFile() {
         assert lock.isOwner();
-        if (filename != null) {
-            openFile(filename);
+        assert !hasOpenFile();
+        if (fileToOpen != null) {
+            openFile(fileToOpen);
         }
     }
 
     @Override
     public void openFile(String outputFile) {
         assert lock.isOwner();
-        filename = outputFile;
-        fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
-        openFile0();
+        openFile(getFileSupport().create(outputFile, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE));
     }
 
-    // Used by JFR emergency dump
     @Override
     public void openFile(RawFileDescriptor file) {
         assert lock.isOwner();
-        filename = null;
+        fileToOpen = null;
         fd = file;
-        openFile0();
-    }
-
-    private void openFile0() {
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();
         nextGeneration = 1;
@@ -191,7 +184,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         lastMetadataId = -1;
         metadataPosition = -1;
         lastCheckpointOffset = -1;
-
         writeFileHeader();
     }
 
@@ -260,7 +252,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         patchFileHeader(false);
 
         getFileSupport().close(fd);
-        filename = null;
         fd = Word.nullPointer();
     }
 
@@ -378,6 +369,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private int writeSerializers() {
         JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
+        // noinspection ForLoopReplaceableByForEach: must be allocation free.
         for (int i = 0; i < serializers.length; i++) {
             serializers[i].write(this);
         }
@@ -556,7 +548,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             }
             writeCompressedInt(length);
             UninterruptibleUtils.String.toModifiedUTF8(str, buffer, buffer.add(length), false);
-            getFileSupport().write(fd, buffer, WordFactory.unsigned(length));
+            getFileSupport().write(fd, buffer, Word.unsigned(length));
             NullableNativeMemory.free(buffer);
         }
     }

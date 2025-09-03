@@ -77,11 +77,11 @@ public class TestEmergencyDump extends JfrRecordingTest {
         e3.message = expectedStrings.get(2);
         e3.commit();
 
-        SubstrateJVM.get().vmErrorRotation();
+        SubstrateJVM.get().vmOutOfMemoryErrorRotation();
         recording.stop();
         recording.close();
 
-        String dumpFile = "hs_oom_pid_" + ProcessHandle.current().pid() + ".jfr";
+        String dumpFile = "svm_oom_pid_" + ProcessHandle.current().pid() + ".jfr";
         Path p = Path.of(dumpFile);
         assertTrue("emergency dump file does not exist.", Files.exists(p));
         List<RecordedEvent> events = getEvents(Path.of(dumpFile), testedEvents, true);

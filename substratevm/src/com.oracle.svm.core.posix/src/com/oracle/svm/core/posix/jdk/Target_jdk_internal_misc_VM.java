@@ -42,13 +42,13 @@ final class Target_jdk_internal_misc_VM {
     public static long getNanoTimeAdjustment(long offsetInSeconds) {
         long maxDiffSecs = 0x0100000000L;
         long minDiffSecs = -maxDiffSecs;
-        SecondsNanos secondsNanos = UnsafeStackValue.get(SecondsNanos.class);
-        PlatformTimeUtils.singleton().javaTimeSystemUTC(secondsNanos);
+        SecondsNanos time = UnsafeStackValue.get(SecondsNanos.class);
+        PlatformTimeUtils.singleton().javaTimeSystemUTC(time);
 
-        long diff = secondsNanos.getSeconds() - offsetInSeconds;
+        long diff = time.getSeconds() - offsetInSeconds;
         if (diff >= maxDiffSecs || diff <= minDiffSecs) {
             return -1;
         }
-        return (diff * 1000000000) + secondsNanos.getNanos();
+        return (diff * 1000000000) + time.getNanos();
     }
 }

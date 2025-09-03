@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -76,6 +78,7 @@ import jdk.jfr.internal.LogTag;
  * </ul>
  */
 public class SubstrateJVM {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L569") private static final String OUT_OF_MEMORY = "Out of Memory";
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
@@ -606,12 +609,9 @@ public class SubstrateJVM {
      */
     public String getDumpPath() {
         if (JfrEmergencyDumpSupport.isPresent()) {
-            if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
-                JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
-            }
             return JfrEmergencyDumpSupport.singleton().getDumpPath();
         }
-        return null;
+        return "";
     }
 
     /**
@@ -750,27 +750,31 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
-    /** See JfrRecorderService::vm_error_rotation. */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L559-L572")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26%2B3/src/hotspot/share/jfr/recorder/service/jfrRecorderService.cpp#L510-L526")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
-    public void vmErrorRotation() {
+    public void vmOutOfMemoryErrorRotation() {
         if (!recording || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
         // Hotspot emits GC root paths, but we don't support that yet. So cutoff = 0.
         emitOldObjectSamples(0, false, false);
-        DumpReasonEvent.emit("Out of Memory", -1);
+        DumpReasonEvent.emit(OUT_OF_MEMORY, -1);
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
             if (!existingFile) {
                 // If no chunkfile is open, create one. This case is very unlikely.
                 Log.log().string("No existing chunk file. Creating one.").newline();
-                RawFileOperationSupport.RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
-                chunkWriter.openFile(fd);
+                RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                if (RawFileOperationSupport.bigEndian().isValid(fd)) {
+                    chunkWriter.openFile(fd);
+                }
             }
-            assert chunkWriter.hasOpenFile();
-            chunkWriter.markChunkFinal();
-            chunkWriter.closeFile();
+            if (chunkWriter.hasOpenFile()) {
+                chunkWriter.markChunkFinal();
+                chunkWriter.closeFile();
+            }
             JfrEmergencyDumpSupport.singleton().onVmError();
         } finally {
             chunkWriter.unlock();

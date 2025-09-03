@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.nmt.NmtCategory;
 
 public class JfrNmtCategorySerializer implements JfrSerializer {
-    private NmtCategory[] nmtCategories;
+    private final NmtCategory[] nmtCategories;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrNmtCategorySerializer() {
@@ -42,8 +42,8 @@ public class JfrNmtCategorySerializer implements JfrSerializer {
     @Override
     public void write(JfrChunkWriter writer) {
         writer.writeCompressedLong(JfrType.NMTType.getId());
-
         writer.writeCompressedLong(nmtCategories.length);
+        // noinspection ForLoopReplaceableByForEach: must be allocation free.
         for (int i = 0; i < nmtCategories.length; i++) {
             writer.writeCompressedInt(nmtCategories[i].ordinal());
             writer.writeString(nmtCategories[i].getName());

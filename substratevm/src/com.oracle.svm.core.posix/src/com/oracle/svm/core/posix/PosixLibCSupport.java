@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
@@ -108,7 +110,7 @@ public abstract class PosixLibCSupport implements LibCSupport {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
         return PosixLibC.strncmp(s1, s2, n);
     }

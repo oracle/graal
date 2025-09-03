@@ -26,6 +26,8 @@ package com.oracle.svm.core.posix.headers;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -73,6 +75,16 @@ public class Fcntl {
 
         @CFunction(transition = NO_TRANSITION)
         public static native int unlinkat(int dirfd, CCharPointer pathname, int flags);
+
+        @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
+        public static int restartableOpen(CCharPointer directory, int flags, int mode) {
+            int result;
+            do {
+                result = open(directory, flags, mode);
+            } while (result == -1 && LibC.errno() == Errno.EINTR());
+
+            return result;
+        }
 
     }
 }

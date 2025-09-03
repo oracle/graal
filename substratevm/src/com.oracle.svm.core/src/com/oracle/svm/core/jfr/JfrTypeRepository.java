@@ -32,13 +32,11 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.Pointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
@@ -54,17 +52,18 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders. There are
- * three kinds of tables used by this class: epochTypeData, flushed*, and typeInfo. The flushed*
- * tables record which classes have already been flushed to disk. The epochTypeData tables hold
- * classes that have yet to be flushed as well as classes that are already flushed (they are written
- * by threads emitting events). The typeInfo table is derived at flushpoints by using the
- * epochTypeData and flushed* tables to determine the set of classes that have yet to be flushed.
+ * three kinds of tables used by this class: {@code epochTypeData*}, {@code flushed*}, and
+ * {@link #typeInfo}. The {@code flushed*} tables record which classes have already been flushed to
+ * disk. The {@code epochTypeData*} tables hold classes that have yet to be flushed as well as
+ * classes that are already flushed (they are written by threads emitting events). The
+ * {@link #typeInfo} table is derived at flushpoints by using the {@code epochTypeData*} and
+ * {@code flushed*} tables to determine the set of classes that have yet to be flushed.
  *
  * Unlike other JFR repositories, there are no epoch data buffers that require lock protection.
- * Similar to other constant repositories, writes/reads to the current epochData are allowed to race
- * at flushpoints. There is no risk of separating events from constant data due to the write order
- * (constants before events during emission, and events before constants during flush). The
- * epochData tables are only cleared at rotation safepoints.
+ * Similar to other constant repositories, writes/reads to the current {@code epochData} are allowed
+ * to race at flushpoints. There is no risk of separating events from constant data due to the write
+ * order (constants before events during emission, and events before constants during flush). The
+ * {@code epochData} tables are only cleared at rotation safepoints.
  */
 public class JfrTypeRepository implements JfrRepository {
     private static final String BOOTSTRAP_NAME = "bootstrap";
@@ -267,15 +266,15 @@ public class JfrTypeRepository implements JfrRepository {
      * mitigates double frees.
      */
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
-    private static long getSymbolId(JfrChunkWriter writer, PointerBase source, UnsignedWord length, int hash, boolean flushpoint) {
+    private static long getSymbolId(JfrChunkWriter writer, Pointer source, UnsignedWord length, boolean flushpoint) {
         Pointer destination = NullableNativeMemory.malloc(length, NmtCategory.JFR);
         if (destination.isNull()) {
             return 0L;
         }
-        UnmanagedMemoryUtil.copy((Pointer) source, destination, length);
+        UnmanagedMemoryUtil.copy(source, destination, length);
 
         assert writer.isLockedByCurrentThread();
-        return SubstrateJVM.getSymbolRepository().getSymbolId(destination, length, hash, !flushpoint);
+        return SubstrateJVM.getSymbolRepository().getSymbolId(destination, length, !flushpoint);
     }
 
     private int writePackages(JfrChunkWriter writer, boolean flushpoint) {
@@ -300,12 +299,7 @@ public class JfrTypeRepository implements JfrRepository {
     private void writePackage(JfrChunkWriter writer, PackageInfoRaw packageInfoRaw, boolean flushpoint) {
         assert packageInfoRaw.getHash() != 0;
         writer.writeCompressedLong(packageInfoRaw.getId());  // id
-        /*
-         * Packages with the same name use the same buffer for the whole epoch, so it's fine to use
-         * that address as the symbol repo hash. No further need to deduplicate.
-         */
-        writer.writeCompressedLong(getSymbolId(writer, packageInfoRaw.getModifiedUTF8Name(), packageInfoRaw.getNameLength(),
-                        UninterruptibleUtils.Long.hashCode(packageInfoRaw.getModifiedUTF8Name().rawValue()), flushpoint));
+        writer.writeCompressedLong(getSymbolId(writer, packageInfoRaw.getModifiedUTF8Name(), packageInfoRaw.getNameLength(), flushpoint));
         writer.writeCompressedLong(getModuleId(packageInfoRaw.getModuleName(), packageInfoRaw.getHasModule()));
         writer.writeBoolean(false); // exported
     }
@@ -556,8 +550,8 @@ public class JfrTypeRepository implements JfrRepository {
          * still assigns these the reserved 0 id.
          */
         if (hub.isPrimitive()) {
-            packageInfoRaw.setModifiedUTF8Name(WordFactory.nullPointer());
-            packageInfoRaw.setNameLength(WordFactory.unsigned(0));
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
+            packageInfoRaw.setNameLength(Word.unsigned(0));
             return;
         }
 
@@ -573,8 +567,8 @@ public class JfrTypeRepository implements JfrRepository {
 
         // If malloc fails, set a blank package name.
         if (buffer.isNull()) {
-            packageInfoRaw.setModifiedUTF8Name(WordFactory.nullPointer());
-            packageInfoRaw.setNameLength(WordFactory.unsigned(0));
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
+            packageInfoRaw.setNameLength(Word.unsigned(0));
             return;
         }
 
@@ -614,7 +608,7 @@ public class JfrTypeRepository implements JfrRepository {
         }
         long sum = 0;
         for (int i = 0; packageInfoRaw.getNameLength().aboveThan(i); i++) {
-            sum += ((Pointer) packageInfoRaw.getModifiedUTF8Name()).readByte(i);
+            sum += (packageInfoRaw.getModifiedUTF8Name()).readByte(i);
         }
         return UninterruptibleUtils.Long.hashCode(sum);
     }
@@ -670,10 +664,10 @@ public class JfrTypeRepository implements JfrRepository {
         UnsignedWord getNameLength();
 
         @RawField
-        void setModifiedUTF8Name(PointerBase value);
+        void setModifiedUTF8Name(Pointer value);
 
         @RawField
-        PointerBase getModifiedUTF8Name();
+        Pointer getModifiedUTF8Name();
     }
 
     @RawStructure
@@ -788,7 +782,7 @@ public class JfrTypeRepository implements JfrRepository {
             PackageInfoRaw packageInfoRaw = (PackageInfoRaw) entry;
             /* The base method will free only the entry itself, not the utf8 data. */
             NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
-            packageInfoRaw.setModifiedUTF8Name(WordFactory.nullPointer());
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
             super.free(entry);
         }
 
@@ -801,12 +795,12 @@ public class JfrTypeRepository implements JfrRepository {
                         // Put if not already there.
                         PackageInfoRaw destinationInfo = (PackageInfoRaw) putNew(sourceInfo);
                         // allocate a new buffer.
-                        PointerBase newUtf8Name = NullableNativeMemory.malloc(sourceInfo.getNameLength(), NmtCategory.JFR);
+                        Pointer newUtf8Name = NullableNativeMemory.malloc(sourceInfo.getNameLength(), NmtCategory.JFR);
                         // set the buffer ptr.
                         destinationInfo.setModifiedUTF8Name(newUtf8Name);
                         // Copy source buffer contents over to new buffer.
                         if (newUtf8Name.isNonNull()) {
-                            UnmanagedMemoryUtil.copy((Pointer) sourceInfo.getModifiedUTF8Name(), (Pointer) newUtf8Name, sourceInfo.getNameLength());
+                            UnmanagedMemoryUtil.copy(sourceInfo.getModifiedUTF8Name(), newUtf8Name, sourceInfo.getNameLength());
                         }
                     }
                     sourceInfo = sourceInfo.getNext();

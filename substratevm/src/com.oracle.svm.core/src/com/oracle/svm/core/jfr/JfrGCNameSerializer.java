@@ -37,6 +37,7 @@ public class JfrGCNameSerializer implements JfrSerializer {
         JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
         writer.writeCompressedLong(JfrType.GCName.getId());
         writer.writeCompressedLong(gcNames.length);
+        // noinspection ForLoopReplaceableByForEach: must be allocation free.
         for (int i = 0; i < gcNames.length; i++) {
             writer.writeCompressedLong(gcNames[i].getId());
             writer.writeString(gcNames[i].getName());

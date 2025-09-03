@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
  * Used to serialize all possible thread states into the chunk.
  */
 public class JfrThreadStateSerializer implements JfrSerializer {
-    private JfrThreadState[] threadStates;
+    private final JfrThreadState[] threadStates;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrThreadStateSerializer() {

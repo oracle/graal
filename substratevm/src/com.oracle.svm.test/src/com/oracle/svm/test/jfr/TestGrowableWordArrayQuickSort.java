@@ -36,23 +36,29 @@ import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 
+import java.util.random.RandomGenerator;
+
 import static org.junit.Assert.assertTrue;
 
 public class TestGrowableWordArrayQuickSort {
     @Test
     public void test() throws Throwable {
+        RandomGenerator randomGenerator = RandomGenerator.getDefault();
         GrowableWordArray gwa = StackValue.get(GrowableWordArray.class);
         GrowableWordArrayAccess.initialize(gwa);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(3), NmtCategory.JFR);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(1), NmtCategory.JFR);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(5), NmtCategory.JFR);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(4), NmtCategory.JFR);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(2), NmtCategory.JFR);
-        GrowableWordArrayAccess.add(gwa, WordFactory.unsigned(4), NmtCategory.JFR);
+        long nextLong = 0;
+        for (int i = 0; i < 1000; i++) {
+            // Occasionally insert duplicates
+            if (i % 50 != 0) {
+                nextLong = randomGenerator.nextLong();
+            }
+            GrowableWordArrayAccess.add(gwa, WordFactory.signed(nextLong), NmtCategory.JFR);
+        }
+
         GrowableWordArrayAccess.qsort(gwa, 0, gwa.getSize() - 1, TestGrowableWordArrayQuickSort::compare);
-        long last = 0;
+        long last = GrowableWordArrayAccess.get(gwa, 0).rawValue();
         for (int i = 0; i < gwa.getSize(); i++) {
-            long current = GrowableWordArrayAccess.read(gwa, i).rawValue();
+            long current = GrowableWordArrayAccess.get(gwa, i).rawValue();
             assertTrue(last <= current);
             last = current;
         }

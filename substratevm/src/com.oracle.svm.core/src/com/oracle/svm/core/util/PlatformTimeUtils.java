@@ -57,7 +57,6 @@ public abstract class PlatformTimeUtils {
         // that Recording::getStopTime() returns an Instant that
         // is in sync.
         SecondsNanos t = UnsafeStackValue.get(SecondsNanos.class);
-        PlatformTimeUtils.singleton().javaTimeSystemUTC(t);
         javaTimeSystemUTC(t);
         long seconds = t.getSeconds();
         long nanos = t.getNanos();

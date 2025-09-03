@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 
 /**
  * Dummy implementation of a {@link JfrChunkWriter} that does not perform any file system
@@ -92,23 +92,23 @@ public final class JfrChunkNoWriter implements JfrChunkWriter {
 
     @Override
     public void openFile(String outputFile) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
-    public void openFile(RawFileOperationSupport.RawFileDescriptor fd) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+    public void openFile(RawFileDescriptor fd) {
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void write(JfrBuffer buffer) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void flush() {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
@@ -118,7 +118,7 @@ public final class JfrChunkNoWriter implements JfrChunkWriter {
 
     @Override
     public void closeFile() {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
@@ -139,41 +139,41 @@ public final class JfrChunkNoWriter implements JfrChunkWriter {
 
     @Override
     public void endEvent(long start) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeBoolean(boolean value) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeByte(byte value) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeBytes(byte[] values) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeCompressedInt(int value) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writePaddedInt(long value) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeCompressedLong(long value) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 
     @Override
     public void writeString(String str) {
-        VMError.shouldNotReachHere(ERROR_MESSAGE);
+        throw VMError.shouldNotReachHere(ERROR_MESSAGE);
     }
 }
