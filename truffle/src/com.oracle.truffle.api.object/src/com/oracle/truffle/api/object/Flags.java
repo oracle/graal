@@ -60,8 +60,6 @@ final class Flags {
 
     /** Define property as constant in the shape. */
     static final int CONST = 1 << 5;
-    /** Declare property with constant initial value in the shape. */
-    static final int DECLARE = 1 << 6;
 
     private Flags() {
         // do not instantiate
@@ -91,7 +89,4 @@ final class Flags {
         return getFlag(flags, CONST);
     }
 
-    static boolean isDeclaration(int flags) {
-        return getFlag(flags, DECLARE);
-    }
 }

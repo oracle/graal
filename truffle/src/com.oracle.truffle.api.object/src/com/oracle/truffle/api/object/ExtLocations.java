@@ -246,18 +246,6 @@ abstract class ExtLocations {
         }
     }
 
-    static final class DeclaredLocation extends ValueLocation {
-
-        DeclaredLocation(Object value) {
-            super(value);
-        }
-
-        @Override
-        public boolean isDeclared() {
-            return true;
-        }
-    }
-
     abstract static sealed class InstanceLocation extends LocationImpl {
 
         protected final int index;

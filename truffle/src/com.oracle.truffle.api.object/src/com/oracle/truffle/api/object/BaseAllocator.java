@@ -76,18 +76,6 @@ abstract sealed class BaseAllocator implements LocationImpl.LocationVisitor perm
     }
 
     /**
-     * Creates a new declared location with a default value. A declared location only assumes a type
-     * after the first set (initialization).
-     * <p>
-     * Used by tests.
-     *
-     * @param value the default value
-     */
-    public Location declaredLocation(Object value) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Creates a new location compatible with the given initial value.
      * <p>
      * Used by tests.
