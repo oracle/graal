@@ -249,6 +249,13 @@ final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
     private volatile long address;
 }
 
+@TargetClass(className = "jdk.graal.compiler.debug.IgvDumpChannel", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_debug_IgvDumpChannel {
+    @Alias//
+    @RecomputeFieldValue(kind = Reset)//
+    private static String lastTargetAnnouncement;
+}
+
 /*
  * The following substitutions replace methods where reflection is used in the Graal code.
  */
