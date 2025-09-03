@@ -134,6 +134,25 @@ For example:
 * `-H:Dump= -H:MethodFilter=ClassName.MethodName`: dump the compiler graphs of the `native-image` builder.
 * `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at runtime.
 
+### Preserving Packages, Modules, or Classes
+
+GraalVM for JDK 25 introduces the `-H:Preserve` option. This lets you instruct the `native-image` tool to keep entire packages, modules, or all classes on the classpath in the native executable, even when static analysis cannot discover them.
+
+You can use `-H:Preserve` in the following ways:
+
+* `-H:Preserve=all`: preserves all elements from the JDK and from the classpath
+* `-H:Preserve=module=<module>`: preserves all elements from a given module
+* `-H:Preserve=module=ALL-UNNAMED`: preserves all elements from the classpath (provided with `-cp`).
+* `-H:Preserve=package=<package>`: preserves all elements from a given package
+* `-H:Preserve=path=<cp-entry>`: preserves all elements from a given class-path entry
+* You can combine any of the previous uses by separating them with a comma (`,`). For example: `-H:Preserve=path=<cp-entry>,module=<module>,module=<module2>,package=<package>`
+
+You must explicitly configure multi-interface proxy classes, arrays of dimension 3 and higher, and _.class_ files as resources in the native image. Tooling-related Java modules are not included by default with `-H:Preserve=all` and must be added with `-H:Preserve=module=<module>` if needed.
+
+If you get errors related to `--initialize-at-build-time`, follow the suggestions in the error messages.
+
+For a practical demonstration, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
+
 ## System Properties
 
 You can define system properties at image build time using the `-D<system.property>=<value>` option syntax.
