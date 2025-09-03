@@ -1,8 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.set.intra.LeaksIdSetIntraAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -21,13 +22,16 @@ public class AbstractInterpretationDriver {
     private final DebugContext debug;
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
+    private final Inflation inflation;
 
-    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod root, BigBang bigBang) {
+    public AbstractInterpretationDriver(DebugContext debug, Inflation inflation) {
+        this.inflation = inflation;
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
-        this.engine = new AbstractInterpretationEngine(analyzerManager, root, debug, bigBang);
+        this.engine = new AbstractInterpretationEngine(analyzerManager, inflation);
     }
 
+    /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */
     @SuppressWarnings("try")
     public void run() {
         try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
@@ -51,7 +55,7 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void setupFramework() throws IOException {
-        /* We can crete our own custom logger instance, if it is not provided, the framework will create one itself */
+         /** We can creat the {@link AbstractInterpretationLogger} instance here. */
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
         logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
 

@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -569,7 +570,7 @@ public class NativeImageGenerator {
             if (returnAfterAnalysis) {
                 return;
             }
-
+            runAbstractInterpretation(debug);
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             RuntimeConfiguration runtimeConfiguration;
@@ -764,6 +765,14 @@ public class NativeImageGenerator {
             reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),
                     imageDiskFileSize);
         }
+    }
+
+    private void runAbstractInterpretation(DebugContext debug) {
+        bb.getMetaAccess().getUniverse();
+        System.out.println("Main entry point: " + mainEntryPoint);
+        System.out.println(mainEntryPoint);
+        var driver = new AbstractInterpretationDriver(debug, bb);
+        driver.run();
     }
 
     /*

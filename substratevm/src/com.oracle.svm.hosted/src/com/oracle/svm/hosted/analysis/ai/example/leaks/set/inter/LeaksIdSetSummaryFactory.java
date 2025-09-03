@@ -4,7 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.util.BigBangUtil;
+import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -42,7 +42,7 @@ public class LeaksIdSetSummaryFactory implements SummaryFactory<SetDomain<Resour
 
         AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) arg;
         ResolvedJavaType objectType = allocatedObjectNode.getVirtualObject().type();
-        ResolvedJavaType autoCloseableType = BigBangUtil.getInstance().lookUpType(AutoCloseable.class);
+        ResolvedJavaType autoCloseableType = SvmUtility.getInstance().lookUpType(AutoCloseable.class);
         return autoCloseableType.isAssignableFrom(objectType);
     }
 }

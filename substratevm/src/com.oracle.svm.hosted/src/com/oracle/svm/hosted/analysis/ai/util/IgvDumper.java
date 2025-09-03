@@ -11,7 +11,7 @@ public class IgvDumper {
 
     @SuppressWarnings("try")
     public static StructuredGraph dumpPhase(AnalysisMethod method, StructuredGraph graph, String phaseName) {
-        BigBang bb = BigBangUtil.getInstance().getBigBang();
+        BigBang bb = SvmUtility.getInstance().getBigBang();
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
 

@@ -12,27 +12,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * This is a singleton class that provides utility methods for working with {@link ResolvedJavaType}.
  * Fundamentally, its purpose is to act as a wrapper around {@link BigBang} to
- * avoid passing this as an argument to every method that needs it.
+ * get more sophisticated access to svm metadata.
  */
-public final class BigBangUtil {
+public final class SvmUtility {
 
-    private static BigBangUtil instance;
+    private static SvmUtility instance;
     private final BigBang bb;
 
-    private BigBangUtil(BigBang bb) {
+    private SvmUtility(BigBang bb) {
         this.bb = bb;
     }
 
-    public static BigBangUtil getInstance(BigBang bb) {
+    public static SvmUtility getInstance(BigBang bb) {
         if (instance == null) {
-            instance = new BigBangUtil(bb);
+            instance = new SvmUtility(bb);
         }
         return instance;
     }
 
-    public static BigBangUtil getInstance() {
+    public static SvmUtility getInstance() {
         if (instance == null) {
-            throw new IllegalStateException("BigBangUtil not initialized. Call getInstance(BigBang) first.");
+            throw new IllegalStateException("SvmUtility not initialized.");
         }
         return instance;
     }

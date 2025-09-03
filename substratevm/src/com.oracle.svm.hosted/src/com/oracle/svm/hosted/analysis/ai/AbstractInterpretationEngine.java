@@ -1,15 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.BigBangUtil;
-import jdk.graal.compiler.debug.DebugContext;
+import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,24 +20,27 @@ import java.util.List;
 public class AbstractInterpretationEngine {
 
     private final AnalyzerManager analyzerManager; /* Wrapper for used analyzers */
-    private final AnalysisMethod root; /* The main method of the analyzed program */
-    private final DebugContext debug; /* Current DebugContext */
     private final List<AnalysisMethod> rootMethods; /* Roots of the call-graph */
     private final List<AnalysisMethod> invokedMethods; /* Methods that may-be invoked according to points-to analysis */
-    private boolean analyzeMainOnly; /* Field to control analysis mode */
+    private boolean analyzeMainOnly; /* If true, only the main method will be analyzed */
+    private AnalysisMethod root = null; /* The main method, if present */
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager,
-                                        AnalysisMethod root,
-                                        DebugContext debug,
-                                        BigBang bigBang) { // Updated constructor
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Inflation inflation) {
+
+        AnalysisUniverse universe = inflation.getUniverse();
         this.analyzerManager = analyzerManager;
-        this.root = root;
-        this.debug = debug;
         this.analyzeMainOnly = true;
-        var universe = bigBang.getUniverse();
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(universe);
         this.invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
-        BigBangUtil.getInstance(bigBang);
+
+        /* TODO: what if I have multiple of public static void main(String[] args) ? */
+        inflation.getUniverse().getMethods().forEach(method -> {
+            if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
+                this.root = method;
+            }
+        });
+
+        SvmUtility.getInstance(inflation);
     }
 
     public void setAnalyzeMainOnly(boolean analyzeMainOnly) {
@@ -46,14 +48,7 @@ public class AbstractInterpretationEngine {
     }
 
     public void execute() throws IOException {
-        AbstractInterpretationLogger logger;
-        try {
-            logger = AbstractInterpretationLogger.getInstance();
-            logger.log("Starting Abstract Interpretation Engine", LoggerVerbosity.INFO);
-        } catch (Exception e) {
-            logger = AbstractInterpretationLogger.getInstance(debug, LoggerVerbosity.INFO);
-        }
-
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         if (analyzeMainOnly && root == null) {
             logger.log("Analysis terminated: Main method not provided in 'main-only' mode.", LoggerVerbosity.CHECKER_ERR);
             throw new IllegalStateException("Main method not provided in 'main-only' mode.");
