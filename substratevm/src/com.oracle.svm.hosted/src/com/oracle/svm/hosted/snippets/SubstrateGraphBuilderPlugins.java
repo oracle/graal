@@ -101,6 +101,8 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -446,13 +448,17 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerProxyPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
+        if (StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis) {
+            return;
+        }
+        DynamicAccessInferenceLog inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
         Registration proxyRegistration = new Registration(plugins, Proxy.class);
-        registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, "getProxyClass", ClassLoader.class, Class[].class);
-        registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
+        registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, inferenceLog, "getProxyClass", ClassLoader.class, Class[].class);
+        registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, inferenceLog, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
     }
 
     private static void registerProxyPlugin(Registration proxyRegistration, AnnotationSubstitutionProcessor annotationSubstitutions, ParsingReason reason,
-                    String name, Class<?>... parameterTypes) {
+                    DynamicAccessInferenceLog inferenceLog, String name, Class<?>... parameterTypes) {
         proxyRegistration.register(new RequiredInvocationPlugin(name, parameterTypes) {
             @Override
             public boolean isDecorator() {
@@ -467,6 +473,14 @@ public class SubstrateGraphBuilderPlugins {
                     boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
                     if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
                         b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
+                        if (inferenceLog != null) {
+                            Object ignore = DynamicAccessInferenceLog.ignoreArgument();
+                            Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, args[1]);
+                            Object[] logArguments = targetMethod.getParameters().length == 3
+                                            ? new Object[]{ignore, interfaces, ignore}
+                                            : new Object[]{ignore, interfaces};
+                            inferenceLog.logRegistration(b, reason, targetMethod, null, logArguments);
+                        }
                         return true;
                     }
 
@@ -680,6 +694,8 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
                 successor = ((AbstractBeginNode) successor).next();
+            } else if (successor instanceof ReachabilityRegistrationNode) {
+                successor = ((ReachabilityRegistrationNode) successor).next();
             } else {
                 return successor;
             }
