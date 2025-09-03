@@ -100,6 +100,27 @@ class TestLoadPrettyPrinter(unittest.TestCase):
         self.assertIn('SubstrateVM FrameFilter', exec_string)
 
 
+class TestSVMFrameDecorator(unittest.TestCase):
+    @classmethod
+    def setUp(cls):
+        cls.maxDiff = None
+        set_up_test()
+        gdb_start()
+        set_up_gdb_debughelpers()
+
+    @classmethod
+    def tearDown(cls):
+        gdb_delete_breakpoints()
+        gdb_kill()
+
+    def test_object_file_names_in_backtrace(self):
+        gdb_set_breakpoint("com.oracle.svm.tutorial.CInterfaceTutorial::releaseData")
+        gdb_continue()
+        backtrace = gdb_execute("backtrace")
+        self.assertIn('in cinterfacetutorial', backtrace)
+        self.assertIn('in libcinterfacetutorial.so', backtrace)
+
+
 class TestCInterface(unittest.TestCase):
     @classmethod
     def setUp(cls):

@@ -1069,16 +1069,16 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isola
         '-o', join(app_layer_path, app_layer_name),
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=hello',
-        'hello.Hello'
+        'hello.Hello',
     ] + svm_experimental_options([
         f'-H:LayerUse={join(base_layer_path, base_layer_name)}.nil',
+        f'-H:LinkerRPath={base_layer_path}'
     ]))
 
     # prepare environment
     env = os.environ.copy()
     env['debuginfotest_isolates'] = 'yes'
     env['debuginfotest_layered'] = 'yes'
-    env['LD_LIBRARY_PATH'] = base_layer_path
 
     # fetch python test file
     testhello_py = join(sourcepath, 'gdb-tests', 'testhello.py')
