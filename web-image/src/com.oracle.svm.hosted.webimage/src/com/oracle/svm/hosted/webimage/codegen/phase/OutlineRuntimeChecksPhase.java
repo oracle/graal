@@ -149,12 +149,15 @@ public class OutlineRuntimeChecksPhase extends BasePhase<CoreProviders> {
          * {@link ThrowBytecodeExceptionNode}.
          *
          * @param node A {@link BytecodeExceptionNode} followed immediately by an {@link UnwindNode}
-         *            or a {@link ThrowBytecodeExceptionNode}
+         *            or just a {@link ThrowBytecodeExceptionNode}
          */
         static void find(FixedNode node, List<Pattern> patterns) {
-            boolean isNullCheck = node.predecessor() instanceof BeginNode;
-            isNullCheck = isNullCheck && node.predecessor().predecessor() instanceof IfNode;
-            isNullCheck = isNullCheck && singleInput(node.predecessor().predecessor()) instanceof IsNullNode;
+            Node predecessor = node.predecessor();
+            boolean isNullCheck = predecessor instanceof BeginNode;
+            Node secondPredecessor = predecessor.predecessor();
+            // It has to be an if node where the NPE is thrown in the true-successor
+            isNullCheck = isNullCheck && secondPredecessor instanceof IfNode ifNode && ifNode.trueSuccessor() == predecessor;
+            isNullCheck = isNullCheck && singleInput(secondPredecessor) instanceof IsNullNode;
 
             if (isNullCheck) {
                 NullCheckPattern pattern = new NullCheckPattern(node);
