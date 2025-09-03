@@ -103,7 +103,7 @@ abstract sealed class LayoutStrategy permits ObsolescenceStrategy {
     }
 
     private Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
-        if (!Flags.isConstant(putFlags) && !Flags.isDeclaration(putFlags)) {
+        if (!Flags.isConstant(putFlags)) {
             Class<?> locationType = detectLocationType(value);
             if (locationType != null) {
                 AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);

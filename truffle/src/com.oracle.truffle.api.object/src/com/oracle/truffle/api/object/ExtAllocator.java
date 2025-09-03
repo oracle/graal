@@ -90,11 +90,6 @@ final class ExtAllocator extends BaseAllocator {
     }
 
     @Override
-    public LocationImpl declaredLocation(Object value) {
-        return new ExtLocations.DeclaredLocation(value);
-    }
-
-    @Override
     protected Location moveLocation(Location oldLocation) {
         final boolean decorateFinal = false;
         if (oldLocation instanceof IntLocation) {
@@ -304,8 +299,6 @@ final class ExtAllocator extends BaseAllocator {
     Location locationForValue(Object value, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
-        } else if (Flags.isDeclaration(putFlags)) {
-            return declaredLocation(value);
         }
         boolean decorateFinal = true;
         if (value instanceof Integer) {
