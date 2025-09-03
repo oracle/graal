@@ -34,11 +34,13 @@ import java.nio.file.Paths;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.word.PointerBase;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -57,8 +59,13 @@ public class JitdumpProvider {
         public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
     }
 
-    private PointerBase addressBegin = Word.nullPointer();
-    private UnsignedWord pageSize = Word.zero();
+    /*
+     * A pointer to the file descriptor of the jitdump file. This needs to be a CGlobalData to be
+     * accessible for run-time compilations.
+     */
+    private final CGlobalData<Pointer> fdPointer = CGlobalDataFactory.createWord(Word.zero(), null, true);
+    private final CGlobalData<Pointer> addressBegin = CGlobalDataFactory.createWord(Word.zero(), null, true);
+    private final CGlobalData<Pointer> pageSize = CGlobalDataFactory.createWord(Word.zero(), null, true);
 
     @Fold
     public static JitdumpProvider singleton() {
@@ -74,7 +81,7 @@ public class JitdumpProvider {
         return Paths.get(Options.RuntimeJitdumpDir.getValue(), "jit-" + ProcessProperties.getProcessID() + ".dump");
     }
 
-    public RuntimeSupport.Hook startupHook() {
+    public static RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             if (!isFirstIsolate) {
                 return;
@@ -94,7 +101,7 @@ public class JitdumpProvider {
                 return;
             }
 
-            pageSize = VirtualMemoryProvider.get().getGranularity();
+            UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
             if (pageSize.rawValue() == -1) {
                 getFileSupport().close(fd);
                 LogUtils.warning("Failed to prepare the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
@@ -104,7 +111,7 @@ public class JitdumpProvider {
             /*
              * We need a mmap call that is picked up by perf to announce a jitdump file to perf.
              */
-            addressBegin = VirtualMemoryProvider.get().mapFile(Word.nullPointer(), pageSize, Word.signed(fd.rawValue()), Word.zero(),
+            Pointer addressBegin = VirtualMemoryProvider.get().mapFile(Word.nullPointer(), pageSize, Word.signed(fd.rawValue()), Word.zero(),
                             VirtualMemoryProvider.Access.EXECUTE | VirtualMemoryProvider.Access.READ);
             if (addressBegin.isNull()) {
                 getFileSupport().close(fd);
@@ -112,34 +119,50 @@ public class JitdumpProvider {
                 return;
             }
 
+            /* Store the open file descriptor and memory mapped region. */
+            JitdumpProvider provider = singleton();
+            provider.fdPointer.get().writeWord(0, fd);
+            provider.addressBegin.get().writeWord(0, addressBegin);
+            provider.pageSize.get().writeWord(0, pageSize);
+
             /* Write the jitdump header. */
             writeHeader(fd);
-            getFileSupport().close(fd);
         };
     }
 
-    public RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
             if (!isFirstIsolate) {
                 return;
             }
 
-            /*
-             * If the initialization was successful we have a memory mapped region, and we need to
-             * do some cleanup.
-             */
-            if (addressBegin.isNonNull()) {
-                /* Append the optional close record. */
-                RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().open(getJitdumpPath().toFile(), RawFileOperationSupport.FileAccessMode.APPEND);
-                if (getFileSupport().isValid(fd)) {
-                    writeCloseRecord(fd);
-                    getFileSupport().close(fd);
-                }
+            JitdumpProvider provider = singleton();
+            Pointer fdPointer = provider.fdPointer.get();
+            /* Append the optional close record and close jitdump file. */
+            RawFileOperationSupport.RawFileDescriptor fd = fdPointer.readWord(0);
+            if (getFileSupport().isValid(fd)) {
+                writeCloseRecord(fd);
+                getFileSupport().close(fd);
+                /* Clear file descriptor. */
+                fdPointer.writeWord(0, Word.zero());
+            }
 
-                /* And unmap the memory mapped region. */
-                VirtualMemoryProvider.get().free(addressBegin, pageSize);
+            /*
+             * If the initialization was successful we have a memory mapped region that needs to be
+             * freed.
+             */
+            Pointer addressBegin = provider.addressBegin.get();
+            if (addressBegin.isNonNull()) {
+                VirtualMemoryProvider.get().free(addressBegin, provider.pageSize.get());
+                /* Clear address of memory mapped region. */
+                addressBegin.writeWord(0, Word.nullPointer());
             }
         };
+    }
+
+    private static synchronized void writeToFile(RawFileOperationSupport.RawFileDescriptor fd, byte[] content) {
+        assert getFileSupport().isValid(fd) : "File descriptor for jitdump file must be initialized before writing to it";
+        getFileSupport().write(fd, content);
     }
 
     /**
@@ -160,8 +183,7 @@ public class JitdumpProvider {
                         .putLong(0);  // no flags needed
         assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump header.";
 
-        assert getFileSupport().isValid(fd) : "File descriptor for jitdump file must be initialized before writing to it";
-        getFileSupport().write(fd, content.array());
+        writeToFile(fd, content.array());
     }
 
     /**
@@ -175,8 +197,7 @@ public class JitdumpProvider {
         putRecordHeader(header, content);
         assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump close record.";
 
-        assert getFileSupport().isValid(fd) : "File descriptor for jitdump file must be initialized before writing to it";
-        getFileSupport().write(fd, content.array());
+        writeToFile(fd, content.array());
     }
 
     /**
@@ -184,10 +205,8 @@ public class JitdumpProvider {
      *
      * @param debugInfoProvider the debug info provider that generated the compiled method entry
      * @param compiledMethodEntry the {@code CompiledMethodEntry} of the run-time compiled method
-     * @return the {@code ByteBuffer} containing the content of the records for a run-time
-     *         compilation
      */
-    public static ByteBuffer createRecords(SubstrateDebugInfoProvider debugInfoProvider, CompiledMethodEntry compiledMethodEntry) {
+    public static void writeRecords(SubstrateDebugInfoProvider debugInfoProvider, CompiledMethodEntry compiledMethodEntry) {
         MethodEntry methodEntry = compiledMethodEntry.primary().getMethodEntry();
         JitdumpCodeLoadRecord cl = JitdumpCodeLoadRecord.create(methodEntry, debugInfoProvider.getCompilation(), debugInfoProvider.getCodeSize(), debugInfoProvider.getCodeAddress());
         JitdumpDebugInfoRecord di = JitdumpDebugInfoRecord.create(compiledMethodEntry, debugInfoProvider.getCodeAddress());
@@ -228,7 +247,7 @@ public class JitdumpProvider {
 
         assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump records for " + methodEntry.getMethodName() + ".";
 
-        return content.flip();
+        writeToFile(singleton().fdPointer.get().readWord(0), content.array());
     }
 
     private static ByteBuffer putRecordHeader(JitdumpRecordHeader header, ByteBuffer content) {

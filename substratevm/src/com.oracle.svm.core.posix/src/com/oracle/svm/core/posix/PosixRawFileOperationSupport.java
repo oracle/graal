@@ -195,8 +195,6 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
                 return Fcntl.O_RDWR();
             case WRITE:
                 return Fcntl.O_WRONLY();
-            case APPEND:
-                return Fcntl.O_WRONLY() | Fcntl.O_APPEND();
             default:
                 throw VMError.shouldNotReachHereUnexpectedInput(mode); // ExcludeFromJacocoGeneratedReport
         }

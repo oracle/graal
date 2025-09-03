@@ -166,14 +166,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         /*
          * Create the records for a run-time compilation and write them to the jitdump file.
          */
-        ByteBuffer records = JitdumpProvider.createRecords(debugInfoProvider, compiledMethodEntry);
-        try (FileChannel channel = FileChannel.open(JitdumpProvider.getJitdumpPath(), StandardOpenOption.APPEND);
-                        FileLock lock = channel.lock()) {
-            int written = channel.write(records);
-            assert written == records.limit();
-        } catch (IOException e) {
-            debug.log("Failed to write the jitdump records for %s.", compiledMethodEntry.primary().getFullMethodName());
-        }
+        JitdumpProvider.writeRecords(debugInfoProvider, compiledMethodEntry);
     }
 
     @Override

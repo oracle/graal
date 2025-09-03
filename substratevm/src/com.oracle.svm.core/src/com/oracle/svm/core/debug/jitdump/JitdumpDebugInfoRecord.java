@@ -76,7 +76,7 @@ public record JitdumpDebugInfoRecord(JitdumpRecordHeader header, long address, L
 
     public static JitdumpDebugInfoRecord create(CompiledMethodEntry compiledMethodEntry, long address) {
         List<JitdumpDebugEntry> entries = compiledMethodEntry.topDownRangeStream(false)
-                        .map(r -> new JitdumpDebugEntry(r.getLo(), r.getLine(), 0, r.getFileName()))
+                        .map(r -> new JitdumpDebugEntry(r.getLo(), r.getLine(), 0, r.getMethodEntry().getFullFileName()))
                         .toList();
         int recordSize = BASE_SIZE + entries.stream()
                         .mapToInt(JitdumpDebugEntry::getSize)
