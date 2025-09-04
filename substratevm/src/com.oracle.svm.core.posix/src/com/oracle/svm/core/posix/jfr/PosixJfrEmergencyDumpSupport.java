@@ -138,7 +138,6 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
              */
             return emergencyFd;
         }
-        Log.log().string("Creating a new emergency chunk file in the JFR disk repository").newline();
         return createEmergencyChunkPath();
     }
 
@@ -162,7 +161,6 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L409-L416")
     public void onVmError() {
-        Log.log().string("Attempting JFR Emergency Dump").newline();
         if (openEmergencyDumpFile()) {
             GrowableWordArray sortedChunkFilenames = StackValue.get(GrowableWordArray.class);
             GrowableWordArrayAccess.initialize(sortedChunkFilenames);

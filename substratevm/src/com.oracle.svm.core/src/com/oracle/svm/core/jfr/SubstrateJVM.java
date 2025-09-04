@@ -78,7 +78,8 @@ import jdk.jfr.internal.LogTag;
  * </ul>
  */
 public class SubstrateJVM {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L569") private static final String OUT_OF_MEMORY = "Out of Memory";
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L569") //
+    private static final String OUT_OF_MEMORY = "Out of Memory";
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
@@ -765,7 +766,6 @@ public class SubstrateJVM {
             boolean existingFile = chunkWriter.hasOpenFile();
             if (!existingFile) {
                 // If no chunkfile is open, create one. This case is very unlikely.
-                Log.log().string("No existing chunk file. Creating one.").newline();
                 RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
                 if (RawFileOperationSupport.bigEndian().isValid(fd)) {
                     chunkWriter.openFile(fd);

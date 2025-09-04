@@ -57,7 +57,7 @@ public class TestJfrSymbolRepository extends JfrRecordingTest {
     }
 
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
-    private long getSymbolId(JfrSymbolRepository repo, String str) {
+    private static long getSymbolId(JfrSymbolRepository repo, String str) {
         return repo.getSymbolId(str, false);
     }
 }

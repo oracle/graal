@@ -561,7 +561,7 @@ public class UninterruptibleUtils {
          * Write a char in modified UTF8 format into the buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static Pointer writeModifiedUTF8(Pointer buffer, char c) {
+        public static Pointer writeModifiedUTF8(Pointer buffer, char c) {
             Pointer pos = buffer;
             if (c >= 0x0001 && c <= 0x007F) {
                 pos.writeByte(0, (byte) c);

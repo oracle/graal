@@ -43,8 +43,6 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.memory.NullableNativeMemory;
-import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
@@ -542,15 +540,43 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
 
             int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
-            Pointer buffer = NullableNativeMemory.malloc(length, NmtCategory.JFR);
-            if (buffer.isNull()) {
-                return;
-            }
             writeCompressedInt(length);
-            UninterruptibleUtils.String.toModifiedUTF8(str, buffer, buffer.add(length), false);
-            getFileSupport().write(fd, buffer, Word.unsigned(length));
-            NullableNativeMemory.free(buffer);
+            int bufferSize = 256;
+            Pointer buffer = StackValue.get(bufferSize);
+            Pointer bufferEnd = buffer.add(bufferSize);
+            int charsWritten = 0;
+            UnsignedWord totalBytesWritten = Word.unsigned(0);
+            while (charsWritten < str.length()) {
+                // Fill up the buffer as much as possible
+                Pointer pos = buffer;
+                while (pos.belowOrEqual(bufferEnd) && charsWritten < str.length()) {
+                    char ch = UninterruptibleUtils.String.charAt(str, charsWritten);
+                    pos = UninterruptibleUtils.String.writeModifiedUTF8(pos, ch);
+                    charsWritten++;
+                }
+                // Write the contents of the buffer to disk
+                UnsignedWord bytesToDisk = pos.subtract(buffer);
+                getFileSupport().write(fd, buffer, bytesToDisk);
+                totalBytesWritten = totalBytesWritten.add(bytesToDisk);
+            }
+            assert totalBytesWritten.equal(length);
         }
+    }
+
+    /**
+     * Use this method when the string may be too big for the buffer. Returns the number of
+     * characters written to the buffer.
+     */
+    public static int toModifiedUTF8(java.lang.String str, Pointer buffer, Pointer bufferEnd, int offset) {
+        Pointer pos = buffer;
+        int i = 0;
+        while (pos.belowOrEqual(bufferEnd)) {
+            char ch = UninterruptibleUtils.String.charAt(str, i + offset);
+            pos = UninterruptibleUtils.String.writeModifiedUTF8(pos, ch);
+            i++;
+        }
+
+        return i;
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
