@@ -706,7 +706,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape addProperty(Property property) {
-        return getLayoutStrategy().addProperty(this, property);
+        return ObsolescenceStrategy.singleton().addProperty(this, property);
     }
 
     /**
@@ -720,7 +720,7 @@ public final class Shape {
     @Deprecated(since = "22.2")
     @TruffleBoundary
     public Shape defineProperty(Object key, Object value, int propertyFlags) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags);
+        return ObsolescenceStrategy.singleton().defineProperty(this, key, value, propertyFlags);
     }
 
     /**
@@ -731,7 +731,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, putFlags);
+        return ObsolescenceStrategy.singleton().defineProperty(this, key, value, propertyFlags, putFlags);
     }
 
     /**
@@ -914,7 +914,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape removeProperty(Property property) {
-        return getLayoutStrategy().removeProperty(this, property);
+        return ObsolescenceStrategy.singleton().removeProperty(this, property);
     }
 
     /**
@@ -924,7 +924,7 @@ public final class Shape {
      */
     protected Shape replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
-        return getLayoutStrategy().replaceProperty(this, oldProperty, newProperty);
+        return ObsolescenceStrategy.singleton().replaceProperty(this, oldProperty, newProperty);
     }
 
     /**
@@ -1665,7 +1665,7 @@ public final class Shape {
     }
 
     BaseAllocator allocator() {
-        return getLayoutStrategy().createAllocator(this);
+        return ObsolescenceStrategy.singleton().createAllocator(this);
     }
 
     /**
@@ -1714,14 +1714,6 @@ public final class Shape {
 
     LayoutImpl getLayout() {
         return layout;
-    }
-
-    LayoutStrategy getLayoutStrategy() {
-        return getLayout().getStrategy();
-    }
-
-    Object getSharedDataInternal() {
-        return sharedData;
     }
 
     boolean allowPropertyAssumptions() {

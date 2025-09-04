@@ -275,7 +275,7 @@ abstract class DynamicObjectLibraryImpl {
 
     @TruffleBoundary
     static boolean updateShapeImpl(DynamicObject object) {
-        return object.getShape().getLayoutStrategy().updateShape(object);
+        return ObsolescenceStrategy.singleton().updateShape(object);
     }
 
     @ExportMessage
@@ -334,21 +334,18 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.isSetExisting(putFlags)) {
                     return false;
                 } else {
-                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                    newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
-                LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
                 if (existingProperty.getLocation().canStore(value)) {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
-                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
+                    newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             }
@@ -369,7 +366,6 @@ abstract class DynamicObjectLibraryImpl {
 
     static RemovePlan prepareRemove(Shape shapeBefore, Shape shapeAfter, Property removedProperty) {
         assert !shapeBefore.isShared();
-        LayoutStrategy strategy = shapeBefore.getLayoutStrategy();
         List<Move> moves = new ArrayList<>();
         boolean canMoveInPlace = shapeAfter.getObjectArrayCapacity() <= shapeBefore.getObjectArrayCapacity() &&
                         shapeAfter.getPrimitiveArrayCapacity() <= shapeBefore.getPrimitiveArrayCapacity();
@@ -439,8 +435,8 @@ abstract class DynamicObjectLibraryImpl {
                     continue;
                 }
                 assert !toLoc.isValue();
-                int fromOrd = strategy.getLocationOrdinal(fromLoc);
-                int toOrd = strategy.getLocationOrdinal(toLoc);
+                int fromOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(fromLoc);
+                int toOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(toLoc);
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
                 canMoveInPlace &= fromOrd > toOrd;
                 moves.add(move);
@@ -458,8 +454,8 @@ abstract class DynamicObjectLibraryImpl {
                     continue;
                 }
                 assert !toLoc.isValue();
-                int fromOrd = strategy.getLocationOrdinal(fromLoc);
-                int toOrd = strategy.getLocationOrdinal(toLoc);
+                int fromOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(fromLoc);
+                int toOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(toLoc);
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
                 canMoveInPlace &= fromOrd > toOrd;
                 moves.add(move);
@@ -1540,15 +1536,13 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.isSetExisting(putFlags)) {
                     return oldShape;
                 } else {
-                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
+                    return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
             if (Flags.isUpdateFlags(putFlags)) {
                 if (newPropertyFlags != property.getFlags()) {
-                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
+                    return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
@@ -1556,14 +1550,12 @@ abstract class DynamicObjectLibraryImpl {
             if (!location.isDeclared() && !location.canStore(value)) {
                 // generalize
                 assert oldShape == object.getShape();
-                LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                Shape newShape = strategy.definePropertyGeneralize(oldShape, property, value, putFlags);
+                Shape newShape = ObsolescenceStrategy.singleton().definePropertyGeneralize(oldShape, property, value, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
-                LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
+                return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
             } else {
                 // set existing
                 assert location.canStore(value);
