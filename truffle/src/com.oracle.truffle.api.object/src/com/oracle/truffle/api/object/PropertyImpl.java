@@ -78,7 +78,7 @@ final class PropertyImpl extends Property {
         return flags;
     }
 
-    public Property relocate(Location newLocation) {
+    Property relocate(Location newLocation) {
         if (!getLocation().equals(newLocation)) {
             return new PropertyImpl(key, newLocation, flags);
         }
@@ -106,7 +106,7 @@ final class PropertyImpl extends Property {
         return (key == other.key || key.equals(other.key)) && flags == other.flags && (location == other.location || location.equals(other.location));
     }
 
-    public boolean isSame(Property obj) {
+    boolean isSame(Property obj) {
         if (this == obj) {
             return true;
         }
@@ -141,7 +141,7 @@ final class PropertyImpl extends Property {
         return key instanceof HiddenKey;
     }
 
-    public Property copyWithFlags(int newFlags) {
+    Property copyWithFlags(int newFlags) {
         return new PropertyImpl(key, location, newFlags);
     }
 }
