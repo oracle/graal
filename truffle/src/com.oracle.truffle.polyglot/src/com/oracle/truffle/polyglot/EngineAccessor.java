@@ -1214,9 +1214,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
+        public boolean isHostException(Object vmObject, Throwable exception) {
+            PolyglotEngineImpl engine;
+            if (vmObject instanceof PolyglotLanguageContext polyglotLanguageContext) {
+                engine = polyglotLanguageContext.context.engine;
+            } else if (vmObject instanceof PolyglotEngineImpl polyglotEngine) {
+                engine = polyglotEngine;
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unsupported vmObject " + vmObject);
+            }
             // During context pre-initialization, engine.host is null, languages are not allowed to
             // use host interop. But the call to isHostException is supported and returns false
             // because languages cannot create a HostObject.
