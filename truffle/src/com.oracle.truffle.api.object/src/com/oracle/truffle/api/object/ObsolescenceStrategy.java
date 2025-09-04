@@ -54,6 +54,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
+import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
+import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -63,12 +66,366 @@ import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
 
 @SuppressWarnings("deprecation")
-final class ObsolescenceStrategy extends LayoutStrategy {
+final class ObsolescenceStrategy {
+
+    private static final ObsolescenceStrategy SINGLETON = new ObsolescenceStrategy();
+
+    static ObsolescenceStrategy singleton() {
+        return SINGLETON;
+    }
+
     private static final DebugCounter makeSuccessorShapeCount = DebugCounter.create("Rebuild shape count");
     private static final DebugCounter reshapeCount = DebugCounter.create("Reshape count");
     private static final int TRACE_RESHAPE_LIMIT = 500;
 
     @SuppressWarnings("serial") private static final Error STACK_OVERFLOW_ERROR = new NonrecoverableError();
+
+    /**
+     * Removes a property without moving property locations, leaving a gap that is lost forever.
+     */
+    private static Shape directRemoveProperty(Shape shape, Property property, RemovePropertyTransition transition) {
+        PropertyMap newPropertyMap = shape.getPropertyMap().removeCopy(property);
+        Shape newShape = shape.createShape(shape.objectType, shape.sharedData, newPropertyMap, transition, shape.allocator(), shape.flags);
+
+        return shape.addDirectTransition(transition, newShape);
+    }
+
+    private static Shape directReplacePropertyInner(Shape shape, Property oldProperty, Property newProperty) {
+        assert oldProperty.getKey().equals(newProperty.getKey());
+        if (oldProperty.equals(newProperty)) {
+            return shape;
+        }
+
+        var replacePropertyTransition = new DirectReplacePropertyTransition(oldProperty, newProperty);
+        shape.onPropertyTransition(replacePropertyTransition);
+        Shape cachedShape = shape.queryTransition(replacePropertyTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+        PropertyMap newPropertyMap = shape.getPropertyMap().replaceCopy(oldProperty, newProperty);
+        BaseAllocator allocator = shape.allocator().addLocation(newProperty.getLocation());
+        Shape newShape = shape.createShape(shape.objectType, shape.sharedData, newPropertyMap, replacePropertyTransition, allocator, shape.flags);
+
+        newShape = shape.addDirectTransition(replacePropertyTransition, newShape);
+
+        if (!shape.isValid()) {
+            newShape.invalidateValidAssumption();
+        }
+        return newShape;
+    }
+
+    /**
+     * Get the (parent) shape that holds the given property.
+     */
+    private static Shape getShapeFromProperty(Shape shape, Object propertyName) {
+        Shape current = shape;
+        Shape root = shape.getRoot();
+        while (current != root) {
+            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getPropertyKey().equals(propertyName)) {
+                return current;
+            }
+            current = current.getParent();
+        }
+
+        return null;
+    }
+
+    private static void ensureSameTypeOrMoreGeneral(Location generalLocation, Location specificLocation) {
+        if (generalLocation == specificLocation) {
+            return;
+        }
+        if (generalLocation instanceof ExtLocations.AbstractObjectLocation objLocGeneral && specificLocation instanceof ExtLocations.AbstractObjectLocation objLocSpecific) {
+            ExtLocations.TypeAssumption assGeneral = objLocGeneral.getTypeAssumption();
+            ExtLocations.TypeAssumption assSpecific = objLocSpecific.getTypeAssumption();
+            if (assGeneral != assSpecific) {
+                if (!assGeneral.type.isAssignableFrom(assSpecific.type) || assGeneral.nonNull && !assSpecific.nonNull) {
+                    // If assignable check failed, merge type assumptions to ensure safety.
+                    // Otherwise, we might unsafe cast based on a wrong type assumption.
+                    objLocGeneral.mergeTypeAssumption(assSpecific);
+                }
+            }
+        }
+    }
+
+    private static boolean assertLocationInRange(final Shape shape, final Location location) {
+        final LayoutImpl layout = shape.getLayout();
+        if (location instanceof LocationImpl) {
+            ((LocationImpl) location).accept(new LocationImpl.LocationVisitor() {
+                @Override
+                public void visitPrimitiveField(int index, int count) {
+                    assert index + count <= layout.getPrimitiveFieldCount();
+                }
+
+                @Override
+                public void visitObjectField(int index, int count) {
+                    assert index + count <= layout.getObjectFieldCount();
+                }
+
+                @Override
+                public void visitPrimitiveArray(int index, int count) {
+                }
+
+                @Override
+                public void visitObjectArray(int index, int count) {
+                }
+            });
+        }
+        return true;
+    }
+
+    int getLocationOrdinal(Location location) {
+        return ((LocationImpl) location).getOrdinal();
+    }
+
+    private Shape ensureSpace(Shape shape, Location location) {
+        Objects.requireNonNull(location);
+        assert assertLocationInRange(shape, location);
+        return shape;
+    }
+
+    Shape defineProperty(Shape shape, Object key, Object value, int flags) {
+        return defineProperty(shape, key, value, flags, Flags.DEFAULT);
+    }
+
+    Shape defineProperty(Shape shape, Object key, Object value, int flags, int putFlags) {
+        Shape oldShape = shape;
+        if (!oldShape.isValid()) {
+            oldShape = ensureValid(oldShape);
+        }
+        Property existing = oldShape.getProperty(key);
+        return defineProperty(oldShape, key, value, flags, existing, putFlags);
+    }
+
+    Shape defineProperty(Shape oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
+        if (existing == null) {
+            return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
+        } else {
+            if (existing.getFlags() == propertyFlags) {
+                if (existing.getLocation().canStore(value)) {
+                    return oldShape;
+                } else {
+                    return definePropertyGeneralize(oldShape, existing, value, putFlags);
+                }
+            } else {
+                return definePropertyChangeFlags(oldShape, existing, value, propertyFlags, putFlags);
+            }
+        }
+    }
+
+    private Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
+        if (!Flags.isConstant(putFlags)) {
+            Class<?> locationType = detectLocationType(value);
+            if (locationType != null) {
+                AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
+                Shape cachedShape = oldShape.queryTransition(addTransition);
+                if (cachedShape != null) {
+                    return ensureValid(cachedShape);
+                }
+            }
+        }
+
+        Location location = createLocationForValue(oldShape, value, putFlags);
+        Property property = Property.create(key, location, propertyFlags);
+        return addProperty(oldShape, property);
+    }
+
+    private Class<?> detectLocationType(Object value) {
+        if (value instanceof Integer) {
+            return int.class;
+        } else if (value instanceof Double) {
+            return double.class;
+        } else if (value instanceof Long) {
+            return long.class;
+        } else if (value instanceof Boolean) {
+            return boolean.class;
+        } else {
+            return Object.class;
+        }
+    }
+
+    private Location createLocationForValue(Shape shape, Object value, int putFlags) {
+        return ((ExtAllocator) shape.allocator()).locationForValue(value, putFlags);
+    }
+
+    private Shape definePropertyChangeFlags(Shape oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
+        assert existing.getFlags() != propertyFlags;
+        if (existing.getLocation().canStore(value)) {
+            Property newProperty = Property.create(existing.getKey(), existing.getLocation(), propertyFlags);
+            return replaceProperty(oldShape, existing, newProperty);
+        } else {
+            return generalizePropertyWithFlags(oldShape, existing, value, propertyFlags, putFlags);
+        }
+    }
+
+    Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
+        if (oldProperty.getLocation().isValue()) {
+            Location newLocation = createLocationForValue(oldShape, value, putFlags);
+            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
+            // Always use direct replace for value locations to avoid shape explosion
+            return directReplaceProperty(oldShape, oldProperty, newProperty);
+        } else {
+            return generalizeProperty(oldProperty, value, oldShape, oldShape, putFlags);
+        }
+    }
+
+    Shape removeProperty(Shape shape, Property property) {
+        if (property.getLocation() instanceof ExtLocations.InstanceLocation instanceLocation) {
+            instanceLocation.maybeInvalidateFinalAssumption();
+        }
+
+        boolean direct = shape.isShared();
+        RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
+        shape.onPropertyTransition(transition);
+        Shape cachedShape = shape.queryTransition(transition);
+        if (cachedShape != null) {
+            return ensureValid(cachedShape);
+        }
+
+        if (direct) {
+            return directRemoveProperty(shape, property, transition);
+        }
+
+        return indirectRemoveProperty(shape, property, transition);
+    }
+
+    private RemovePropertyTransition newRemovePropertyTransition(Property property, boolean direct) {
+        return new RemovePropertyTransition(property, toLocationOrType(property.getLocation()), direct);
+    }
+
+    /**
+     * Removes a property by rewinding and replaying property transitions; moves any subsequent
+     * property locations to fill in the gap.
+     */
+    private Shape indirectRemoveProperty(Shape shape, Property property, RemovePropertyTransition transition) {
+        Shape owningShape = getShapeFromProperty(shape, property.getKey());
+        if (owningShape == null) {
+            return null;
+        }
+
+        List<Transition> transitionList = new ArrayList<>();
+        for (Shape current = shape; current != owningShape; current = current.parent) {
+            Transition transitionFromParent = current.getTransitionFromParent();
+            if (transitionFromParent instanceof DirectReplacePropertyTransition &&
+                            ((DirectReplacePropertyTransition) transitionFromParent).getPropertyBefore().getKey().equals(property.getKey())) {
+                continue;
+            } else {
+                transitionList.add(transitionFromParent);
+            }
+        }
+
+        Shape newShape = owningShape.parent;
+        for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
+            Transition previous = iterator.previous();
+            newShape = applyTransition(newShape, previous, true);
+        }
+
+        return shape.addIndirectTransition(transition, newShape);
+    }
+
+    private Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
+        return directReplaceProperty(shape, oldProperty, newProperty, true);
+    }
+
+    private Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty, boolean ensureValid) {
+        Shape newShape = directReplacePropertyInner(shape, oldProperty, newProperty);
+
+        Property actualProperty = newShape.getProperty(newProperty.getKey());
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, newProperty);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    Shape addProperty(Shape shape, Property property) {
+        return addProperty(shape, property, true);
+    }
+
+    private Shape addProperty(Shape shape, Property property, boolean ensureValid) {
+        Shape newShape = addPropertyInner(shape, property);
+
+        Property actualProperty = newShape.getLastProperty();
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, property);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    private Shape addPropertyInner(Shape shape, Property property) {
+        assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
+
+        AddPropertyTransition addTransition = newAddPropertyTransition(property);
+        shape.onPropertyTransition(addTransition);
+        Shape cachedShape = shape.queryTransition(addTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        Shape oldShape = ensureSpace(shape, property.getLocation());
+
+        Shape newShape = Shape.makeShapeWithAddedProperty(oldShape, addTransition);
+        newShape = oldShape.addDirectTransition(addTransition, newShape);
+
+        if (!oldShape.isValid()) {
+            newShape.invalidateValidAssumption();
+        }
+        return newShape;
+    }
+
+    private AddPropertyTransition newAddPropertyTransition(Property property) {
+        return new AddPropertyTransition(property, toLocationOrType(property.getLocation()));
+    }
+
+    private Object toLocationOrType(Location location) {
+        if (location instanceof LocationImpl) {
+            Class<?> type = ((LocationImpl) location).getType();
+            if (type != null) {
+                return type;
+            }
+        }
+        return location;
+    }
+
+    private Shape applyTransition(Shape shape, Transition transition, boolean append) {
+        if (transition instanceof AddPropertyTransition) {
+            Property property = ((AddPropertyTransition) transition).getProperty();
+            Shape newShape;
+            if (append) {
+                Property newProperty = ((PropertyImpl) property).relocate(shape.allocator().moveLocation(property.getLocation()));
+                newShape = addProperty(shape, newProperty, true);
+            } else {
+                newShape = addProperty(shape, property, false);
+            }
+            return newShape;
+        } else if (transition instanceof ObjectTypeTransition) {
+            return shape.setDynamicType(((ObjectTypeTransition) transition).getObjectType());
+        } else if (transition instanceof ObjectFlagsTransition) {
+            return shape.setFlags(((ObjectFlagsTransition) transition).getObjectFlags());
+        } else if (transition instanceof DirectReplacePropertyTransition) {
+            Property oldProperty = ((DirectReplacePropertyTransition) transition).getPropertyBefore();
+            Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
+            if (append) {
+                boolean sameLocation = oldProperty.getLocation().equals(newProperty.getLocation());
+                oldProperty = shape.getProperty(oldProperty.getKey());
+                Location newLocation;
+                if (sameLocation) {
+                    newLocation = oldProperty.getLocation();
+                } else {
+                    newLocation = shape.allocator().moveLocation(newProperty.getLocation());
+                }
+                newProperty = ((PropertyImpl) newProperty).relocate(newLocation);
+            }
+            return directReplaceProperty(shape, oldProperty, newProperty, append);
+        } else {
+            throw new UnsupportedOperationException(transition.getClass().getName());
+        }
+    }
+
+    private void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
+        assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
+        assert generalProperty.getLocation() == specificProperty.getLocation() ||
+                        ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
+        ensureSameTypeOrMoreGeneral(generalProperty.getLocation(), specificProperty.getLocation());
+    }
 
     @SuppressWarnings("serial")
     static final class NonrecoverableError extends ThreadDeath {
@@ -85,24 +442,16 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    private static final ObsolescenceStrategy SINGLETON = new ObsolescenceStrategy();
-
     private ObsolescenceStrategy() {
     }
 
-    static ObsolescenceStrategy singleton() {
-        return SINGLETON;
-    }
-
-    @Override
-    protected boolean updateShape(DynamicObject object) {
+    boolean updateShape(DynamicObject object) {
         boolean changed = checkForObsoleteShapeAndMigrate(object);
         // shape should be valid now, but we cannot assert this due to a possible race
         return changed;
     }
 
-    @Override
-    protected Shape ensureValid(Shape newShape) {
+    private Shape ensureValid(Shape newShape) {
         Shape nextShape = newShape;
         // if it's been obsoleted (cached shape), skip over
         if (!nextShape.isValid()) {
@@ -112,15 +461,12 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         return nextShape;
     }
 
-    @Override
-    protected Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
-        return super.definePropertyGeneralize(oldShape, oldProperty, value, putFlags);
-    }
-
-    @Override
-    protected Shape generalizeProperty(Property oldProperty, Object value, Shape oldShape, Shape newShape, int putFlags) {
+    private Shape generalizeProperty(Property oldProperty, Object value, Shape oldShape, Shape newShape, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
-            return super.generalizeProperty(oldProperty, value, oldShape, newShape, putFlags);
+            Location oldLocation = oldProperty.getLocation();
+            Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
+            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
+            return replaceProperty(newShape, oldProperty, newProperty);
         } else {
             if (oldShape == newShape) {
                 return generalizeHelper(oldProperty, value, oldShape, putFlags);
@@ -130,10 +476,12 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    @Override
-    protected Shape generalizePropertyWithFlags(Shape oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
+    private Shape generalizePropertyWithFlags(Shape oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
-            return super.generalizePropertyWithFlags(oldShape, oldProperty, value, propertyFlags, putFlags);
+            assert !oldProperty.getLocation().canStore(value);
+            Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
+            Property newProperty = Property.create(oldProperty.getKey(), newLocation, propertyFlags);
+            return replaceProperty(oldShape, oldProperty, newProperty);
         } else {
             Shape generalizedShape = generalizeHelper(oldProperty, value, oldShape, putFlags);
             Property generalizedProperty = generalizedShape.getProperty(oldProperty.getKey());
@@ -142,8 +490,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         }
     }
 
-    @Override
-    protected Shape replaceProperty(Shape shape, Property oldProperty, Property newProperty) {
+    Shape replaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         if (shape.isShared() || oldProperty.getLocation().isValue()) {
             return directReplaceProperty(shape, oldProperty, newProperty);
         } else {
@@ -212,8 +559,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
         return newShape;
     }
 
-    @Override
-    protected BaseAllocator createAllocator(Shape shape) {
+    BaseAllocator createAllocator(Shape shape) {
         return new ExtAllocator(shape);
     }
 
@@ -243,7 +589,7 @@ final class ObsolescenceStrategy extends LayoutStrategy {
      * Reshape this object from obsolete shape to successor shape. New shape has to be an upcast of
      * the old one.
      *
-     * Migration is a two step process: first we need to build the new shape, then copy the
+     * Migration is a two-step process: first we need to build the new shape, then copy the
      * properties over; this is due to append/put not necessarily progressing linear (may reorder
      * properties to make space for extension array).
      */
