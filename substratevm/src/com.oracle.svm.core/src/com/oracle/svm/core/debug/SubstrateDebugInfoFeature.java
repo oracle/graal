@@ -114,8 +114,6 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (Options.hasRuntimeDebugInfoJitdumpSupport()) {
-            ImageSingletons.add(JitdumpProvider.class, new JitdumpProvider());
-
             RuntimeSupport.getRuntimeSupport().addStartupHook(JitdumpProvider.startupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(JitdumpProvider.shutdownHook());
         }

@@ -32,8 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -50,7 +50,7 @@ import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.word.Word;
 
 public class JitdumpProvider {
@@ -63,14 +63,9 @@ public class JitdumpProvider {
      * A pointer to the file descriptor of the jitdump file. This needs to be a CGlobalData to be
      * accessible for run-time compilations.
      */
-    private final CGlobalData<Pointer> fdPointer = CGlobalDataFactory.createWord(Word.zero(), null, true);
-    private final CGlobalData<Pointer> addressBegin = CGlobalDataFactory.createWord(Word.zero(), null, true);
-    private final CGlobalData<Pointer> pageSize = CGlobalDataFactory.createWord(Word.zero(), null, true);
-
-    @Fold
-    public static JitdumpProvider singleton() {
-        return ImageSingletons.lookup(JitdumpProvider.class);
-    }
+    private static final CGlobalData<WordPointer> fdPointer = CGlobalDataFactory.createWord(Word.zero(), null, true);
+    private static final CGlobalData<WordPointer> jitdumpMappedAddress = CGlobalDataFactory.createWord(Word.nullPointer(), null, true);
+    private static final GlobalAtomicLong codeIndex = new GlobalAtomicLong("JITDUMP_CODE_INDEX", 0L);
 
     @Fold
     static RawFileOperationSupport getFileSupport() {
@@ -101,29 +96,21 @@ public class JitdumpProvider {
                 return;
             }
 
-            UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-            if (pageSize.rawValue() == -1) {
-                getFileSupport().close(fd);
-                LogUtils.warning("Failed to prepare the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
-                return;
-            }
-
             /*
              * We need a mmap call that is picked up by perf to announce a jitdump file to perf.
              */
-            Pointer addressBegin = VirtualMemoryProvider.get().mapFile(Word.nullPointer(), pageSize, Word.signed(fd.rawValue()), Word.zero(),
+            UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+            Pointer mappedAddress = VirtualMemoryProvider.get().mapFile(Word.nullPointer(), pageSize, Word.signed(fd.rawValue()), Word.zero(),
                             VirtualMemoryProvider.Access.EXECUTE | VirtualMemoryProvider.Access.READ);
-            if (addressBegin.isNull()) {
+            if (mappedAddress.isNull()) {
                 getFileSupport().close(fd);
                 LogUtils.warning("Failed to prepare the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
                 return;
             }
 
             /* Store the open file descriptor and memory mapped region. */
-            JitdumpProvider provider = singleton();
-            provider.fdPointer.get().writeWord(0, fd);
-            provider.addressBegin.get().writeWord(0, addressBegin);
-            provider.pageSize.get().writeWord(0, pageSize);
+            fdPointer.get().write(fd);
+            jitdumpMappedAddress.get().write(mappedAddress);
 
             /* Write the jitdump header. */
             writeHeader(fd);
@@ -136,26 +123,25 @@ public class JitdumpProvider {
                 return;
             }
 
-            JitdumpProvider provider = singleton();
-            Pointer fdPointer = provider.fdPointer.get();
             /* Append the optional close record and close jitdump file. */
-            RawFileOperationSupport.RawFileDescriptor fd = fdPointer.readWord(0);
+            RawFileOperationSupport.RawFileDescriptor fd = fdPointer.get().read();
             if (getFileSupport().isValid(fd)) {
                 writeCloseRecord(fd);
                 getFileSupport().close(fd);
                 /* Clear file descriptor. */
-                fdPointer.writeWord(0, Word.zero());
+                fdPointer.get().write(Word.zero());
             }
 
             /*
              * If the initialization was successful we have a memory mapped region that needs to be
              * freed.
              */
-            Pointer addressBegin = provider.addressBegin.get();
-            if (addressBegin.isNonNull()) {
-                VirtualMemoryProvider.get().free(addressBegin, provider.pageSize.get());
+            Pointer mappedAddress = jitdumpMappedAddress.get().read();
+            if (mappedAddress.isNonNull()) {
+                UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+                VirtualMemoryProvider.get().free(mappedAddress, pageSize);
                 /* Clear address of memory mapped region. */
-                addressBegin.writeWord(0, Word.nullPointer());
+                jitdumpMappedAddress.get().write(Word.nullPointer());
             }
         };
     }
@@ -240,14 +226,14 @@ public class JitdumpProvider {
                         .putLong(cl.address())
                         .putLong(cl.size())
                         // Code index -> unique identifier for run-time compiled code.
-                        .putLong(Digest.digestAsUUID(methodEntry.getSymbolName()).getLeastSignificantBits())
+                        .putLong(codeIndex.getAndIncrement())
                         .put(cl.name().getBytes())
                         .put((byte) 0)  // Terminate method name string.
                         .put(cl.code(), 0, debugInfoProvider.getCodeSize());  // Add compiled code.
 
         assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump records for " + methodEntry.getMethodName() + ".";
 
-        writeToFile(singleton().fdPointer.get().readWord(0), content.array());
+        writeToFile(fdPointer.get().read(), content.array());
     }
 
     private static ByteBuffer putRecordHeader(JitdumpRecordHeader header, ByteBuffer content) {
