@@ -263,7 +263,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
             assertEquals("<proxyLanguage> ownerObjectName.testObject(Unnamed:1)", e.toHostFrame().toString());
             assertEquals("test", e.getSourceLocation().getCharacters());
             assertEquals(source, e.getSourceLocation().getSource());
-            assertEquals("test", e.getRootName());
+            assertEquals("testObject", e.getRootName());
 
             while (trace.hasNext()) {
                 e = trace.next();
@@ -444,6 +444,16 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 throw UnsupportedMessageException.create();
             }
             return sourceSection;
+        }
+
+        @ExportMessage
+        boolean hasLanguageId() {
+            return true;
+        }
+
+        @ExportMessage
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage

@@ -54,10 +54,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
-    private static final String BYTECODE_INDEX = "bytecode-index";
     private static final String HOST = "host";
-    private static final String INTERNAL = "internal";
-    private static final String LANGUAGE_ID = "language-id";
 
     private final PolyglotImpl polyglot;
     private final Language language;
@@ -186,44 +183,38 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         if (frame == null) {
             return null;
         }
+        boolean internal = INTEROP.isInternal(frame);
+        if (internal && !exception.showInternalStackFrames) {
+            return null;
+        }
         String metaQualifiedName = null;
         String executableName = null;
         Object location = null;
         Language language = null;
         boolean host = false;
         int byteCodeIndex = -1;
+        if (INTEROP.hasLanguageId(frame)) {
+            String languageId;
+            try {
+                languageId = INTEROP.getLanguageId(frame);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            if (exception.engine != null) {
+                Engine engineAPI = exception.engine.getEngineAPIOrNull();
+                if (engineAPI != null) {
+                    language = engineAPI.getLanguages().get(languageId);
+                }
+            }
+        }
+        if (INTEROP.hasBytecodeIndex(frame)) {
+            try {
+                byteCodeIndex = INTEROP.getBytecodeIndex(frame);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
         if (INTEROP.hasMembers(frame)) {
-            if (INTEROP.isMemberReadable(frame, INTERNAL)) {
-                try {
-                    boolean internal = INTEROP.asBoolean(INTEROP.readMember(frame, INTERNAL));
-                    if (internal && !exception.showInternalStackFrames) {
-                        return null;
-                    }
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
-            if (INTEROP.isMemberReadable(frame, LANGUAGE_ID)) {
-                String languageId;
-                try {
-                    languageId = INTEROP.asString(INTEROP.readMember(frame, LANGUAGE_ID));
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-                if (exception.engine != null) {
-                    Engine engineAPI = exception.engine.getEngineAPIOrNull();
-                    if (engineAPI != null) {
-                        language = engineAPI.getLanguages().get(languageId);
-                    }
-                }
-            }
-            if (INTEROP.isMemberReadable(frame, BYTECODE_INDEX)) {
-                try {
-                    byteCodeIndex = INTEROP.asInt(INTEROP.readMember(frame, BYTECODE_INDEX));
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
             if (INTEROP.isMemberReadable(frame, HOST)) {
                 try {
                     host = INTEROP.asBoolean(INTEROP.readMember(frame, HOST));
@@ -264,7 +255,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
             location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
         }
-        String rootName = metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
+        String rootName = host && metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
         return new PolyglotExceptionFrame(exception, language, location, rootName, executableName, metaQualifiedName, host, null, byteCodeIndex);
     }
 

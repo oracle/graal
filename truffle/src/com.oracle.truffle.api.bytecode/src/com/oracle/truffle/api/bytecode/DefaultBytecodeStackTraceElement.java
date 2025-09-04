@@ -117,4 +117,32 @@ final class DefaultBytecodeStackTraceElement implements TruffleObject {
         throw UnsupportedMessageException.create();
     }
 
+    @ExportMessage
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return stackTrace.getTarget().getRootNode().getLanguageInfo().getId();
+    }
+
+    @ExportMessage
+    boolean hasBytecodeIndex() {
+        return stackTrace.getBytecodeIndex() != -1;
+    }
+
+    @ExportMessage
+    int getBytecodeIndex() throws UnsupportedMessageException {
+        if (hasBytecodeIndex()) {
+            return stackTrace.getBytecodeIndex();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isInternal() {
+        return stackTrace.getTarget().getRootNode().isInternal();
+    }
 }

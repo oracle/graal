@@ -101,6 +101,14 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
                 inHost = false;
             }
         }
+        /*
+         * A host exception always originates in the host. The exception may be created in the host,
+         * passed into a guest language as a HostException, and then thrown within the guest
+         * language. In this case, the above detection does not work as there is no
+         * GuestToHostRootNode on top of the stack.
+         */
+        inHost |= polyglotEngine != null && ExceptionAccessor.ENGINE.isHostException(polyglotEngine, throwable);
+
         Object[] items;
         if (includeHostStack || hasGuestToHostCalls) {
             // If we have guest to host calls, we need to merge in (or filter) the host frames.
