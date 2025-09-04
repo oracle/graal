@@ -131,6 +131,6 @@ jobs:
           sudo bash -c "cat ./.github/workflows/dockerd.service > /etc/systemd/system/docker.service.d/http-proxy.conf"
           sudo systemctl daemon-reload
           sudo systemctl restart docker
-      - name: "Run '${{ matrix.coordinates }}' tests"
+      - name: "Run '${{ matrix.coordinates }}' tests${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}"
         run: |
           ./gradlew test -Pcoordinates=${{ matrix.coordinates }}
