@@ -99,11 +99,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     }
 
     @SuppressWarnings("static-method")
-    boolean hasObjectExtensionArray() {
-        return true;
-    }
-
-    @SuppressWarnings("static-method")
     boolean hasPrimitiveExtensionArray() {
         return true;
     }
