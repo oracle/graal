@@ -695,6 +695,71 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Determines whether the given receiver provides a language identifier. For example, a stack
+     * frame object may provide a language identifier to indicate the language of the method it
+     * represents. Calling this message does not produce any observable side effects. The default
+     * implementation returns {@code false}.
+     *
+     * @see #getLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"getLanguageId"})
+    public boolean hasLanguageId(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
+     *
+     * @see #hasLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"hasLanguageId"})
+    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Determines whether the given receiver provides a bytecode index. For example, a stack frame
+     * object may provide a bytecode index. Calling this message does not produce any observable
+     * side effects. The default implementation returns {@code false}.
+     *
+     * @see #getBytecodeIndex(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"getBytecodeIndex"})
+    public boolean hasBytecodeIndex(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns bytecode index of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver does not provide a {@link #hasBytecodeIndex(Object) bytecode index} or has no
+     * bytecode index.
+     *
+     * @see #hasBytecodeIndex(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"hasBytecodeIndex"})
+    public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Determines whether the given receiver represents an internal object. For example, a stack
+     * frame object may be marked as internal so that it can be excluded from a stack trace shown to
+     * the user. Calling this message does not produce any observable side effects. The default
+     * implementation returns {@code false}.
+     *
+     * @see #getLanguageId(Object)
+     * @since 26.0
+     */
+    public boolean isInternal(Object receiver) {
+        return false;
+    }
+
+    /**
      * Returns an array of member name strings. The returned value must return <code>true</code> for
      * {@link #hasArrayElements(Object)} and every array element must be of type
      * {@link #isString(Object) string}. The member elements may also provide additional information
@@ -5754,6 +5819,35 @@ public abstract class InteropLibrary extends Library {
                 assert e instanceof HeapIsolationException : violationInvariant(receiver);
                 throw e;
             }
+        }
+
+        @Abstract(ifExported = {"getBytecodeIndex"})
+        public boolean hasBytecodeIndex(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasBytecodeIndex(receiver);
+        }
+
+        @Abstract(ifExported = {"hasBytecodeIndex"})
+        public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getBytecodeIndex(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasBytecodeIndex = delegate.hasBytecodeIndex(receiver);
+            try {
+                int result = delegate.getBytecodeIndex(receiver);
+                assert wasHasBytecodeIndex : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasBytecodeIndex : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        public boolean isInternal(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.isInternal(receiver);
         }
     }
 }
