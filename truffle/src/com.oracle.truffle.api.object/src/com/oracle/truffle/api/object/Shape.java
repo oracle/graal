@@ -552,8 +552,8 @@ public final class Shape {
                 flags = shapeFlags | FLAG_ALLOW_PROPERTY_ASSUMPTIONS;
             }
 
-            int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(
+            int implicitCastFlags = (allowImplicitCastIntToDouble ? LayoutImpl.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? LayoutImpl.INT_TO_LONG_FLAG : 0);
+            Shape shape = LayoutImpl.createShape(
                             layoutClass,
                             implicitCastFlags,
                             dynamicType,

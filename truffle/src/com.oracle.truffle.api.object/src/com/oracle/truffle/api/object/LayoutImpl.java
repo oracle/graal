@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.object.ObjectStorageOptions.UseVarHandle;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -54,6 +55,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -61,9 +65,17 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 
-final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
-    private static final int INT_TO_DOUBLE_FLAG = 1;
-    private static final int INT_TO_LONG_FLAG = 2;
+/**
+ * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
+ *
+ * An object may change its shape but only to shapes of the same layout.
+ */
+final class LayoutImpl {
+
+    static final String OPTION_PREFIX = "truffle.object.";
+
+    static final int INT_TO_DOUBLE_FLAG = 1;
+    static final int INT_TO_LONG_FLAG = 2;
 
     final LayoutStrategy strategy;
     final Class<? extends DynamicObject> clazz;
@@ -81,7 +93,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.primitiveFields = layoutInfo.primitiveFields;
     }
 
-    @Override
     public Class<? extends DynamicObject> getType() {
         return clazz;
     }
@@ -142,7 +153,7 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass, MethodHandles.Lookup lookup) {
         assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
-        getFactory().registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
+        registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
     }
 
     /**
@@ -212,6 +223,32 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     FieldInfo getPrimitiveField(int index) {
         return primitiveFields.get(index);
+    }
+
+    static Shape createShape(Class<? extends DynamicObject> layoutClass,
+                    int implicitCastFlags,
+                    Object dynamicType,
+                    Object sharedData,
+                    int shapeFlags,
+                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
+                    Assumption singleContextAssumption,
+                    Lookup layoutLookup) {
+
+        CompilerAsserts.neverPartOfCompilation();
+        LayoutImpl impl = createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
+        Shape shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
+
+        if (constantProperties != null) {
+            var cursor = constantProperties.getEntries();
+            while (cursor.advance()) {
+                Object key = cursor.getKey();
+                Object value = cursor.getValue().getLeft();
+                int flags = cursor.getValue().getRight();
+                shape = shape.addProperty(new PropertyImpl(key, new ExtLocations.ConstantLocation(value), flags));
+            }
+        }
+
+        return shape;
     }
 
     private static final class LayoutInfo {
