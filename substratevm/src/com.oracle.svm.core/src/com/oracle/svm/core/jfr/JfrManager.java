@@ -106,7 +106,6 @@ public class JfrManager {
         Long threadBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.ThreadBufferSize);
         String dumpPath = optionsArgs.get(FlightRecorderOptionsArgument.DumpPath);
 
-
         if (globalBufferSize != null) {
             Options.setGlobalBufferSize(globalBufferSize);
         }
