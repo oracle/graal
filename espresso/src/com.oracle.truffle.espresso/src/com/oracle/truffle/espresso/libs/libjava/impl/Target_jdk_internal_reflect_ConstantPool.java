@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/reflect/ConstantPool;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_reflect_ConstantPool {
     @Substitution(hasReceiver = true)
     public static int getSize0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, @Inject VM vm) {

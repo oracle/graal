@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = FileOutputStream.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_FileOutputStream {
 
     @Substitution

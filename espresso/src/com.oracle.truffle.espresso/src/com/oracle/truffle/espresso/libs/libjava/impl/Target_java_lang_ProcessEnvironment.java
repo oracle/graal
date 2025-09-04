@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(type = "Ljava/lang/ProcessEnvironment;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_ProcessEnvironment {
     @Substitution
     @TruffleBoundary

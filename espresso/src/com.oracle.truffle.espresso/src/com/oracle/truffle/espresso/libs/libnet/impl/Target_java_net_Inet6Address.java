@@ -22,13 +22,11 @@
  */
 package com.oracle.truffle.espresso.libs.libnet.impl;
 
-import java.net.Inet6Address;
-
 import com.oracle.truffle.espresso.libs.libnet.LibNet;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = Inet6Address.class, group = LibNet.class)
+@EspressoSubstitutions(group = LibNet.class)
 public final class Target_java_net_Inet6Address {
     @Substitution
     public static void init() {

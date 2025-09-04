@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Lsun/nio/fs/TruffleFilteredDirectoryStream;", group = LibNio.class)
+@EspressoSubstitutions(group = LibNio.class)
 public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
     @Substitution
     @Throws(IOException.class)

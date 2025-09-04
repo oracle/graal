@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = FileInputStream.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_FileInputStream {
 
     private static final EnumSet<StandardOpenOption> READ_ONLY_OPTION_SET = EnumSet.of(StandardOpenOption.READ);

@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.substitutions.VersionFilter;
 import com.oracle.truffle.espresso.vm.VM;
 
 @SuppressWarnings("deprecated")
-@EspressoSubstitutions(value = SecurityManager.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_SecurityManager {
 
     @TruffleBoundary

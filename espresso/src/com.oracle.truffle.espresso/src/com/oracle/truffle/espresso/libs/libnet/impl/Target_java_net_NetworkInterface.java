@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = NetworkInterface.class, group = LibNet.class)
+@EspressoSubstitutions(group = LibNet.class)
 public final class Target_java_net_NetworkInterface {
     @Substitution
     public static void init() {

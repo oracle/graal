@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
 @SuppressWarnings("unused")
-@EspressoSubstitutions(type = "Ljdk/internal/misc/CDS;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_misc_CDS {
 
     @Substitution

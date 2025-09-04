@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNamesProvider;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = RandomAccessFile.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_RandomAccessFile {
 
     @Substitution

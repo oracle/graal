@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JniVersion;
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -43,7 +44,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/loader/NativeLibraries;")
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_loader_NativeLibraries {
 
     private static final String JNI_ONLOAD = "JNI_OnLoad";

@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.VersionFilter;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljava/lang/StackFrameInfo;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_StackFrameInfo {
     @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java25OrLater.class)
     public static void expandStackFrameInfo(@JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject obj, @Inject Meta meta) {

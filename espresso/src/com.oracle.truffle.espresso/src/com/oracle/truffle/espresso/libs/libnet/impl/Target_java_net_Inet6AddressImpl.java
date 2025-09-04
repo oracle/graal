@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Ljava/net/Inet6AddressImpl;", group = LibNet.class)
+@EspressoSubstitutions(group = LibNet.class)
 public final class Target_java_net_Inet6AddressImpl {
     @Substitution(hasReceiver = true)
     @Throws(UnknownHostException.class)
