@@ -41,7 +41,7 @@
 
 #include <stdio.h>
 
-int main() {
+int test() {
   int number = 1;
   int rows = 10;
   for (int i = 1; i <= rows; i++) {
@@ -52,4 +52,8 @@ int main() {
     printf(".\n");
   }
   return 0;
+}
+
+int main() {
+  return test();
 }
