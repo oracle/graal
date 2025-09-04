@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(type = "Ljava/lang/ProcessHandleImpl;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_ProcessHandleImpl {
     @Substitution
     public static void initNative() {

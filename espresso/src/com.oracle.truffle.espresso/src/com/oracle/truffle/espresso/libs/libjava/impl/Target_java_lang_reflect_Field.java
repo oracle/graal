@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Field.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_reflect_Field {
     @TruffleBoundary
     @Substitution(hasReceiver = true)

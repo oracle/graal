@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljava/lang/ref/Finalizer;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_ref_Finalizer {
     @Substitution
     public static boolean isFinalizationEnabled() {

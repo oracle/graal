@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = ClassLoader.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_ClassLoader {
     @Substitution
     public static void registerNatives() {

@@ -22,15 +22,13 @@
  */
 package com.oracle.truffle.espresso.libs.libnet.impl;
 
-import java.net.InetAddress;
-
 import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.libnet.LibNet;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = InetAddress.class, group = LibNet.class)
+@EspressoSubstitutions(group = LibNet.class)
 public final class Target_java_net_InetAddress {
     @Substitution
     public static void init() {

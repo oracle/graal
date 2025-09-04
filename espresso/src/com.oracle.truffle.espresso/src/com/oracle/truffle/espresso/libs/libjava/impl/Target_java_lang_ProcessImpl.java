@@ -45,7 +45,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Ljava/lang/ProcessImpl;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_ProcessImpl {
     @Substitution(hasReceiver = true)
     @TruffleBoundary

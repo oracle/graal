@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.StackWalk;
 
-@EspressoSubstitutions(type = "Ljava/lang/StackStreamFactory;")
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_StackStreamFactory {
     @Substitution
     public static boolean checkStackWalkModes(@Inject Meta meta) {

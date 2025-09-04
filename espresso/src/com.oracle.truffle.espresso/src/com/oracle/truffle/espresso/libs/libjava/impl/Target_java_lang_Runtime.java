@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = java.lang.Runtime.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_Runtime {
     @Substitution
     public static long maxMemory() {

@@ -48,7 +48,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.substitutions.VersionFilter;
 
-@EspressoSubstitutions(type = "Lsun/nio/ch/Net;", group = LibNio.class)
+@EspressoSubstitutions(group = LibNio.class)
 public final class Target_sun_nio_ch_Net {
     private static final short POLLIN = 0x1;
     private static final short POLLOUT = 0x4;

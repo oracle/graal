@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Lsun/nio/ch/IOUtil;", group = LibNio.class)
+@EspressoSubstitutions(group = LibNio.class)
 public final class Target_sun_nio_ch_IOUtil {
     // unlimited with Truffle IO
     public static final int FD_LIMIT = Integer.MAX_VALUE;

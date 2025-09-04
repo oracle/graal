@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = java.lang.Throwable.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_Throwable {
     @Substitution(hasReceiver = true)
     public static @JavaType(java.lang.Throwable.class) StaticObject fillInStackTrace(@JavaType(java.lang.Throwable.class) StaticObject self, int depth, @Inject EspressoContext ctx) {

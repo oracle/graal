@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.io.Console;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
@@ -35,7 +33,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.VersionFilter;
 
-@EspressoSubstitutions(value = Console.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_Console {
     @Substitution
     @TruffleBoundary

@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Executable.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_reflect_Executable {
     @Substitution(hasReceiver = true)
     public static @JavaType(Parameter[].class) StaticObject getParameters0(@JavaType(Executable.class) StaticObject self,
