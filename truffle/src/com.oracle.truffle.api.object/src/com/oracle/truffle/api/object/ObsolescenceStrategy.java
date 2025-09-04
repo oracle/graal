@@ -260,7 +260,7 @@ final class ObsolescenceStrategy {
     Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
         if (oldProperty.getLocation().isValue()) {
             Location newLocation = createLocationForValue(oldShape, value, putFlags);
-            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
+            Property newProperty = oldProperty.relocate(newLocation);
             // Always use direct replace for value locations to avoid shape explosion
             return directReplaceProperty(oldShape, oldProperty, newProperty);
         } else {
@@ -390,7 +390,7 @@ final class ObsolescenceStrategy {
             Property property = ((AddPropertyTransition) transition).getProperty();
             Shape newShape;
             if (append) {
-                Property newProperty = ((PropertyImpl) property).relocate(shape.allocator().moveLocation(property.getLocation()));
+                Property newProperty = property.relocate(shape.allocator().moveLocation(property.getLocation()));
                 newShape = addProperty(shape, newProperty, true);
             } else {
                 newShape = addProperty(shape, property, false);
@@ -412,7 +412,7 @@ final class ObsolescenceStrategy {
                 } else {
                     newLocation = shape.allocator().moveLocation(newProperty.getLocation());
                 }
-                newProperty = ((PropertyImpl) newProperty).relocate(newLocation);
+                newProperty = newProperty.relocate(newLocation);
             }
             return directReplaceProperty(shape, oldProperty, newProperty, append);
         } else {
@@ -421,7 +421,7 @@ final class ObsolescenceStrategy {
     }
 
     private void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
-        assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
+        assert generalProperty.isSame(specificProperty) : generalProperty;
         assert generalProperty.getLocation() == specificProperty.getLocation() ||
                         ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
         ensureSameTypeOrMoreGeneral(generalProperty.getLocation(), specificProperty.getLocation());
@@ -465,7 +465,7 @@ final class ObsolescenceStrategy {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             Location oldLocation = oldProperty.getLocation();
             Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
-            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
+            Property newProperty = oldProperty.relocate(newLocation);
             return replaceProperty(newShape, oldProperty, newProperty);
         } else {
             if (oldShape == newShape) {
