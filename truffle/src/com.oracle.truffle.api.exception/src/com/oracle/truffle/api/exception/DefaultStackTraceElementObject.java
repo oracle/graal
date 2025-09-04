@@ -53,10 +53,7 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(InteropLibrary.class)
 final class DefaultStackTraceElementObject implements TruffleObject {
 
-    private static final String BYTECODE_INDEX = "bytecode-index";
     static final String HOST = "host";
-    private static final String INTERNAL = "internal";
-    private static final String LANGUAGE_ID = "language-id";
 
     private final RootNode rootNode;
     private final SourceSection sourceSection;
@@ -112,6 +109,35 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return rootNode.getLanguageInfo().getId();
+    }
+
+    @ExportMessage
+    boolean hasBytecodeIndex() {
+        return byteCodeIndex != -1;
+    }
+
+    @ExportMessage
+    int getBytecodeIndex() throws UnsupportedMessageException {
+        if (hasBytecodeIndex()) {
+            return byteCodeIndex;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isInternal() {
+        return rootNode.isInternal();
+    }
+
+    @ExportMessage
     @SuppressWarnings("static-method")
     boolean hasMembers() {
         return true;
@@ -120,23 +146,21 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     @ExportMessage
     @SuppressWarnings({"static-method", "unused"})
     Object getMembers(boolean includeInternal) {
-        return new InteropList(BYTECODE_INDEX, HOST, INTERNAL, LANGUAGE_ID);
+        return new InteropList(HOST);
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String member) {
-        return BYTECODE_INDEX.equals(member) || HOST.equals(member) || INTERNAL.equals(member) || LANGUAGE_ID.equals(member);
+        return HOST.equals(member);
     }
 
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
-        return switch (member) {
-            case BYTECODE_INDEX -> byteCodeIndex;
-            case HOST -> false;
-            case INTERNAL -> rootNode.isInternal();
-            case LANGUAGE_ID -> rootNode.getLanguageInfo().getId();
-            default -> throw UnknownIdentifierException.create(member);
-        };
+        if (HOST.equals(member)) {
+            return false;
+        } else {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 }
