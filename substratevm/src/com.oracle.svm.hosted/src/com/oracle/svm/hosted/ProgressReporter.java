@@ -265,7 +265,8 @@ public class ProgressReporter {
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
 
-        l().a(" - ").a("Assertions: ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", system assertions: ").a(getSystemAssertionStatus() ? "enabled" : "disabled")
+        l().a(" - ").doclink("Assertions", "#glossary-builder-assertions").a(": ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", system assertions: ")
+                        .a(getSystemAssertionStatus() ? "enabled" : "disabled")
                         .println();
 
         printFeatures(features);
@@ -273,7 +274,8 @@ public class ProgressReporter {
         // Image Configuration section
         l().a(" ").a("Image configuration:").println();
         l().a(" - ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
-        l().a(" - ").a("Assertions: ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled").a(" (class-specific config may apply), system assertions: ")
+        l().a(" - ").doclink("Assertions", "#glossary-image-assertions").a(": ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled")
+                        .a(" (class-specific config may apply), system assertions: ")
                         .a(RuntimeAssertionsSupport.singleton().getDefaultSystemAssertionStatus() ? "enabled" : "disabled").println();
 
         printExperimentalOptions(classLoader);
