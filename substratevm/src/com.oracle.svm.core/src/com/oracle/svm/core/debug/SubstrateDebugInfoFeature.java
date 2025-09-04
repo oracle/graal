@@ -25,9 +25,7 @@
 
 package com.oracle.svm.core.debug;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,6 +43,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -57,22 +56,32 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
     private static final String DEBUG_INFO_JITDUMP_NAME = "jitdump";
 
     public static class Options {
+
+        private static final Set<String> DEBUG_INFO_ALL_FORMATS = Set.of(DEBUG_INFO_OBJFILE_NAME, DEBUG_INFO_PERFMAP_NAME, DEBUG_INFO_JITDUMP_NAME);
         private static final String DEBUG_INFO_ALLOWED_VALUES_TEXT = "'" + DEBUG_INFO_OBJFILE_NAME + "' (default): Generates and installs a full in-memory object file for each run-time compilation." +
                         ", '" + DEBUG_INFO_PERFMAP_NAME + "': Create and append to /tmp/perf-<pid>.map. Each run-time compilation adds one line to the map." +
                         ", '" + DEBUG_INFO_JITDUMP_NAME + "': Create and append to jit-<imageName>.dump. Each run-time compilation adds one or more records to the jitdump file.";
 
         @Option(help = "Specify formats for run-time debug info generation. Comma-separated list can contain " + DEBUG_INFO_ALLOWED_VALUES_TEXT + ". ")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeDebugInfoFormat = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
-            @Override
-            public AccumulatingLocatableMultiOptionValue.Strings getValue() {
-                var value = super.getValue();
-                return Objects.requireNonNullElseGet(value, () -> AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(DEBUG_INFO_OBJFILE_NAME));
-            }
-        };
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
+                        Options::validateRuntimeDebugInfoFormat);
 
         private static Set<String> getEnabledRuntimeDebugInfoFormats() {
-            return new HashSet<>(RuntimeDebugInfoFormat.getValue().values());
+            Set<String> values = RuntimeDebugInfoFormat.getValue().valuesAsSet();
+            if (values.isEmpty()) {
+                return Set.of(DEBUG_INFO_OBJFILE_NAME);
+            }
+            return values;
+        }
+
+        private static void validateRuntimeDebugInfoFormat(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionKey) {
+            List<String> selectedFormats = optionKey.getValue().values();
+            selectedFormats.removeAll(DEBUG_INFO_ALL_FORMATS);
+            if (!selectedFormats.isEmpty()) {
+                String d = optionKey.getValue().getDelimiter();
+                throw UserError.invalidOptionValue(optionKey, String.join(d, selectedFormats), "Available formats are: " + String.join(d, DEBUG_INFO_ALL_FORMATS));
+            }
         }
 
         @Fold
