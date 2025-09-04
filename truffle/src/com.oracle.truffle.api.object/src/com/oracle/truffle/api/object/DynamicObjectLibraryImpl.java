@@ -209,7 +209,7 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @TruffleBoundary
-    static Shape changePropertyFlags(Shape shape, PropertyImpl cachedProperty, int propertyFlags) {
+    static Shape changePropertyFlags(Shape shape, Property cachedProperty, int propertyFlags) {
         return shape.replaceProperty(cachedProperty, cachedProperty.copyWithFlags(propertyFlags));
     }
 
@@ -743,7 +743,7 @@ abstract class DynamicObjectLibraryImpl {
                 return false;
             }
             if (existingProperty.getFlags() != propertyFlags) {
-                Shape newShape = changePropertyFlags(oldShape, (PropertyImpl) existingProperty, propertyFlags);
+                Shape newShape = changePropertyFlags(oldShape, existingProperty, propertyFlags);
                 if (newShape != oldShape) {
                     object.setShape(newShape);
                     updateShapeImpl(object);
@@ -1603,7 +1603,7 @@ abstract class DynamicObjectLibraryImpl {
                 MutateCacheData tail = filterValid(this.cache);
 
                 Shape oldShape = cachedShape;
-                Shape newShape = changePropertyFlags(oldShape, (PropertyImpl) cachedProperty, propertyFlags);
+                Shape newShape = changePropertyFlags(oldShape, cachedProperty, propertyFlags);
 
                 if (!oldShape.isValid()) {
                     // If shape was invalidated, other locations may have changed, too,

@@ -232,7 +232,7 @@ final class LayoutImpl {
                 Object key = cursor.getKey();
                 Object value = cursor.getValue().getLeft();
                 int flags = cursor.getValue().getRight();
-                shape = shape.addProperty(new PropertyImpl(key, new ExtLocations.ConstantLocation(value), flags));
+                shape = shape.addProperty(new Property(key, new ExtLocations.ConstantLocation(value), flags));
             }
         }
 
