@@ -194,13 +194,6 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
     }
 
     /**
-     * Get the number of object array elements this location requires.
-     */
-    public int objectArrayCount() {
-        return 0;
-    }
-
-    /**
      * Get the number of in-object {@link Object} fields this location requires.
      */
     public int objectFieldCount() {
@@ -282,10 +275,6 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
 
     protected boolean isImplicitCastIntToDouble() {
         return false;
-    }
-
-    protected final boolean isObjectLocation() {
-        return this instanceof ExtLocations.ObjectLocation;
     }
 
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
