@@ -42,7 +42,6 @@ package com.oracle.truffle.api.object;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
@@ -166,11 +165,6 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
     }
 
     @Override
-    public boolean isConstant() {
-        return false;
-    }
-
-    @Override
     public int hashCode() {
         return getClass().hashCode();
     }
@@ -223,7 +217,7 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
     /**
      * Get the number of primitive array elements this location requires.
      */
-    public int primitiveArrayCount() {
+    int primitiveArrayCount() {
         return 0;
     }
 
@@ -232,7 +226,7 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
      *
      * @param locationVisitor visitor to be notified of every allocated slot in use by this location
      */
-    public abstract void accept(LocationVisitor locationVisitor);
+    abstract void accept(LocationVisitor locationVisitor);
 
     protected LocationImpl getInternalLocation() {
         return this;
@@ -322,7 +316,7 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
         throw new UnexpectedResultException(value);
     }
 
-    public Class<?> getType() {
+    Class<?> getType() {
         return null;
     }
 
@@ -330,11 +324,6 @@ abstract sealed class LocationImpl extends Location permits ExtLocations.Instanc
     }
 
     protected abstract int getOrdinal();
-
-    @Override
-    public Assumption getFinalAssumption() {
-        return Assumption.NEVER_VALID;
-    }
 
     protected static RuntimeException incompatibleLocationException() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
