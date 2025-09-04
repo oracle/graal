@@ -74,6 +74,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -94,8 +95,15 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.core.util.RuntimeImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -513,6 +521,7 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -940,12 +949,18 @@ public class SubstrateDiagnostics {
             }
 
             CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            int layerNumber = 0;
             do {
                 Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
                 UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
                 Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                log.string("AOT compiled code");
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    log.string(" - Layer ").unsigned(layerNumber);
+                }
+                log.string(": ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
                 info = CodeInfoAccess.getNextImageCodeInfo(info);
+                layerNumber++;
             } while (info.isNonNull());
 
             log.indent(false);
@@ -1263,6 +1278,7 @@ public class SubstrateDiagnostics {
         public abstract int maxInvocationCount();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class DiagnosticThunkRegistry {
         @Platforms(Platform.HOSTED_ONLY.class) //
         final int runtimeCompilationPosition;
@@ -1273,7 +1289,7 @@ public class SubstrateDiagnostics {
         @Fold
         public static synchronized DiagnosticThunkRegistry singleton() {
             /* The registry is already used very early during the image build. */
-            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
+            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class) && ImageLayerBuildingSupport.firstImageBuild()) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
@@ -1352,7 +1368,12 @@ public class SubstrateDiagnostics {
         }
 
         DiagnosticThunk getThunk(int index) {
-            return thunks.get(index);
+            /*
+             * Use an explicit cast to aid open-world analysis. Otherwise, this may trigger false
+             * positive violations of @RestrictHeapAccess since some implementations of List.get()
+             * can allocate.
+             */
+            return ((RuntimeImageHeapList<DiagnosticThunk>) thunks).get(index);
         }
 
         int getInitialInvocationCount(int index) {
@@ -1364,6 +1385,7 @@ public class SubstrateDiagnostics {
         }
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
@@ -1428,8 +1450,14 @@ public class SubstrateDiagnostics {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class SubstrateDiagnosticsFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     /**
      * {@link RuntimeCompilation#isEnabled()} can't be executed in the
      * {@link DiagnosticThunkRegistry} constructor because the feature registration is not

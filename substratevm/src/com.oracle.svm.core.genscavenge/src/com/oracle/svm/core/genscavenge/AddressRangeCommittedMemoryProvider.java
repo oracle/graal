@@ -31,6 +31,7 @@ import static com.oracle.svm.core.util.VMError.guarantee;
 import static jdk.graal.compiler.word.Word.nullPointer;
 import static jdk.graal.compiler.word.Word.unsigned;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -61,9 +62,11 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -77,7 +80,8 @@ import jdk.graal.compiler.word.Word;
 
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting
- * virtual memory within that range.
+ * virtual memory within that range. The address space is shared by the null regions, the
+ * {@link Metaspace}, the image heap, and the collected Java heap.
  * <p>
  * The main objective of this code is to keep external fragmentation low so that an
  * {@linkplain Isolate} is unlikely to run out of memory because its address space is exhausted. To
@@ -122,59 +126,70 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
      */
     private final VMMutex lock = new VMMutex("freeList");
 
-    /** Contains free blocks that are large enough to fit allocations. */
+    protected UnsignedWord reservedAddressSpaceSize;
+    private Pointer metaspaceBegin;
+    private Pointer metaspaceTop;
+    private Pointer metaspaceEnd;
+    protected Pointer collectedHeapBegin;
+    protected UnsignedWord collectedHeapSize;
+
+    /**
+     * Contains free blocks for the collected Java heap that are large enough to fit allocations.
+     */
     protected FreeListNode allocListHead;
     protected long allocListCount;
 
-    /** Contains all free blocks, including small blocks that are needed for coalescing. */
+    /**
+     * Contains all free blocks for the collected Java heap, including small blocks that are needed
+     * for coalescing.
+     */
     protected FreeListNode unusedListHead;
     protected long unusedListCount;
-
-    protected UnsignedWord reservedAddressSpaceSize;
-    protected UnsignedWord reservedMetaspaceSize;
-
-    protected Pointer collectedHeapBegin;
-    protected UnsignedWord collectedHeapSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AddressRangeCommittedMemoryProvider() {
         assert SubstrateOptions.SpawnIsolates.getValue();
     }
 
+    @Fold
+    public static AddressRangeCommittedMemoryProvider singleton() {
+        return (AddressRangeCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
+    }
+
     @Override
     @Uninterruptible(reason = "Still being initialized.")
-    public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
-        if (reserved.equal(0)) {
+    public int initialize(WordPointer heapBaseOut, IsolateArguments arguments) {
+        UnsignedWord reservedSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
+        if (reservedSize.equal(0)) {
             /*
              * Reserve a 32 GB address space, except if a larger heap size was specified, or if the
              * maximum address space size is less than that.
              */
             UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize)));
-            reserved = UnsignedUtils.max(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE));
+            reservedSize = UnsignedUtils.max(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE));
         }
-        reserved = UnsignedUtils.min(reserved, ReferenceAccess.singleton().getMaxAddressSpaceSize());
+        reservedSize = UnsignedUtils.min(reservedSize, ReferenceAccess.singleton().getMaxAddressSpaceSize());
 
-        UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-        WordPointer beginOut = StackValue.get(WordPointer.class);
-        int errorCode = reserveHeapMemory(reserved, alignment, arguments, beginOut);
+        UnsignedWord alignment = unsigned(Heap.getHeap().getHeapBaseAlignment());
+        WordPointer reservedBeginPtr = StackValue.get(WordPointer.class);
+        int errorCode = reserveHeapMemory(reservedSize, alignment, arguments, reservedBeginPtr);
         if (errorCode != CEntryPointErrors.NO_ERROR) {
             return errorCode;
         }
 
-        Pointer begin = beginOut.read();
+        Pointer reservedBegin = reservedBeginPtr.read();
         WordPointer imageHeapEndOut = StackValue.get(WordPointer.class);
-        errorCode = ImageHeapProvider.get().initialize(begin, reserved, heapBasePointer, imageHeapEndOut);
+        errorCode = ImageHeapProvider.get().initialize(reservedBegin, reservedSize, heapBaseOut, imageHeapEndOut);
         if (errorCode != CEntryPointErrors.NO_ERROR) {
-            freeOnInitializeError(begin, reserved);
+            freeOnInitializeError(reservedBegin, reservedSize);
             return errorCode;
         }
 
-        CEntryPointSnippets.initBaseRegisters(heapBasePointer.read());
+        CEntryPointSnippets.initBaseRegisters(heapBaseOut.read());
         WordPointer runtimeHeapBeginOut = StackValue.get(WordPointer.class);
-        errorCode = getCollectedHeapBegin(arguments, begin, reserved, imageHeapEndOut.read(), runtimeHeapBeginOut);
+        errorCode = initializeCollectedHeapBegin(arguments, reservedBegin, reservedSize, imageHeapEndOut.read(), runtimeHeapBeginOut);
         if (errorCode != CEntryPointErrors.NO_ERROR) {
-            freeOnInitializeError(begin, reserved);
+            freeOnInitializeError(reservedBegin, reservedSize);
             return errorCode;
         }
 
@@ -183,40 +198,58 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
          * because the image heap was not initialized when we were called, so we invoke a static
          * method that loads a new reference to our instance.
          */
-        errorCode = initialize(begin, reserved, runtimeHeapBeginOut.read());
+        errorCode = initialize(reservedBegin, reservedSize, runtimeHeapBeginOut.read());
         if (errorCode != CEntryPointErrors.NO_ERROR) {
-            freeOnInitializeError(begin, reserved);
+            freeOnInitializeError(reservedBegin, reservedSize);
         }
         return errorCode;
     }
 
     @Uninterruptible(reason = "Still being initialized.")
-    protected int getCollectedHeapBegin(@SuppressWarnings("unused") IsolateArguments arguments, @SuppressWarnings("unused") Pointer begin, @SuppressWarnings("unused") UnsignedWord reserved,
-                    Pointer imageHeapEnd, WordPointer collectedHeapBeginOut) {
-        Pointer result = roundUp(imageHeapEnd, getGranularity());
-        collectedHeapBeginOut.write(result);
+    protected int initializeCollectedHeapBegin(@SuppressWarnings("unused") IsolateArguments arguments, @SuppressWarnings("unused") Pointer reservedBegin,
+                    @SuppressWarnings("unused") UnsignedWord reservedSize, Pointer imageHeapEnd, WordPointer collectedHeapBeginOut) {
+        assert PointerUtils.isAMultiple(imageHeapEnd, Word.unsigned(SubstrateOptions.getPageSize()));
+        collectedHeapBeginOut.write(imageHeapEnd);
         return CEntryPointErrors.NO_ERROR;
     }
 
     @NeverInline("Ensure a newly looked up value is used as 'this', now that the image heap is initialized")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    private static int initialize(Pointer spaceBegin, UnsignedWord spaceSize, Pointer collectedHeapBegin) {
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            UnsignedWord imageHeapAddressSpace = ImageHeapProvider.get().getImageHeapAddressSpaceSize();
-            UnsignedWord javaHeapAddressSpace = spaceSize.subtract(imageHeapAddressSpace);
-            NativeMemoryTracking.singleton().trackReserve(javaHeapAddressSpace, NmtCategory.JavaHeap);
-        }
-
+    private static int initialize(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin) {
         AddressRangeCommittedMemoryProvider provider = (AddressRangeCommittedMemoryProvider) ChunkBasedCommittedMemoryProvider.get();
-        return provider.initializeFields(spaceBegin, spaceSize, collectedHeapBegin);
+        return provider.initializeFields(reservedBegin, reservedSize, collectedHeapBegin);
     }
 
-    @SuppressWarnings("hiding")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected int initializeFields(Pointer spaceBegin, UnsignedWord reservedSpaceSize, Pointer collectedHeapBegin) {
-        this.reservedAddressSpaceSize = reservedSpaceSize;
+    @SuppressWarnings("hiding")
+    protected int initializeFields(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin) {
+        this.reservedAddressSpaceSize = reservedSize;
+
+        initializeMetaspaceFields();
+        return initializeCollectedHeapFields(reservedBegin, reservedSize, collectedHeapBegin);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void initializeMetaspaceFields() {
+        int metaspaceSize = SerialAndEpsilonGCOptions.getReservedMetaspaceSize();
+        this.metaspaceBegin = KnownIntrinsics.heapBase().add(HeapImpl.getMetaspaceOffsetInAddressSpace());
+        this.metaspaceTop = metaspaceBegin;
+        this.metaspaceEnd = metaspaceTop.add(metaspaceSize);
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport() && metaspaceSize > 0) {
+            NativeMemoryTracking.singleton().trackReserve(metaspaceSize, NmtCategory.Metaspace);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("hiding")
+    private int initializeCollectedHeapFields(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin) {
         this.collectedHeapBegin = collectedHeapBegin;
-        this.collectedHeapSize = spaceBegin.add(reservedSpaceSize).subtract(collectedHeapBegin);
+        this.collectedHeapSize = reservedSize.subtract(collectedHeapBegin.subtract(reservedBegin));
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackReserve(collectedHeapSize, NmtCategory.JavaHeap);
+        }
 
         FreeListNode node = allocNodeOrNull(collectedHeapBegin, collectedHeapSize);
         if (node.isNull()) {
@@ -227,8 +260,18 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         this.unusedListCount = 1;
         this.allocListHead = node;
         this.allocListCount = 1;
-
         return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Override
+    public UnsignedWord getCollectedHeapAddressSpaceSize() {
+        return collectedHeapSize;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isInMetaspace(Pointer ptr) {
+        /* Checking against begin and end does not need any locking. */
+        return ptr.aboveOrEqual(metaspaceBegin) && ptr.belowThan(metaspaceEnd);
     }
 
     @Uninterruptible(reason = "Still being initialized.")
@@ -329,29 +372,48 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public Pointer allocateMetaspaceChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
-        int error = allocateInHeapAddressSpace(nbytes, alignment, allocOut);
-        if (error == NO_ERROR) {
-            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-                NativeMemoryTracking.singleton().trackCommit(nbytes, NmtCategory.Metaspace);
-            }
-            return allocOut.read();
+        lock.lockNoTransition();
+        try {
+            return allocateMetaspaceChunk0(nbytes, alignment);
+        } finally {
+            lock.unlock();
         }
-        throw reportMetaspaceChunkAllocationFailed(error);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected OutOfMemoryError reportMetaspaceChunkAllocationFailed(int error) {
-        /* Explicitly don't use OutOfMemoryUtil as the metaspace is not part of the Java heap. */
-        if (error == OUT_OF_ADDRESS_SPACE) {
+    /**
+     * This method intentionally does not use {@link OutOfMemoryUtil} when reporting
+     * {@link OutOfMemoryError}s as the metaspace is not part of the Java heap.
+     */
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private Pointer allocateMetaspaceChunk0(UnsignedWord nbytes, UnsignedWord alignment) {
+        assert lock.isOwner();
+
+        Pointer result = metaspaceTop;
+        Pointer newTop = metaspaceTop.add(nbytes);
+        assert result.isNonNull();
+        assert PointerUtils.isAMultiple(result, alignment);
+        assert UnsignedUtils.isAMultiple(newTop, alignment);
+
+        /* Check if the allocation fits into the reserved address space. */
+        if (newTop.aboveThan(metaspaceEnd)) {
             throw OUT_OF_METASPACE;
-        } else if (error == COMMIT_FAILED) {
-            throw METASPACE_CHUNK_COMMIT_FAILED;
-        } else {
-            throw VMError.shouldNotReachHereAtRuntime();
         }
+
+        /* Try to commit the memory. */
+        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
+        Pointer actualBegin = VirtualMemoryProvider.get().commit(result, nbytes, access);
+        if (actualBegin.isNull()) {
+            throw METASPACE_CHUNK_COMMIT_FAILED;
+        }
+
+        /* Update top and NMT statistics. */
+        metaspaceTop = newTop;
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackCommit(nbytes, NmtCategory.Metaspace);
+        }
+        return actualBegin;
     }
 
     @Override
@@ -819,11 +881,6 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     public UnsignedWord getReservedAddressSpaceSize() {
         return reservedAddressSpaceSize;
-    }
-
-    @Override
-    public UnsignedWord getReservedMetaspaceSize() {
-        return reservedMetaspaceSize;
     }
 
     /** Keeps track of unused memory. */

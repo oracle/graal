@@ -50,10 +50,8 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.debug.DebugVerifyHandler;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -64,18 +62,13 @@ public class DebugContextTest {
         final Formatter dumpOutput = new Formatter();
         final Formatter verifyOutput = new Formatter();
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
-        DebugHandlersFactory handlers = new DebugHandlersFactory() {
+        DebugDumpHandlersFactory handlers = new DebugDumpHandlersFactory() {
             @Override
-            public List<DebugHandler> createHandlers(OptionValues options) {
+            public List<DebugDumpHandler> createHandlers(OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
                     public void dump(Object object, DebugContext ignore, boolean forced, String format, Object... arguments) {
                         dumpOutput.format("Dumping %s with label \"%s\"%n", object, String.format(format, arguments));
-                    }
-                }, new DebugVerifyHandler() {
-                    @Override
-                    public void verify(DebugContext ignore, Object object, String format, Object... args) {
-                        verifyOutput.format("Verifying %s with label \"%s\"%n", object, String.format(format, args));
                     }
                 });
             }
@@ -95,7 +88,6 @@ public class DebugContextTest {
                         DebugContext.Scope _ = debug.scope("TestDisabledScoping")) {
             for (int level = DebugContext.BASIC_LEVEL; level <= DebugContext.VERY_DETAILED_LEVEL; level++) {
                 debug.dump(level, "an object", "at level %d", level);
-                debug.verify("an object", "at level %d", level);
                 debug.log(level, "log statement at level %d", level);
             }
         }
@@ -341,11 +333,11 @@ public class DebugContextTest {
     @Test
     public void testIsCountEnabled1() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(DebugOptions.Count, "");
+        map.put(DebugOptions.Counters, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options).build();
         try (Scope _ = debug.scope("Scope")) {
-            Assert.assertTrue(debug.isCountEnabled());
+            Assert.assertTrue(debug.areCountersEnabled());
         }
     }
 
@@ -356,7 +348,7 @@ public class DebugContextTest {
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options).build();
         try (Scope _ = debug.scope("Scope")) {
-            Assert.assertTrue(debug.isCountEnabled());
+            Assert.assertTrue(debug.areCountersEnabled());
         }
     }
 

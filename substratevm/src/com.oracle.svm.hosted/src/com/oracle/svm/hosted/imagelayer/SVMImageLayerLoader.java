@@ -84,7 +84,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodOffset;
@@ -94,7 +93,6 @@ import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -122,6 +120,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
@@ -456,15 +455,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
+     * The {@link SubstitutionMethod} contains less information than the original
+     * {@link ResolvedJavaMethod} and trying to access it can result in an exception.
+     */
+    private static ResolvedJavaMethod getOriginalWrapped(AnalysisMethod method) {
+        ResolvedJavaMethod wrapped = method.getWrapped();
+        if (wrapped instanceof SubstitutionMethod subst) {
+            return subst.getAnnotated();
+        }
+        return wrapped;
+    }
+
+    /**
      * Load all lambda types of the given capturing class. Each method of the capturing class is
      * parsed (see {@link LambdaParser#createMethodGraph(ResolvedJavaMethod, OptionValues)}). The
      * lambda types can then be found in the constant nodes of the graphs.
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
         capturingClasses.computeIfAbsent(capturingClass, key -> {
+            /*
+             * Getting the original wrapped method is important to avoid getting exceptions that
+             * would be ignored otherwise.
+             */
             LambdaParser.allExecutablesDeclaredInClass(universe.getBigbang().getMetaAccess().lookupJavaType(capturingClass))
                             .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(((AnalysisMethod) m).getWrapped(), universe.getBigbang()));
+                            .forEach(m -> loadLambdaTypes(getOriginalWrapped((AnalysisMethod) m), universe.getBigbang()));
             return true;
         });
     }
@@ -1010,6 +1025,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
         registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
         registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+
+        AnalysisMethod.CompilationBehavior compilationBehavior = AnalysisMethod.CompilationBehavior.values()[md.getCompilationBehaviorOrdinal()];
+        analysisMethod.setCompilationBehavior(compilationBehavior);
     }
 
     private PersistedAnalysisMethod.Reader getMethodData(AnalysisMethod analysisMethod) {
@@ -1023,6 +1041,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo.Reader> getDynamicHubInfos() {
         return snapshot.getDynamicHubInfos();
+    }
+
+    public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> getCGlobals() {
+        return snapshot.getCGlobals();
     }
 
     public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
@@ -1089,10 +1111,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            Object obj = encodedGraph.getObject(i);
-            if (obj instanceof CGlobalDataInfo cGlobalDataInfo) {
-                encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
-            } else if (buildingApplicationLayer && obj instanceof LoadImageSingletonDataImpl data) {
+            if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof LoadImageSingletonDataImpl data) {
                 data.setApplicationLayerConstant();
             }
         }
@@ -1299,6 +1318,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         });
         registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
         registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+
+        /*
+         * Inject the base layer position. If the position computed for this layer, either before
+         * this step or later, is different this will result in a failed guarantee.
+         */
+        analysisField.setPosition(fieldData.getPosition());
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
@@ -1750,8 +1775,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return getOrCreateConstant(snapshot.getStaticObjectFieldsConstantId());
     }
 
-    public long getImageHeapSize() {
-        return snapshot.getImageHeapSize();
+    public int getMaxTypeId() {
+        return snapshot.getNextTypeId() - 1;
+    }
+
+    public long getImageHeapEndOffset() {
+        return snapshot.getImageHeapEndOffset();
     }
 
     @Override

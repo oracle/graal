@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -44,6 +45,11 @@ public interface Metaspace {
     @Fold
     static Metaspace singleton() {
         return ImageSingletons.lookup(Metaspace.class);
+    }
+
+    @Fold
+    static boolean isSupported() {
+        return !(singleton() instanceof NoMetaspace);
     }
 
     /**
@@ -82,4 +88,7 @@ public interface Metaspace {
 
     /** Allocates a byte array. */
     byte[] allocateByteArray(int length);
+
+    /** Walks all metaspace objects. May only be called at a safepoint. */
+    void walkObjects(ObjectVisitor visitor);
 }

@@ -107,9 +107,9 @@ public class CustomLayoutTest {
     }
 
     static class TestDynamicObject4 extends TestDynamicObject2 {
-        @DynamicField int p0;
-        @DynamicField int p1;
-        @DynamicField int p2;
+        @DynamicField long p0;
+        @DynamicField long p1;
+        @DynamicField long p2;
 
         protected TestDynamicObject4(Shape shape) {
             super(shape);

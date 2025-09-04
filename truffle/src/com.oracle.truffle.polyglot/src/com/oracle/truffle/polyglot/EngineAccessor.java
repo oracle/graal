@@ -2192,6 +2192,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Map<String, InternalResource> getEngineInternalResources() {
+            Map<String, InternalResource> result = new HashMap<>();
+            for (InternalResourceCache cache : InternalResourceCache.getEngineResources()) {
+                result.put(cache.getResourceId(), cache.getInternalResource());
+            }
+            return result;
+        }
+
+        @Override
         public Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException {
             InternalResourceCache resourceCache = InternalResourceCache.getEngineResource(resourceId);
             if (resourceCache != null) {

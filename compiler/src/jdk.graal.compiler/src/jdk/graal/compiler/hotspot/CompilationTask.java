@@ -36,7 +36,6 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -54,7 +53,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugDumpScope;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
@@ -78,7 +77,6 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JMXService;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -163,7 +161,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues retryOptions, PrintStream logStream) {
             SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
             Description description = initialDebug.getDescription();
-            DebugHandlersFactory factory = new GraalDebugHandlersFactory(snippetReflection);
+            DebugDumpHandlersFactory factory = new GraalDebugHandlersFactory(snippetReflection);
             return new Builder(retryOptions, factory).globalMetrics(initialDebug.getGlobalMetrics()).description(description).logStream(logStream).build();
         }
 
@@ -391,7 +389,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                  * Passing a snippet reflection instance to the debug handlers would cause replay
                  * failures.
                  */
-                List<DebugHandlersFactory> debugHandlersFactories = List.of(new GraalDebugHandlersFactory(null));
+                List<DebugDumpHandlersFactory> debugHandlersFactories = List.of(new GraalDebugHandlersFactory(null));
                 PrintStream selectedPrintStream = initialDebug.getConfig() == null ? DebugContext.getDefaultLogStream() : initialDebug.getConfig().output();
                 try (DebugContext debug = selectedCompiler.getGraalRuntime().openDebugContext(options, compilationId, method, debugHandlersFactories, selectedPrintStream);
                                 DebugContext.Activation a = debug.activate();
@@ -595,16 +593,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime").doc("Time spent in compilation and code installation.");
 
     /**
-     * Time spent in garbage collection during this compilation.
-     */
-    public static final TimerKey GarbageCollectionTime = DebugContext.timer("GarbageCollectionTime").doc("Time spent in GC during compilation and code installation.");
-
-    /**
-     * Number of garbage collection during this compilation.
-     */
-    public static final CounterKey GarbageCollectionCount = DebugContext.counter("GarbageCollectionCount").doc("Number of GCs during compilation and code installation.");
-
-    /**
      * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes}.
      */
     private static final CounterKey CompiledBytecodes = DebugContext.counter("CompiledBytecodes");
@@ -638,27 +626,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
-    public record GCTimerScope(DebugContext debug, JMXService.GCTimeStatistics gcStats) implements DebugCloseable {
-        static DebugCloseable create(DebugContext debug) {
-            if (GarbageCollectionTime.isEnabled(debug) || GarbageCollectionCount.isEnabled(debug)) {
-                final JMXService.GCTimeStatistics gcStats = GraalServices.getGCTimeStatistics();
-                if (gcStats != null) {
-                    return new GCTimerScope(debug, gcStats);
-                }
-            }
-            return null;
-        }
-
-        @Override
-        public void close() {
-            GarbageCollectionCount.add(debug, gcStats.getGCCount());
-            GarbageCollectionTime.add(debug, gcStats.getGCTimeMills(), TimeUnit.MILLISECONDS);
-        }
-    }
-
     @SuppressWarnings({"try"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
-        try (DebugCloseable a = CompilationTime.start(debug); DebugCloseable b = GCTimerScope.create(debug)) {
+        try (DebugCloseable a = CompilationTime.start(debug); DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
             if (libgraal != null) {

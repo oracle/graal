@@ -294,6 +294,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def default_stages(self) -> List[str]:
         if self.benchmarkName() == "micronaut-pegasus":
+            if (
+                self.execution_context and
+                self.execution_context.virtual_machine and
+                self.execution_context.virtual_machine.config_name() and
+                self.execution_context.virtual_machine.config_name().endswith("-ce")
+            ):
+                # fails on CE due to --enable-sbom EE only option injected from upstream pom (GR-66891)
+                return []
             # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM (GR-59793)
             return ["instrument-image", "instrument-run", "image", "run"]
         return super().default_stages()
@@ -382,6 +390,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
+            return []
+        # Disable assertions due to transient AssertionError when building spring-hello-world image (GR-59889)
+        if benchmark == "spring-hello-world":
             return []
         return super().build_assertions(benchmark, is_gate)
 
@@ -671,12 +682,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
 
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
-
-    def daCapoPath(self):
-        lib = mx.library(self.daCapoLibraryName(), False)
-        if lib:
-            return lib.get_path(True)
-        return None
 
     def availableSuiteVersions(self):
         # The version 9.12-MR1-git+2baec49 also ships a custom harness class to allow native image to find the entry point in the nested jar

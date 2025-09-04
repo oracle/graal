@@ -75,7 +75,6 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -88,7 +87,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.word.Word;
@@ -123,12 +121,13 @@ public final class HeapImpl extends Heap {
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
                         : new CopyingOldGeneration("OldGeneration");
-        HeapParameters.initialize();
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
-        DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
-        DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
-        DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
+            DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
+            DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
+            DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        }
     }
 
     @Fold
@@ -211,7 +210,7 @@ public final class HeapImpl extends Heap {
         oldGeneration.tearDown();
         getChunkProvider().tearDown();
 
-        if (MetaspaceImpl.isSupported()) {
+        if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().tearDown();
         }
         return true;
@@ -274,7 +273,7 @@ public final class HeapImpl extends Heap {
     }
 
     void logUsage(Log log) {
-        if (MetaspaceImpl.isSupported()) {
+        if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logUsage(log);
         }
         youngGeneration.logUsage(log);
@@ -282,7 +281,7 @@ public final class HeapImpl extends Heap {
     }
 
     void logChunks(Log log, boolean allowUnsafe) {
-        if (MetaspaceImpl.isSupported()) {
+        if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logChunks(log);
         }
         getYoungGeneration().logChunks(log, allowUnsafe);
@@ -328,7 +327,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected List<Class<?>> getClassesInImageHeap() {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             ArrayList<Class<?>> list = findAllDynamicHubs();
@@ -443,48 +442,39 @@ public final class HeapImpl extends Heap {
 
     @Fold
     @Override
-    public int getPreferredAddressSpaceAlignment() {
+    public int getHeapBaseAlignment() {
+        return getImageHeapAlignment();
+    }
+
+    @Fold
+    @Override
+    public int getImageHeapAlignment() {
         return UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
+    }
+
+    @Fold
+    static int getMetaspaceOffsetInAddressSpace() {
+        assert SubstrateOptions.SpawnIsolates.getValue();
+        int result = SerialAndEpsilonGCOptions.getNullRegionSize();
+        assert result % HeapParameters.getAlignedHeapChunkAlignment().rawValue() == 0 : "start of metaspace must be aligned";
+        return result;
     }
 
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        int imageHeapOffset = 0;
-        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue()) {
-            /*
-             * The image heap will be mapped in a way that there is a memory protected gap between
-             * the heap base and the start of the image heap. The gap won't need any memory in the
-             * native image file.
-             */
-            imageHeapOffset = NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            return 0;
         }
 
-        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-            /*
-             * GR-53964: The page size used to round up the start offset should be the same as the
-             * one used in run time.
-             */
-            int runtimePageSize = 4096;
-            imageHeapOffset = NumUtil.roundUp(imageHeapOffset + NumUtil.safeToInt(startOffset), runtimePageSize);
-        }
-        return imageHeapOffset;
+        int result = SerialAndEpsilonGCOptions.getNullRegionSize() + SerialAndEpsilonGCOptions.getReservedMetaspaceSize();
+        assert result % getImageHeapAlignment() == 0 : "start of image heap must be aligned";
+        return result;
     }
 
     @Fold
     public static boolean isImageHeapAligned() {
         return SubstrateOptions.SpawnIsolates.getValue();
-    }
-
-    @Override
-    public UnsignedWord getImageHeapReservedBytes() {
-        return ImageHeapProvider.get().getImageHeapAddressSpaceSize();
-    }
-
-    @Override
-    public UnsignedWord getImageHeapCommittedBytes() {
-        int imageHeapOffset = HeapImpl.getHeapImpl().getImageHeapOffsetInAddressSpace();
-        return ImageHeapProvider.get().getImageHeapAddressSpaceSize().subtract(imageHeapOffset);
     }
 
     @Override
@@ -804,7 +794,7 @@ public final class HeapImpl extends Heap {
 
         if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
             /* Accessing the metaspace is unsafe due to possible concurrent modifications. */
-            if (MetaspaceImpl.isSupported() && MetaspaceImpl.singleton().printLocationInfo(log, ptr)) {
+            if (Metaspace.isSupported() && MetaspaceImpl.singleton().printLocationInfo(log, ptr)) {
                 return true;
             }
 

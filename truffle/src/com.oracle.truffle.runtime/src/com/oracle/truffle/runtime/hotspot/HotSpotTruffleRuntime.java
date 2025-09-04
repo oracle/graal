@@ -130,6 +130,16 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
     }
 
+    /*
+     * Invoked before the first compilation, but still on an interpreter thread. This makes it safe
+     * to initialize certain classes.
+     */
+    private void onFirstCompilation() {
+        installDefaultListeners();
+        // make sure lookup types are installed lazily when the first compilation is scheduled
+        getLookupTypes();
+    }
+
     /**
      * Contains lazily computed data such as the compilation queue and helper for stack
      * introspection.
@@ -139,7 +149,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
         Lazy(HotSpotTruffleRuntime runtime) {
             super(runtime);
-            runtime.installDefaultListeners();
+            runtime.onFirstCompilation();
         }
 
         @Override
@@ -496,9 +506,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
-        ResolvedJavaType type = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+        ResolvedJavaType target = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : target.getDeclaredMethods(false)) {
+            if (method.getName().equals("callBoundary")) {
+                assert method.getAnnotation(TruffleCallBoundary.class) != null;
                 if (compiler != null) {
                     OptimizedCallTarget initCallTarget = initializeCallTarget;
                     Objects.requireNonNull(initCallTarget);
@@ -506,6 +517,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 } else {
                     setNotInlinableOrCompilable(method);
                 }
+                break;
             }
         }
     }

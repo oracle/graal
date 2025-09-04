@@ -51,7 +51,6 @@ final class ObjectStorageOptions {
     static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
     static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
     static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
 
     /**
      * Allocation of in-object fields.
@@ -65,6 +64,13 @@ final class ObjectStorageOptions {
 
     static final boolean TriePropertyMap = booleanOption(OPTION_PREFIX + "TriePropertyMap", true);
     static final boolean TrieTransitionMap = booleanOption(OPTION_PREFIX + "TrieTransitionMap", true);
+
+    static final boolean NewFinalSpeculation = booleanOption(OPTION_PREFIX + "NewFinalSpeculation", true);
+    static final boolean NewTypeSpeculation = booleanOption(OPTION_PREFIX + "NewTypeSpeculation", true);
+    /** Number of parent shapes to compare to check if compatible shapes can be merged. */
+    static final int MaxMergeDepth = Integer.getInteger(OPTION_PREFIX + "MaxMergeDepth", 32);
+    /** Number of differing, compatible property locations allowed when merging shapes. */
+    static final int MaxMergeDiff = Integer.getInteger(OPTION_PREFIX + "MaxMergeDiff", 2);
 
     // Debug options (should be final)
     static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);

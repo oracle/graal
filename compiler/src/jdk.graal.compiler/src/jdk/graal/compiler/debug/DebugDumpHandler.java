@@ -34,7 +34,7 @@ import java.io.Closeable;
  * graph and send it over the network to a tool (e.g., https://github.com/graalvm/visualizer) that
  * can display graphs.
  */
-public interface DebugDumpHandler extends Closeable, DebugHandler {
+public interface DebugDumpHandler extends Closeable {
 
     /**
      * If the type of {@code object} is supported by this dumper, then a representation of

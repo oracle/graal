@@ -630,7 +630,7 @@ public final class DebuggerConnection implements Commands {
                                     result = requestedJDWPEvents.clearRequest(packet);
                                     break;
                                 case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID:
-                                    result = requestedJDWPEvents.clearAllRequests(packet);
+                                    result = requestedJDWPEvents.clearAllBreakpointRequests(packet);
                                     break;
                                 default:
                                     result = unknownCommand(packet, controller);

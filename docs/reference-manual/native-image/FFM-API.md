@@ -87,7 +87,7 @@ To use the downcall handle in Native Image at run time, you must provide the fol
 ```
 
 The return type `int` denotes a C data type and is one of several _canonical types_.
-The following canonical types are guaranteed to be available on all platforms (see also the documentation for [`java.lang.foreign.Linker`](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/foreign/Linker.html)):
+The following canonical types are guaranteed to be available on all platforms (see also the documentation for [`java.lang.foreign.Linker`](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/foreign/Linker.html)):
 
 * `bool`
 * `char`
@@ -128,7 +128,7 @@ In Java, you can create the appropriate downcall handle like this:
 
 ```java
 SymbolLookup lookup = SymbolLookup.libraryLookup(/* ... */);
-MemoryLayout cDouble = linker.canonicalLayouts().get("double"); 
+MemoryLayout cDouble = linker.canonicalLayouts().get("double");
 MemoryLayout pointLayout = MemoryLayout.structLayout(cDouble, cDouble);
 MethodHandle vectorLength = linker.downcallHandle(
         lookup.find("vector_length").orElseThrow(),
@@ -229,7 +229,7 @@ In the configuration file, you also need to specify that you want to capture a c
 
 In the configuration file, the linker options are specified as properties of a JSON object.
 You can specify two additional linker options, `critical` and `firstVariadicArg`.
-For a description of those options, please refer to the documentation of [`java.lang.foreign.Linker.Option`](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/foreign/Linker.Option.html).
+For a description of those options, please refer to the documentation of [`java.lang.foreign.Linker.Option`](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/foreign/Linker.Option.html).
 
 In Java, the linker option `critical` takes an argument which specifies if the called native function may access heap objects during execution:
 
@@ -440,7 +440,7 @@ public class InvokeQsort {
             STDLIB.find("qsort").orElseThrow(),
             FunctionDescriptor.ofVoid(C_POINTER, C_SIZE_T, C_SIZE_T, C_POINTER)
     );
-    
+
     private static final MemoryLayout C_INT = Linker.nativeLinker().canonicalLayouts().get("int");
 
     // Function descriptor of the qsort compare function
@@ -536,7 +536,7 @@ public class CustomFeature implements Feature {
 
         // required for C function 'double vector_length(struct Point x)'
         RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(C_DOUBLE, POINT_LAYOUT));
-        
+
         // required for C function 'double sin(double x)'; capture "errno"
         RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(C_DOUBLE, C_DOUBLE), Linker.Option.captureCallState("errno"));
 
@@ -706,7 +706,7 @@ public class ComputePaddingFeature implements Feature {
     private static final MemoryLayout NEEDS_PADDING = MemoryLayout.structLayout(C_WCHAR_T.withName("x"),
             computePadding(),
             C_LONG_LONG.withName("y"));
-    
+
     private static MemoryLayout computePadding() {
         assert C_LONG_LONG.byteSize() > C_WCHAR_T.byteSize();
         return MemoryLayout.padding(C_LONG_LONG.byteSize() - C_WCHAR_T.byteSize());

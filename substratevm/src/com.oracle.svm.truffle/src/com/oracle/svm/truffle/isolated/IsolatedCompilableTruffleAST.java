@@ -171,6 +171,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return getSuccessfulCompilationCount0(IsolatedCompileContext.get().getClient(), handle);
     }
 
+    @Override
+    public boolean canBeInlined() {
+        return canBeInlined0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
     @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<SpeculationLog> getCompilationSpeculationLog0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
@@ -304,6 +309,13 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static int getSuccessfulCompilationCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.getSuccessfulCompilationCount();
+    }
+
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.BooleanExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
+    private static boolean canBeInlined0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+        SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
+        return compilable.canBeInlined();
     }
 
     private static Map<String, String> readCompilerOptions(Map<String, String> map, BinaryInput in) {

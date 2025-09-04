@@ -26,7 +26,6 @@ import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivi
 import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
 import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_SLEEPING;
 
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -114,21 +113,6 @@ public final class Target_java_lang_Thread {
     @Substitution
     public static @JavaType(Thread[].class) StaticObject getThreads(@Inject EspressoContext context) {
         return context.getVM().JVM_GetAllThreads(null);
-    }
-
-    @Substitution
-    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @Inject EspressoLanguage language, @Inject Meta meta) {
-        if (StaticObject.isNull(threads)) {
-            throw meta.throwNullPointerException();
-        }
-        if (threads.length(language) == 0) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
-        }
-        EspressoContext context = meta.getContext();
-        StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY, context);
-        StaticObject[] toWrap = new StaticObject[threads.length(language)];
-        Arrays.fill(toWrap, trace);
-        return StaticObject.createArray(meta.java_lang_StackTraceElement.array().array(), toWrap, context);
     }
 
     @Substitution(hasReceiver = true)
@@ -330,6 +314,22 @@ public final class Target_java_lang_Thread {
             return;
         }
         hostThread.setName(meta.toHostString(name));
+    }
+
+    // Return an array of stack traces (arrays of stack trace elements), one for each thread in the
+    // threads array, or NULL for threads that were unresponsive.
+    @Substitution
+    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threadsArray,
+                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject EspressoContext context, @Inject SubstitutionProfiler location) {
+        if (StaticObject.isNull(threadsArray)) {
+            throw meta.throwNullPointerException();
+        }
+        if (threadsArray.length(language) == 0) {
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
+        VM.StackTrace[] traces = ThreadRequests.getStackTraces(context, InterpreterToVM.MAX_STACK_DEPTH, location, threadsArray.unwrap(language));
+        return meta.java_lang_StackTraceElement.array().allocateReferenceArray(traces.length,
+                        i -> traces[i] == null ? StaticObject.NULL : traces[i].toGuest(context));
     }
 
     @Substitution(languageFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)

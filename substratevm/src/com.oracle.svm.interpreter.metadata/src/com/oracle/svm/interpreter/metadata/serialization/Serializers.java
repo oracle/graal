@@ -40,7 +40,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
-import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
@@ -532,8 +531,7 @@ public final class Serializers {
 
                         @SuppressWarnings("unchecked")
                         ParserConstantPool parserConstantPool = ParserConstantPool.fromBytesForSerialization(parserConstantPoolBytes,
-                                        bytes -> {
-                                            ByteSequence byteSequence = ByteSequence.wrap(bytes);
+                                        byteSequence -> {
                                             return (Symbol<ModifiedUTF8>) SymbolsSupport.getUtf8().getOrCreateValidUtf8(byteSequence);
                                         });
                         Object[] cachedEntries = context.readerFor(Object[].class).read(context, in);

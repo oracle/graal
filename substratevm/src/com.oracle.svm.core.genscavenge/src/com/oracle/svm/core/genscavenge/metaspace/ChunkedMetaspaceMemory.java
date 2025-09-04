@@ -34,6 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
@@ -41,7 +42,6 @@ import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
@@ -129,7 +129,7 @@ class ChunkedMetaspaceMemory {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
 
         UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkAlignment();
-        AlignedHeader newChunk = (AlignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateMetaspaceChunk(HeapParameters.getAlignedHeapChunkSize(), chunkSize);
+        AlignedHeader newChunk = (AlignedHeader) AddressRangeCommittedMemoryProvider.singleton().allocateMetaspaceChunk(HeapParameters.getAlignedHeapChunkSize(), chunkSize);
         assert newChunk.isNonNull();
 
         AlignedHeapChunk.initialize(newChunk, chunkSize);

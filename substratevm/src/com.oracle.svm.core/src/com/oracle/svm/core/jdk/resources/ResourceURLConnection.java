@@ -77,7 +77,7 @@ public final class ResourceURLConnection extends URLConnection {
         Object entry = Resources.getAtRuntime(module, resourceName, false);
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
-            List<byte[]> bytes = resourceStorageEntry.getData();
+            byte[][] bytes = resourceStorageEntry.getData();
             isDirectory = resourceStorageEntry.isDirectory();
             String urlRef = url.getRef();
             int index = 0;
@@ -88,12 +88,12 @@ public final class ResourceURLConnection extends URLConnection {
                     throw new IllegalArgumentException("URL anchor '#" + urlRef + "' not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
                 }
             }
-            if (index < bytes.size()) {
-                this.data = bytes.get(index);
+            if (index < bytes.length) {
+                this.data = bytes[index];
             } else {
                 // This will happen only in case that we are creating one URL with the second URL as
                 // a context.
-                this.data = bytes.get(0);
+                this.data = bytes[0];
             }
         } else {
             this.data = null;

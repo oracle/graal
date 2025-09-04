@@ -323,7 +323,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_V128_NOT -> unop(x, I8X16, VectorOperators.NOT);
             case Bytecode.VECTOR_I8X16_ABS -> unop(x, I8X16, VectorOperators.ABS);
             case Bytecode.VECTOR_I8X16_NEG -> unop(x, I8X16, VectorOperators.NEG);
-            case Bytecode.VECTOR_I8X16_POPCNT -> unop(x, I8X16, VectorOperators.BIT_COUNT);
+            case Bytecode.VECTOR_I8X16_POPCNT -> i8x16_popcnt(x); // GR-68892
             case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> extadd_pairwise(x, I8X16, VectorOperators.B2S);
             case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> extadd_pairwise(x, I8X16, VectorOperators.ZERO_EXTEND_B2S);
             case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> extend(x, 0, I8X16, VectorOperators.B2S);
@@ -366,16 +366,16 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D,
                             Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, 1L << (DOUBLE_SIGNIFICAND_WIDTH - 1));
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, I32X4, VectorOperators.I2F);
-            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4_u(x);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-68843
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> convert(x, I32X4, VectorOperators.I2D);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4_u(x);
-            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> f32X4_demote_f64X2_zero(x);
-            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, F32X4, VectorOperators.F2D);
+            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-68843
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-68843
             default -> throw CompilerDirectives.shouldNotReachHere();
         });
     }
@@ -441,30 +441,30 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, I16X8, I8X16, Byte.MIN_VALUE, Byte.MAX_VALUE);
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, I16X8, I8X16, (short) 0, (short) 0xff);
             case Bytecode.VECTOR_I8X16_ADD -> binop(x, y, I8X16, VectorOperators.ADD);
-            case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop(x, y, I8X16, VectorOperators.SADD);
-            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.ADD, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop_sat(x, y, I8X16, I16X8, VectorOperators.B2S, VectorOperators.ADD, Byte.MIN_VALUE, Byte.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.ADD, 0, 0xff); // GR-68891
             case Bytecode.VECTOR_I8X16_SUB -> binop(x, y, I8X16, VectorOperators.SUB);
-            case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop(x, y, I8X16, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop_sat(x, y, I8X16, I16X8, VectorOperators.B2S, VectorOperators.SUB, Byte.MIN_VALUE, Byte.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff); // GR-68891
             case Bytecode.VECTOR_I8X16_MIN_S -> binop(x, y, I8X16, VectorOperators.MIN);
-            case Bytecode.VECTOR_I8X16_MIN_U -> binop(x, y, I8X16, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I8X16_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I8X16_MAX_S -> binop(x, y, I8X16, VectorOperators.MAX);
-            case Bytecode.VECTOR_I8X16_MAX_U -> binop(x, y, I8X16, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I8X16_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I8X16_AVGR_U -> avgr_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S);
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> narrow(x, y, I32X4, I16X8, Short.MIN_VALUE, Short.MAX_VALUE);
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> narrow(x, y, I32X4, I16X8, 0, 0xffff);
             case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S, Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S -> i16x8_q15mulr_sat_s(x, y);
             case Bytecode.VECTOR_I16X8_ADD -> binop(x, y, I16X8, VectorOperators.ADD);
-            case Bytecode.VECTOR_I16X8_ADD_SAT_S -> binop(x, y, I16X8, VectorOperators.SADD);
-            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.ADD, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_ADD_SAT_S -> binop_sat(x, y, I16X8, I32X4, VectorOperators.S2I, VectorOperators.ADD, Short.MIN_VALUE, Short.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.ADD, 0, 0xffff); // GR-68891
             case Bytecode.VECTOR_I16X8_SUB -> binop(x, y, I16X8, VectorOperators.SUB);
-            case Bytecode.VECTOR_I16X8_SUB_SAT_S -> binop(x, y, I16X8, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_SUB_SAT_S -> binop_sat(x, y, I16X8, I32X4, VectorOperators.S2I, VectorOperators.SUB, Short.MIN_VALUE, Short.MAX_VALUE); // GR-68891
+            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff); // GR-68891
             case Bytecode.VECTOR_I16X8_MUL -> binop(x, y, I16X8, VectorOperators.MUL);
             case Bytecode.VECTOR_I16X8_MIN_S -> binop(x, y, I16X8, VectorOperators.MIN);
-            case Bytecode.VECTOR_I16X8_MIN_U -> binop(x, y, I16X8, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I16X8_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I16X8_MAX_S -> binop(x, y, I16X8, VectorOperators.MAX);
-            case Bytecode.VECTOR_I16X8_MAX_U -> binop(x, y, I16X8, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I16X8_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I16X8_AVGR_U -> avgr_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> extmul(x, y, I8X16, VectorOperators.B2S, 0);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> extmul(x, y, I8X16, VectorOperators.ZERO_EXTEND_B2S, 0);
@@ -474,9 +474,9 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I32X4_SUB -> binop(x, y, I32X4, VectorOperators.SUB);
             case Bytecode.VECTOR_I32X4_MUL -> binop(x, y, I32X4, VectorOperators.MUL);
             case Bytecode.VECTOR_I32X4_MIN_S -> binop(x, y, I32X4, VectorOperators.MIN);
-            case Bytecode.VECTOR_I32X4_MIN_U -> binop(x, y, I32X4, VectorOperators.UMIN);
+            case Bytecode.VECTOR_I32X4_MIN_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I32X4_MAX_S -> binop(x, y, I32X4, VectorOperators.MAX);
-            case Bytecode.VECTOR_I32X4_MAX_U -> binop(x, y, I32X4, VectorOperators.UMAX);
+            case Bytecode.VECTOR_I32X4_MAX_U -> fromArray(fallbackOps.binary(x.toArray(), y.toArray(), vectorOpcode)); // GR-68891
             case Bytecode.VECTOR_I32X4_DOT_I16X8_S -> i32x4_dot_i16x8_s(x, y);
             case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S -> extmul(x, y, I16X8, VectorOperators.S2I, 0);
             case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U -> extmul(x, y, I16X8, VectorOperators.ZERO_EXTEND_S2I, 0);
@@ -537,7 +537,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_I16X8_BITMASK -> bitmask(x, I16X8);
             case Bytecode.VECTOR_I32X4_ALL_TRUE -> all_true(x, I32X4);
             case Bytecode.VECTOR_I32X4_BITMASK -> bitmask(x, I32X4);
-            case Bytecode.VECTOR_I64X2_ALL_TRUE -> all_true(x, I64X2);
+            case Bytecode.VECTOR_I64X2_ALL_TRUE -> fallbackOps.vectorToInt(x.toArray(), vectorOpcode); // GR-68893
             case Bytecode.VECTOR_I64X2_BITMASK -> bitmask(x, I64X2);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
@@ -747,6 +747,13 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
+    private static ByteVector i8x16_popcnt(ByteVector x) {
+        // Based on the same approach as Integer#bitCount
+        ByteVector popcnt = x.sub(x.lanewise(VectorOperators.LSHR, 1).and((byte) 0x55));
+        popcnt = popcnt.and((byte) 0x33).add(popcnt.lanewise(VectorOperators.LSHR, 2).and((byte) 0x33));
+        return popcnt.add(popcnt.lanewise(VectorOperators.LSHR, 4)).and((byte) 0x0F);
+    }
+
     private static <E, F> ByteVector extadd_pairwise(ByteVector xBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv) {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<F> evens = x.compress(shape.evensMask).convert(conv, 0);
@@ -889,6 +896,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
+    @SuppressWarnings("unused")
     private static ByteVector f32x4_convert_i32x4_u(ByteVector xBytes) {
         IntVector x = xBytes.reinterpretAsInts();
         LongVector xUnsignedLow = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 0));
@@ -915,6 +923,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
+    @SuppressWarnings("unused")
     private static ByteVector f32X4_demote_f64X2_zero(ByteVector xBytes) {
         DoubleVector x = F64X2.reinterpret(xBytes);
         Vector<Float> result = compactGeneral(x, 0, I64X2, F32X4, VectorOperators.D2F, VectorOperators.REINTERPRET_F2I, VectorOperators.ZERO_EXTEND_I2L);
@@ -1018,7 +1027,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
-    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes,
+    private static <E, F> ByteVector binop_sat(ByteVector xBytes, ByteVector yBytes,
                     Shape<E> shape, Shape<F> extendedShape,
                     VectorOperators.Conversion<E, F> upcast,
                     VectorOperators.Binary op, long min, long max) {
@@ -1033,8 +1042,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
                     Shape<E> shape, Shape<F> extendedShape,
                     VectorOperators.Conversion<E, F> upcast) {
         Vector<F> one = extendedShape.broadcast(1);
-        Vector<F> two = extendedShape.broadcast(2);
-        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> x.add(y).add(one).div(two));
+        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> x.add(y).add(one).lanewise(VectorOperators.LSHR, 1));
     }
 
     private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {

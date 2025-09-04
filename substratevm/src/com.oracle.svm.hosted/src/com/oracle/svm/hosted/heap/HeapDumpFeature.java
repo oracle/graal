@@ -51,8 +51,8 @@ import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
@@ -134,17 +134,14 @@ public class HeapDumpFeature implements InternalFeature {
      * {@link HeapDumpMetadata} for more details).
      */
     private static byte[] encodeMetadata(Collection<? extends SharedType> types) {
-        int maxTypeId = types.stream().mapToInt(t -> t.getHub().getTypeID()).max().orElse(0);
-        assert maxTypeId > 0;
-
         UnsafeArrayTypeWriter output = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeMetadata(output, types, maxTypeId);
+        encodeMetadata(output, types);
 
         int length = TypeConversion.asS4(output.getBytesWritten());
         return output.toArray(new byte[length]);
     }
 
-    private static void encodeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types, int maxTypeId) {
+    private static void encodeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types) {
         /* Write header. */
         long totalFieldCountOffset = output.getBytesWritten();
         output.putS4(0); // total field count (patched later on)
@@ -153,26 +150,16 @@ public class HeapDumpFeature implements InternalFeature {
         long fieldNameCountOffset = output.getBytesWritten();
         output.putS4(0); // field name count (patched later on)
 
-        output.putUV(maxTypeId);
-
-        /*
-         * Handle layered-related tasks:
-         * 
-         * 1) Determine the lower bound of typeIDs written into this layer's encoded metadata. In a
-         * layered build, the types with typeIDs below the lower bound have already been written in
-         * a prior layer's encoded metadata.
-         * 
-         * 2) Create map of field names and initialize the map with field names already installed in
-         * prior layer's encoded metadata. It is legal for this layer's encoded metadata to
-         * reference field map entries installed by prior layers. Only newly added field names will
-         * be encoded within this layer's encoded metadata.
-         */
         EconomicMap<String, Integer> fieldNames = EconomicMap.create();
         int priorFieldNamesSize = 0;
-        int typeIDLowerBound = 0;
+        int prevLayersMaxTypeId = -1;
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             LayeredHeapDumpEncodedTypesTracker layeredTracking = ImageSingletons.lookup(LayeredHeapDumpEncodedTypesTracker.class);
-            typeIDLowerBound = layeredTracking.getStartingTypeId();
+            prevLayersMaxTypeId = DynamicImageLayerInfo.singleton().getPreviousMaxTypeId();
+            /*
+             * We only need to encode newly added field names within this layer's metadata. So, we
+             * pre-populate the map with all the field names of previous layers.
+             */
             for (String fieldName : layeredTracking.getPriorFieldNames()) {
                 fieldNames.put(fieldName, priorFieldNamesSize);
                 priorFieldNamesSize++;
@@ -186,10 +173,8 @@ public class HeapDumpFeature implements InternalFeature {
         for (SharedType type : types) {
             if (type.isInstanceClass()) {
                 int typeId = type.getHub().getTypeID();
-                if (typeId < typeIDLowerBound) {
-                    /*
-                     * This type's information has been installed in a prior layer.
-                     */
+                if (typeId <= prevLayersMaxTypeId) {
+                    /* This type's information has been installed in a prior layer. */
                     continue;
                 }
                 ArrayList<SharedField> instanceFields = collectFields(type.getInstanceFields(false));
@@ -300,21 +285,15 @@ public class HeapDumpFeature implements InternalFeature {
 
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
 class LayeredHeapDumpEncodedTypesTracker implements LayeredImageSingleton {
-    private final int startingTypeId;
     private List<String> encodedFieldNames;
     private final List<String> priorFieldNames;
 
     LayeredHeapDumpEncodedTypesTracker() {
-        this(0, List.of());
+        this(List.of());
     }
 
-    LayeredHeapDumpEncodedTypesTracker(int startingTypeId, List<String> priorFieldNames) {
-        this.startingTypeId = startingTypeId;
+    LayeredHeapDumpEncodedTypesTracker(List<String> priorFieldNames) {
         this.priorFieldNames = priorFieldNames;
-    }
-
-    public int getStartingTypeId() {
-        return startingTypeId;
     }
 
     void recordEncodedFieldNames(List<String> nameList) {
@@ -332,7 +311,6 @@ class LayeredHeapDumpEncodedTypesTracker implements LayeredImageSingleton {
 
     @Override
     public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        writer.writeInt("startingTypeId", DynamicHubSupport.currentLayer().getMaxTypeId());
         writer.writeStringList("encodedFieldNames", encodedFieldNames);
         return PersistFlags.CREATE;
     }
@@ -340,6 +318,6 @@ class LayeredHeapDumpEncodedTypesTracker implements LayeredImageSingleton {
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
         List<String> encodedFieldNames = Collections.unmodifiableList(loader.readStringList("encodedFieldNames"));
-        return new LayeredHeapDumpEncodedTypesTracker(loader.readInt("startingTypeId"), encodedFieldNames);
+        return new LayeredHeapDumpEncodedTypesTracker(encodedFieldNames);
     }
 }

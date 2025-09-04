@@ -1492,7 +1492,7 @@ JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {
-  // TODO: actually support them.
+  // TODO: GR-54288 Currently virtual threads are just platform threads in Espresso
   IMPLEMENTED(JVM_IsContinuationsSupported);
   return JNI_FALSE;
 }

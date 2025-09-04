@@ -106,32 +106,33 @@ struct PersistedAnalysisMethod {
   analysisGraphIsIntrinsic @25 :Bool;
   strengthenedGraphLocation @26 :Text;
   hostedMethodIndex @27 :HostedMethodIndex;
+  compilationBehaviorOrdinal @28 :Int8;
   wrappedMethod :union {
-    none @28 :Void; # default
+    none @29 :Void; # default
     factoryMethod :group {
-      targetConstructorId @29 :MethodId;
-      throwAllocatedObject @30 :Bool;
-      instantiatedTypeId @31 :TypeId;
+      targetConstructorId @30 :MethodId;
+      throwAllocatedObject @31 :Bool;
+      instantiatedTypeId @32 :TypeId;
     }
     outlinedSB :group {
-      methodTypeReturn @32 :Text;
-      methodTypeParameters @33 :List(Text);
+      methodTypeReturn @33 :Text;
+      methodTypeParameters @34 :List(Text);
     }
     cEntryPointCallStub :group {
-      originalMethodId @34 :MethodId;
-      notPublished @35 :Bool;
+      originalMethodId @35 :MethodId;
+      notPublished @36 :Bool;
     }
     wrappedMember :group {
       union {
-        reflectionExpandSignature @36 :Void;
-        javaCallVariantWrapper @37 :Void;
+        reflectionExpandSignature @37 :Void;
+        javaCallVariantWrapper @38 :Void;
       }
-      name @38 :Text;
-      declaringClassName @39 :Text;
-      argumentTypeNames @40 :List(Text);
+      name @39 :Text;
+      declaringClassName @40 :Text;
+      argumentTypeNames @41 :List(Text);
     }
     polymorphicSignature :group {
-      callers @41 :List(MethodId);
+      callers @42 :List(MethodId);
     }
   }
 }
@@ -284,7 +285,7 @@ struct SharedLayerSnapshot {
   nextConstantId @3 :ConstantId;
   staticPrimitiveFieldsConstantId @4 :ConstantId;
   staticObjectFieldsConstantId @5 :ConstantId;
-  imageHeapSize @6 :Int64;
+  imageHeapEndOffset @6 :Int64;
   constantsToRelink @7 :List(ConstantId);
   types @8 :List(PersistedAnalysisType);
   methods @9 :List(PersistedAnalysisMethod);
@@ -301,6 +302,7 @@ struct SharedLayerSnapshot {
   nodeClassMapLocation @20 :Text;
   sharedLayerBootLayerModules @21 :List(Text);
   layeredModule @22 :LayeredModule;
+  cGlobals @23 :List(CGlobalDataInfo);
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -349,6 +351,22 @@ struct PrimitiveArray {
     j @6 :List(Int64);
     d @7 :List(Float64);
   }
+}
+
+struct CGlobalDataInfo {
+   isSymbolReference @0 :Bool;
+   isGlobalSymbol @1 :Bool;
+   nonConstant @2 :Bool;
+   layeredSymbolName @3 :Text;
+   linkingInfo :union {
+     originalSymbolName @4 :Text;
+     codeLocation @5 :CodeLocation;
+   }
+}
+
+struct CodeLocation {
+    bytecodeIndex @0 :Int32;
+    stacktraceName @1 :Text;
 }
 
 struct DispatchSlotInfo {

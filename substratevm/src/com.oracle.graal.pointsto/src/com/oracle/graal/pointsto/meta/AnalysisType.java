@@ -28,14 +28,12 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -101,8 +99,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAnySubtypeInstantiatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isAnySubtypeInstantiated");
 
     static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
@@ -122,7 +120,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /** Can be allocated via Unsafe or JNI, i.e., without executing a constructor. */
     @SuppressWarnings("unused") private volatile Object isUnsafeAllocated;
     @SuppressWarnings("unused") private volatile Object isReachable;
-    @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
+    @SuppressWarnings("unused") private volatile Object isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
 
@@ -287,7 +285,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer()) {
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
@@ -534,7 +532,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected void onInstantiated() {
         assert !isWordType() : Assertions.errorMessage("Word types cannot be instantiated", this);
-        forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
+        forAllSuperTypes(superType -> AtomicUtils.atomicSet(superType, this, isAnySubtypeInstantiatedUpdater));
 
         universe.onTypeInstantiated(this);
         notifyInstantiatedCallbacks();
@@ -835,6 +833,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Object getInstantiatedReason() {
         return isInstantiated;
+    }
+
+    public Object getAnyInstantiatedSubtype() {
+        return isAnySubtypeInstantiated;
     }
 
     public boolean isUnsafeAllocated() {
@@ -1197,22 +1199,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    /**
-     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
-     * class file format doesn't disallow duplicated names with differing types in the same class.
-     * Even though you cannot declare duplicated names in source code the class file can be
-     * manipulated such that two fields will have the same name.
-     */
-    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
-
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        ResolvedJavaField[] localOriginals = originals;
-        if (universe.hostVM.sortFields()) {
-            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
-            localOriginals = originals.clone();
-            Arrays.sort(localOriginals, FIELD_COMPARATOR);
-        }
-        for (ResolvedJavaField original : localOriginals) {
+        for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
                     AnalysisField aField = universe.lookup(original);

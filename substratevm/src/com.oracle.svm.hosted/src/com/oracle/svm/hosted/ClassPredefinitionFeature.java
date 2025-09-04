@@ -25,12 +25,25 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_FINAL;
-import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_STATIC;
+import static java.lang.classfile.ClassFile.ACC_FINAL;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.classfile.ClassFile.ACC_STATIC;
+import static java.lang.classfile.ClassFile.ConstantPoolSharingOption.NEW_POOL;
+import static java.lang.classfile.ClassFile.DebugElementsOption.DROP_DEBUG;
+import static java.lang.classfile.ClassFile.LineNumbersOption.DROP_LINE_NUMBERS;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.ClassTransform;
+import java.lang.classfile.CodeTransform;
+import java.lang.classfile.FieldModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.MethodTransform;
+import java.lang.classfile.attribute.MethodParametersAttribute;
+import java.lang.classfile.attribute.SourceDebugExtensionAttribute;
+import java.lang.classfile.attribute.SourceFileAttribute;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,12 +69,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassReader;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
-import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
-import com.oracle.svm.shaded.org.objectweb.asm.FieldVisitor;
-import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
-import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
@@ -184,13 +191,11 @@ public class ClassPredefinitionFeature implements InternalFeature {
                  * Compute a "canonical hash" that does not incorporate debug information such as
                  * source file names, line numbers, local variable names, etc.
                  */
-                ClassReader reader = new ClassReader(data);
-                ClassWriter writer = new ClassWriter(0);
-                reader.accept(writer, ClassReader.SKIP_DEBUG);
-                byte[] canonicalData = writer.toByteArray();
+                byte[] canonicalData = dropDebuggingAttributes(data);
                 String canonicalHash = Digest.digest(canonicalData);
 
-                String className = transformClassName(reader.getClassName());
+                ClassModel cm = ClassFile.of().parse(data);
+                String className = transformClassName(cm.thisClass().asInternalName());
                 PredefinedClass record = nameToRecord.computeIfAbsent(className, PredefinedClass::new);
                 if (record.canonicalHash != null) {
                     if (!canonicalHash.equals(record.canonicalHash)) {
@@ -209,13 +214,13 @@ public class ClassPredefinitionFeature implements InternalFeature {
 
                 // A class cannot be defined unless its superclass and all interfaces are loaded
                 boolean pendingSupertypes = false;
-                String superclassName = transformClassName(reader.getSuperName());
+                String superclassName = transformClassName(cm.superclass().get().asInternalName());
                 if (NativeImageSystemClassLoader.singleton().forNameOrNull(superclassName, false) == null) {
                     addPendingSupertype(record, superclassName);
                     pendingSupertypes = true;
                 }
-                for (String intf : reader.getInterfaces()) {
-                    String interfaceName = transformClassName(intf);
+                for (var intf : cm.interfaces()) {
+                    String interfaceName = transformClassName(intf.asInternalName());
                     if (NativeImageSystemClassLoader.singleton().forNameOrNull(interfaceName, false) == null) {
                         addPendingSupertype(record, interfaceName);
                         pendingSupertypes = true;
@@ -331,27 +336,31 @@ public class ClassPredefinitionFeature implements InternalFeature {
      * can access them.
      */
     private static byte[] makeLambdaInstanceFieldAndConstructorPublic(byte[] classBytes) {
-        ClassReader cr = new ClassReader(classBytes);
-        ClassWriter cw = new ClassWriter(cr, 0);
-
-        cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
-            @Override
-            public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-                if (name.equals("LAMBDA_INSTANCE$")) {
-                    return super.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, descriptor, signature, value);
-                }
-                return super.visitField(access, name, descriptor, signature, value);
+        var cf = ClassFile.of();
+        return cf.transformClass(cf.parse(classBytes), (builder, element) -> {
+            if (element instanceof FieldModel fm && fm.fieldName().stringValue().equals("LAMBDA_INSTANCE$")) {
+                builder.transformField(fm, (fb, fe) -> {
+                    fb.with(fe);
+                    fb.withFlags(ACC_PUBLIC | ACC_STATIC | ACC_FINAL);
+                });
+            } else if (element instanceof MethodModel mm && mm.methodName().stringValue().equals("<init>")) {
+                builder.transformMethod(mm, (mb, me) -> {
+                    mb.with(me);
+                    mb.withFlags(ACC_PUBLIC);
+                });
+            } else {
+                builder.with(element);
             }
+        });
+    }
 
-            @Override
-            public MethodVisitor visitMethod(final int access, final String name, final String descriptor, final String signature, final String[] exceptions) {
-                if (name.equals("<init>")) {
-                    return super.visitMethod(ACC_PUBLIC, name, descriptor, signature, exceptions);
-                }
-                return super.visitMethod(access, name, descriptor, signature, exceptions);
-            }
-        }, 0);
-
-        return cw.toByteArray();
+    private static byte[] dropDebuggingAttributes(byte[] data) {
+        var cf = ClassFile.of(DROP_DEBUG, DROP_LINE_NUMBERS, NEW_POOL);
+        return cf.transformClass(cf.parse(data), ClassTransform
+                        .dropping(cle -> cle instanceof SourceFileAttribute || cle instanceof SourceDebugExtensionAttribute)
+                        .andThen(ClassTransform.transformingMethods(MethodTransform
+                                        .dropping(me -> me instanceof MethodParametersAttribute)
+                                        .andThen(MethodTransform
+                                                        .transformingCode(CodeTransform.ACCEPT_ALL)))));
     }
 }

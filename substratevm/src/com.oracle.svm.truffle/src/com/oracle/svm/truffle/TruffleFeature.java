@@ -104,6 +104,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -193,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides support for Truffle runtime compilation";
+        return "Provides internal support for Truffle runtime compilation";
     }
 
     public static class Options {
@@ -1077,8 +1078,20 @@ final class Target_com_oracle_truffle_runtime_OptimizedCallTarget {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     boolean compilationFailed;
     /*
+     * Re-enable the target for inlining when it was disabled during image generation.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = TransformToTrue.class) //
+    boolean canBeInlined = true;
+    /*
      * The initialized time stamp is not useful when collected during image generation.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long initializedTimestamp;
+
+    private static final class TransformToTrue implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return true;
+        }
+    }
 }

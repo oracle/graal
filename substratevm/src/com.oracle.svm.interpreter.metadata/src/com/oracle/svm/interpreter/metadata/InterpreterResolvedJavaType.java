@@ -164,7 +164,7 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     @Override
     public Symbol<Name> getSymbolicName() {
         // This is assumed to be low-traffic
-        return SymbolsSupport.getNames().getOrCreate(TypeSymbols.typeToName(type));
+        return SymbolsSupport.getNames().getOrCreate(TypeSymbols.toClassNameEntry(type));
     }
 
     @Override

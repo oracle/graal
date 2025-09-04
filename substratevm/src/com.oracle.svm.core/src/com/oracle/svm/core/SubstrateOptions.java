@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -71,6 +72,10 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -359,8 +364,14 @@ public class SubstrateOptions {
              * precision of implicit stack traces. But for optimized release builds, including pgo
              * builds, it is a valuable image size reduction.
              */
-            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation)) {
-                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation) && newLevel == OptimizationLevel.O3) {
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, true);
+            } else if (newLevel == OptimizationLevel.BUILD_TIME) {
+                /*
+                 * Disable in economy mode as there is no final canonicalizer which is required for
+                 * cleanup up after this phase.
+                 */
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, false);
             }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
@@ -522,7 +533,19 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
-    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateRuntimeDebugInfo);
+
+    private static void validateRuntimeDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            if (!useDebugInfoGeneration()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option can only be enabled if debug info generation is enabled ('-g')");
+            } else if (!OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            } else if (!RuntimeCompilation.isEnabled()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option only works if run-time compilation support is enabled.");
+            }
+        }
+    }
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
@@ -802,6 +825,9 @@ public class SubstrateOptions {
 
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
+
+    @Option(help = "Write code breakdown information into CSV file", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputCodeBreakdownFile = new HostedOptionKey<>(false);
 
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
@@ -1358,6 +1384,7 @@ public class SubstrateOptions {
         return getImagePath().resolve(reportsPath).toString();
     }
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     public static class ReportingSupport {
         Path reportsPath;
 

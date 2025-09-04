@@ -32,8 +32,6 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -73,9 +71,6 @@ public interface RuntimeMetadataDecoder {
     boolean isHiding(int modifiers);
 
     boolean isNegative(int modifiers);
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    int getMetadataByteLength();
 
     class ElementDescriptor {
         private final Class<?> declaringClass;

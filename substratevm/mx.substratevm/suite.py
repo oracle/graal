@@ -39,27 +39,6 @@ suite = {
     },
 
     "libraries" : {
-        "ASM_9.7.1" : {
-            "digest" : "sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b3a3a9a801cc43d25d396df950b09d19597c73173c411b1da890de808b94f1f50",
-            "sourceDigest" : "sha512:d7c0de5912d04949a3d06cad366ff35a877da2682d9c74579625d62686032ea9349aff6102b17f92e9ec7eb4e9b1cd906b649c6a3ac798bfb9e31e5425de009d",
-            "maven" : {
-                "groupId" : "org.ow2.asm",
-                "artifactId" : "asm",
-                "version" : "9.7.1",
-            },
-            "license" : "BSD-new",
-        },
-        "ASM_TREE_9.7.1" : {
-            "digest" : "sha512:e55008c392fdd35e95d3404766b12dd4b46e13d5c362fcd0ab42a65751a82737eaf0ebc857691d1916190d34407adfde4437615d69c278785416fd911e00978d",
-            "sourceDigest" : "sha512:3cea80bc7b55679dfa3d2065c6cb6951007cc7817082e9fcf4c5e3cdc073c22eddf7c7899cff60b1092049ec9038e8d3aa9a8828ef731739bda8b5afcec30e86",
-            "maven" : {
-                "groupId" : "org.ow2.asm",
-                "artifactId" : "asm-tree",
-                "version" : "9.7.1",
-            },
-            "dependencies" : ["ASM_9.7.1"],
-            "license" : "BSD-new",
-        },
         "RENAISSANCE_HARNESS_v0.9" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
             "digest" : "sha512:068207adf6bbd0a934429f7d6ddba8810e55992d06e131479658a7933bb352ea892d4304f745806dc342a6f7187a434ff2f106c6f8a6ee35ee696ea4fc998f7b",
@@ -306,36 +285,6 @@ suite = {
             "graalCompilerSourceEdition": "ignore",
         },
 
-        # This shaded ASM project is just a quickfix.
-        # Eventually, we should migrate to the Classfile API [JDK-8294982] (GR-61102).
-        "com.oracle.svm.shaded.org.objectweb.asm": {
-            # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree)
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "javaCompliance" : "17+",
-            "spotbugsIgnoresGenerated" : True,
-            "shadedDependencies" : [
-                "ASM_9.7.1",
-                "ASM_TREE_9.7.1",
-            ],
-            "class" : "ShadedLibraryProject",
-            "shade" : {
-                "packages" : {
-                    "org.objectweb.asm" : "com.oracle.svm.shaded.org.objectweb.asm",
-                },
-                "exclude" : [
-                    "META-INF/MANIFEST.MF",
-                    "**/package.html",
-                ],
-            },
-            "description" : "ASM library shadowed for Native Iamge.",
-            # We need to force javac because the generated sources in this project produce warnings in JDT.
-            "forceJavac" : "true",
-            "javac.lint.overrides" : "none",
-            "jacoco" : "exclude",
-            "graalCompilerSourceEdition": "ignore",
-        },
-
         "com.oracle.svm.processor" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -360,7 +309,6 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.common",
-                "com.oracle.svm.shaded.org.objectweb.asm",
                 "com.oracle.objectfile",
                 "SVM_CONFIGURE",
                 "espresso-shared:ESPRESSO_SVM",
@@ -436,7 +384,9 @@ suite = {
                     "jdk.vm.ci.services"
                 ],
             },
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "checkstyleVersion" : "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -471,7 +421,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -495,7 +447,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -518,7 +472,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -541,7 +497,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -568,7 +526,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -598,7 +558,8 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -622,7 +583,8 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -797,7 +759,9 @@ suite = {
                     "jdk.jfr.internal.jfc",
                 ],
             },
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -840,7 +804,8 @@ suite = {
                     "jdk.vm.ci.meta"
                 ],
             },
-            "javaCompliance" : "22+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -884,7 +849,8 @@ suite = {
                     "jdk.vm.ci.amd64",
                 ],
             },
-            "javaCompliance" : "22+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1088,7 +1054,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1126,7 +1093,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1291,7 +1259,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1322,7 +1292,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "testProject": True,
             "jacoco" : "exclude",
@@ -1380,7 +1351,9 @@ suite = {
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1404,7 +1377,9 @@ suite = {
                 "com.oracle.svm.truffle",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1422,7 +1397,9 @@ suite = {
                 "com.oracle.svm.core.posix",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1440,7 +1417,9 @@ suite = {
                 "com.oracle.svm.core.windows",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1462,7 +1441,8 @@ suite = {
                 "com.oracle.svm.graal",
             ],
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1512,7 +1492,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1539,7 +1520,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1564,7 +1546,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1591,7 +1574,9 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "jacoco" : "exclude",
             "graalCompilerSourceEdition": "ignore",
         },
@@ -1609,7 +1594,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance": "21+",
+            "javaCompliance": "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "workingSets": "SVM",
             "jacoco": "exclude",
         },
@@ -1635,7 +1622,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance": "21+",
+            "javaCompliance": "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -1657,7 +1646,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance": "21+",
+            "javaCompliance": "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -1683,7 +1674,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance": "21+",
+            "javaCompliance": "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
             ],
@@ -1709,7 +1702,9 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance": "21+",
+            "javaCompliance": "24+",
+            "forceJavac" : "true",  # ECJ does not support Java 24 (GR-63814)
+            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
             ],

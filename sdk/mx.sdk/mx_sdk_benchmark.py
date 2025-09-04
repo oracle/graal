@@ -1118,8 +1118,8 @@ class NativeImageVM(GraalVm):
             basis. In the future we can convert this from a failure into a warning.
             :return: a list of args supported by native image.
         """
-        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC', '--add-opens', '--add-modules', '--add-exports',
-                '--add-reads']
+        return ['-D', '-H', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC', '--add-opens', '--add-modules', '--add-exports',
+                '--add-reads', '--enable-native-access']
 
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
@@ -2055,9 +2055,15 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def dataLocation(self):
         if self.version() == "23.11-MR2-chopin":
             basePath = self.daCapoPath()
-            return os.path.join(basePath, "dacapo-23.11-MR2-chopin")
+            subdir = "dacapo-23.11-MR2-chopin"
+            if self.minimalArchive():
+                subdir += "-minimal"
+            return os.path.join(basePath, subdir)
         else:
-            raise "data location is only supported for version 23.11-MR2-chopin"
+            raise f"data location is not supported for suite version '{self.version()}'"
+
+    def minimalArchive(self):
+        return False
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -2227,17 +2233,24 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
 
+    def minimalArchive(self):
+        # DaCapo Chopin archive is huge. A stripped version without large and huge sizes exists
+        # See dacapobench/dacapobench issue #345 on GitHub
+        return self.version() in ["23.11-MR2-chopin"] and self.workloadSize() in ["default", "tiny", "small"]
+
     def daCapoLibraryName(self):
+        library = None
         if self.version() == "9.12-bach":  # 2009 release
-            return "DACAPO"
+            library = "DACAPO"
         elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release (January 2018)
-            return "DACAPO_MR1_BACH"
+            library = "DACAPO_MR1_BACH"
         elif self.version() == "9.12-MR1-git+2baec49":  # commit from July 2018
-            return "DACAPO_MR1_2baec49"
+            library = "DACAPO_MR1_2baec49"
         elif self.version() == "23.11-MR2-chopin":
-            return "DACAPO_23.11_MR2_chopin"
-        else:
-            return None
+            library = "DACAPO_23.11_MR2_chopin"
+        if library and self.minimalArchive():
+            library += "_minimal"
+        return library
 
     def daCapoIterations(self):
         iterations = _daCapoIterations.copy()

@@ -127,7 +127,6 @@ import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotContextImpl.class);
-    private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
     private static final Object[] DISPOSED_CONTEXT_THREAD_LOCALS = new Object[0];
     private static final Map<State, State[]> VALID_TRANSITIONS = new EnumMap<>(State.class);
     private static final TruffleSafepoint.Interrupter DO_NOTHING_INTERRUPTER = new TruffleSafepoint.Interrupter() {
@@ -1930,7 +1929,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         String stringResult;
         try {
-            stringResult = UNCACHED.asString(UNCACHED.toDisplayString(languageContext.getLanguageView(result), true));
+            stringResult = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().toDisplayString(languageContext.getLanguageView(result), true));
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }

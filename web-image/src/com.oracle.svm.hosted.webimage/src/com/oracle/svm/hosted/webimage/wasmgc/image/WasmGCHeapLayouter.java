@@ -56,8 +56,6 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
      */
     private final WasmGCPartition pseudoPartition = new WasmGCPartition("WasmGCPseudoPartition", true);
 
-    private final long startOffset = 0;
-
     @Override
     public ImageHeapPartition[] getPartitions() {
         return new ImageHeapPartition[]{singlePartition, pseudoPartition};
@@ -78,8 +76,8 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
         doLayout();
 
         long totalSize = StreamSupport.stream(imageHeap.getObjects().spliterator(), false).mapToLong(ImageHeapObject::getSize).sum();
-        long serializedSize = singlePartition.getStartOffset() + singlePartition.getSize() - startOffset;
-        return new WasmGCImageHeapLayoutInfo(startOffset, serializedSize, totalSize);
+        long serializedSize = singlePartition.getStartOffset() + singlePartition.getSize();
+        return new WasmGCImageHeapLayoutInfo(serializedSize, totalSize);
     }
 
     private void doLayout() {

@@ -15,7 +15,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   local that = self,
 
   // platform-specific snippets
-  common: graal_common.deps.sulong + {
+  common: graal_common.deps.sulong + graal_common.deps.espresso + {
     python_version: '3',
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",

@@ -165,7 +165,7 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createUndefinedSymbol(String name, int size, boolean isCode) {
+    public Symbol createUndefinedSymbol(String name, boolean isCode) {
         SymbolTable symtab = getOrCreateSymbolTable();
         return symtab.newUndefinedEntry(name, isCode);
     }

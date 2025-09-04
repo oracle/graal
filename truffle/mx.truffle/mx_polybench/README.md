@@ -18,44 +18,46 @@ details.
 
 
 ```commandline
-# Use 'list' to list available benchmarks.
+# Use '--list' to list available benchmarks.
 $ cd graal/truffle
-$ mx polybench list
-Benchmark files (run using "mx polybench run <glob_pattern>"):
+$ mx polybench --list
+Listing all available polybench benchmarks.
+Benchmark files (run using "mx polybench <glob_pattern>"):
         interpreter/fibonacci.sl
-Suites (run using "mx polybench run --suite <suite_name>" or "mx polybench run --suite <suite_name>:<tag1>,<tag2>,..."):
+Suites (run using "mx polybench --suite <suite_name>" or "mx polybench --suite <suite_name>:<tag1>,<tag2>,..."):
         sl: {'benchmark', 'gate'}
 
 # The list is populated based on the registrations of the loaded suites. When different suites are loaded, different benchmarks may become available.
 $ cd graal/sulong
-$ mx polybench list
-Benchmark files (run using "mx polybench run <glob_pattern>"):
+$ mx polybench --list
+Listing all available polybench benchmarks.
+Benchmark files (run using "mx polybench <glob_pattern>"):
         interpreter/deltablue.c.native.bc
         interpreter/sieve.c.native.bc
         interpreter/richards.c.native.bc
         interpreter/fibonacci.c.native.bc
         interpreter/fibonacci.sl
-Suites (run using "mx polybench run --suite <suite_name>" or "mx polybench run --suite <suite_name>:<tag1>,<tag2>,..."):
+Suites (run using "mx polybench --suite <suite_name>" or "mx polybench --suite <suite_name>:<tag1>,<tag2>,..."):
         sulong: {'gate', 'benchmark'}
         sl: {'gate', 'benchmark'}
 
 # Use 'run' to run benchmarks. Below are some examples.
 
 # Run fibonacci.sl on the JVM (default, but you can specify --jvm to be explicit)
-$ mx polybench run interpreter/fibonacci.sl
+$ mx polybench interpreter/fibonacci.sl
 
 # Run all interpreter benchmarks in native mode.
-$ mx polybench run --native 'interpreter/*'
+$ mx polybench --native 'interpreter/*'
 
 # Polybench always uses the mx Java home as its host VM. It is recommended to use '--java-home' to change the host VM.
-$ mx --java-home $CUSTOM_GRAALVM_HOME polybench run interpreter/fibonacci.sl
+$ mx --java-home $CUSTOM_GRAALVM_HOME polybench interpreter/fibonacci.sl
 
 # Run the sl 'gate' suite (suite definitions are described below, in the "Registering benchmarks" section).
-$ mx polybench run --suite sl:gate
+$ mx polybench --suite sl:gate
 
 # 'run' accepts any number of arguments after the benchmark/suite name.
 # These arguments are passed to the polybench launcher (default), mx benchmark, or the VM:
-$ mx polybench run interpreter/fibonacci.sl polybenchArg1 --mx-benchmark-args mxBenchmarkArg --vm-args vmArg --polybench-args polybenchArg2
+$ mx polybench interpreter/fibonacci.sl polybenchArg1 --mx-benchmark-args mxBenchmarkArg --vm-args vmArg --polybench-args polybenchArg2
 ```
 
 ## Registering benchmarks

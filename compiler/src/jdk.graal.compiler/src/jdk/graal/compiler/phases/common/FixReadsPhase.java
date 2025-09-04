@@ -80,6 +80,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -195,6 +196,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         private final DebugContext debug;
         private final RawCanonicalizerTool rawCanonicalizerTool;
         private final EconomicMap<Node, HIRBlock> nodeToBlockMap;
+        protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
 
         private class RawCanonicalizerTool extends CoreProvidersDelegate implements NodeView, CanonicalizerTool {
 
@@ -315,6 +317,18 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
             if (node instanceof MergeNode) {
                 registerCombinedStamps((MergeNode) node);
+            }
+
+            if (node instanceof SwitchNode switchNode) {
+                /*
+                 * Since later in this phase we will be visiting all control split successors the
+                 * operation of computing successor stamps for switch nodes can be quite costly.
+                 * Thus, we already compute and cache all eagerly here.
+                 */
+                if (successorStampCache == null) {
+                    successorStampCache = EconomicMap.create();
+                }
+                switchNode.getAllSuccessorValueStamps(successorStampCache);
             }
 
             if (node instanceof AbstractBeginNode) {
@@ -522,7 +536,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
         protected void processIntegerSwitch(IntegerSwitchNode node) {
             Stamp bestStamp = getBestStamp(node.value());
-            if (node.tryRemoveUnreachableKeys(null, bestStamp)) {
+            if (node.tryRemoveUnreachableKeys(null, bestStamp, successorStampCache)) {
                 graph.getOptimizationLog().report(FixReadsPhase.class, "SwitchCanonicalization", node);
             }
         }
@@ -584,7 +598,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
 
         private void registerIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
-            registerNewValueStamp(integerSwitchNode.value(), integerSwitchNode.getValueStampForSuccessor(beginNode));
+            if (successorStampCache == null) {
+                successorStampCache = EconomicMap.create();
+            }
+            registerNewValueStamp(integerSwitchNode.value(), integerSwitchNode.getValueStampForSuccessor(beginNode, successorStampCache));
         }
 
         protected void registerNewCondition(LogicNode condition, boolean negated) {
@@ -682,6 +699,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(StageFlag.FIXED_READS);
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         schedulePhase.apply(graph, context);
@@ -747,6 +769,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
         graphState.setAfterStage(StageFlag.FIXED_READS);
+        graphState.removeRequirementToStage(StageFlag.FIXED_READS);
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, ScheduleResult schedule, CoreProviders context) {

@@ -44,15 +44,25 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
 
     @Input ValueNode clazz;
     protected boolean fillContents;
+    private final boolean originUnsafeAllocateInstance;
 
     public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents) {
+        this(clazz, fillContents, false);
+    }
+
+    public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance) {
         super(TYPE, StampFactory.objectNonNull());
         this.fillContents = fillContents;
         this.clazz = clazz;
+        this.originUnsafeAllocateInstance = originUnsafeAllocateInstance;
     }
 
     public ValueNode getInstanceType() {
         return clazz;
+    }
+
+    public boolean isOriginUnsafeAllocateInstance() {
+        return originUnsafeAllocateInstance;
     }
 
     @Override
@@ -67,7 +77,7 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
     @Override
     public FixedNode replaceWithNonThrowing() {
         killExceptionEdge();
-        DynamicNewInstanceNode newInstance = graph().add(new DynamicNewInstanceNode(clazz, fillContents));
+        DynamicNewInstanceNode newInstance = graph().add(new DynamicNewInstanceNode(clazz, fillContents, originUnsafeAllocateInstance));
         newInstance.setStateBefore(stateBefore);
         graph().replaceSplitWithFixed(this, newInstance, this.next());
         // copy across any original node source position

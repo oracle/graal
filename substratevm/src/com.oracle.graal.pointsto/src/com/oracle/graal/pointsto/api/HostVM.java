@@ -184,10 +184,6 @@ public abstract class HostVM {
         return false;
     }
 
-    public boolean useBaseLayer() {
-        return false;
-    }
-
     public boolean analyzedInPriorLayer(@SuppressWarnings("unused") AnalysisMethod method) {
         return false;
     }
@@ -288,6 +284,16 @@ public abstract class HostVM {
         return true;
     }
 
+    /**
+     * Check if the method has to be inlined.
+     *
+     * @param method the target method
+     */
+    public boolean hasAlwaysInlineDirective(ResolvedJavaMethod method) {
+        /* No force inlining by the static analysis unless explicitly overwritten by the VM. */
+        return false;
+    }
+
     public InlineBeforeAnalysisGraphDecoder createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
         return new InlineBeforeAnalysisGraphDecoder(bb, InlineBeforeAnalysisPolicy.NO_INLINING, resultGraph, bb.getProviders(method), null);
@@ -305,10 +311,6 @@ public abstract class HostVM {
      */
     public boolean platformSupported(AnnotatedElement element) {
         return true;
-    }
-
-    public boolean sortFields() {
-        return false;
     }
 
     public void clearInThread() {
@@ -429,6 +431,18 @@ public abstract class HostVM {
     }
 
     public boolean buildingImageLayer() {
+        return false;
+    }
+
+    public boolean buildingInitialLayer() {
+        return false;
+    }
+
+    public boolean buildingSharedLayer() {
+        return false;
+    }
+
+    public boolean buildingExtensionLayer() {
         return false;
     }
 

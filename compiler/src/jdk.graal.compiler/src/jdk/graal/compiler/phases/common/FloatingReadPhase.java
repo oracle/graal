@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,17 +131,14 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     }
 
     public FloatingReadPhase(CanonicalizerPhase canonicalizer) {
-        this(false, canonicalizer);
+        this(false, true, canonicalizer);
     }
 
     /**
-     * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if this
+     * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if true
+     * @param createFloatingReads attempt to float {@link FloatableAccessNode}
      * @param canonicalizer
      */
-    public FloatingReadPhase(boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
-        this(createMemoryMapNodes, true, canonicalizer);
-    }
-
     public FloatingReadPhase(boolean createMemoryMapNodes, boolean createFloatingReads, CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
         this.createMemoryMapNodes = createMemoryMapNodes;
@@ -260,7 +257,10 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     @Override
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
-        graphState.setAfterStage(StageFlag.FLOATING_READS);
+        if (createFloatingReads) {
+            graphState.setAfterStage(StageFlag.FLOATING_READS);
+            graphState.addFutureStageRequirement(StageFlag.FIXED_READS);
+        }
     }
 
     @SuppressWarnings("try")

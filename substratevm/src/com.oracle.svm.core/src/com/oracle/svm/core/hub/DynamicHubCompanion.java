@@ -112,7 +112,7 @@ public final class DynamicHubCompanion {
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
      * types for which a SubstrateType exists.
      */
-    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true) //
+    @UnknownObjectField(availability = BuildPhaseProvider.AfterAnalysis.class, fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true) //
     @Stable SharedType metaType;
 
     /**

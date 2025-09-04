@@ -73,7 +73,7 @@ Examples:
 - `-XX:JDWPOptions=...,mode=native`: Search `lib:svmjdwp` besides the native executable directory.
 
 - `-XX:JDWPOptions=...,vm.options=...`: VM options, separated by whitespaces, passed to the JDWP server isolate/JVM, should not include a `,` character.
-- `-XX:JDWPOptions=...,vm.options=@argfile`: Also supports [Java Command-Line Argument Files](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files).
+- `-XX:JDWPOptions=...,vm.options=@argfile`: Also supports [Java Command-Line Argument Files](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
 
 Note: If `lib:svmjdwp` cannot be found, the application will terminate with error code 1.
 

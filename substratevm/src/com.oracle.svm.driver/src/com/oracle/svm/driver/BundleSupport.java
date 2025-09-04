@@ -583,7 +583,7 @@ final class BundleSupport {
         }
 
         if (writeOutput) {
-            Path externalOutputDir = bundlePath.resolve(bundleName + "." + outputDir.getFileName());
+            Path externalOutputDir = getExternalOutputDir();
             copyFiles(outputDir, externalOutputDir, true);
             nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
         }
@@ -596,6 +596,12 @@ final class BundleSupport {
         } finally {
             nativeImage.showNewline();
         }
+    }
+
+    Path getExternalOutputDir() {
+        Objects.requireNonNull(bundlePath);
+        Objects.requireNonNull(bundleName);
+        return bundlePath.resolve(bundleName + '.' + outputDir.getFileName());
     }
 
     void updateBundleLocation(Path bundleFile, boolean redefine) {

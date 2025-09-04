@@ -802,6 +802,8 @@ public abstract class Accessor {
 
         public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
 
+        public abstract Map<String, InternalResource> getEngineInternalResources();
+
         public abstract Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException;
 
         public abstract Collection<String> getResourceIds(String componentId);

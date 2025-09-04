@@ -112,7 +112,5 @@ Thus, you can use Oracle GraalVM in OCI Cloud Shell to build and test simple Jav
 
 ### Related Documentation
 
-- [Java Hello World with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-Cloud-Shell.md)
-- [Micronaut Hello World REST App with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-Cloud-Shell.md)
-- [Spring Boot Microservice with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Cloud-Shell.md)
+- [Java Hello World with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/native-image/clouds/native-oci-cloud-shell/README-Cloud-Shell.md)
 - [Oracle GraalVM in OCI Code Editor](code-editor.md)

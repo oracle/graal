@@ -1805,7 +1805,7 @@ public abstract class ObjectFile {
 
     public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);
 
-    public abstract Symbol createUndefinedSymbol(String name, int size, boolean isCode);
+    public abstract Symbol createUndefinedSymbol(String name, boolean isCode);
 
     protected abstract SymbolTable createSymbolTable();
 

@@ -434,7 +434,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             String optimizationName = createOptimizationName(optimizationClass);
             NodeSourcePosition position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();
-            if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
+            if (debug.areCountersEnabled()) {
                 DebugContext.counter("Optimization_" + optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {

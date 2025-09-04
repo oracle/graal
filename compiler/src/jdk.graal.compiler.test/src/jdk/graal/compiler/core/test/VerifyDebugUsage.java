@@ -29,6 +29,8 @@ import static jdk.graal.compiler.debug.DebugContext.BASIC_LEVEL;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.debug.DebugContext;
@@ -44,6 +46,7 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.VerifyPhase;
+import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.test.GraalTest.MethodSource;
@@ -134,8 +137,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     MethodSource.of("com.oracle.graal.pointsto.phases.InlineBeforeAnalysis", "decodeGraph"),
                     MethodSource.of("com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport", "decodeGraph"),
                     MethodSource.of("com.oracle.svm.hosted.classinitialization.SimulateClassInitializerAbortException", "doAbort"),
-                    MethodSource.of(CallTree.class, "dumpBasic"),
-                    MethodSource.of(CallTree.class, "GraphManager", "peRoot"));
+                    MethodSource.of(CallTree.class, "dumpBasic"));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
@@ -153,7 +155,17 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     MethodSource.of(SnippetTemplate.class, "instantiate"),
                     MethodSource.of(SnippetTemplate.class, "<init>"),
                     MethodSource.of(SymbolicSnippetEncoder.class, "verifySnippetEncodeDecode"),
-                    MethodSource.of(CallTree.class, "dumpInfo"),
+                    MethodSource.of(CallTree.class, "dumpInfo"));
+
+    /**
+     * The set of methods allowed to call a {@code Debug.dump(...)} method with a variable
+     * {@code level} parameter and the {@code object} parameter bound to a {@link StructuredGraph}
+     * value.
+     *
+     * If you add a *justified* graph dump with variable level parameter, then update the allow
+     * list.
+     */
+    private static final Set<MethodSource> ParameterizedLevelStructuredGraphDumpAllowList = CollectionsUtil.setOf(
                     MethodSource.of(CallTree.class, "GraphManager", "pe"));
 
     @Override
@@ -167,10 +179,15 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
              * The optimization log dumps at a parametrized level, but it must be at least
              * OptimizationLog.MINIMUM_LOG_LEVEL.
              */
-            String optimizationEntryClassName = OptimizationLogImpl.OptimizationEntryImpl.class.getName();
+            EconomicSet<String> allowedClasses = EconomicSet.create();
+            allowedClasses.add(OptimizationLogImpl.OptimizationEntryImpl.class.getName());
+            allowedClasses.add(ReportHotCodePhase.class.getName());
             String callerClassName = debugCallTarget.graph().method().format("%H");
-            if (!optimizationEntryClassName.equals(callerClassName)) {
-                int dumpLevel = verifyDumpLevelParameter(debugCallTarget, verifiedCallee, args.get(1));
+            if (!allowedClasses.contains(callerClassName)) {
+                ResolvedJavaMethod callerMethod = debugCallTarget.graph().method();
+                Integer dumpLevel = ParameterizedLevelStructuredGraphDumpAllowList.stream().noneMatch(ms -> ms.matches(callerMethod))
+                                ? verifyDumpLevelParameter(debugCallTarget, verifiedCallee, args.get(1))
+                                : null;
                 verifyDumpObjectParameter(debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
             }
         }
@@ -215,7 +232,13 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
     protected void verifyStructuredGraphDumping(MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, Integer dumpLevel)
                     throws VerifyPhase.VerificationError {
         ResolvedJavaMethod method = debugCallTarget.graph().method();
-        if (dumpLevel == DebugContext.BASIC_LEVEL) {
+        if (dumpLevel == null) {
+            if (ParameterizedLevelStructuredGraphDumpAllowList.stream().noneMatch(ms -> ms.matches(method))) {
+                throw new VerificationError(
+                                debugCallTarget, "call to %s with parameterized level not in %s.ParameterizedLevelStructuredGraphDumpAllowList.%n", verifiedCallee.format("%H.%n(%p)"),
+                                getClass().getName());
+            }
+        } else if (dumpLevel == DebugContext.BASIC_LEVEL) {
             if (BasicLevelStructuredGraphDumpAllowList.stream().noneMatch(ms -> ms.matches(method))) {
                 throw new VerificationError(
                                 debugCallTarget, "call to %s with level == DebugContext.BASIC_LEVEL not in %s.BasicLevelStructuredGraphDumpAllowList.%n", verifiedCallee.format("%H.%n(%p)"),

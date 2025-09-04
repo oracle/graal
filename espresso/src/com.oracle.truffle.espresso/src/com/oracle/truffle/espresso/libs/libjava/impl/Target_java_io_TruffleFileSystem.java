@@ -27,11 +27,15 @@ import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.needsSi
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Collection;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -122,12 +126,29 @@ public final class Target_java_io_TruffleFileSystem {
     }
 
     @Substitution
+    @TruffleBoundary
     @Throws(IOException.class)
     static @JavaType(String.class) StaticObject canonicalize0(@JavaType(String.class) StaticObject path, @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        // Work around until canonicalize of TruffleFile works for non-existent paths (GR-29215).
         nullCheck(path, ctx);
         Meta meta = ctx.getMeta();
+        TruffleFile tf = io.getPublicTruffleFileSafe(meta.toHostString(path));
+        return meta.toGuestString(recursiveCanonicalize(tf, ctx).getPath());
+
+    }
+
+    private static TruffleFile recursiveCanonicalize(TruffleFile tf, EspressoContext ctx) {
         try {
-            return meta.toGuestString(io.getPublicTruffleFileSafe(meta.toHostString(path)).getCanonicalFile().getPath());
+            if (tf.exists()) {
+                return tf.getCanonicalFile();
+            }
+            TruffleFile parent = tf.getParent();
+            if (parent != null) {
+                TruffleFile partialPath = recursiveCanonicalize(parent, ctx);
+                return partialPath.resolve(tf.getName());
+            } else {
+                throw Throw.throwIOException("Canonicalize failed for path: " + tf.getPath(), ctx);
+            }
         } catch (IOException e) {
             throw Throw.throwIOException(e, ctx);
         } catch (SecurityException e) {
@@ -198,9 +219,58 @@ public final class Target_java_io_TruffleFileSystem {
 
     @Substitution
     @SuppressWarnings("unused")
+    @TruffleBoundary
     static boolean setPermission0(@JavaType(File.class) StaticObject f, int access, boolean enable, boolean owneronly,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        throw JavaSubstitution.unimplemented();
+        String path = getPathFromFile(f, io, ctx);
+        TruffleFile tf = io.getPublicTruffleFileSafe(path);
+        try {
+            Set<PosixFilePermission> perms = getPosixPermissions(tf, access, enable, owneronly);
+            if (perms == null) {
+                return false;
+            }
+            tf.setPosixPermissions(perms);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static Set<PosixFilePermission> getPosixPermissions(TruffleFile tf, int access, boolean enable, boolean owneronly) {
+        try {
+            Set<PosixFilePermission> perms = tf.getPosixPermissions();
+            PosixFilePermission ownerPerm = getPermissionForAccess(access, PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE);
+            PosixFilePermission groupPerm = getPermissionForAccess(access, PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE, PosixFilePermission.GROUP_EXECUTE);
+            PosixFilePermission othersPerm = getPermissionForAccess(access, PosixFilePermission.OTHERS_READ, PosixFilePermission.OTHERS_WRITE, PosixFilePermission.OTHERS_EXECUTE);
+            if (enable) {
+                perms.add(ownerPerm);
+                if (!owneronly) {
+                    perms.add(groupPerm);
+                    perms.add(othersPerm);
+                }
+            } else {
+                perms.remove(ownerPerm);
+                if (!owneronly) {
+                    perms.remove(groupPerm);
+                    perms.remove(othersPerm);
+                }
+            }
+            return perms;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static PosixFilePermission getPermissionForAccess(int access, PosixFilePermission read, PosixFilePermission write, PosixFilePermission execute) {
+        return switch (access) {
+            case 4 -> // FileSystem.ACCESS_READ
+                read;
+            case 2 -> // FileSystem.ACCESS_WRITE
+                write;
+            case 1 -> // FileSystem.ACCESS_EXECUTE
+                execute;
+            default -> throw new UnsupportedOperationException("Unsupported access type");
+        };
     }
 
     @Substitution
@@ -222,21 +292,51 @@ public final class Target_java_io_TruffleFileSystem {
     @SuppressWarnings("unused")
     static boolean delete0(@JavaType(File.class) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        throw JavaSubstitution.unimplemented();
+        String strPath = getPathFromFile(path, io, ctx);
+        TruffleFile tf = io.getPublicTruffleFileSafe(strPath);
+        try {
+            tf.delete();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Substitution
     @SuppressWarnings("unused")
     static @JavaType(String[].class) StaticObject list0(@JavaType(File.class) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        throw JavaSubstitution.unimplemented();
+        String strPath = getPathFromFile(path, io, ctx);
+        TruffleFile tf = io.getPublicTruffleFileSafe(strPath);
+        try {
+            Collection<TruffleFile> ls = tf.list();
+            StaticObject[] ret = new StaticObject[ls.size()];
+            int i = 0;
+            for (TruffleFile file : ls) {
+                String name = file.getName();
+                if (name != null) {
+                    ret[i++] = ctx.getMeta().toGuestString(name);
+                }
+            }
+            return ctx.getAllocator().wrapArrayAs(ctx.getMeta().java_lang_String_array, ret);
+        } catch (IOException e) {
+            return StaticObject.NULL;
+        }
     }
 
     @Substitution
     @SuppressWarnings("unused")
     static boolean createDirectory0(@JavaType(File.class) StaticObject f,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        throw JavaSubstitution.unimplemented();
+                    @Inject TruffleIO io, @Inject EspressoContext ctx, @Inject LibsState libsState) {
+        String path = getPathFromFile(f, io, ctx);
+        TruffleFile tf = io.getPublicTruffleFileSafe(path);
+        try {
+            tf.createDirectory();
+            return true;
+        } catch (IOException e) {
+            LibsState.getLogger().fine(() -> "In TruffleFileSystem.createDirectory0 the following exception was ignored: class = " + e.getClass().toString() + ", message = " + e.getMessage());
+            return false;
+        }
     }
 
     @Substitution

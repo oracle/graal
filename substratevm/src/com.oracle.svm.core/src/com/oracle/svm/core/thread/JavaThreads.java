@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -46,15 +45,16 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -93,7 +93,8 @@ public final class JavaThreads {
     static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("JavaThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     @AutomaticallyRegisteredImageSingleton(onlyWith = LastImageBuildPredicate.class)
-    public static class JavaThreadNumberSingleton implements ApplicationLayerOnlyImageSingleton, UnsavedSingleton {
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
+    public static class JavaThreadNumberSingleton {
 
         public static JavaThreadNumberSingleton singleton() {
             return ImageSingletons.lookup(JavaThreadNumberSingleton.class);
@@ -113,11 +114,6 @@ public final class JavaThreads {
         public void setThreadNumberInfo(long seqNumber, int initNumber) {
             this.threadSeqNumber.set(seqNumber);
             this.threadInitNumber.set(initNumber);
-        }
-
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
         }
     }
 

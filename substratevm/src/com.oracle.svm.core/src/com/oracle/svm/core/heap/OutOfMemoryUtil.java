@@ -38,8 +38,8 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * This class must be used for {@link OutOfMemoryError}s that are thrown because the VM is out of
- * Java heap memory. Other {@link OutOfMemoryError}s (e.g., when we run out of native memory) can be
- * thrown directly.
+ * Java heap memory. Other {@link OutOfMemoryError}s (e.g., when we run out of native memory) should
+ * be thrown directly.
  */
 public class OutOfMemoryUtil {
     private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded. Consider increasing the maximum Java heap size, for example with '-Xmx'.");

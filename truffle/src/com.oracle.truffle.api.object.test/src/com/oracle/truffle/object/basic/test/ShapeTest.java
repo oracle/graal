@@ -41,7 +41,7 @@
 package com.oracle.truffle.object.basic.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForType;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForValue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -89,27 +89,47 @@ public class ShapeTest {
 
         Shape aObjBInt = aObj.defineProperty("b", 2, 0);
         DOTestAsserts.assertShape(new String[]{
-                        "\"b\":int@1",
+                        "\"b\":int@0",
                         "\"a\":Object@0"}, aObjBInt);
 
         Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
         DOTestAsserts.assertShape(new String[]{
-                        "\"b\":Object@0",
-                        "\"a\":int@0"}, aIntBObj);
+                        "\"b\":Object@1",
+                        "\"a\":Object@0"}, aIntBObj);
 
-        Location boolLocation = locationForType(rootShape, boolean.class);
+        Location boolLocation = locationForValue(rootShape, true);
         Shape bool = invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
-        DOTestAsserts.assertShape(new String[]{"\"bool\":boolean@0"}, bool);
+        DOTestAsserts.assertShape(new String[]{"\"bool\":Object@0"}, bool);
 
-        Location strLocation = locationForType(rootShape, String.class);
+        Location strLocation = locationForValue(rootShape, "");
         Shape str = invokeMethod("addProperty", rootShape, Property.create("str", strLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, str);
 
-        Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
+        Shape shapeWithManyFields = aIntBObj.//
+                        defineProperty("c", true, 0).//
+                        defineProperty("d", 3.14, 0).//
+                        defineProperty("e", 1L << 44, 0).//
+                        defineProperty("f", 9001, 0);
         DOTestAsserts.assertShape(new String[]{
-                        "\"e\":long[0]",
-                        "\"d\":double@2",
-                        "\"c\":boolean@1",
+                        "\"f\":int@2",
+                        "\"e\":long@1",
+                        "\"d\":double@0",
+                        "\"c\":Object@2",
+                        "\"b\":Object@1",
+                        "\"a\":Object@0"}, shapeWithManyFields);
+
+        Shape shapeWithExtArray = makeRootShape().//
+                        defineProperty("a", 1, 0).//
+                        defineProperty("b", new Object(), 0).//
+                        defineProperty("c", true, 0).//
+                        defineProperty("d", 3.14, 0).//
+                        defineProperty("e", 1L << 33, 0).//
+                        defineProperty("f", 1L << 44, 0);
+        DOTestAsserts.assertShape(new String[]{
+                        "\"f\":long[0]",
+                        "\"e\":long@2",
+                        "\"d\":double@1",
+                        "\"c\":Object@1",
                         "\"b\":Object@0",
                         "\"a\":int@0"}, shapeWithExtArray);
     }

@@ -40,25 +40,20 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.ExtLayout.BooleanLocations;
-import static com.oracle.truffle.api.object.ExtLayout.DoubleLocations;
-import static com.oracle.truffle.api.object.ExtLayout.InObjectFields;
-import static com.oracle.truffle.api.object.ExtLayout.IntegerLocations;
-import static com.oracle.truffle.api.object.ExtLayout.LongLocations;
-import static com.oracle.truffle.api.object.ExtLayout.PrimitiveLocations;
 import static com.oracle.truffle.api.object.ExtLocations.DOUBLE_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.INT_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.LONG_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.OBJECT_SLOT_SIZE;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.DoubleLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.InObjectFields;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.IntegerLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.LongLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.NewFinalSpeculation;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.NewTypeSpeculation;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.PrimitiveLocations;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.object.ExtLocations.ATypedObjectArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.ATypedObjectFieldLocation;
-import com.oracle.truffle.api.object.ExtLocations.AbstractObjectArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.AbstractObjectFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.AbstractObjectLocation;
-import com.oracle.truffle.api.object.ExtLocations.BooleanFieldLocation;
-import com.oracle.truffle.api.object.ExtLocations.BooleanLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleArrayLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleLocation;
@@ -69,35 +64,32 @@ import com.oracle.truffle.api.object.ExtLocations.IntLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongArrayLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongLocation;
+import com.oracle.truffle.api.object.ExtLocations.ObjectArrayLocation;
+import com.oracle.truffle.api.object.ExtLocations.ObjectFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.TypeAssumption;
-import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 
 import sun.misc.Unsafe;
 
-abstract class ExtAllocator extends BaseAllocator {
+final class ExtAllocator extends BaseAllocator {
 
     /** Placeholder for when no value is available or no type speculation should be performed. */
     private static final Object NO_VALUE = new Object();
 
-    ExtAllocator(LayoutImpl layout) {
-        super(layout);
-    }
-
-    ExtAllocator(ShapeImpl shape) {
+    ExtAllocator(Shape shape) {
         super(shape);
     }
 
-    private ExtLayout getLayout() {
-        return (ExtLayout) layout;
+    private LayoutImpl getLayout() {
+        return layout;
     }
 
     @Override
-    public ExtLocation constantLocation(Object value) {
+    public LocationImpl constantLocation(Object value) {
         return new ExtLocations.ConstantLocation(value);
     }
 
     @Override
-    public ExtLocation declaredLocation(Object value) {
+    public LocationImpl declaredLocation(Object value) {
         return new ExtLocations.DeclaredLocation(value);
     }
 
@@ -110,24 +102,18 @@ abstract class ExtAllocator extends BaseAllocator {
             return newDoubleLocation(decorateFinal, ((DoubleLocation) oldLocation).isImplicitCastIntToDouble(), oldLocation, NO_VALUE);
         } else if (oldLocation instanceof LongLocation) {
             return newLongLocation(decorateFinal, ((LongLocation) oldLocation).isImplicitCastIntToLong(), oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof BooleanLocation) {
-            return newBooleanLocation(decorateFinal, oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof AbstractObjectFieldLocation) {
+        } else if (oldLocation instanceof ObjectFieldLocation) {
             return newObjectLocation(decorateFinal, oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof AbstractObjectArrayLocation) {
+        } else if (oldLocation instanceof ObjectArrayLocation) {
             return newObjectLocation(decorateFinal, oldLocation, NO_VALUE);
         }
         assert oldLocation.isValue();
         return advance(oldLocation);
     }
 
-    public Location newObjectLocation() {
-        return newObjectLocation(false, null, NO_VALUE);
-    }
-
     private Location newObjectLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (InObjectFields) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             int insertPos = objectFieldSize;
             if (insertPos + OBJECT_SLOT_SIZE <= l.getObjectFieldCount()) {
                 FieldInfo fieldInfo = l.getObjectField(insertPos);
@@ -148,41 +134,14 @@ abstract class ExtAllocator extends BaseAllocator {
         return advance(location);
     }
 
-    private Location newTypedObjectLocation(Class<?> type, boolean nonNull, boolean decorateFinal, Location oldLocation, Object value) {
-        if (InObjectFields) {
-            ExtLayout l = getLayout();
-            int insertPos = objectFieldSize;
-            if (insertPos + OBJECT_SLOT_SIZE <= l.getObjectFieldCount()) {
-                FieldInfo fieldInfo = l.getObjectField(insertPos);
-                TypeAssumption initialTypeAssumption = getTypeAssumptionForTypeOrValue(type, nonNull, oldLocation, value);
-                Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                LocationImpl location = newObjectFieldLocationWithAssumption(insertPos, fieldInfo, initialTypeAssumption, initialFinalAssumption);
-                return advance(location);
-            }
-        }
-        return newTypedObjectArrayLocation(type, nonNull, decorateFinal, oldLocation, value);
-    }
-
-    private Location newTypedObjectArrayLocation(Class<?> type, boolean nonNull, boolean decorateFinal, Location oldLocation, Object value) {
-        if (type != Object.class) {
-            int index = objectArraySize;
-            TypeAssumption initialTypeAssumption = getTypeAssumptionForTypeOrValue(type, nonNull, oldLocation, value);
-            Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-            LocationImpl location = newObjectArrayLocationWithAssumption(index, initialTypeAssumption, initialFinalAssumption);
-            return advance(location);
-        } else {
-            return newObjectArrayLocation(decorateFinal, oldLocation, value);
-        }
-    }
-
-    private static AbstractObjectFieldLocation newObjectFieldLocationWithAssumption(int index, FieldInfo fieldInfo,
+    private static ObjectFieldLocation newObjectFieldLocationWithAssumption(int index, FieldInfo fieldInfo,
                     TypeAssumption initialTypeAssumption, Assumption initialFinalAssumption) {
-        return new ATypedObjectFieldLocation(index, fieldInfo, initialTypeAssumption, initialFinalAssumption);
+        return new ObjectFieldLocation(index, fieldInfo, initialFinalAssumption, initialTypeAssumption);
     }
 
-    private static AbstractObjectArrayLocation newObjectArrayLocationWithAssumption(int index,
+    private static ObjectArrayLocation newObjectArrayLocationWithAssumption(int index,
                     TypeAssumption initialTypeAssumption, Assumption initialFinalAssumption) {
-        return new ATypedObjectArrayLocation(index, initialTypeAssumption, initialFinalAssumption);
+        return new ObjectArrayLocation(index, initialFinalAssumption, initialTypeAssumption);
     }
 
     private static boolean allowTypeSpeculation(Location oldLocation, Object value) {
@@ -190,7 +149,7 @@ abstract class ExtAllocator extends BaseAllocator {
     }
 
     private static TypeAssumption getTypeAssumption(Location oldLocation, Object value) {
-        if (ExtLayout.NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
+        if (NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
             if (value != NO_VALUE && oldLocation == null) {
                 if (AbstractObjectLocation.LAZY_ASSUMPTION) {
                     return null;
@@ -203,19 +162,8 @@ abstract class ExtAllocator extends BaseAllocator {
         return TypeAssumption.ANY;
     }
 
-    private static TypeAssumption getTypeAssumptionForTypeOrValue(Class<?> type, boolean nonNull, Location oldLocation, Object value) {
-        if (!ExtLayout.NewTypeSpeculation && !ExtLayout.NewFinalSpeculation && value == NO_VALUE) {
-            if (oldLocation instanceof AbstractObjectLocation) {
-                return ((AbstractObjectLocation) oldLocation).getTypeAssumption();
-            }
-            return AbstractObjectLocation.createTypeAssumption(type, nonNull);
-        } else {
-            return getTypeAssumption(oldLocation, value);
-        }
-    }
-
     private static Assumption getFinalAssumption(Location oldLocation, boolean allowFinalSpeculation) {
-        if (ExtLayout.NewFinalSpeculation && allowFinalSpeculation) {
+        if (NewFinalSpeculation && allowFinalSpeculation) {
             if (oldLocation == null) {
                 if (InstanceLocation.LAZY_FINAL_ASSUMPTION) {
                     return null;
@@ -228,37 +176,14 @@ abstract class ExtAllocator extends BaseAllocator {
         return Assumption.NEVER_VALID;
     }
 
-    private static int tryAllocatePrimitiveSlot(ExtLayout l, int startIndex, final int desiredBytes) {
-        if (desiredBytes > l.getPrimitiveFieldMaxSize()) {
-            // no primitive fields in this layout that are wide enough
-            return -1;
-        }
-        for (int fieldIndex = startIndex; fieldIndex < l.getPrimitiveFieldCount(); fieldIndex++) {
-            // ensure alignment
-            final int align = desiredBytes - 1;
-            FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
-            if ((fieldInfo.offset() & align) != 0) {
-                continue;
-            }
-
-            int availableBytes = fieldInfo.getBytes();
-            if (availableBytes < desiredBytes) {
-                // this field is not suitable for the desired number of bytes, try the next one
-                continue;
-            }
-
-            return fieldIndex;
-        }
-        return -1;
-    }
-
-    private Location newIntLocation() {
-        return newIntLocation(false, null, NO_VALUE);
+    private static int tryAllocatePrimitiveSlot(LayoutImpl l, int startIndex, final int desiredBytes) {
+        assert desiredBytes <= Long.BYTES;
+        return startIndex < l.getPrimitiveFieldCount() ? startIndex : -1;
     }
 
     private Location newIntLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (PrimitiveLocations && IntegerLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Integer.BYTES);
                 if (fieldIndex >= 0) {
@@ -278,20 +203,15 @@ abstract class ExtAllocator extends BaseAllocator {
         return newObjectLocation(decorateFinal, oldLocation, value);
     }
 
-    private Location newDoubleLocation() {
-        return newDoubleLocation(false, getLayout().isAllowedIntToDouble(), null, NO_VALUE);
-    }
-
     private Location newDoubleLocation(boolean decorateFinal, boolean allowIntToDouble, Location oldLocation, Object value) {
         if (PrimitiveLocations && DoubleLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Double.BYTES);
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
-                    int slotCount = Double.BYTES / fieldInfo.getBytes();
                     Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new DoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, slotCount, initialFinalAssumption);
+                    LocationImpl location = new DoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, initialFinalAssumption);
                     return advance(location);
                 }
             }
@@ -323,20 +243,15 @@ abstract class ExtAllocator extends BaseAllocator {
         }
     }
 
-    private Location newLongLocation() {
-        return newLongLocation(false, getLayout().isAllowedIntToLong(), null, NO_VALUE);
-    }
-
     private Location newLongLocation(boolean decorateFinal, boolean allowIntToLong, Location oldLocation, Object value) {
         if (PrimitiveLocations && LongLocations) {
-            ExtLayout l = getLayout();
+            LayoutImpl l = getLayout();
             if (InObjectFields) {
                 int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Long.BYTES);
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
-                    int slotCount = Long.BYTES / fieldInfo.getBytes();
                     Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new LongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, slotCount, initialFinalAssumption);
+                    LocationImpl location = new LongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, initialFinalAssumption);
                     return advance(location);
                 }
             }
@@ -345,26 +260,6 @@ abstract class ExtAllocator extends BaseAllocator {
                 Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
                 LocationImpl location = new LongArrayLocation(index, allowIntToLong, initialFinalAssumption);
                 return advance(location);
-            }
-        }
-        return newObjectLocation(decorateFinal, oldLocation, value);
-    }
-
-    private Location newBooleanLocation() {
-        return newBooleanLocation(false, null, NO_VALUE);
-    }
-
-    private Location newBooleanLocation(boolean decorateFinal, Location oldLocation, Object value) {
-        if (PrimitiveLocations && BooleanLocations && InObjectFields) {
-            ExtLayout l = getLayout();
-            int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Integer.BYTES);
-            if (fieldIndex >= 0) {
-                FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
-                if (fieldInfo.type() == int.class) {
-                    Assumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new BooleanFieldLocation(fieldIndex, fieldInfo, initialFinalAssumption);
-                    return advance(location);
-                }
             }
         }
         return newObjectLocation(decorateFinal, oldLocation, value);
@@ -405,7 +300,7 @@ abstract class ExtAllocator extends BaseAllocator {
         return locationForValue(value, 0);
     }
 
-    protected Location locationForValue(Object value, int putFlags) {
+    Location locationForValue(Object value, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (Flags.isDeclaration(putFlags)) {
@@ -418,27 +313,8 @@ abstract class ExtAllocator extends BaseAllocator {
             return newDoubleLocation(decorateFinal, getLayout().isAllowedIntToDouble(), null, value);
         } else if (value instanceof Long) {
             return newLongLocation(decorateFinal, getLayout().isAllowedIntToLong(), null, value);
-        } else if (value instanceof Boolean) {
-            return newBooleanLocation(decorateFinal, null, value);
         }
         return newObjectLocation(decorateFinal, null, value);
-    }
-
-    @Override
-    public Location locationForType(Class<?> type) {
-        if (type == int.class) {
-            return newIntLocation();
-        } else if (type == double.class) {
-            return newDoubleLocation();
-        } else if (type == long.class) {
-            return newLongLocation();
-        } else if (type == boolean.class) {
-            return newBooleanLocation();
-        } else if (type != null && type != Object.class) {
-            assert !type.isPrimitive() : "unsupported primitive type";
-            return newTypedObjectLocation(type, false, false, null, NO_VALUE);
-        }
-        return newObjectLocation();
     }
 
     static Class<?> getCommonSuperclass(Class<?> a, Class<?> b) {

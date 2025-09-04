@@ -98,12 +98,12 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
 
         NativeImageHeapWriter writer = new NativeImageHeapWriter(codeCache.nativeImageHeap, layout);
 
-        RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(layout.getImageHeapSize(), WasmUtil.BYTE_ORDER);
+        RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(layout.getSize(), WasmUtil.BYTE_ORDER);
         codeCache.writeConstants(writer, heapSectionBuffer);
         writer.writeHeap(debug, heapSectionBuffer);
         long heapStart = MemoryLayout.HEAP_BASE.rawValue();
         assert heapStart % 8 == 0 : heapStart;
-        int imageHeapSize = (int) layout.getImageHeapSize();
+        int imageHeapSize = (int) layout.getSize();
 
         EconomicMap<CGlobalData<?>, UnsignedWord> globalData = EconomicMap.create();
         int memorySize = MemoryLayout.constructLayout(globalData, imageHeapSize, WebImageWasmOptions.StackSize.getValue());

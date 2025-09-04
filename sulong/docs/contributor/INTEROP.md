@@ -111,7 +111,7 @@ a native pointer pointing to the type returned by the `getNativeType` message.
 The value returned by `getNativeType` should be a `polyglot_typeid` as returned
 by a `polyglot_*_typeid` function (see `graalvm/llvm/polyglot.h`).
 
-The foreing object will then behave as if it was cast by `polyglot_as_typed(type, ...)`
+The foreign object will then behave as if it was cast by `polyglot_as_typed(type, ...)`
 to that type.
 
 ### `isPointer`/`asPointer`

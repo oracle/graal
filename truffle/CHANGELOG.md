@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
 * GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached` expressions are now suppressed if the inlined node is explicitly annotated with `@GenerateInline(false)`. This avoids unnecessary warnings if inlining for a node was explicitly disabled.
 * GR-66310: Added support for passing arrays of primitive types to native code through the Truffle NFI Panama backend.
+* GR-61292 Specialization DSL: Single specialization nodes no longer specialize on first execution unless they use assumptions, cached state, or multiple instances. This was done to improve the interpreter performance and memory footprint of such nodes. As a result, these nodes no longer invalidate on first execution, which means they can no longer be used as an implicit branch profile. Language implementations are encouraged to check whether they are relying on this behavior and insert explicit branch profiles instead (see `BranchProfile` or `InlinedBranchProfile`).
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
@@ -139,7 +140,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-45036 Improved IGV AST dumping. The Truffle AST is now dumped as part of the IR dump folder. The dumped AST tree now shows all inlined ASTS in a single tree. Individual functions can be grouped using the "Cluster nodes" function in IGV (top status bar). Root nodes now display their name e.g. `SLFunctionBody (root add)`. Every AST node now has a property `graalIRNode` that allows to find the corresponding Graal IR constant if there is one. 
 * GR-45284 Added Graal debug options `TruffleTrustedNonNullCast` and `TruffleTrustedTypeCast` that allow disabling trusted non-null and type casts in Truffle, respectively. Note that disabling trusted type casts effectively disables non-null casts, too.
 * GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads.
-* GR-44211 Added `TruffleContext#leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)` to be able to interrupt the function run when the context is not entered. The exisiting API `TruffleContext#leaveAndEnter(Node, Supplier)` is deprecated.
+* GR-44211 Added `TruffleContext#leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)` to be able to interrupt the function run when the context is not entered. The existing API `TruffleContext#leaveAndEnter(Node, Supplier)` is deprecated.
 * GR-44211 Removed the deprecated method `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)`.
 * GR-44211 Added `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)`. It replaces the method `TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)` that is now deprecated.
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
@@ -206,7 +207,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-25539 Added `InteropLibrary#fitsInBigInteger()` and `InteropLibrary#asBigInteger()` to access interop values that fit into `java.math.BigInteger` without loss of precision. A warning is produced for objects that export the `isNumber` interop message and don't export the new big integer messages.
 * GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
 * GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
-* GR-43903 Usages of `@Specialization(assumptions=...)` that reach a `@Fallback` specialization now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that reach a `@Fallback` specialization now produce a suppressible warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
 * GR-43903 Added `@Idempotent` and `@NonIdempotent` DSL annotations useful for DSL guard optimizations. Guards that only bind idempotent methods and no dynamic values can always be assumed `true` after they were `true` once on the slow-path. The generated code leverages this information and asserts instead of executes the guard on the fast-path. The DSL now emits warnings with for all guards where specifying the annotations may be beneficial. Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
 * GR-43663 Added RootNode#computeSize as a way for languages to specify an approximate size of a RootNode when number of AST nodes cannot be used (e.g. for bytecode interpreters).
 * GR-42539 (change of behavior) Unclosed polyglot engines are no longer closed automatically on VM shutdown. They just die with the VM. As a result, `TruffleInstrument#onDispose` is not called for active instruments on unclosed engines in the event of VM shutdown. In case an instrument is supposed to do some specific action before its disposal, e.g. print some kind of summary, it should be done in `TruffleInstrument#onFinalize`.
@@ -482,7 +483,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
     * Added `getIteratorNextElement(Object)` to return the current iterator element.
 * Added `TruffleContext.leaveAndEnter(Node, Supplier)` to wait for another thread without triggering multithreading.
 * Removed deprecated `TruffleLanguage.Env.getTruffleFile(String)`, `TruffleLanguage.Env.getTruffleFile(URI)` methods.
-* Deprecated CompilationThreshold for prefered LastTierCompilationThreshold and SingleTierCompilationThreshold.
+* Deprecated CompilationThreshold for preferred LastTierCompilationThreshold and SingleTierCompilationThreshold.
 * Added new features to the DSL `@NodeChild` annotation:
     * Added `implicit` and `implicitCreate` attributes to allow implicit creation of child nodes by the parent factory method.
     * Added `allowUncached` and `uncached` attributes to allow using `@NodeChild` with `@GenerateUncached`.
@@ -716,7 +717,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton. 
 * `@GenerateUncached` can now be used in combination with `@NodeChild` if execute signatures for all arguments are present.
 * Removed deprecated automatic registration of the language class as a service.
-* The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
+* The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verification of the TCK `IdentityFunctionTest`.
 * Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
 * Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
 * `SlowPathException#fillInStackTrace` is now `final`.
@@ -728,7 +729,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Renamed version 1.0.0 to 19.0.0
 
 ## Version 1.0.0 RC15
-* This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
+* This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatibility layer may cause significant performance reduction for interoperability calls.
 	* Please see the [Interop Migration Guide](https://github.com/oracle/graal/blob/master/truffle/docs/InteropMigration.md) for an overview and individual `@deprecated` javadoc tags for guidance.
 	* Deprecated classes `ForeignAccess`, `Message`, `MessageResolution`, `Resolve` and `KeyInfo`. 
 	* The following methods got deprecated:
@@ -909,7 +910,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 
 * Added `TruffleLanguage.Env.isHostFunction`.
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
-* Added `TruffleLogger.getLogger(String)` to obtain the root loger of a language or instrument.
+* Added `TruffleLogger.getLogger(String)` to obtain the root logger of a language or instrument.
 * Introduced per language [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html). Languages are encouraged to configure the most permissive policy that they can support.
 * Added `TruffleLanguage.areOptionsCompatible` to allow customization of the context policy based on options.
 * Changed default context policy from SHARED to EXCLUSIVE, i.e. there is one exclusive language instance per polyglot or inner context by default. This can be configured by the language
@@ -989,7 +990,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * Added expression-stepping into debugger APIs. To support debugging of both statements and expressions, following changes were made:
 	* Added [SourceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SourceElement.html) enum to provide a list of source syntax elements known to the debugger.
 	* Added [StepConfig](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/StepConfig.html) class to represent a debugger step configuration.
-	* Added [Debugger.startSession()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#startSession-com.oracle.truffle.api.debug.SuspendedCallback-com.oracle.truffle.api.debug.SourceElement...-) accepting a list of source elments to enable stepping on them.
+	* Added [Debugger.startSession()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#startSession-com.oracle.truffle.api.debug.SuspendedCallback-com.oracle.truffle.api.debug.SourceElement...-) accepting a list of source elements to enable stepping on them.
 	* Added [Breakpoint.Builder.sourceElements](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#sourceElements-com.oracle.truffle.api.debug.SourceElement...-) to specify which source elements will the breakpoint adhere to.
 	* Added [SuspendedEvent.getInputValues](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getInputValues--) to get possible input values of the current source element.
 	* Removed deprecated methods on [SuspendedEvent](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html).
@@ -1002,7 +1003,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * The [Assumption](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html) interface has an additional override for the `invalidate` method to provide a message for debugging purposes.
 * Deprecated `KeyInfo.Builder`. Use bitwise constants in the KeyInfo class instead. Introduced new flag KeyInfo.INSERTABLE to indicate that a key can be inserted at a particular location, but it does not yet exist.
 * Deprecated `TruffleLanguage#getLanguageGlobal`, implement [top scopes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) instead.
-* Deprecated `TruffleLanguage#findExportedSymbol`, use the [polyglot bindings](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) TruffleLanguage.Env for exporting symbols into the polyglot scope explicitely. The polyglot scope no longer supports implicit exports, they should be exposed using [top scopes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) instead.
+* Deprecated `TruffleLanguage#findExportedSymbol`, use the [polyglot bindings](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) TruffleLanguage.Env for exporting symbols into the polyglot scope explicitly. The polyglot scope no longer supports implicit exports, they should be exposed using [top scopes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) instead.
 * Remove deprecated `TruffleInstrument#describeOptions` and TruffleLanguage#describeOptions
 * Remove deprecated `TruffleLanguage.Env#lookupSymbol` without replacement.
 * Remove deprecated `TruffleLanguage.Env#importSymbols`, use the polyglot bindings instead.
@@ -1084,7 +1085,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * Added `JavaInterop.isJavaObject(Object)` method overload.
 * Deprecated helper methods in `JavaInterop`: `isNull`, `isArray`, `isBoxed`, `unbox`, `getKeyInfo`. [ForeignAccess](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html) already provides equivalent methods: `sendIsNull`, `sendIsArray`, `sendIsBoxed`, `sendUnbox`, `sendKeyInfo`, respectively.
 * Deprecated all String based API in Source and SourceSection and replaced it with CharSequence based APIs. Automated migration with Jackpot rules is available (run `mx jackpot --apply`).
-* Added [Source.Builder.language](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.Builder.html#language-java.lang.String-) and [Source.getLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getLanguage--) to be able to set/get source langauge in addition to MIME type.
+* Added [Source.Builder.language](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.Builder.html#language-java.lang.String-) and [Source.getLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getLanguage--) to be able to set/get source language in addition to MIME type.
 * Added the [inCompilationRoot](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#inCompilationRoot--) compiler directive.
 * Deprecated TruffleBoundary#throwsControlFlowException and introduced TruffleBoundary#transferToInterpreterOnException.
 
@@ -1116,7 +1117,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * Added TruffleLanguage.Env.isHostLookupAllowed() to find out whether host lookup is generally allowed.
 * Added Node#notifyInserted(Node) to notify the instrumentation framework about changes in the AST after the first execution.
 * Added TruffleLanguage.Env.newContextBuilder() that allows guest languages to create inner language contexts/environments by returning TruffleContext instances.
-* Added a concept of breakpoints shared accross sessions, associated with Debugger instance: [Debugger.install](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#install-com.oracle.truffle.api.debug.Breakpoint-), [Debugger.getBreakpoints](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getBreakpoints--) and a possibility to listen on breakpoints changes: [Debugger.PROPERTY_BREAKPOINTS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#PROPERTY_BREAKPOINTS), [Debugger.addPropertyChangeListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#addPropertyChangeListener-java.beans.PropertyChangeListener-) and [Debugger.removePropertyChangeListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#removePropertyChangeListener-java.beans.PropertyChangeListener-). [Breakpoint.isModifiable](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#isModifiable--) added to be able to distinguish the shared read-only copy of installed Breakpoints.
+* Added a concept of breakpoints shared across sessions, associated with Debugger instance: [Debugger.install](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#install-com.oracle.truffle.api.debug.Breakpoint-), [Debugger.getBreakpoints](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getBreakpoints--) and a possibility to listen on breakpoints changes: [Debugger.PROPERTY_BREAKPOINTS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#PROPERTY_BREAKPOINTS), [Debugger.addPropertyChangeListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#addPropertyChangeListener-java.beans.PropertyChangeListener-) and [Debugger.removePropertyChangeListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#removePropertyChangeListener-java.beans.PropertyChangeListener-). [Breakpoint.isModifiable](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#isModifiable--) added to be able to distinguish the shared read-only copy of installed Breakpoints.
 * [TruffleInstrument.Env.getLanguages()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getLanguages--) returns languages by their IDs instead of MIME types when the new polyglot API is used.
 * Deprecated [ExactMath.addExact(int, int)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#addExact-int-int-), [ExactMath.addExact(long, long)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#addExact-long-long-), [ExactMath.subtractExact(int, int)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#subtractExact-int-int-), [ExactMath.subtractExact(long, long)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#subtractExact-long-long-), [ExactMath.multiplyExact(int, int)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#multiplyExact-int-int-), [ExactMath.multiplyExact(long, long)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ExactMath.html#multiplyExact-long-long-). Users can replace these with java.lang.Math utilities of same method names.
 
@@ -1294,7 +1295,7 @@ supports [post initialization callback](http://www.graalvm.org/truffle/javadoc/c
 ## Version 0.16
 * [Layout](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html)
   now accepts an alternative way to construct an object with the `build` method instead of `create`.
-* [TruffleTCK](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/tck/TruffleTCK.html) tests simple operation on foreign objects. For example, a simple WRITE accesss, a HAS_SIZE access, or an IS_NULL access. It also tests the message resolution of Truffle language objects, which enables using them in other languages.
+* [TruffleTCK](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/tck/TruffleTCK.html) tests simple operation on foreign objects. For example, a simple WRITE access, a HAS_SIZE access, or an IS_NULL access. It also tests the message resolution of Truffle language objects, which enables using them in other languages.
 
 ## Version 0.15
 1-Jul-2016
@@ -1457,7 +1458,7 @@ over the set of engines that share the code.
 ### Truffle
 * Change API for stack walking to a visitor: `TruffleRuntime#iterateFrames` replaces `TruffleRuntime#getStackTrace`
 * New flag `-G:+TraceTruffleCompilationCallTree` to print the tree of inlined calls before compilation.
-* `truffle.jar`: strip out build-time only dependency into a seperated JAR file (`truffle-dsl-processor.jar`)
+* `truffle.jar`: strip out build-time only dependency into a separated JAR file (`truffle-dsl-processor.jar`)
 * New flag `-G:+TraceTruffleCompilationAST` to print the AST before compilation.
 * New experimental `TypedObject` interface added.
 * Added `isVisited` method for `BranchProfile`.

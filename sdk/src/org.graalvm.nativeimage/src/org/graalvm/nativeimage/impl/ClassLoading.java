@@ -41,7 +41,6 @@
 package org.graalvm.nativeimage.impl;
 
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Experimental API used to support runtime class loading in the context of native images.
@@ -57,7 +56,7 @@ public final class ClassLoading {
         if (!ImageInfo.inImageRuntimeCode()) {
             return true;
         }
-        return ImageSingletons.lookup(ClassLoadingSupport.class).isSupported();
+        return ClassLoadingSupport.singleton().isSupported();
     }
 
     /**
@@ -80,8 +79,7 @@ public final class ClassLoading {
             if (!ImageInfo.inImageRuntimeCode()) {
                 return;
             }
-            ClassLoadingSupport support = ImageSingletons.lookup(ClassLoadingSupport.class);
-            support.startIgnoreReflectionConfigurationScope();
+            ClassLoadingSupport.singleton().startIgnoreReflectionConfigurationScope();
         }
 
         @Override
@@ -93,7 +91,7 @@ public final class ClassLoading {
             if (!ImageInfo.inImageRuntimeCode()) {
                 return;
             }
-            ImageSingletons.lookup(ClassLoadingSupport.class).endIgnoreReflectionConfigurationScope();
+            ClassLoadingSupport.singleton().endIgnoreReflectionConfigurationScope();
         }
     }
 }
