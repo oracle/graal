@@ -77,17 +77,14 @@ final class LayoutImpl {
     static final int INT_TO_DOUBLE_FLAG = 1;
     static final int INT_TO_LONG_FLAG = 2;
 
-    final LayoutStrategy strategy;
     final Class<? extends DynamicObject> clazz;
     private final int allowedImplicitCasts;
 
     private final List<FieldInfo> objectFields;
     private final List<FieldInfo> primitiveFields;
 
-    LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, LayoutInfo layoutInfo, int allowedImplicitCasts) {
-        this.strategy = strategy;
+    LayoutImpl(Class<? extends DynamicObject> clazz, LayoutInfo layoutInfo, int allowedImplicitCasts) {
         this.clazz = Objects.requireNonNull(clazz);
-
         this.allowedImplicitCasts = allowedImplicitCasts;
         this.objectFields = layoutInfo.objectFields;
         this.primitiveFields = layoutInfo.primitiveFields;
@@ -120,10 +117,6 @@ final class LayoutImpl {
 
     int getPrimitiveFieldCount() {
         return primitiveFields.size();
-    }
-
-    public LayoutStrategy getStrategy() {
-        return strategy;
     }
 
     @Override
@@ -167,13 +160,12 @@ final class LayoutImpl {
 
     record Key(
                     Class<? extends DynamicObject> type,
-                    int implicitCastFlags,
-                    LayoutStrategy strategy) {
+                    int implicitCastFlags) {
 
         // letting Java generate hashcodes has slow startup
         @Override
         public int hashCode() {
-            return Objects.hash(type, implicitCastFlags, strategy);
+            return Objects.hash(type, implicitCastFlags);
         }
 
         @Override
@@ -184,7 +176,7 @@ final class LayoutImpl {
             if (!(obj instanceof Key other)) {
                 return false;
             }
-            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags && this.strategy == other.strategy;
+            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags;
         }
     }
 
@@ -193,24 +185,20 @@ final class LayoutImpl {
         return LayoutInfo.getOrCreateNewLayoutInfo(dynamicObjectClass, layoutLookup);
     }
 
-    private static LayoutImpl getOrCreateLayout(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags, LayoutStrategy strategy) {
+    private static LayoutImpl getOrCreateLayout(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags) {
         Objects.requireNonNull(clazz, "DynamicObject layout class");
-        Key key = new Key(clazz, implicitCastFlags, strategy);
+        Key key = new Key(clazz, implicitCastFlags);
         LayoutImpl layout = LAYOUT_MAP.get(key);
         if (layout != null) {
             return layout;
         }
-        LayoutImpl newLayout = new LayoutImpl(clazz, strategy, getOrCreateLayoutInfo(clazz, layoutLookup), implicitCastFlags);
+        LayoutImpl newLayout = new LayoutImpl(clazz, getOrCreateLayoutInfo(clazz, layoutLookup), implicitCastFlags);
         layout = LAYOUT_MAP.putIfAbsent(key, newLayout);
         return layout == null ? newLayout : layout;
     }
 
-    static LayoutImpl createLayoutImpl(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags, LayoutStrategy strategy) {
-        return getOrCreateLayout(clazz, layoutLookup, implicitCastFlags, strategy);
-    }
-
     static LayoutImpl createLayoutImpl(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags) {
-        return createLayoutImpl(clazz, layoutLookup, implicitCastFlags, ObsolescenceStrategy.singleton());
+        return getOrCreateLayout(clazz, layoutLookup, implicitCastFlags);
     }
 
     static void registerLayoutClass(Class<? extends DynamicObject> type, MethodHandles.Lookup layoutLookup) {
