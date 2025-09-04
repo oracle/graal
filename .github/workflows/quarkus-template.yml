@@ -62,7 +62,7 @@ jobs:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
-    name: Nightly Quarkus and GraalVM build${{ inputs.NATIVE_IMAGE_OPTIONS && format(' ({0})', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+    name: Nightly Quarkus and GraalVM build
     runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
@@ -115,7 +115,7 @@ jobs:
         path: maven-repo.tgz
 
   native-tests:
-    name: Native Tests - ${{matrix.category}}${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with options ({0})', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+    name: Native Tests - ${{matrix.category}}${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
     needs: build-quarkus-and-graalvm
     runs-on: ubuntu-latest
     env:

@@ -71,7 +71,7 @@ jobs:
       with:
         repository: spring-projects/spring-petclinic
         path: ${{ env.SPRING_PETCLINIC_PATH }}
-    - name: Run nativeTest in spring-petclinic${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with options ({0})', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+    - name: Run nativeTest in spring-petclinic${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
       run: |
         cd ${{ env.SPRING_PETCLINIC_PATH }}
         ./gradlew nativeTest

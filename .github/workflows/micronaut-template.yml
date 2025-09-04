@@ -79,7 +79,7 @@ jobs:
       with:
         repository: micronaut-projects/micronaut-core
         path: ${{ env.MICRONAUT_CORE_PATH }}
-    - name: Run nativeTest in micronaut-core
+    - name: Run nativeTest in micronaut-core${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
       run: |
         cd ${{ env.MICRONAUT_CORE_PATH }}
         ./gradlew nativeTest
