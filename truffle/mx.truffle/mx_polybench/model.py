@@ -151,6 +151,7 @@ class PolybenchBenchmarkSuiteEntry(NamedTuple):
     runner: Optional[PolybenchBenchmarkSuiteRunner]
     tags: Set[str]
     suppress_validation_warnings: bool
+    additional_polybench_args: List[str]
 
     def validate(self) -> Optional[str]:
         """Ensures this suite can run. Returns an error string otherwise."""
@@ -436,7 +437,11 @@ class PolybenchBenchmarkSuite(
         java_distributions = _get_java_distributions(resolved_benchmark)
         vm_args = mx.get_runtime_jvm_args(names=java_distributions) + self.vmArgs(bmSuiteArgs)
         mx_truffle.enable_truffle_native_access(vm_args)
-        polybench_args = ["--path=" + resolved_benchmark.absolute_path] + self.runArgs(bmSuiteArgs)
+        polybench_args = (
+            ["--path=" + resolved_benchmark.absolute_path]
+            + self.runArgs(bmSuiteArgs)
+            + resolved_benchmark.suite.additional_polybench_args
+        )
         return vm_args + [PolybenchBenchmarkSuite.POLYBENCH_MAIN] + polybench_args
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
@@ -707,6 +712,7 @@ def register_polybench_benchmark_suite(
     runner: Optional[PolybenchBenchmarkSuiteRunner] = None,
     tags: Optional[Set[str]] = None,
     suppress_validation_warnings: bool = False,
+    additional_polybench_args: Optional[List[str]] = None,
 ):
     """
     Registers a suite of polybench benchmarks. A polybench suite declares a distribution of benchmark files and the
@@ -730,6 +736,8 @@ def register_polybench_benchmark_suite(
     input format as the "mx polybench" command).
     :param tags: The set of tags supported by the runner.
     :param suppress_validation_warnings: Whether to suppress warning messages when the suite specification does not validate.
+    :param additional_polybench_args: An optional list of arguments to always pass to the benchmark launcher (e.g., to
+    specify a load path for benchmark sources).
     """
     check_late_registration(f"Polybench benchmark suite {name}")
     if isinstance(benchmark_file_filter, str):
@@ -750,6 +758,7 @@ def register_polybench_benchmark_suite(
         runner=runner,
         tags=tags if tags is not None else set(),
         suppress_validation_warnings=suppress_validation_warnings,
+        additional_polybench_args=additional_polybench_args or [],
     )
     if name in _polybench_benchmark_suite_registry:
         mx.abort(
