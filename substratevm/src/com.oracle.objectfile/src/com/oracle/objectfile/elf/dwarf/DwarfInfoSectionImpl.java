@@ -605,7 +605,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * declaration in the owner type CU. Other information is already written to the
              * corresponding type units.
              */
-            if (classEntry.getMethods().stream().anyMatch(m -> m.isInRange() || m.isInlined()) ||
+            if (classEntry.getMethods().stream().anyMatch(m -> m.isInRange() || m.isInlined() || m.isCompiledInPriorLayer()) ||
                             classEntry.getFields().stream().anyMatch(DwarfInfoSectionImpl::isManifestedStaticField)) {
                 setCUIndex(classEntry, pos);
                 pos = writeInstanceClassInfo(context, classEntry, buffer, pos);
@@ -1279,7 +1279,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeSkeletonMethodDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         for (MethodEntry method : classEntry.getMethods()) {
-            if (method.isInRange() || method.isInlined()) {
+            if (method.isInRange() || method.isInlined() || method.isCompiledInPriorLayer()) {
                 /*
                  * Declare all methods whether or not they have been compiled or inlined.
                  */
@@ -1357,7 +1357,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeMethodDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         for (MethodEntry method : classEntry.getMethods()) {
-            if (method.isInRange() || method.isInlined()) {
+            if (method.isInRange() || method.isInlined() || method.isCompiledInPriorLayer()) {
                 /*
                  * Declare all methods whether they have been compiled or inlined.
                  */

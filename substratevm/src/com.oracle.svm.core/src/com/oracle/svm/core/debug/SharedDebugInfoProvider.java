@@ -733,10 +733,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         boolean isOverride = isOverride(method);
         boolean isDeopt = method.isDeoptTarget();
         boolean isConstructor = method.isConstructor();
+        boolean isCompiledInPriorLayer = isCompiledInPriorLayer(method);
 
         return new MethodEntry(fileEntry, line, methodName, ownerType,
                         valueType, modifiers, params, symbolName, isDeopt, isOverride, isConstructor,
-                        vTableOffset, lastParamSlot);
+                        isCompiledInPriorLayer, vTableOffset, lastParamSlot);
     }
 
     /**
@@ -1010,6 +1011,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return false;
     }
 
+    public boolean isCompiledInPriorLayer(@SuppressWarnings("unused") SharedMethod method) {
+        return false;
+    }
+
     public boolean isVirtual(@SuppressWarnings("unused") SharedMethod method) {
         return false;
     }
@@ -1217,7 +1222,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     /**
      * Lookup a {@code LocalValueEntry}. This can either be a register, stack, constant value. This
      * allows to reuse the same entries for multiple ranges.
-     * 
+     *
      * @param localValueEntry the {@code LocalValueEntry} to lookup
      * @return the {@code LocalValueEntry} from the lookup map
      */
@@ -1403,7 +1408,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 debug.log(DebugContext.DETAILED_LEVEL, "local[%d] %s type %s slot %d", paramIdx + 1, param.name(), param.type().getTypeName(), param.slot());
                 debug.log(DebugContext.DETAILED_LEVEL, "  =>  %s", value);
             }
-            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE);
+            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, true);
             if (localValueEntry != null) {
                 localValueInfos.put(param, localValueEntry);
             }
@@ -1565,7 +1570,13 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
             int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-            Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+            /*
+             * Locals are stored in both leaf ranges and call ranges. However, for call ranges we do
+             * not want to store register values as registers may be overwritten in callee ranges.
+             * Thus, a debugger is still able to process stack values and constants for stack
+             * traces.
+             */
+            Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize, isLeaf);
             Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, node.getStartPos(), node.getEndPos() + 1, line, callerInfo, isLeaf);
 
             if (debug.isLogEnabled()) {
@@ -1585,9 +1596,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param pos the bytecode position of the location info
      * @param methodEntry the {@code MethodEntry} corresponding to the bytecode position
      * @param frameSize the current frame size
+     * @param isLeaf whether the range to create this value for is a leaf range
      * @return a mapping from {@code LocalEntry} to {@code LocalValueEntry}
      */
-    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry methodEntry, int frameSize) {
+    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry methodEntry, int frameSize, boolean isLeaf) {
         Map<LocalEntry, LocalValueEntry> localInfos = new HashMap<>();
 
         if (pos instanceof BytecodeFrame frame && frame.numLocals > 0) {
@@ -1688,7 +1700,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * upfront from the local variable table, the LocalEntry already exists.
                      */
                     LocalEntry localEntry = methodEntry.getOrAddLocalEntry(lookupLocalEntry(name, typeEntry, slot), line);
-                    LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize);
+                    LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize, isLeaf);
                     if (localEntry != null && localValueEntry != null) {
                         localInfos.put(localEntry, localValueEntry);
                     }
@@ -1703,16 +1715,24 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     /**
      * Creates a {@code LocalValueEntry} for a given {@code JavaValue}. This processes register
-     * values, stack values, primitive constants and constant in the heap.
+     * values, stack values, primitive constants and constant in the heap. Register values are only
+     * added for leaf frames, as register may be overwritten within callee frames of a call range.
+     * But, stack values and constants also work for call ranges.
      * 
      * @param value the given {@code JavaValue}
      * @param frameSize the frame size for stack values
+     * @param isLeaf whether the range to create this value for is a leaf range
      * @return the {@code LocalValueEntry} or {@code null} if the value can't be processed
      */
-    private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize) {
+    private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize, boolean isLeaf) {
         switch (value) {
             case RegisterValue registerValue -> {
-                return lookupLocalValueEntry(new RegisterValueEntry(registerValue.getRegister().number));
+                /*
+                 * We only want to create register entries for leaf nodes. Thus, they are only valid
+                 * within a leaf range but not over a whole call range where the register value is
+                 * potentially overwritten.
+                 */
+                return isLeaf ? lookupLocalValueEntry(new RegisterValueEntry(registerValue.getRegister().number)) : null;
             }
             case StackSlot stackValue -> {
                 int stackSlot = frameSize == 0 ? stackValue.getRawOffset() : stackValue.getOffset(frameSize);
@@ -1827,7 +1847,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         LineNumberTable lineNumberTable = method.getLineNumberTable();
         int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-        Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+        Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize, true);
         Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, startPos, endPos, line, callerLocation, true);
 
         if (debug.isLogEnabled()) {
@@ -1881,7 +1901,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * at native image build-time while still having comparable performance (for most of the index
      * maps). The most performance critical maps that see more traffic will use the less memory
      * efficient ConcurrentHashMaps instead.
-     * 
+     *
      * @param map the {@code EconomicMap} to perform {@code computeIfAbsent} on
      * @param key the key to look for
      * @param mappingFunction the function producing the value for a given key
