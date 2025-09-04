@@ -1265,7 +1265,7 @@ public final class Shape {
         assert parent == null || this.sharedData == parent.sharedData;
 
         this.sharedPropertyAssumptions = parent == null && (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0 && singleContextAssumption != null
-                        ? new PropertyAssumptions(singleContextAssumption)
+                        ? new PropertyAssumptions()
                         : null;
 
         shapeCount.inc();
@@ -1670,7 +1670,6 @@ public final class Shape {
 
     /**
      * Find lowest common ancestor of two related shapes.
-     *
      */
     static Shape findCommonAncestor(Shape left, Shape right) {
         if (!left.isRelated(right)) {
@@ -1725,7 +1724,7 @@ public final class Shape {
         assert allowPropertyAssumptions();
         PropertyAssumptions ass = root.sharedPropertyAssumptions;
         if (ass == null) {
-            ass = new PropertyAssumptions(null);
+            ass = new PropertyAssumptions();
             if (!PROPERTY_ASSUMPTIONS_UPDATER.compareAndSet(root, null, ass)) {
                 ass = getPropertyAssumptions();
             }
@@ -1747,14 +1746,6 @@ public final class Shape {
         if (propertyAssumptions != null) {
             propertyAssumptions.invalidateAllPropertyAssumptions();
         }
-    }
-
-    Assumption getSingleContextAssumption() {
-        PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
-        if (propertyAssumptions != null) {
-            return propertyAssumptions.getSingleContextAssumption();
-        }
-        return null;
     }
 
     Object getMutex() {
@@ -1810,10 +1801,8 @@ public final class Shape {
 
 final class PropertyAssumptions {
     private final EconomicMap<Object, Assumption> stablePropertyAssumptions;
-    private final Assumption singleContextAssumption;
 
-    PropertyAssumptions(Assumption singleContextAssumption) {
-        this.singleContextAssumption = singleContextAssumption;
+    PropertyAssumptions() {
         this.stablePropertyAssumptions = EconomicMap.create();
     }
 
@@ -1867,7 +1856,4 @@ final class PropertyAssumptions {
         stablePropertyAssumptions.clear();
     }
 
-    Assumption getSingleContextAssumption() {
-        return singleContextAssumption;
-    }
 }
