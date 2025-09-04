@@ -632,11 +632,6 @@ abstract class ExtLocations {
         }
 
         @Override
-        public int objectArrayCount() {
-            return OBJECT_SLOT_SIZE;
-        }
-
-        @Override
         public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
         }
