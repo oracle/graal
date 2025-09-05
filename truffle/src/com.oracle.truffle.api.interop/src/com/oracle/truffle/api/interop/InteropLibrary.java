@@ -2322,26 +2322,6 @@ public abstract class InteropLibrary extends Library {
         }
     }
 
-    @Abstract(ifExported = {"getExceptionInternalStackTrace"})
-    public boolean hasExceptionInternalStackTrace(Object receiver) {
-        // A workaround for missing inheritance feature for default exports.
-        if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.hasInternalExceptionStackTrace(receiver);
-        } else {
-            return false;
-        }
-    }
-
-    @Abstract(ifExported = {"hasExceptionInternalStackTrace"})
-    public Object getExceptionInternalStackTrace(Object receiver) throws UnsupportedMessageException {
-        // A workaround for missing inheritance feature for default exports.
-        if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.getExceptionInternalStackTrace(receiver, null);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
     /**
      * Returns {@code true} if the receiver provides an iterator. For example, an array or a list
      * provide an iterator over their content. Invoking this message does not cause any observable

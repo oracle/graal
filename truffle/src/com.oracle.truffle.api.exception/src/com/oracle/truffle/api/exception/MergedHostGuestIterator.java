@@ -82,15 +82,15 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
     private boolean firstFrame;
 
     @TruffleBoundary
-    static Object getExceptionStackTrace(Object receiver, Object polyglotContext, boolean includeHostStack) {
+    static Object getExceptionStackTrace(Object receiver, Object vmObject, boolean includeHostStack) {
         Throwable throwable = (Throwable) receiver;
         List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
         if (stack == null) {
             stack = Collections.emptyList();
         }
-        Object polyglotEngine = polyglotContext == null
+        Object polyglotEngine = vmObject == null
                         ? ExceptionAccessor.ENGINE.getCurrentPolyglotEngine()
-                        : ExceptionAccessor.ENGINE.getEngineFromPolyglotObject(polyglotContext);
+                        : ExceptionAccessor.ENGINE.getEngineFromPolyglotObject(vmObject);
         boolean hasGuestToHostCalls = false;
         boolean inHost = true;
         for (TruffleStackTraceElement element : stack) {
@@ -262,7 +262,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
     // Return the number of frames with reflective calls to skip
     private static int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
-        if (isLazyStackTraceElement(firstElement)) {
+        if (isLazyStackTraceElement(firstElement) || polyglotEngineImpl == null) {
             return -1;
         }
         return ExceptionAccessor.ENGINE.findGuestToHostFrame(polyglotEngineImpl, firstElement, hostStack, nextElementIndex);
@@ -294,8 +294,8 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
         }
 
         ListIterator<TruffleStackTraceElement> guestStackIterator = guestStack.listIterator();
-        boolean includeHostFrames = includeHostStack || ExceptionAccessor.ENGINE.getHostService(polyglotEngine).isHostStackTraceVisibleToGuest();
-        int lastGuestToHostIndex = includeHostFrames ? indexOfLastGuestToHostFrame(polyglotEngine, guestStack) : -1;
+        boolean includeHostFrames = includeHostStack || (polyglotEngine != null && ExceptionAccessor.ENGINE.getHostService(polyglotEngine).isHostStackTraceVisibleToGuest());
+        int lastGuestToHostIndex = includeHostFrames && polyglotEngine != null ? indexOfLastGuestToHostFrame(polyglotEngine, guestStack) : -1;
 
         Iterator<Object> mergedElements = new MergedHostGuestIterator<>(polyglotEngine, hostStack, guestStackIterator, inHost, includeHostFrames,
                         new Function<StackTraceElement, Object>() {
