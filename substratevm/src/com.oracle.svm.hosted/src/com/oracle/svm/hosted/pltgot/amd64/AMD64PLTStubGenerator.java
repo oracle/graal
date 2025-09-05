@@ -114,7 +114,7 @@ public class AMD64PLTStubGenerator implements PLTStubGenerator {
         RegisterConfig registerConfig = amd64Backend.getCodeCache().getRegisterConfig();
         Register register = configuration.getGOTPassingRegister(registerConfig);
 
-        AMD64MacroAssembler asm = (AMD64MacroAssembler) amd64Backend.createAssemblerNoOptions();
+        AMD64MacroAssembler asm = amd64Backend.createAssemblerNoOptions();
         PLTSectionSupport support = HostedPLTGOTConfiguration.singleton().getPLTSectionSupport();
 
         asm.setCodePatchingAnnotationConsumer(this::recordResolverCallForPatching);

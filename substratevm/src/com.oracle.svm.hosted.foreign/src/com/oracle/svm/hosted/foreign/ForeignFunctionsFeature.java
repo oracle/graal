@@ -89,6 +89,8 @@ import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
 import com.oracle.svm.core.foreign.Target_java_nio_MappedMemoryUtils;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -403,6 +405,17 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(getConfigurationParser(imageClassLoader), imageClassLoader, "panama foreign");
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
+        SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
+        if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
+            foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
+        } else {
+            throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+        }
     }
 
     private ConfigurationParser getConfigurationParser(ImageClassLoader imageClassLoader) {
