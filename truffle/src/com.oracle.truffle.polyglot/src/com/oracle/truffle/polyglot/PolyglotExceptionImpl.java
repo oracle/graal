@@ -533,19 +533,8 @@ final class PolyglotExceptionImpl {
     }
 
     static Iterator<Object> createStackFrameIterator(PolyglotExceptionImpl impl) {
-        APIAccess apiAccess = impl.polyglot.getAPIAccess();
-        InteropLibrary interop = InteropLibrary.getUncached();
-        if (interop.hasExceptionInternalStackTrace(impl.exception)) {
-            Object stackTrace;
-            try {
-                stackTrace = interop.getExceptionInternalStackTrace(impl.exception);
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-            return new FrameGuestObjectIterator(interop, apiAccess, impl, stackTrace);
-        } else {
-            return Collections.emptyIterator();
-        }
+        Object stackTrace = impl.polyglot.getRootImpl().getEmbedderExceptionStackTrace(impl.engine, impl.exception);
+        return new FrameGuestObjectIterator(impl.polyglot.getAPIAccess(), impl, stackTrace);
     }
 
     private static boolean isHostException(PolyglotEngineImpl engine, Throwable cause) {
@@ -564,8 +553,8 @@ final class PolyglotExceptionImpl {
         private int currentIndex;
         private Object next;
 
-        FrameGuestObjectIterator(InteropLibrary interop, APIAccess apiAccess, PolyglotExceptionImpl exception, Object stackTrace) {
-            this.interop = interop;
+        FrameGuestObjectIterator(APIAccess apiAccess, PolyglotExceptionImpl exception, Object stackTrace) {
+            this.interop = InteropLibrary.getUncached();
             this.apiAccess = apiAccess;
             this.exception = exception;
             this.stackTrace = stackTrace;

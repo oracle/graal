@@ -2774,23 +2774,6 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean hasExceptionInternalStackTrace() {
-        return hasExceptionStackTrace();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getExceptionInternalStackTrace() throws UnsupportedMessageException {
-        if (isException()) {
-            // Using HostException here allows us to make use of its getLocation(), if available.
-            Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
-            return HostAccessor.EXCEPTION.getExceptionInternalStackTrace(hostExceptionOrOriginal, context.internalContext);
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
     RuntimeException throwException(
                     @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {

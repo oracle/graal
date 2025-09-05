@@ -147,12 +147,8 @@ final class ExceptionAccessor extends Accessor {
             return MergedHostGuestIterator.getExceptionStackTrace(receiver, polyglotContext, false);
         }
 
-        public boolean hasInternalExceptionStackTrace(Object receiver) {
-            return true;
-        }
-
-        public Object getExceptionInternalStackTrace(Object receiver, Object polyglotContext) {
-            return MergedHostGuestIterator.getExceptionStackTrace(receiver, polyglotContext, true);
+        public Object getEmbedderStackTrace(Object receiver, Object vmObject) {
+            return MergedHostGuestIterator.getExceptionStackTrace(receiver, vmObject, true);
         }
 
         @Override
