@@ -160,7 +160,7 @@ public class ResourcesFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
     }
 
-    private boolean sealed = false;
+    private ResourcesRegistryImpl resourcesRegistry;
 
     private record ConditionalPattern(ConfigurationCondition condition, String pattern, Object origin) {
     }
@@ -208,6 +208,15 @@ public class ResourcesFeature implements InternalFeature {
             }
         }
 
+        @Override
+        public void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
+            abortIfSealed();
+            registerConditionalConfiguration(condition, cnd -> {
+                addResourceEntry(module, resourcePath, origin);
+                addCondition(condition, module, resourcePath);
+            });
+        }
+
         /* Adds single resource defined with its module and name */
         @Override
         public void addResourceEntry(Module module, String resourcePath, Object origin) {
@@ -229,31 +238,34 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+            abortIfSealed();
             EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED", origin);
             Resources.currentLayer().registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
         public void ignoreResources(ConfigurationCondition condition, String pattern, Object origin) {
+            abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> {
-                UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
-
                 excludedResourcePatterns.add(new ConditionalPattern(condition, pattern, origin));
             });
         }
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
+            abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
         }
 
         @Override
         public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+            abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
         }
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+            abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, basename, locales));
         }
 
@@ -388,7 +400,7 @@ public class ResourcesFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
-        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl();
+        resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
         EmbeddedResourcesInfo embeddedResourcesInfo = new EmbeddedResourcesInfo();
@@ -649,7 +661,7 @@ public class ResourcesFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        sealed = true;
+        resourcesRegistry.sealed();
         if (Options.GenerateEmbeddedResourcesFile.getValue()) {
             Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(Options.EMBEDDED_RESOURCES_FILE_NAME);
             try (JsonWriter writer = new JsonWriter(reportLocation)) {
@@ -709,7 +721,7 @@ public class ResourcesFeature implements InternalFeature {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                VMError.guarantee(!sealed, "All bytecode parsing happens before the analysis, i.e., before the registry is sealed");
+                VMError.guarantee(!resourcesRegistry.isSealed(), "All bytecode parsing happens before the analysis, i.e., before the registry is sealed");
                 Class<?> clazz = SubstrateGraphBuilderPlugins.asConstantObject(b, Class.class, receiver.get(false));
                 String resource = SubstrateGraphBuilderPlugins.asConstantObject(b, String.class, arg);
                 if (clazz != null && resource != null) {

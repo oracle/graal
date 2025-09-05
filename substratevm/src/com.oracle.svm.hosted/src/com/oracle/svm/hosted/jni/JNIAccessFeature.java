@@ -165,9 +165,8 @@ public class JNIAccessFeature implements Feature {
         }
     }
 
-    private JNIRuntimeAccessibilitySupportImpl runtimeSupport;
+    private JNIRuntimeAccessibilitySupportImpl runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
 
-    private boolean sealed = false;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
     private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallWrapperMethod> javaCallWrapperMethods = new ConcurrentHashMap<>();
     private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallVariantWrapperGroup> callVariantWrappers = new ConcurrentHashMap<>();
@@ -191,10 +190,6 @@ public class JNIAccessFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
     }
 
-    private void abortIfSealed() {
-        UserError.guarantee(!sealed, "Classes, methods and fields must be registered for JNI access before the analysis has completed.");
-    }
-
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         // Ensure that KnownOffsets is fully initialized before we access it
@@ -207,7 +202,6 @@ public class JNIAccessFeature implements Feature {
 
         JNIReflectionDictionary.create();
 
-        runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
@@ -228,14 +222,14 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
-            Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
+            Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "JNI access"));
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
-            requireNonNull(executables, "executable");
+            requireNonNull(executables, "executable", "JNI access");
             abortIfSealed();
             if (!queriedOnly) {
                 registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
@@ -244,7 +238,7 @@ public class JNIAccessFeature implements Feature {
 
         @Override
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
-            requireNonNull(fields, "field");
+            requireNonNull(fields, "field", "JNI access");
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
         }
@@ -347,7 +341,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
-        UserError.guarantee(!sealed,
+        UserError.guarantee(!runtimeSupport.isSealed(),
                         "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
                         declaringClass, name, descriptor);
 
@@ -539,9 +533,9 @@ public class JNIAccessFeature implements Feature {
     @Override
     @SuppressWarnings("unused")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        sealed = true;
+        runtimeSupport.sealed();
         if (wereElementsAdded()) {
-            abortIfSealed();
+            runtimeSupport.abortIfSealed();
         }
 
         int numClasses = 0;
@@ -757,15 +751,5 @@ public class JNIAccessFeature implements Feature {
              */
             return false;
         }
-    }
-
-    private static void requireNonNull(Object[] values, String kind) {
-        for (Object value : values) {
-            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
-        }
-    }
-
-    private static String nullErrorMessage(String kind) {
-        return "Cannot register null value as " + kind + " for JNI access. Please ensure that all values you register are not null.";
     }
 }

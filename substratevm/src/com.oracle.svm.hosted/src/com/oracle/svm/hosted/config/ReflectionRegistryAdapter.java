@@ -33,7 +33,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -46,11 +46,11 @@ import com.oracle.svm.util.TypeResult;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
-    private final RuntimeProxyCreationSupport proxyRegistry;
+    private final RuntimeProxyRegistrySupport proxyRegistry;
     private final RuntimeSerializationSupport<ConfigurationCondition> serializationSupport;
     private final RuntimeJNIAccessSupport jniSupport;
 
-    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, RuntimeProxyCreationSupport proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, RuntimeProxyRegistrySupport proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
                     RuntimeJNIAccessSupport jniSupport, ImageClassLoader classLoader) {
         super(reflectionSupport, classLoader);
         this.reflectionSupport = reflectionSupport;
@@ -63,7 +63,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     public void registerType(ConfigurationCondition condition, Class<?> type) {
         super.registerType(condition, type);
         if (Proxy.isProxyClass(type)) {
-            proxyRegistry.addProxyClass(condition, type.getInterfaces());
+            proxyRegistry.registerProxy(condition, type.getInterfaces());
         }
     }
 

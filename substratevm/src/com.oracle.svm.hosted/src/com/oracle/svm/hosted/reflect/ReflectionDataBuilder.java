@@ -124,8 +124,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final ClassForNameSupport classForNameSupport;
     private LayeredReflectionDataBuilder layeredReflectionDataBuilder;
 
-    private boolean sealed;
-
     // Reflection data
     private final Map<Class<?>, RecordComponent[]> registeredRecordComponents = new ConcurrentHashMap<>();
 
@@ -186,9 +184,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void runConditionalInAnalysisTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
-        if (sealed) {
-            throw new UnsupportedFeatureException("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
-        }
+        abortIfSealed();
         runConditionalTask(condition, task);
     }
 
@@ -202,7 +198,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
-        Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
+        Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
         runConditionalInAnalysisTask(condition, (cnd) -> {
             registerClass(cnd, clazz, unsafeInstantiated, true);
             if (FutureDefaultsOptions.completeReflectionTypes()) {
@@ -375,7 +371,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
-        requireNonNull(executables, "executable");
+        requireNonNull(executables, "executable", "reflection");
         runConditionalInAnalysisTask(condition, (cnd) -> registerMethods(cnd, queriedOnly, executables));
     }
 
@@ -554,7 +550,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
-        requireNonNull(fields, "field");
+        requireNonNull(fields, "field", "reflection");
         runConditionalInAnalysisTask(condition, (cnd) -> registerFields(cnd, false, fields));
     }
 
@@ -1174,7 +1170,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     protected void afterAnalysis() {
-        sealed = true;
+        sealed();
         processedTypes = null;
         if (!throwMissingRegistrationErrors()) {
             pendingRecordClasses = null;
@@ -1184,7 +1180,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableMap(innerClasses);
     }
 
@@ -1203,37 +1199,37 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableMap(registeredFields);
     }
 
     @Override
     public Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableMap(registeredMethods);
     }
 
     @Override
     public Object getAccessor(AnalysisMethod method) {
-        assert sealed;
+        assert isSealed();
         return methodAccessors.get(method);
     }
 
     @Override
     public Set<ResolvedJavaField> getHidingReflectionFields() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableSet(hidingFields);
     }
 
     @Override
     public Set<ResolvedJavaMethod> getHidingReflectionMethods() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableSet(hidingMethods);
     }
 
     @Override
     public RecordComponent[] getRecordComponents(Class<?> type) {
-        assert sealed;
+        assert isSealed();
         return registeredRecordComponents.get(type);
     }
 
@@ -1242,7 +1238,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         DynamicHub hub = (DynamicHub) object;
         Class<?> javaClass = hub.getHostedJavaClass();
         if (heapDynamicHubs.add(hub)) {
-            if (sealed) {
+            if (isSealed()) {
                 throw new UnsupportedFeatureException("Registering new class for reflection when the image heap is already sealed: " + javaClass);
             }
             if (!SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
@@ -1253,7 +1249,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Set<DynamicHub> getHeapDynamicHubs() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableSet(heapDynamicHubs);
     }
 
@@ -1261,7 +1257,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
         if (heapFields.put(analysisField, reflectField) == null) {
-            if (sealed) {
+            if (isSealed()) {
                 throw new UnsupportedFeatureException("Registering new field for reflection when the image heap is already sealed: " + reflectField);
             }
             if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
@@ -1286,7 +1282,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
-            if (sealed) {
+            if (isSealed()) {
                 throw new UnsupportedFeatureException("Registering new method for reflection when the image heap is already sealed: " + reflectExecutable);
             }
             if (!SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
@@ -1300,13 +1296,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisField, Field> getHeapReflectionFields() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableMap(heapFields);
     }
 
     @Override
     public Map<AnalysisMethod, Executable> getHeapReflectionExecutables() {
-        assert sealed;
+        assert isSealed();
         return Collections.unmodifiableMap(heapMethods);
     }
 
@@ -1353,21 +1349,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static final AnnotationValue[] NO_ANNOTATIONS = new AnnotationValue[0];
 
     public AnnotationValue[] getAnnotationData(AnnotatedElement element) {
-        assert sealed;
+        assert isSealed();
         return filteredAnnotations.getOrDefault(element, NO_ANNOTATIONS);
     }
 
     private static final AnnotationValue[][] NO_PARAMETER_ANNOTATIONS = new AnnotationValue[0][0];
 
     public AnnotationValue[][] getParameterAnnotationData(AnalysisMethod element) {
-        assert sealed;
+        assert isSealed();
         return filteredParameterAnnotations.getOrDefault(element, NO_PARAMETER_ANNOTATIONS);
     }
 
     private static final TypeAnnotationValue[] NO_TYPE_ANNOTATIONS = new TypeAnnotationValue[0];
 
     public TypeAnnotationValue[] getTypeAnnotationData(AnnotatedElement element) {
-        assert sealed;
+        assert isSealed();
         return filteredTypeAnnotations.getOrDefault(element, NO_TYPE_ANNOTATIONS);
     }
 
@@ -1389,16 +1385,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return conditionalElements.values().stream()
                         .map(Map::size)
                         .reduce(0, Integer::sum);
-    }
-
-    private static void requireNonNull(Object[] values, String kind) {
-        for (Object value : values) {
-            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
-        }
-    }
-
-    private static String nullErrorMessage(String kind) {
-        return "Cannot register null value as " + kind + " for reflection. Please ensure that all values you register are not null.";
     }
 
     public static class TestBackdoor {

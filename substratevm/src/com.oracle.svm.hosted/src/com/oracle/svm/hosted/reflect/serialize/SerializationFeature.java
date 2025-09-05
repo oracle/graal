@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
@@ -282,7 +282,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final Method disableSerialConstructorChecks;
     private final Method superHasAccessibleConstructor;
     private final Method packageEquals;
-    private boolean sealed;
     private final ProxyRegistry proxyRegistry;
     private List<Runnable> pendingConstructorRegistrations;
 
@@ -304,12 +303,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         ImageSingletons.add(SerializationSupport.class, serializationSupport);
     }
 
-    private void abortIfSealed() {
-        UserError.guarantee(!sealed, "Too late to add classes for serialization. Registration must happen in a Feature before the analysis has finished.");
-    }
-
     @Override
     public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        abortIfSealed();
+        Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
         registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
     }
 
@@ -365,7 +362,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
-
+        Objects.requireNonNull(lambdaCapturingClassName, () -> nullErrorMessage("lambda capturing class", "serialization"));
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
         if (lambdaCapturingClass == null || lambdaCapturingClass.isPrimitive() || lambdaCapturingClass.isArray()) {
             return;
@@ -386,6 +383,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+        abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
             Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
             register(cnd, proxyClass);
@@ -407,6 +405,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void register(ConfigurationCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
+        Objects.requireNonNull(serializationTargetClass, () -> nullErrorMessage("class", "serialization"));
         registerConditionalConfiguration(condition, (cnd) -> {
             /*
              * Register class for reflection as it is needed when the class-value itself is
@@ -566,7 +565,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     public void afterAnalysis() {
-        sealed = true;
+        sealed();
     }
 
     private static void registerForDeserialization(ConfigurationCondition cnd, Class<?> serializationTargetClass) {

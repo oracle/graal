@@ -46,7 +46,7 @@ import java.util.stream.StreamSupport;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.ConfigurationFile;
@@ -64,7 +64,7 @@ import jdk.graal.compiler.util.json.JsonParserException;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyCreationSupport proxyRegistry,
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyRegistrySupport proxyRegistry,
                     RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
         var additionalParserOptions = configurationKind == ConfigurationFile.JNI ? EnumSet.of(JNI_PARSER) : null;
         return ReflectionConfigurationParser.create(combinedFileSchema, conditionResolver, RegistryAdapter.create(registry, proxyRegistry, serializationSupport, jniSupport, imageClassLoader),
