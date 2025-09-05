@@ -865,6 +865,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return hostException;
     }
 
+    @Override
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception) {
+        return EngineAccessor.EXCEPTION.getEmbedderStackTrace(exception, engine);
+    }
+
     static final class EmbedderFileSystemContext {
 
         private final PolyglotImpl impl;
