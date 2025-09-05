@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package jdk.graal.compiler.core.common;
 
 import jdk.graal.compiler.debug.CompilationListener;
 import jdk.graal.compiler.debug.DebugContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -47,7 +46,7 @@ public class CompilationListenerProfiler implements CompilationListener {
 
     @Override
     public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
-        profiler.notifyCompilerInlingEvent(compileId, caller, callee, succeeded, message.toString(), bci);
+        profiler.notifyCompilerInliningEvent(compileId, caller, callee, succeeded, message.toString(), bci);
     }
 
     @Override
