@@ -564,20 +564,8 @@ final class PolyglotExceptionImpl {
     }
 
     static Iterator<Object> createStackFrameIterator(PolyglotExceptionImpl impl) {
-        APIAccess apiAccess = impl.polyglot.getAPIAccess();
-        StackTraceElement[] hostStack = null;
-        if (isHostException(impl.exception)) {
-            Throwable original = unboxHostException(impl.exception);
-            hostStack = original != null ? original.getStackTrace() : impl.exception.getStackTrace();
-        } else if (EngineAccessor.EXCEPTION.isException(impl.exception)) {
-            Throwable lazyStack = EngineAccessor.EXCEPTION.getLazyStackTrace(impl.exception);
-            if (lazyStack != null) {
-                hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(lazyStack, true);
-            }
-            return new FrameGuestObjectIterator(interop, apiAccess, impl, stackTrace);
-        } else {
-            return Collections.emptyIterator();
-        }
+        Object stackTrace = impl.polyglot.getRootImpl().getEmbedderExceptionStackTrace(impl.engine, impl.exception);
+        return new FrameGuestObjectIterator(impl.polyglot.getAPIAccess(), impl, stackTrace);
     }
 
     private static boolean isHostException(Throwable cause) {
@@ -602,8 +590,8 @@ final class PolyglotExceptionImpl {
         private int currentIndex;
         private Object next;
 
-        FrameGuestObjectIterator(InteropLibrary interop, APIAccess apiAccess, PolyglotExceptionImpl exception, Object stackTrace) {
-            this.interop = interop;
+        FrameGuestObjectIterator(APIAccess apiAccess, PolyglotExceptionImpl exception, Object stackTrace) {
+            this.interop = InteropLibrary.getUncached();
             this.apiAccess = apiAccess;
             this.exception = exception;
             this.stackTrace = stackTrace;

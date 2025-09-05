@@ -159,6 +159,7 @@ final class EngineAccessor extends Accessor {
     static final BytecodeSupport BYTECODE = ACCESSOR.bytecodeSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {

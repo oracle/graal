@@ -68,15 +68,12 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final String formattedSource;
     private final int bytecodeIndex;
 
-    private PolyglotExceptionFrame(PolyglotExceptionImpl source, Language language,
+    private PolyglotExceptionFrame(PolyglotExceptionImpl source, String languageId, Language language,
                     Object sourceLocation, String rootName, String executableName, String metaQualifiedName, boolean isHost, StackTraceElement stackTrace, int bytecodeIndex) {
         super(source.polyglot);
         this.polyglot = source.polyglot;
+        this.languageId = languageId;
         this.language = language;
-        /*
-         * Materialize the language id eagerly to make it available even after isolate close.
-         */
-        this.languageId = language != null ? language.getId() : null;
         this.sourceLocation = sourceLocation;
         this.bytecodeIndex = bytecodeIndex;
         this.rootName = rootName;
@@ -190,11 +187,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         String metaQualifiedName = null;
         String executableName = null;
         Object location = null;
+        String languageId = null;
         Language language = null;
         boolean host = false;
         int byteCodeIndex = -1;
         if (INTEROP.hasLanguageId(frame)) {
-            String languageId;
             try {
                 languageId = INTEROP.getLanguageId(frame);
             } catch (UnsupportedMessageException e) {
@@ -220,7 +217,10 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
                     host = INTEROP.asBoolean(INTEROP.readMember(frame, HOST));
                     if (host && exception.engine != null) {
                         PolyglotEngineImpl polyglotEngine = exception.engine;
-                        language = exception.engine.apiAccess.newLanguage(polyglotEngine.getImpl().languageDispatch, polyglotEngine.hostLanguage, polyglotEngine.getEngineAPI());
+                        Engine engineAPI = polyglotEngine.getEngineAPIOrNull();
+                        if (engineAPI != null) {
+                            language = exception.engine.apiAccess.newLanguage(polyglotEngine.getImpl().languageDispatch, polyglotEngine.hostLanguage, engineAPI);
+                        }
                     }
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
@@ -256,7 +256,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
         }
         String rootName = host && metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
-        return new PolyglotExceptionFrame(exception, language, location, rootName, executableName, metaQualifiedName, host, null, byteCodeIndex);
+        return new PolyglotExceptionFrame(exception, languageId, language, location, rootName, executableName, metaQualifiedName, host, null, byteCodeIndex);
     }
 
     private static String spaces(int length) {

@@ -1454,6 +1454,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().updateHostException(forException, hostException);
     }
 
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception) {
+        return getNext().getEmbedderExceptionStackTrace(engine, exception);
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
