@@ -739,7 +739,7 @@ public class ResourcesFeature implements InternalFeature {
                     } catch (ReflectiveOperationException e) {
                         throw VMError.shouldNotReachHere(e);
                     }
-                    b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
+                    b.add(ReachabilityCallbackNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
                     if (inferenceLog != null) {
                         inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
                     }

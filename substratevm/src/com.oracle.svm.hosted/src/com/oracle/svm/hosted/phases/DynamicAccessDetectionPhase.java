@@ -29,17 +29,19 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.CodeSource;
 
-import com.oracle.svm.hosted.DynamicAccessDetectionSupport;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
-import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
+import com.oracle.svm.hosted.DynamicAccessDetectionSupport;
+import com.oracle.svm.hosted.InlinedCalleeTrackingNode;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
 
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
@@ -49,10 +51,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * This phase detects usages of dynamic access calls that might require metadata in reached parts of
  * the project. It does so by analyzing the specified class path entries, modules or packages, and
  * identifying relevant accesses. The phase then outputs and serializes the detected usages to the
- * image-build output. It is an optional phase that happens before
- * {@link com.oracle.graal.pointsto.results.StrengthenGraphs} by using the
- * {@link com.oracle.svm.core.SubstrateOptions#TrackDynamicAccess} option and providing the desired
- * source entries.
+ * image-build output.
+ * <p>
+ * This phase is enabled by the {@link com.oracle.svm.core.SubstrateOptions#TrackDynamicAccess}
+ * option and runs before {@link com.oracle.graal.pointsto.results.StrengthenGraphs}, using the
+ * provided source entries.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
@@ -75,8 +78,21 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             ResolvedJavaMethod targetMethod = null;
             NodeSourcePosition invokeLocation = null;
             if (node instanceof MethodCallTargetNode callTarget) {
+                if (callTarget.invoke().predecessor() instanceof ReachabilityCallbackNode) {
+                    continue; // call requires no metadata, but can't be folded
+                }
                 targetMethod = callTarget.targetMethod();
                 invokeLocation = callTarget.getNodeSourcePosition();
+            } else if (node instanceof InlinedCalleeTrackingNode ictNode) {
+                if (ictNode.predecessor() instanceof ReachabilityCallbackNode) {
+                    continue; // call requires no metadata, but can't be folded
+                }
+                /*
+                 * The NodeSourcePosition of an InlinedCalleeTrackingNode preserves the original
+                 * inlined method (getMethod()) and its original caller (getCaller()).
+                 */
+                targetMethod = node.getNodeSourcePosition().getMethod();
+                invokeLocation = node.getNodeSourcePosition().getCaller();
             } else if (node instanceof DynamicNewInstanceNode unsafeNode && unsafeNode.getNodeSourcePosition() != null && unsafeNode.isOriginUnsafeAllocateInstance()) {
                 /*
                  * Match only DynamicNewInstanceNode intrinsified from Unsafe#allocateInstance. The
@@ -98,8 +114,12 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         }
     }
 
+    /**
+     * Registers a dynamic access call that requires metadata, if the target method is part of the
+     * predetermined set of dynamic access methods, and the invoke location is available.
+     */
     private void registerDynamicAccessCall(NodeSourcePosition invokeLocation, ResolvedJavaMethod targetMethod, String sourceEntry) {
-        if (invokeLocation != null && !dynamicAccessDetectionFeature.containsFoldEntry(invokeLocation.getBCI(), invokeLocation.getMethod())) {
+        if (invokeLocation != null) {
             DynamicAccessDetectionSupport.MethodInfo methodInfo = dynamicAccessDetectionSupport.lookupDynamicAccessMethod(targetMethod);
             if (methodInfo != null) {
                 String callLocation = invokeLocation.getMethod().asStackTraceElement(invokeLocation.getBCI()).toString();

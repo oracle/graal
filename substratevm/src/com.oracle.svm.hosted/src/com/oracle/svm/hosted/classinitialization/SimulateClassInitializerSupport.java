@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -572,6 +573,9 @@ public class SimulateClassInitializerSupport {
                     return;
                 }
             }
+        } else if (node instanceof AbstractAnalysisMetadataTrackingNode) {
+            /* This node should not affect image semantics as it gets removed after analysis. */
+            return;
         }
 
         clusterMember.notInitializedReasons.add(node);

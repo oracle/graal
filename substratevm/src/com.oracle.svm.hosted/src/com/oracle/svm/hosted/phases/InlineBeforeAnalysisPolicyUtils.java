@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
@@ -466,10 +466,10 @@ public class InlineBeforeAnalysisPolicyUtils {
                 return true;
             }
 
-            if (node instanceof ReachabilityRegistrationNode) {
+            if (node instanceof AbstractAnalysisMetadataTrackingNode) {
                 /*
-                 * These nodes do not affect compilation and are only used to execute handlers
-                 * depending on their reachability.
+                 * These nodes do not affect compilation and are only used to track inlined method
+                 * information or execute handlers depending on their reachability.
                  */
                 return true;
             }
