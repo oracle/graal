@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,21 +71,30 @@ import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -308,6 +317,149 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                 }
             });
             env.registerService(sessionNodeRef);
+        }
+    }
+
+    @Test
+    public void testSuspendHereFromLanguage() {
+        String text = "suspendHereSource";
+        Source source = Source.create(ProxyLanguage.ID, text);
+        try (DebuggerSession session = startSession()) {
+            ProxyLanguage.setDelegate(new SuspendDebuggerFromLanguage(session, false));
+
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(text, event.getSourceSection().getCharacters().toString());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSuspendHereFromLanguageInternalSource() {
+        String text = "suspendHereSource";
+        Source source = Source.newBuilder(ProxyLanguage.ID, text, "name").internal(true).buildLiteral();
+        try (DebuggerSession session = startSession()) {
+            ProxyLanguage.setDelegate(new SuspendDebuggerFromLanguage(session, false));
+
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(text, event.getSourceSection().getCharacters().toString());
+                Assert.assertTrue(event.getSourceSection().getSource().isInternal());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSuspendHereFromLanguageInternalRoot() {
+        String text = "suspendHereSource";
+        Source source = Source.newBuilder(ProxyLanguage.ID, text, "name").buildLiteral();
+        try (DebuggerSession session = startSession()) {
+            ProxyLanguage.setDelegate(new SuspendDebuggerFromLanguage(session, true));
+
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(text, event.getSourceSection().getCharacters().toString());
+                Assert.assertFalse(event.getSourceSection().getSource().isInternal());
+                Assert.assertTrue(Truffle.getRuntime().iterateFrames((frameInstance) -> {
+                    RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                    return root.isInternal();
+                }));
+            });
+            expectDone();
+        }
+    }
+
+    public static class SuspendDebuggerFromLanguage extends ProxyLanguage {
+
+        private final DebuggerSession session;
+        private final boolean forceRootInternal;
+
+        SuspendDebuggerFromLanguage(DebuggerSession session, boolean forceRootInternal) {
+            this.session = session;
+            this.forceRootInternal = forceRootInternal;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new SuspendDebuggerRoot(languageInstance, session, request.getSource(), forceRootInternal).getCallTarget();
+        }
+
+        static class SuspendDebuggerRoot extends RootNode {
+
+            private final DebuggerSession session;
+            private final boolean forceRootInternal;
+            @Node.Child private SuspendDebugNode statement;
+
+            SuspendDebuggerRoot(TruffleLanguage<?> language, DebuggerSession session, com.oracle.truffle.api.source.Source source, boolean forceRootInternal) {
+                super(language, createFrameDescriptor());
+                this.session = session;
+                this.forceRootInternal = forceRootInternal;
+                this.statement = new SuspendDebugNode(source.createSection(1));
+            }
+
+            private static FrameDescriptor createFrameDescriptor() {
+                FrameDescriptor.Builder fdb = FrameDescriptor.newBuilder();
+                fdb.addSlot(FrameSlotKind.Object, "session", null);
+                return fdb.build();
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setObject(0, session);
+                return statement.execute(frame);
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return statement.getSourceSection();
+            }
+
+            @Override
+            public boolean isInternal() {
+                if (!forceRootInternal) {
+                    return super.isInternal();
+                } else {
+                    return true;
+                }
+            }
+
+        }
+
+        static class SuspendDebugNode extends Node implements InstrumentableNode {
+
+            private final SourceSection section;
+
+            SuspendDebugNode(SourceSection section) {
+                this.section = section;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return section;
+            }
+
+            public Object execute(VirtualFrame frame) {
+                DebuggerSession session = (DebuggerSession) frame.getObject(0);
+                suspendHere(session);
+                return 1;
+            }
+
+            @TruffleBoundary
+            private void suspendHere(DebuggerSession session) {
+                session.suspendHere(this);
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                throw new UnsupportedOperationException();
+            }
         }
     }
 
