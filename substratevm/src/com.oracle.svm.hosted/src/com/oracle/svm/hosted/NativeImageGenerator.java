@@ -1110,7 +1110,10 @@ public class NativeImageGenerator {
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
 
-                loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().registerBaseLayerTypes(bb, originalMetaAccess, loader.classLoaderSupport);
+                }
+
                 if (loader.classLoaderSupport.isPreserveMode()) {
                     PreserveOptionsSupport.registerPreservedClasses(bb, originalMetaAccess, loader.classLoaderSupport);
                 }
@@ -1244,71 +1247,8 @@ public class NativeImageGenerator {
             HostedImageLayerBuildingSupport.singleton().getLoader().relinkNonTransformedStaticFinalFieldValues();
         }
 
-        /*
-         * System classes and fields are necessary to tell the static analysis that certain things
-         * really "exist". The most common reason for that is that there are no instances and
-         * allocations of these classes seen during the static analysis. The heap chunks are one
-         * good example.
-         */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
-            bb.addRootField(DynamicHub.class, "vtable");
-            bb.addRootClass(String.class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
-            bb.addRootField(String.class, "value").registerAsInstantiated("root class");
-            bb.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated("root class");
-            bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated("root class");
-
-            /* MethodRef can conceal use of MethodPointer and MethodOffset until after analysis. */
-            bb.addRootClass(MethodPointer.class, false, true);
-            if (SubstrateOptions.useRelativeCodePointers()) {
-                bb.addRootClass(MethodOffset.class, false, true);
-            }
-
-            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
-                            "Runtime support, registered in " + NativeImageGenerator.class);
-            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
-
-            for (JavaKind kind : JavaKind.values()) {
-                if (kind.isPrimitive() && kind != JavaKind.Void) {
-                    bb.addRootClass(kind.toJavaClass(), false, true);
-                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInstantiated("root class");
-                    bb.addRootField(kind.toBoxedJavaClass(), "value");
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
-                    /*
-                     * Register the cache location as reachable.
-                     * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
-                     */
-                    Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
-                    if (innerClasses != null && innerClasses.length > 0) {
-                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
-                    }
-                }
-            }
-            /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
-            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
-            /*
-             * SubstrateAllocationProfilingData is not actually present in the image since it is
-             * only allocated at build time, is passed to snippets as a @ConstantParameter, and it
-             * only contains final fields that are constant-folded. However, since the profiling
-             * object is only allocated during lowering it is processed by the shadow heap after
-             * analysis, so its type needs to be already marked reachable at this point.
-             */
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable("root class");
-            /*
-             * Similarly to above, StackSlotIdentity only gets reachable during lowering, through
-             * build time allocated constants. It doesn't actually end up in the image heap since
-             * all its fields are final and are constant-folded, but the type becomes reachable,
-             * through the shadow heap processing, after analysis.
-             */
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable("root class");
+            registerRootElements(bb);
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
@@ -1316,6 +1256,75 @@ public class NativeImageGenerator {
 
             performSnippetGraphAnalysis(bb, aReplacements, options, Function.identity());
         }
+    }
+
+    /**
+     * System classes and fields are necessary to tell the static analysis that certain things
+     * really "exist". The most common reason for that is that there are no instances and
+     * allocations of these classes seen during the static analysis. The heap chunks are one good
+     * example.
+     */
+    private static void registerRootElements(Inflation bb) {
+        String rootClassReason = "system class included unconditionally";
+        String rootMethodReason = "system method included unconditionally";
+        bb.addRootClass(Object.class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootField(DynamicHub.class, "vtable");
+        bb.addRootClass(String.class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(String[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootField(String.class, "value").registerAsInstantiated(rootClassReason);
+        bb.addRootClass(long[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(byte[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(byte[][].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(Object[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated(rootClassReason);
+
+        /* MethodRef can conceal use of MethodPointer and MethodOffset until after analysis. */
+        bb.addRootClass(MethodPointer.class, false, true);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            bb.addRootClass(MethodOffset.class, false, true);
+        }
+
+        bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy",
+                        Object.class, int.class, Object.class, int.class, int.class), true, rootMethodReason);
+        bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootMethodReason);
+
+        for (JavaKind kind : JavaKind.values()) {
+            if (kind.isPrimitive() && kind != JavaKind.Void) {
+                bb.addRootClass(kind.toJavaClass(), false, true);
+                bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInstantiated(rootClassReason);
+                bb.addRootField(kind.toBoxedJavaClass(), "value");
+                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, rootMethodReason);
+                bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, rootMethodReason);
+                /*
+                 * Register the cache location as reachable.
+                 * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
+                 */
+                Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+                if (innerClasses != null && innerClasses.length > 0) {
+                    bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of " + rootClassReason);
+                }
+            }
+        }
+        /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
+        bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable(rootClassReason);
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable(rootClassReason);
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable(rootClassReason);
+        /*
+         * SubstrateAllocationProfilingData is not actually present in the image since it is only
+         * allocated at build time, is passed to snippets as a @ConstantParameter, and it only
+         * contains final fields that are constant-folded. However, since the profiling object is
+         * only allocated during lowering it is processed by the shadow heap after analysis, so its
+         * type needs to be already marked reachable at this point.
+         */
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable(rootClassReason);
+        /*
+         * Similarly to above, StackSlotIdentity only gets reachable during lowering, through build
+         * time allocated constants. It doesn't actually end up in the image heap since all its
+         * fields are final and are constant-folded, but the type becomes reachable, through the
+         * shadow heap processing, after analysis.
+         */
+        bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable(rootClassReason);
     }
 
     public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options, Function<Object, Object> objectTransformer) {
