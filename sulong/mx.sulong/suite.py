@@ -2,7 +2,7 @@ suite = {
   "mxversion": "7.48.0",
   "name" : "sulong",
   "version" : "25.0.0",
-  "release" : False,
+  "release" : True,
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
   "url": "http://www.graalvm.org/",
