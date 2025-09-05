@@ -81,6 +81,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
+import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -132,6 +133,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.DynamicAccessMarkingPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
@@ -241,6 +243,9 @@ public class SVMHost extends HostVM {
 
     private final ConstantExpressionRegistry constantExpressionRegistry;
 
+    private final boolean trackDynamicAccess;
+    private DynamicAccessDetectionSupport dynamicAccessDetectionSupport = null;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
                     MissingRegistrationSupport missingRegistrationSupport) {
@@ -282,6 +287,8 @@ public class SVMHost extends HostVM {
         verifyNamingConventions = SubstrateOptions.VerifyNamingConventions.getValue();
 
         constantExpressionRegistry = StrictDynamicAccessInferenceFeature.isActive() ? ConstantExpressionRegistry.singleton() : null;
+
+        trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
     }
 
     /**
@@ -774,6 +781,15 @@ public class SVMHost extends HostVM {
                 analysisTrivialMethods.put(method, true);
             }
 
+            if (trackDynamicAccess) {
+                if (dynamicAccessDetectionSupport == null) {
+                    dynamicAccessDetectionSupport = DynamicAccessDetectionSupport.instance();
+                }
+                if (dynamicAccessDetectionSupport.lookupDynamicAccessMethod(graph.method()) != null) {
+                    new DynamicAccessMarkingPhase().apply(graph, bb.getProviders(method));
+                }
+            }
+
             super.methodAfterParsingHook(bb, method, graph);
         }
     }
@@ -833,7 +849,7 @@ public class SVMHost extends HostVM {
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
-            } else if (n instanceof ReachabilityRegistrationNode node) {
+            } else if (n instanceof ReachabilityCallbackNode node) {
                 bb.postTask(_ -> node.getRegistrationTask().ensureDone());
             }
         }

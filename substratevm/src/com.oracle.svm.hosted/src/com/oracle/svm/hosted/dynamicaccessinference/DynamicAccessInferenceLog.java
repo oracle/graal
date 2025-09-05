@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.util.json.JsonBuilder;
@@ -88,7 +88,7 @@ public final class DynamicAccessInferenceLog {
              * invocations that were potentially folded during the exploration phase of
              * InlineBeforeAnalysis (but not in the final graph).
              */
-            b.add(ReachabilityRegistrationNode.create(() -> entries.add(entry), reason));
+            b.add(ReachabilityCallbackNode.create(() -> entries.add(entry), reason));
         }
     }
 

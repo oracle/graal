@@ -214,6 +214,11 @@ public class DynamicAccessDetectionSupport {
                         new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
                         new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
                         new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
+        Class<?> abstractLinkerClass = ReflectionUtil.lookupClass("jdk.internal.foreign.abi.AbstractLinker");
+        put(foreignMethods, abstractLinkerClass, Set.of(
+                        new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
     }
 
     private void put(EconomicMap<ResolvedJavaType, Set<ResolvedJavaMethod>> map, Class<?> declaringClass, Set<MethodSignature> methodSignatures) {

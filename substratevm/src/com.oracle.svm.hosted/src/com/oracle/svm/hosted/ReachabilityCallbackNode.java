@@ -25,20 +25,14 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.graal.pointsto.util.AnalysisFuture;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * Allows a custom callback to be executed when this node is reachable.
@@ -66,30 +60,22 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
  * </ol>
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class ReachabilityRegistrationNode extends FixedWithNextNode implements Canonicalizable {
-    public static final NodeClass<ReachabilityRegistrationNode> TYPE = NodeClass.create(ReachabilityRegistrationNode.class);
+public final class ReachabilityCallbackNode extends AbstractAnalysisMetadataTrackingNode {
+    public static final NodeClass<ReachabilityCallbackNode> TYPE = NodeClass.create(ReachabilityCallbackNode.class);
 
     private final AnalysisFuture<Void> registrationTask;
 
-    protected ReachabilityRegistrationNode(Runnable registrationHandler) {
-        super(TYPE, StampFactory.forVoid());
+    protected ReachabilityCallbackNode(Runnable registrationHandler) {
+        super(TYPE);
         this.registrationTask = new AnalysisFuture<>(registrationHandler, null);
     }
 
-    public static ReachabilityRegistrationNode create(Runnable registrationHandler, ParsingReason reason) {
+    public static ReachabilityCallbackNode create(Runnable registrationHandler, ParsingReason reason) {
         VMError.guarantee(reason.duringAnalysis() && reason != ParsingReason.JITCompilation);
-        return new ReachabilityRegistrationNode(registrationHandler);
+        return new ReachabilityCallbackNode(registrationHandler);
     }
 
     public AnalysisFuture<Void> getRegistrationTask() {
         return registrationTask;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (BuildPhaseProvider.isAnalysisFinished()) {
-            return null;
-        }
-        return this;
     }
 }
