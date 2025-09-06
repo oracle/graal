@@ -86,6 +86,10 @@ public class SimdBlendWithLogicMaskNode extends TernaryNode implements VectorLIR
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY, ValueNode forZ) {
+        if (forX == forY) {
+            return forX;
+        }
+
         ValueNode mask = forZ;
         Stamp toStamp = mask.stamp(NodeView.DEFAULT);
         while (mask instanceof ReinterpretNode simdMask && SimdStamp.isOpmask(simdMask.stamp(NodeView.DEFAULT))) {

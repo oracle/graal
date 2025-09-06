@@ -510,4 +510,14 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         getLIRGen().append(AMD64VectorShuffle.PermuteOp.create(getAMD64LIRGen(), result, asAllocatable(source), asAllocatable(indices), getSimdEncoding()));
         return result;
     }
+
+    /**
+     * Do a slice operation, see
+     * {@code jdk.incubator.vector.Vector<E>::slice(int, jdk.incubator.vector.Vector<E>)}.
+     */
+    public Value emitVectorSlice(LIRKind resultKind, Value src1, Value src2, int origin) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AMD64VectorShuffle.SliceOp(getAMD64LIRGen(), result, asAllocatable(src1), asAllocatable(src2), origin, getSimdEncoding()));
+        return result;
+    }
 }
