@@ -89,6 +89,10 @@ public class SimdBlendWithConstantMaskNode extends BinaryNode implements VectorL
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode falseValues, ValueNode trueValues) {
+        if (falseValues == trueValues) {
+            return falseValues;
+        }
+
         boolean allSecond = true;
         boolean allFirst = true;
         for (int i = 0; (allSecond || allFirst) && i < selector.length; ++i) {
