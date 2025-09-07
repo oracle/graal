@@ -52,6 +52,11 @@ public interface TimerKey extends MetricKey {
     long getCurrentValue(DebugContext debug);
 
     /**
+     * Adds {@code value} to this timer.
+     */
+    void add(DebugContext debug, long value, TimeUnit units);
+
+    /**
      * Gets the time unit of this timer.
      */
     TimeUnit getTimeUnit();
