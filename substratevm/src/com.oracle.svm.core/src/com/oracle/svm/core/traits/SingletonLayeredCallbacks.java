@@ -70,7 +70,16 @@ public abstract class SingletonLayeredCallbacks {
      * determine how to instantiate the singleton in the next layer.
      */
     public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
-        throw VMError.shouldNotReachHere("getSingletonInstantiator is not implemented. This method must only be implemented if doPersist returns PersistFlag.CREATE");
+        throw VMError.shouldNotReachHere("getSingletonInstantiator is not implemented. This method must be implemented if doPersist returns PersistFlag.CREATE");
+    }
+
+    /**
+     * See description in {@link PersistFlags#CALLBACK_ON_REGISTRATION} for more details. Note this
+     * method will be called at most once for each registered singleton object.
+     */
+    @SuppressWarnings("unused")
+    public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
+        throw VMError.shouldNotReachHere("onSingletonRegistration is not implemented. This method must be implemented if doPersist returns PersistFlag.CALLBACK_ON_REGISTRATION");
     }
 
 }

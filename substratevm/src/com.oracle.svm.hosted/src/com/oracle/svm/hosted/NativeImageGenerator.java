@@ -757,7 +757,7 @@ public class NativeImageGenerator {
             }
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    ImageSingletonsSupportImpl.HostedManagement.persist();
+                    ImageSingletonsSupportImpl.HostedManagement.persistSingletonInfo();
                     HostedImageLayerBuildingSupport.singleton().archiveLayer();
                 }
             }

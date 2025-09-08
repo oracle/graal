@@ -25,14 +25,18 @@
 package com.oracle.svm.hosted;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -355,7 +359,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             singletonDuringImageBuild = null;
         }
 
-        public static void persist() {
+        public static void persistSingletonInfo() {
             var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue().traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).isPresent())
                             .sorted(Comparator.comparing(e -> e.getKey().getName()))
                             .toList();
@@ -364,12 +368,21 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
         private final Map<Class<?>, SingletonInfo> configObjects;
         private final Map<Object, SingletonTraitMap> singletonToTraitMap;
+        /**
+         * Tracks the status of singletons for which a registration callback needs to be executed
+         * upon installation. The key will always be the singleton object, and the value will be
+         * either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
+         * still in progress or has completed.
+         */
+        private final Map<Object, Object> singletonRegistrationCallbackStatus;
 
         private final EnumSet<SingletonLayeredInstallationKind.InstallationKind> forbiddenInstallationKinds;
         private Set<Class<?>> multiLayeredImageSingletonKeys;
         private final boolean layeredBuild;
+        private final boolean extensionLayerBuild;
         private final AnnotationExtractor extractor;
         private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
+        private final SVMImageLayerSingletonLoader singletonLoader;
 
         public HostedManagement() {
             this(null, null);
@@ -382,7 +395,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
+                this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
                 this.singletonTraitInjector = support.getSingletonTraitInjector();
+                this.singletonLoader = support.getSingletonLoader();
+                this.singletonRegistrationCallbackStatus = extensionLayerBuild ? new ConcurrentIdentityHashMap<>() : null;
                 if (support.buildingImageLayer) {
                     if (!support.buildingApplicationLayer) {
                         forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.InstallationKind.APP_LAYER_ONLY);
@@ -393,7 +409,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
             } else {
                 this.layeredBuild = false;
+                this.extensionLayerBuild = false;
                 this.singletonTraitInjector = null;
+                this.singletonLoader = null;
+                this.singletonRegistrationCallbackStatus = null;
             }
             this.extractor = extractor;
         }
@@ -484,9 +503,68 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
             });
 
+            /* Run onSingletonRegistration hook if needed. */
+            if (extensionLayerBuild) {
+                if (singletonLoader.hasRegistrationCallback(key)) {
+                    synchronizeRegistrationCallbackExecution(value, () -> {
+                        var trait = traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get();
+                        var callbacks = ((SingletonLayeredCallbacks) trait.metadata());
+                        callbacks.onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), value);
+                    });
+                }
+            }
+
             Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
             if (prevValue != null) {
                 throw UserError.abort("ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
+            }
+        }
+
+        /**
+         * Ensures the provided registrationCallback will execute only once per a singleton.
+         * Regardless of which thread executes the registrationCallback, this method will not return
+         * until the registrationCallback has been executed.
+         */
+        private void synchronizeRegistrationCallbackExecution(Object singleton, Runnable registrationCallback) {
+            while (true) {
+                var status = singletonRegistrationCallbackStatus.get(singleton);
+                if (status == null) {
+                    // create a lock for other threads to wait on
+                    ReentrantLock lock = new ReentrantLock();
+                    lock.lock();
+                    try {
+                        status = singletonRegistrationCallbackStatus.computeIfAbsent(singleton, _ -> lock);
+                        if (status != lock) {
+                            // failed to install lock. Repeat loop.
+                            continue;
+                        }
+
+                        // Run registrationCallback
+                        registrationCallback.run();
+
+                        // the registrationCallback has finished - update its status
+                        var prev = singletonRegistrationCallbackStatus.put(singleton, Boolean.TRUE);
+                        VMError.guarantee(prev == lock);
+                    } finally {
+                        lock.unlock();
+                    }
+                } else if (status instanceof Lock lock) {
+                    lock.lock();
+                    try {
+                        /*
+                         * Once the lock can be acquired we know the registrationCallback has been
+                         * completed and we can proceed.
+                         */
+                        assert singletonRegistrationCallbackStatus.get(singleton) == Boolean.TRUE;
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    // the registrationCallback has already completed
+                    assert status == Boolean.TRUE;
+                }
+                /* At this point the registrationCallback has executed so it is safe to proceed. */
+                break;
             }
         }
 
@@ -499,7 +577,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
-            return configObjects.values().stream().filter(singletonInfo -> {
+            return Collections.unmodifiableSet(configObjects.values().stream().filter(singletonInfo -> {
                 /*
                  * We must filter out forbidden objects, as they are not actually installed in this
                  * image.
@@ -511,7 +589,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     }
                 }
                 return false;
-            }).map(SingletonInfo::singleton).collect(Collectors.toUnmodifiableSet());
+            }).map(SingletonInfo::singleton).collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>()))));
         }
 
         void forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind kind) {
