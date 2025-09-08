@@ -166,6 +166,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     public static final String SYMBOL_NODE = "$node";
     public static final String SYMBOL_THIS = "this";
     public static final String SYMBOL_NULL = "null";
+    public static final String SYMBOL_FRAME = "$frame";
 
     private enum ParseMode {
         DEFAULT,
@@ -519,6 +520,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         globalMembers.addAll(members);
         globalMembers.add(new CodeVariableElement(types.Node, SYMBOL_THIS));
         globalMembers.add(new CodeVariableElement(types.Node, SYMBOL_NODE));
+        globalMembers.add(getFrameVariable(node));
         TypeElement accessingType = node.getTemplateType();
 
         if (mode == ParseMode.OPERATION) {
@@ -534,6 +536,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
             accessingType = bytecodeRootNodeType;
         }
         return new DSLExpressionResolver(context, accessingType, globalMembers);
+    }
+
+    private CodeVariableElement getFrameVariable(NodeData node) {
+        if (ElementUtils.isAssignable(node.getFrameType(), types.Frame)) {
+            // Use the precise frame type so that accesses are casted when appropriate.
+            return new CodeVariableElement(node.getFrameType(), SYMBOL_FRAME);
+        } else {
+            /*
+             * We want to give a useful error when the user binds an unavailable frame (instead of
+             * reporting "$frame cannot be resolved"). Provide a dummy binding here and later detect
+             * if the user binds an unavailable frame.
+             */
+            return new CodeVariableElement(types.Frame, SYMBOL_FRAME);
+        }
     }
 
     private static final class NodeSizeEstimate {
@@ -3453,6 +3469,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (!cache.hasErrors() && !warnForThisVariable(cache, cache.getDefaultExpression())) {
                 warnForThisVariable(cache, cache.getUncachedExpression());
             }
+            checkFrameVariable(cache, cache.getDefaultExpression(), specialization);
+            checkFrameVariable(cache, cache.getUncachedExpression(), specialization);
         }
         specialization.setCaches(caches);
 
@@ -3497,6 +3515,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return false;
     }
 
+    private void checkFrameVariable(CacheExpression cache, DSLExpression expression, SpecializationData specialization) {
+        if (cache.hasErrors() || expression == null || !expression.isSymbolBoundBound(types.Frame, NodeParser.SYMBOL_FRAME)) {
+            return;
+        }
+        if (specialization.getNode().supportsFrame()) {
+            cache.setRequiresFrame(true);
+        } else {
+            cache.addError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.");
+        }
+    }
+
     private String resolveDefaultSymbol(TypeMirror type) {
         TypeElement typeElement = ElementUtils.castTypeElement(type);
         if (typeElement != null) {
@@ -3507,6 +3536,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 return BytecodeDSLParser.SYMBOL_ROOT_NODE;
             } else if (ElementUtils.isAssignable(type, types.Node)) {
                 return NodeParser.SYMBOL_NODE;
+            } else if (ElementUtils.isAssignable(type, types.Frame)) {
+                if (ElementUtils.typeEquals(type, types.MaterializedFrame)) {
+                    return NodeParser.SYMBOL_FRAME + ".materialize()";
+                }
+                return NodeParser.SYMBOL_FRAME;
             }
         }
         return null;
@@ -4365,6 +4399,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (resolvedExpression != null) {
             if (targetType == null || isAssignable(resolvedExpression.getResolvedType(), targetType)) {
                 return resolvedExpression;
+            } else if (typeEquals(types.VirtualFrame, targetType) && typeEquals(types.Frame, resolvedExpression.getResolvedType())) {
+                // Special case: narrow a Frame to VirtualFrame.
+                return new Cast(resolvedExpression, types.VirtualFrame);
             } else {
                 msg.addError("Incompatible return type %s. The expression type must be equal to the parameter type %s.", getSimpleName(resolvedExpression.getResolvedType()),
                                 getSimpleName(targetType));
