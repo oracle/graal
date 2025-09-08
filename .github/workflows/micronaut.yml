@@ -52,3 +52,6 @@ on:
 jobs:
   call-template:
     uses: './.github/workflows/micronaut-template.yml'
+  with:
+      NATIVE_IMAGE_OPTIONS: '--future-defaults=all'
+

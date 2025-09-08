@@ -50,6 +50,7 @@ on:
 env:
   SPRING_PETCLINIC_PATH: ${{ github.workspace }}/spring-petclinic
   SPRING_JAVA_VERSION: 21
+  NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
 permissions:
   contents: read # to fetch code (actions/checkout)
