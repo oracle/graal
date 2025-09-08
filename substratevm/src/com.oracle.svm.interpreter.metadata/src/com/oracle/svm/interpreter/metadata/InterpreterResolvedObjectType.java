@@ -26,9 +26,6 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -153,8 +150,8 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     public static CremaResolvedObjectType createForCrema(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass, boolean isWordType) {
-        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, isWordType);
+                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass) {
+        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, false);
     }
 
     @VisibleForSerialization
@@ -298,49 +295,17 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        ArrayList<InterpreterResolvedJavaField> fields = new ArrayList<>();
-        if (!includeSuperclasses) {
-            addDeclaredFields(fields, false);
-            return fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY);
-        }
-        InterpreterResolvedObjectType current = this;
-        while (current != null) {
-            current.addDeclaredFields(fields, false);
-            current = current.getSuperclass();
-        }
-        return fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY);
+        throw VMError.unimplemented("getInstanceFields: Likely not used until JIT added to runtime loaded classes.");
     }
 
     @Override
     public InterpreterResolvedJavaField[] getStaticFields() {
-        ArrayList<InterpreterResolvedJavaField> fields = new ArrayList<>();
-        addDeclaredFields(fields, true);
-        return fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY);
-    }
-
-    private void addDeclaredFields(List<InterpreterResolvedJavaField> collector, boolean statics) {
-        for (InterpreterResolvedJavaField f : declaredFields) {
-            if (f.isStatic() == statics) {
-                collector.add(f);
-            }
-        }
+        throw VMError.unimplemented("getStaticFields: Likely not used until JIT added to runtime loaded classes.");
     }
 
     @Override
     public InterpreterResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        InterpreterResolvedObjectType current = this;
-        while (current != null) {
-            for (InterpreterResolvedJavaField f : declaredFields) {
-                if (!f.isStatic() && (f.getOffset() == offset)) {
-                    if (f.getJavaKind() != expectedKind) {
-                        return null;
-                    }
-                    return f;
-                }
-            }
-            current = current.getSuperclass();
-        }
-        return null;
+        throw VMError.unimplemented("findInstanceFieldWithOffset: Likely not used until JIT added to runtime loaded classes.");
     }
 
     @Override

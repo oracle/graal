@@ -169,17 +169,20 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static InterpreterResolvedJavaField createResolvedJavaField(ResolvedJavaField resolvedJavaField) {
-        ResolvedJavaField originalField = resolvedJavaField;
+    public static InterpreterResolvedJavaField createResolvedJavaField(AnalysisField analysisField) {
         BuildTimeInterpreterUniverse universe = BuildTimeInterpreterUniverse.singleton();
-        String name = universe.dedup(resolvedJavaField.getName());
-        int modifiers = resolvedJavaField.getModifiers();
-        JavaType fieldType = originalField.getType();
+        InterpreterResolvedObjectType declaringClass = universe.referenceType(analysisField.getDeclaringClass());
+        return InterpreterResolvedJavaField.createAtBuildTime(analysisField, declaringClass);
+    }
 
-        InterpreterResolvedJavaType type = universe.getOrCreateType((ResolvedJavaType) fieldType);
-        InterpreterResolvedObjectType declaringClass = universe.referenceType(originalField.getDeclaringClass());
-
-        return InterpreterResolvedJavaField.create(originalField, name, modifiers, type, declaringClass, 0, null);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initializeJavaFieldFromHosted(HostedField hostedField, InterpreterResolvedJavaField resolvedJavaField) {
+        resolvedJavaField.setOffset(hostedField.getOffset());
+        InterpreterResolvedJavaType fType = getType(hostedField.getType().getWrapped());
+        if (fType != null) {
+            // If the resolvedType is included, we can prepare it for the interpreter field.
+            resolvedJavaField.setResolvedType(fType);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -333,7 +336,7 @@ public final class BuildTimeInterpreterUniverse {
                 } else if (constant.getJavaKind() == JavaKind.Illegal) {
                     // Materialized field without location e.g. DynamicHub#vtable.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(JavaConstant.ILLEGAL));
-                } else if (thiz.getResolvedType().isWordType()) {
+                } else if (thiz.isWordStorage()) {
                     // Can be a WordType with a primitive constant value.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(constant));
                 } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
@@ -348,7 +351,7 @@ public final class BuildTimeInterpreterUniverse {
                 throw VMError.shouldNotReachHere("Invalid field kind: " + thiz.getJavaKind());
         }
         if (!thiz.isUndefined()) {
-            if (thiz.getResolvedType().isWordType()) {
+            if (thiz.isWordStorage()) {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == InterpreterToVM.wordJavaKind());
             } else {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == thiz.getJavaKind());
@@ -509,22 +512,21 @@ public final class BuildTimeInterpreterUniverse {
         return fields.get(wrapped);
     }
 
-    public InterpreterResolvedJavaField getOrCreateField(ResolvedJavaField resolvedJavaField) {
-        assert resolvedJavaField instanceof AnalysisField;
-        InterpreterResolvedJavaField result = fields.get(resolvedJavaField);
+    public InterpreterResolvedJavaField getOrCreateField(AnalysisField analysisField) {
+        InterpreterResolvedJavaField result = fields.get(analysisField);
 
         if (result != null) {
             return result;
         }
 
-        result = createResolvedJavaField(resolvedJavaField);
+        result = createResolvedJavaField(analysisField);
 
-        InterpreterResolvedJavaField previous = fields.putIfAbsent(resolvedJavaField, result);
+        InterpreterResolvedJavaField previous = fields.putIfAbsent(analysisField, result);
         if (previous != null) {
             return previous;
         }
 
-        InterpreterUtil.log("[universe] Adding field '%s'", resolvedJavaField);
+        InterpreterUtil.log("[universe] Adding field '%s'", analysisField);
         return result;
     }
 
@@ -739,10 +741,10 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     static boolean isReachable(InterpreterResolvedJavaField field) {
-        AnalysisField originalField = (AnalysisField) field.getOriginalField();
+        AnalysisField originalField = field.getOriginalField();
         // Artificial reachability ensures that the interpreter keeps the field metadata around,
         // but reachability still depends on the reachability of the declaring class and field type.
-        return field.isArtificiallyReachable() || (originalField.isReachable() && originalField.getDeclaringClass().isReachable());
+        return field.isArtificiallyReachable() || (originalField.isReachable() && originalField.getDeclaringClass().isReachable() && originalField.getType().isReachable());
     }
 
     static boolean isReachable(InterpreterResolvedJavaMethod method) {
@@ -799,9 +801,9 @@ public final class BuildTimeInterpreterUniverse {
         }
         Iterator<Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField>> iteratorFields = fields.entrySet().iterator();
         while (iteratorFields.hasNext()) {
-            Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField> next = iteratorFields.next();
-            if (!isReachable(next.getValue()) || !isReachable(next.getValue().getDeclaringClass()) || !isReachable(next.getValue().getResolvedType())) {
-                InterpreterUtil.log("[purge] remove field '%s'", next.getValue());
+            InterpreterResolvedJavaField next = iteratorFields.next().getValue();
+            if (!isReachable(next)) {
+                InterpreterUtil.log("[purge] remove field '%s'", next);
                 iteratorFields.remove();
             }
         }

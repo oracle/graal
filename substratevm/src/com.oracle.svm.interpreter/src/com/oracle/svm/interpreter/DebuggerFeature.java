@@ -458,7 +458,7 @@ public class DebuggerFeature implements InternalFeature {
                         if (staticField.isStatic() && staticField.isSynthetic() && staticField.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
                             Class<?> declaringClass = aType.getJavaClass();
                             boolean value = !RuntimeAssertionsSupport.singleton().desiredAssertionStatus(declaringClass);
-                            InterpreterResolvedJavaField field = iUniverse.getOrCreateField(staticField);
+                            InterpreterResolvedJavaField field = iUniverse.getOrCreateField(analysisStaticField);
                             JavaConstant javaConstant = iUniverse.constant(JavaConstant.forBoolean(value));
                             BuildTimeInterpreterUniverse.setUnmaterializedConstantValue(field, javaConstant);
                             field.markAsArtificiallyReachable();
@@ -602,7 +602,7 @@ public class DebuggerFeature implements InternalFeature {
                 VMError.guarantee(field.isUnmaterializedConstant());
                 VMError.guarantee(field.getUnmaterializedConstant() != null);
             } else if (hostedField.isUnmaterialized()) {
-                AnalysisField analysisField = (AnalysisField) field.getOriginalField();
+                AnalysisField analysisField = field.getOriginalField();
                 if (hostedField.getType().isWordType() || analysisField.getJavaKind().isPrimitive()) {
                     JavaConstant constant = heap.hConstantReflection.readFieldValue(hostedField, null);
                     assert constant instanceof PrimitiveConstant;
@@ -621,8 +621,7 @@ public class DebuggerFeature implements InternalFeature {
                 InterpreterUtil.log("Found materialized field without location: %s", hostedField);
                 BuildTimeInterpreterUniverse.setUnmaterializedConstantValue(field, JavaConstant.forIllegal());
             } else {
-                int fieldOffset = hostedField.getOffset();
-                field.setOffset(fieldOffset);
+                BuildTimeInterpreterUniverse.singleton().initializeJavaFieldFromHosted(hostedField, field);
             }
         }
 
@@ -649,7 +648,7 @@ public class DebuggerFeature implements InternalFeature {
             }
             HostedField hostedField = accessImpl.getMetaAccess().getUniverse().optionalLookup(field.getOriginalField());
             if (hostedField.isUnmaterialized()) {
-                AnalysisField analysisField = (AnalysisField) field.getOriginalField();
+                AnalysisField analysisField = field.getOriginalField();
                 if (hostedField.getType().isWordType()) {
                     // Ignore, words are stored as primitive values.
                 } else if ((analysisField.isFolded() && analysisField.getJavaKind().isObject())) {

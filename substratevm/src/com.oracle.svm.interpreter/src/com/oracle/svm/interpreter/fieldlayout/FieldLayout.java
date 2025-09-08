@@ -54,8 +54,8 @@ public final class FieldLayout {
      * @param parsedDeclaredFields The parsed declared fields, obtained from
      *            {@link com.oracle.svm.espresso.classfile.ClassfileParser#parse parsing} a
      *            classfile.
-     * @param startOffset The offset at which the fields should start being layout. This generally
-     *            corresponds to the offset after a class' super's own fields.
+     * @param startOffset The offset at which the fields should start. This generally corresponds to
+     *            the offset after a class' super's own fields.
      *
      * @implNote The strategy used for layouting fields is implemented at
      *           {@link GreedyFieldLayoutStrategy}.
@@ -67,7 +67,7 @@ public final class FieldLayout {
     /**
      * @return The offset after all instance fields.
      */
-    public int afterFieldsOffset() {
+    public int afterInstanceFieldsOffset() {
         return afterInstanceFieldsOffset;
     }
 

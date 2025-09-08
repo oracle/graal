@@ -108,6 +108,7 @@ public class CremaSupportImpl implements CremaSupport {
         return interpreterType;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static List<InterpreterResolvedJavaMethod> buildInterpreterMethods(AnalysisType analysisType, AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse) {
         List<InterpreterResolvedJavaMethod> methods = new ArrayList<>();
 
@@ -133,11 +134,11 @@ public class CremaSupportImpl implements CremaSupport {
         AnalysisMethod analysisMethod;
         try {
             analysisMethod = analysisUniverse.lookup(wrappedMethod);
+        } catch (DeletedElementException e) {
+            /* deleted via substitution */
+            return;
         } catch (UnsupportedFeatureException e) {
-            /*
-             * We are expecting to see exceptions for methods removed by substitutions and for
-             * methods which refer to unsupported types (in the signature or other metadata).
-             */
+            /* GR-69550: Method has hosted type in signature */
             return;
         }
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);
@@ -145,6 +146,7 @@ public class CremaSupportImpl implements CremaSupport {
         methods.add(method);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static List<InterpreterResolvedJavaField> buildInterpreterFields(AnalysisType analysisType, AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse) {
         List<InterpreterResolvedJavaField> fields = new ArrayList<>();
         buildInterpreterFieldsFromArray(analysisUniverse, btiUniverse, analysisType.getWrapped().getInstanceFields(false), fields);
@@ -152,6 +154,7 @@ public class CremaSupportImpl implements CremaSupport {
         return fields;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void buildInterpreterFieldsFromArray(AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse, ResolvedJavaField[] declaredFields,
                     List<InterpreterResolvedJavaField> fields) {
         for (ResolvedJavaField wrappedField : declaredFields) {
@@ -167,18 +170,11 @@ public class CremaSupportImpl implements CremaSupport {
                 /* ignore fields with unsupported types */
                 continue;
             }
-            if (wrappedField.getType().getUnqualifiedName().contains("Hosted")) {
-                // GR-68982: Better way to detect hosted-only fields.
-                continue;
-            }
             AnalysisField analysisField;
             try {
                 analysisField = analysisUniverse.lookup(wrappedField);
             } catch (DeletedElementException e) {
                 /* deleted */
-                continue;
-            } catch (UnsupportedFeatureException e) {
-                /* Field has hosted type */
                 continue;
             }
             InterpreterResolvedJavaField field = btiUniverse.getOrCreateField(analysisField);
@@ -202,9 +198,11 @@ public class CremaSupportImpl implements CremaSupport {
         if (componentHub != null) {
             componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
         }
-        CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(table.getParserKlass(), hub.getModifiers(), componentType, superType, interfaces,
-                        DynamicHub.toClass(hub),
-                        false);
+        CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(
+                        table.getParserKlass(),
+                        hub.getModifiers(),
+                        componentType, superType, interfaces,
+                        DynamicHub.toClass(hub));
 
         ParserKlass parserKlass = table.partialType.parserKlass;
         thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
@@ -237,9 +235,9 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedJavaField[] declaredFields = fields.length == 0 ? InterpreterResolvedJavaField.EMPTY_ARRAY : new InterpreterResolvedJavaField[fields.length];
         for (int j = 0; j < fields.length; j++) {
             ParserField f = fields[j];
-            declaredFields[j] = InterpreterResolvedJavaField.create(thisType, f, table.layout.getOffset(j));
+            declaredFields[j] = InterpreterResolvedJavaField.createAtRuntime(thisType, f, table.layout.getOffset(j));
         }
-        thisType.setAfterFieldsOffset(table.layout().afterFieldsOffset());
+        thisType.setAfterFieldsOffset(table.layout().afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
 
         // Done
@@ -431,7 +429,7 @@ public class CremaSupportImpl implements CremaSupport {
 
         @Override
         public int afterFieldsOffset(int superAfterFieldsOffset) {
-            return layout.afterFieldsOffset();
+            return layout.afterInstanceFieldsOffset();
         }
 
         @Override

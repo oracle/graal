@@ -29,13 +29,18 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 
+import jdk.graal.compiler.core.common.NumUtil;
+
 /**
  * Greedy implementation of a field layout strategy.
  * <p>
  * Places large-size fields first, near the {@code startOffset}, and small fields last.
  * <p>
  * There is no hole-filling strategy.
+ * <p>
+ * For field layouting in AOT code, see {@code UniverseBuilder.layoutInstanceFields}.
  */
+/* GR-69569: This should move closer to UniverseBuilder.layoutInstanceFields */
 final class GreedyFieldLayoutStrategy {
     static FieldLayout build(ParserField[] declaredParsedFields, long startOffset) {
         FieldLayoutImpl.ForInstanceFields forInstance = new FieldLayoutImpl.ForInstanceFields(declaredParsedFields, startOffset);
@@ -50,7 +55,7 @@ final class GreedyFieldLayoutStrategy {
             int offset = -1;
             if (forInstance.accepts(f)) {
                 assert !forStaticReferences.accepts(f) && !forStaticPrimitives.accepts(f);
-                offset = Math.toIntExact(forInstance.findOffset(f));
+                offset = NumUtil.safeToInt(forInstance.findOffset(f));
 
                 if (f.getKind() == JavaKind.Object && !f.isStatic()) {
                     referenceOffsets[referencePos] = offset;
@@ -58,15 +63,15 @@ final class GreedyFieldLayoutStrategy {
                 }
             } else if (forStaticReferences.accepts(f)) {
                 assert !forStaticPrimitives.accepts(f);
-                offset = Math.toIntExact(forStaticReferences.findOffset(f));
+                offset = NumUtil.safeToInt(forStaticReferences.findOffset(f));
             } else if (forStaticPrimitives.accepts(f)) {
-                offset = Math.toIntExact(forStaticPrimitives.findOffset(f));
+                offset = NumUtil.safeToInt(forStaticPrimitives.findOffset(f));
             }
             assert offset >= 0;
             offsets[i] = offset;
         }
         assert referencePos == referenceOffsets.length;
-        return new FieldLayout(Math.toIntExact(forInstance.getAfterFieldsOffset()), offsets, referenceOffsets);
+        return new FieldLayout(NumUtil.safeToInt(forInstance.getAfterFieldsOffset()), offsets, referenceOffsets);
     }
 
     private abstract static class FieldLayoutImpl {
@@ -123,10 +128,10 @@ final class GreedyFieldLayoutStrategy {
                 }
             }
             offsets[0] = align(startOffset, SIZES_IN_BYTES[0]);
-            int i = 1;
-            for (; i < COUNT_LEN; i++) {
+            for (int i = 1; i < COUNT_LEN; i++) {
                 long kindStartOffset = offsetAfterKind(i - 1);
-                offsets[i] = align(kindStartOffset, SIZES_IN_BYTES[i]);
+                assert kindStartOffset == align(kindStartOffset, SIZES_IN_BYTES[i]) : "By construction, the ith kind is aligned to the (i-1)th.";
+                offsets[i] = kindStartOffset;
             }
             return offsetAfterKind(COUNT_LEN - 1);
         }
