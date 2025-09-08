@@ -1594,8 +1594,7 @@ public class SubstrateOptions {
         if (ConcealedOptions.UseInterfaceHashing.getValue() != null) {
             return ConcealedOptions.UseInterfaceHashing.getValue();
         }
-        // TODO Include G1 after [GR-69090] is merged
-        return !useClosedTypeWorldHubLayout() && !useG1GC();
+        return !useClosedTypeWorldHubLayout();
     }
 
     @Fold
