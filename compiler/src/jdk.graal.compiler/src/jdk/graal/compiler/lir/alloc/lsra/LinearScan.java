@@ -881,7 +881,7 @@ public class LinearScan {
                     continue;
                 }
 
-                assert i1.checkSplitChildren();
+                i1.checkSplitChildren();
 
                 if (i1.operandNumber != i) {
                     debug.log("Interval %d is on position %d in list", i1.operandNumber, i);
