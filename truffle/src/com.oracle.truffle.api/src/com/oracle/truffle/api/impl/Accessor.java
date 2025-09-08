@@ -1134,7 +1134,7 @@ public abstract class Accessor {
 
         public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
-        public abstract Object getEmbedderStackTrace(Object receiver, Object vmObject);
+        public abstract Object getEmbedderStackTrace(Object receiver, Object vmObject, boolean inHost);
 
         public abstract boolean hasSourceLocation(Object receiver);
 

@@ -82,7 +82,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
     private boolean firstFrame;
 
     @TruffleBoundary
-    static Object getExceptionStackTrace(Object receiver, Object vmObject, boolean includeHostStack) {
+    static Object getExceptionStackTrace(Object receiver, Object vmObject, boolean forceInHost, boolean includeHostStack) {
         Throwable throwable = (Throwable) receiver;
         List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
         if (stack == null) {
@@ -93,21 +93,23 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
                         : ExceptionAccessor.ENGINE.getEngineFromPolyglotObject(vmObject);
         boolean hasGuestToHostCalls = false;
         boolean inHost = true;
-        for (TruffleStackTraceElement element : stack) {
-            if (ExceptionAccessor.ENGINE.isGuestToHostRootNode(polyglotEngine, element.getTarget().getRootNode())) {
-                hasGuestToHostCalls = true;
-                break;
-            } else {
-                inHost = false;
+        if (!forceInHost) {
+            for (TruffleStackTraceElement element : stack) {
+                if (ExceptionAccessor.ENGINE.isGuestToHostRootNode(polyglotEngine, element.getTarget().getRootNode())) {
+                    hasGuestToHostCalls = true;
+                    break;
+                } else {
+                    inHost = false;
+                }
             }
+            /*
+             * A host exception always originates in the host. The exception may be created in the
+             * host, passed into a guest language as a HostException, and then thrown within the
+             * guest language. In this case, the above detection does not work as there is no
+             * GuestToHostRootNode on top of the stack.
+             */
+            inHost |= polyglotEngine != null && ExceptionAccessor.ENGINE.isHostException(polyglotEngine, throwable);
         }
-        /*
-         * A host exception always originates in the host. The exception may be created in the host,
-         * passed into a guest language as a HostException, and then thrown within the guest
-         * language. In this case, the above detection does not work as there is no
-         * GuestToHostRootNode on top of the stack.
-         */
-        inHost |= polyglotEngine != null && ExceptionAccessor.ENGINE.isHostException(polyglotEngine, throwable);
 
         Object[] items;
         if (includeHostStack || hasGuestToHostCalls) {

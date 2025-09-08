@@ -340,6 +340,6 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 26.0
      */
     public static Object createDefaultExceptionStackTrace(Throwable throwable) {
-        return MergedHostGuestIterator.getExceptionStackTrace(throwable, null, false);
+        return MergedHostGuestIterator.getExceptionStackTrace(throwable, null, false, false);
     }
 }
