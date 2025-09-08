@@ -2396,7 +2396,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
-            return PolyglotImpl.findInstance().getRootImpl().updateHostException(forException, hostException);
+            return PolyglotImpl.findInstance().getRootImpl().mergeHostStackTrace(forException, hostException);
         }
 
         @Override
