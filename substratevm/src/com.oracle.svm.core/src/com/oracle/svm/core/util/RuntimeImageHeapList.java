@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.AbstractList;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -34,7 +32,7 @@ import com.oracle.svm.core.Uninterruptible;
 /**
  * The immutable runtime list view for an {@link ImageHeapList}.
  */
-public final class RuntimeImageHeapList<E> extends AbstractList<E> {
+public final class RuntimeImageHeapList<E> extends AbstractImageHeapList<E> {
 
     E[] elementData;
 
