@@ -53,6 +53,7 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -321,7 +322,7 @@ final class PolyglotExceptionImpl {
     private void printStackTrace(PrintStreamOrWriter s) {
         synchronized (s.lock()) {
             // For an internal error without guest frames print only the internal error.
-            if (isInternalError() && hasGuestFrames()) {
+            if (isInternalError() && !hasGuestFrames()) {
                 s.print(api.getClass().getName() + ": ");
                 s.printStackTrace(exception);
                 s.println("Internal GraalVM error, please report at https://github.com/oracle/graal/issues/.");
@@ -362,13 +363,18 @@ final class PolyglotExceptionImpl {
         }
     }
 
-    // TODO: Support guest frames for non-truffle exceptions
     private boolean hasGuestFrames() {
+        materialize();
+        for (Object frame : materializedFrames) {
+            if (!((PolyglotException.StackFrame) frame).isHostFrame()) {
+                return true;
+            }
+        }
         return false;
     }
 
     String toStringImpl() {
-        if (isInternalError() && hasGuestFrames()) {
+        if (isInternalError() && !hasGuestFrames()) {
             return api.getClass().getName() + ": " + exception.toString();
         } else {
             String s = (qualifiedName != null ? qualifiedName : api.getClass().getName());
@@ -564,7 +570,7 @@ final class PolyglotExceptionImpl {
     }
 
     static Iterator<Object> createStackFrameIterator(PolyglotExceptionImpl impl) {
-        Object stackTrace = impl.polyglot.getRootImpl().getEmbedderExceptionStackTrace(impl.engine, impl.exception);
+        Object stackTrace = impl.polyglot.getRootImpl().getEmbedderExceptionStackTrace(impl.engine, impl.exception, impl.isInternalError() || impl.isHostException());
         return new FrameGuestObjectIterator(impl.polyglot.getAPIAccess(), impl, stackTrace);
     }
 

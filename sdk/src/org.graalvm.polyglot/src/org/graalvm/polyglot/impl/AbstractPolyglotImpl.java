@@ -1450,12 +1450,12 @@ public abstract class AbstractPolyglotImpl {
     public void validateVirtualThreadCreation(OptionValues engineOptions) {
     }
 
-    public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
-        return getNext().updateHostException(forException, hostException);
+    public <T extends Throwable> T mergeHostStackTrace(Throwable forException, T hostException) {
+        return getNext().mergeHostStackTrace(forException, hostException);
     }
 
-    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception) {
-        return getNext().getEmbedderExceptionStackTrace(engine, exception);
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception, boolean inHost) {
+        return getNext().getEmbedderExceptionStackTrace(engine, exception, inHost);
     }
 
     /**
