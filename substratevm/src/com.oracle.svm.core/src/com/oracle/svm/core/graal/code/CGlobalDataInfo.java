@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.VMError;
@@ -43,12 +42,6 @@ import com.oracle.svm.core.util.VMError;
  * {@link CGlobalDataImpl} within static fields.
  */
 public final class CGlobalDataInfo {
-    /**
-     * Image heap object storing the base address of CGlobalData memory using a relocation. Before
-     * the image heap is set up, CGlobalData must be accessed via relocations in the code instead.
-     */
-    public static final BoxedRelocatedPointer CGLOBALDATA_RUNTIME_BASE_ADDRESS = new BoxedRelocatedPointer(CGlobalDataBasePointer.INSTANCE);
-
     private final CGlobalDataImpl<?> data;
     private final boolean isSymbolReference;
 
@@ -68,13 +61,16 @@ public final class CGlobalDataInfo {
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
     @Platforms(HOSTED_ONLY.class) private byte[] bytes;
 
+    private final int layerNum;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public CGlobalDataInfo(CGlobalDataImpl<?> data, boolean definedAsGlobalInPriorLayer) {
+    public CGlobalDataInfo(CGlobalDataImpl<?> data, boolean definedAsGlobalInPriorLayer, int layerNum) {
         assert data != null;
         this.data = data;
         this.isSymbolReference = data.isSymbolReference();
         assert !this.isSymbolReference || data.symbolName != null;
         this.definedAsGlobalInPriorLayer = definedAsGlobalInPriorLayer;
+        this.layerNum = layerNum;
     }
 
     public CGlobalDataImpl<?> getData() {
