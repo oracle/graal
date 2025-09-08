@@ -131,7 +131,7 @@ final class PolyglotExceptionImpl {
         } else {
             creationStackTrace = null;
         }
-        Error resourceLimitError = getResourceLimitError(engine, exception);
+        Error resourceLimitError = getResourceLimitError(exception);
         String exceptionQualifiedName = null;
         String exceptionMessage = null;
         InteropLibrary interop;
@@ -158,7 +158,7 @@ final class PolyglotExceptionImpl {
                 } else {
                     this.sourceLocation = null;
                 }
-                if (entered && languageContext != null && languageContext.isCreated() && !isHostException(engine, exception)) {
+                if (entered && languageContext != null && languageContext.isCreated() && !isHostException(exception)) {
                     this.guestObject = languageContext.asValue(exception);
                 } else {
                     this.guestObject = null;
@@ -173,7 +173,7 @@ final class PolyglotExceptionImpl {
              * InterruptExecution was thrown before the context was made invalid.
              */
             boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
-                            (isHostException(engine, exception) && asHostException() instanceof InterruptedException);
+                            (isHostException(exception) && asHostException() instanceof InterruptedException);
             boolean truffleException = exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException;
             boolean cancelInducedTruffleOrInterruptException = (polyglotContextState != null &&
                             (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
@@ -228,15 +228,23 @@ final class PolyglotExceptionImpl {
         qualifiedName = exceptionQualifiedName;
     }
 
-    private static Error getResourceLimitError(PolyglotEngineImpl engine, Throwable e) {
+    private static Error getResourceLimitError(Throwable e) {
         if (e instanceof CancelExecution) {
             return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
-        } else if (isHostException(engine, e)) {
-            Error toCheck = engine.host.toHostResourceError(e);
+        } else if (isHostException(e)) {
+            Error toCheck = toHostResourceError(e);
             assert toCheck == null || toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
             return toCheck;
         } else if (e instanceof StackOverflowError || e instanceof OutOfMemoryError) {
             return (Error) e;
+        }
+        return null;
+    }
+
+    private static Error toHostResourceError(Throwable hostException) {
+        Throwable t = unboxHostException(hostException);
+        if (t instanceof StackOverflowError || t instanceof OutOfMemoryError) {
+            return (Error) t;
         }
         return null;
     }
@@ -277,7 +285,7 @@ final class PolyglotExceptionImpl {
     }
 
     public boolean isHostException() {
-        return isHostException(engine, exception);
+        return isHostException(exception);
     }
 
     public Throwable asHostException() {
@@ -285,7 +293,7 @@ final class PolyglotExceptionImpl {
             throw PolyglotEngineException.unsupported(
                             String.format("Unsupported operation PolyglotException.asHostException(). You can ensure that the operation is supported using PolyglotException.isHostException()"));
         }
-        return engine.host.unboxHostException(exception);
+        return unboxHostException(exception);
     }
 
     void printStackTrace(PrintWriter s) {
@@ -536,9 +544,9 @@ final class PolyglotExceptionImpl {
         APIAccess apiAccess = impl.polyglot.getAPIAccess();
 
         StackTraceElement[] hostStack = null;
-        if (isHostException(impl.engine, impl.exception)) {
-            Throwable original = impl.engine.host.unboxHostException(impl.exception);
-            hostStack = original.getStackTrace();
+        if (isHostException(impl.exception)) {
+            Throwable original = unboxHostException(impl.exception);
+            hostStack = original != null ? original.getStackTrace() : impl.exception.getStackTrace();
         } else if (EngineAccessor.EXCEPTION.isException(impl.exception)) {
             Throwable lazyStack = EngineAccessor.EXCEPTION.getLazyStackTrace(impl.exception);
             if (lazyStack != null) {
@@ -581,11 +589,21 @@ final class PolyglotExceptionImpl {
         });
     }
 
-    private static boolean isHostException(PolyglotEngineImpl engine, Throwable cause) {
-        /*
-         * Note that engine.host can be null if the error happens during initialization.
-         */
-        return engine != null && engine.host != null && engine.host.isHostException(cause);
+    private static boolean isHostException(Throwable cause) {
+        try {
+            InteropLibrary interop = InteropLibrary.getUncached(cause);
+            return interop.hasHostObject(cause) && interop.isException(cause);
+        } catch (CancelExecution cancelled) {
+            return false;
+        }
+    }
+
+    private static Throwable unboxHostException(Throwable cause) {
+        try {
+            return (Throwable) InteropLibrary.getUncached(cause).getHostObject(cause);
+        } catch (Exception e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     static class MergedHostGuestIterator<T, G> implements Iterator<T> {

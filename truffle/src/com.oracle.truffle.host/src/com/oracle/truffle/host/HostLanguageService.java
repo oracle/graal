@@ -171,21 +171,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object unboxHostObject(Object hostValue) {
-        return HostObject.valueOf(language, hostValue);
-    }
-
-    @Override
     public Object unboxProxyObject(Object hostValue) {
         return HostProxy.toProxyHostObject(language, hostValue);
-    }
-
-    @Override
-    public Throwable unboxHostException(Throwable hostValue) {
-        if (hostValue instanceof HostException) {
-            return ((HostException) hostValue).getOriginal();
-        }
-        return null;
     }
 
     @Override
@@ -200,18 +187,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostException(Object exception) {
-        return exception instanceof HostException;
-    }
-
-    @Override
     public boolean isHostFunction(Object value) {
         return HostFunction.isInstance(language, value);
-    }
-
-    @Override
-    public boolean isHostObject(Object value) {
-        return HostObject.isInstance(language, value);
     }
 
     @Override
@@ -281,15 +258,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
             assert InteropLibrary.isValidValue(value);
             return value;
         }
-    }
-
-    @Override
-    public Error toHostResourceError(Throwable hostException) {
-        Throwable t = unboxHostException(hostException);
-        if (t instanceof StackOverflowError || t instanceof OutOfMemoryError) {
-            return (Error) t;
-        }
-        return null;
     }
 
     @Override

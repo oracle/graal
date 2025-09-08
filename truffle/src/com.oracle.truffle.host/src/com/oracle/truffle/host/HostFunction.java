@@ -145,5 +145,4 @@ final class HostFunction implements TruffleObject {
     public int hashCode() {
         return method.hashCode();
     }
-
 }

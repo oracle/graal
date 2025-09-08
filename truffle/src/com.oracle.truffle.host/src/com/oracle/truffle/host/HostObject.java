@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
@@ -167,34 +168,6 @@ final class HostObject implements TruffleObject {
         } else {
             throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
         }
-    }
-
-    static boolean isJavaInstance(HostLanguage language, Class<?> targetType, Object javaObject) {
-        Object unboxed = unboxHostObject(language, javaObject);
-        if (unboxed != null) {
-            return targetType.isInstance(unboxed);
-        }
-        return false;
-    }
-
-    static Object unboxHostObject(HostLanguage language, Object value) {
-        Object v = HostLanguage.unwrapIfScoped(language, value);
-        if (v instanceof HostObject) {
-            return ((HostObject) v).obj;
-        } else if (v instanceof HostException) {
-            return ((HostException) v).delegate.obj;
-        }
-        return null;
-    }
-
-    static Object valueOf(HostLanguage language, Object value) {
-        Object v = HostLanguage.unwrapIfScoped(language, value);
-        if (v instanceof HostObject) {
-            return ((HostObject) v).obj;
-        } else if (v instanceof HostException) {
-            return ((HostException) v).delegate.obj;
-        }
-        return v;
     }
 
     @Override
@@ -3343,13 +3316,19 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     boolean isMetaInstance(Object other,
                     @Bind Node node,
-                    @CachedLibrary("this") InteropLibrary library,
                     @Shared @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isClass()) {
             Class<?> c = asClass();
-            HostLanguage language = context != null ? HostLanguage.get(library) : null;
-            if (HostObject.isInstance(language, other)) {
-                Object otherHostObj = HostObject.valueOf(language, other);
+            HostLanguage language = context != null ? HostLanguage.get(node) : null;
+            InteropLibrary otherInterop = InteropLibrary.getUncached(other);
+            if (otherInterop.hasHostObject(other)) {
+                Object otherHostObj;
+                try {
+                    otherHostObj = otherInterop.getHostObject(other);
+                } catch (HeapIsolationException e) {
+                    error.enter(node);
+                    throw UnsupportedMessageException.create();
+                }
                 if (otherHostObj == null) {
                     return false;
                 } else {
@@ -3488,6 +3467,17 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     static int identityHashCode(HostObject receiver) {
         return System.identityHashCode(receiver.obj);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasHostObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getHostObject() {
+        return this.obj;
     }
 
     @Override

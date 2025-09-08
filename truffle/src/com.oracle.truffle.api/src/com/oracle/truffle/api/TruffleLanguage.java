@@ -2237,13 +2237,17 @@ public abstract class TruffleLanguage<C> {
          * Returns <code>true</code> if the argument is Java host language object wrapped using
          * Truffle interop.
          *
+         * @deprecated Use
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#hasHostObject(Object)
+         *             hosHostObject}.
          * @see #asHostObject(Object)
          * @since 19.0
          */
+        @Deprecated
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostObject(polyglotLanguageContext, value);
+                return LanguageAccessor.engineAccess().isHostObject(value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2254,15 +2258,19 @@ public abstract class TruffleLanguage<C> {
          * host language object. Throws {@link ClassCastException} if the provided argument is not a
          * {@link #isHostObject(Object) host object}.
          *
+         * @deprecated Use
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
+         *             getHostObject}.
          * @since 19.0
          */
+        @Deprecated
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ClassCastException();
             }
             try {
-                return LanguageAccessor.engineAccess().asHostObject(polyglotLanguageContext, value);
+                return LanguageAccessor.engineAccess().asHostObject(value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2362,13 +2370,16 @@ public abstract class TruffleLanguage<C> {
          * @param exception the {@link Throwable} to test
          * @return {@code true} if the {@code exception} is a host exception, {@code false}
          *         otherwise
+         * @deprecated Use
+         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isException(obj)}.
          * @see #asHostException(Throwable)
          * @since 19.0
          */
+        @Deprecated
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().isHostException(polyglotLanguageContext, exception);
+                return LanguageAccessor.engineAccess().isHostException(exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2380,16 +2391,20 @@ public abstract class TruffleLanguage<C> {
          * Host exceptions may be thrown by interoperability messages. The host exception may be
          * unwrapped using {@link #asHostException(Throwable)}.
          *
+         * @deprecated Use
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
+         *             getHostObject}.
          * @param exception the host exception to unwrap
          * @return the original Java exception
          * @throws IllegalArgumentException if the {@code exception} is not a host exception
          * @see #isHostException(Throwable)
          * @since 19.0
          */
+        @Deprecated
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().asHostException(polyglotLanguageContext, exception);
+                return LanguageAccessor.engineAccess().asHostException(exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

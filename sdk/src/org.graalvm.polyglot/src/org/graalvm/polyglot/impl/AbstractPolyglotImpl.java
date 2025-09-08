@@ -1036,29 +1036,19 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isHostValue(Object value);
 
-        public abstract Object unboxHostObject(Object hostValue);
-
         public abstract Object unboxProxyObject(Object hostValue);
-
-        public abstract Throwable unboxHostException(Throwable hostValue);
 
         public abstract Object toHostObject(Object context, Object value);
 
         public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
 
-        public abstract boolean isHostException(Object exception);
-
         public abstract boolean isHostFunction(Object obj);
-
-        public abstract boolean isHostObject(Object obj);
 
         public abstract boolean isHostSymbol(Object obj);
 
         public abstract Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides);
 
         public abstract boolean isHostProxy(Object value);
-
-        public abstract Error toHostResourceError(Throwable hostException);
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 

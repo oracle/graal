@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Function;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import com.oracle.truffle.api.CompilerDirectives;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -183,9 +183,8 @@ final class ExceptionAccessor extends Accessor {
 
         private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost, Object polyglotEngine) {
             StackTraceElement[] hostStack = null;
-            AbstractHostLanguageService hostService = ACCESSOR.engineSupport().getHostService(polyglotEngine);
-            if (hostService.isHostException(throwable)) {
-                Throwable original = hostService.unboxHostException(throwable);
+            if (ACCESSOR.engineSupport().isHostException(throwable)) {
+                Throwable original = unboxHostException(throwable);
                 hostStack = original.getStackTrace();
             } else if (throwable instanceof AbstractTruffleException) {
                 Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
@@ -244,6 +243,14 @@ final class ExceptionAccessor extends Accessor {
                 elementsList.add(mergedElements.next());
             }
             return elementsList.toArray();
+        }
+
+        private static Throwable unboxHostException(Throwable throwable) {
+            try {
+                return ACCESSOR.engineSupport().asHostException(throwable);
+            } catch (Exception e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
         }
 
         private static int indexOfLastGuestToHostFrame(List<TruffleStackTraceElement> guestStack) {

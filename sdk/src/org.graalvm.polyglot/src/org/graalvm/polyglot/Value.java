@@ -1586,7 +1586,8 @@ public final class Value extends AbstractValue {
     /**
      * Returns the original Java host language object.
      *
-     * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code>.
+     * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code> or the
+     *             Java host language object is allocated in a foreign heap.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0

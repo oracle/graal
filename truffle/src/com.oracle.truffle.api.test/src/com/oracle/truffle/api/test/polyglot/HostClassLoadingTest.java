@@ -93,6 +93,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz1";
     private static final String TEST_REPLACE_CLASS_NAME_2 = "HostClassLoadingTestClazz2";
     private static final String TEST_REPLACE_QUALIFIED_CLASS_NAME = HostClassLoadingTestClass1.class.getPackage().getName() + ".HostClassLoadingTestClazz1";
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     // static number that has the same lifetime as HostClassLoadingTestClass1.class.
     private static int hostStaticFieldValue = 42;
@@ -463,14 +464,14 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testProtectionDomainJar() throws IOException {
+    public void testProtectionDomainJar() throws IOException, InteropException {
         setupEnv();
         Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         Path jar = createJar(tempDir);
         languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
         Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-        Class<?> clz = (Class<?>) languageEnv.asHostObject(newSymbol);
+        Class<?> clz = (Class<?>) INTEROP.getHostObject(newSymbol);
         ProtectionDomain protectionDomain = clz.getProtectionDomain();
         assertNotNull(protectionDomain);
         CodeSource codeSource = protectionDomain.getCodeSource();
@@ -481,13 +482,13 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testProtectionDomainFolder() throws IOException {
+    public void testProtectionDomainFolder() throws IOException, InteropException {
         setupEnv();
         Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
         Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-        Class<?> clz = (Class<?>) languageEnv.asHostObject(newSymbol);
+        Class<?> clz = (Class<?>) INTEROP.getHostObject(newSymbol);
         ProtectionDomain protectionDomain = clz.getProtectionDomain();
         assertNotNull(protectionDomain);
         CodeSource codeSource = protectionDomain.getCodeSource();
