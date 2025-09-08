@@ -52,3 +52,5 @@ on:
 jobs:
   call-template:
     uses: './.github/workflows/micronaut-template.yml'
+
+

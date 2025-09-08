@@ -52,6 +52,7 @@ env:
   MICRONAUT_JAVA_VERSION: 21
   # Enforce experimental option checking in CI (GR-47922)
   NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: 'true'
+  NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
 permissions:
   contents: read # to fetch code (actions/checkout)
