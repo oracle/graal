@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -35,7 +36,6 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.word.impl.Word;
 
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
@@ -66,6 +66,8 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static Class<? extends CollectionPolicy> getPolicyClass(String name) {
         switch (name) {
+            case "Adaptive2":
+                return AdaptiveCollectionPolicy2.class;
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
             case "LibGraal":
