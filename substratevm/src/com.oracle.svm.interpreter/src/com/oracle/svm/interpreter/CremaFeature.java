@@ -154,7 +154,7 @@ public class CremaFeature implements InternalFeature {
                 assert !hostedField.isAccessed() : "No interpreter field for " + hostedField;
                 continue;
             }
-            iField.setOffset(hostedField.getOffset());
+            iUniverse.initializeJavaFieldFromHosted(hostedField, iField);
         }
     }
 

@@ -30,6 +30,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
@@ -41,27 +42,31 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public final class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess {
     public static final InterpreterResolvedJavaField[] EMPTY_ARRAY = new InterpreterResolvedJavaField[0];
 
-    // Computed after analysis.
-    private int offset;
+    // Special offset values
+    private static final int FIELD_UNMATERIALIZED = -10;
+    private static final int OFFSET_UNINITIALIZED = -11;
+
     private final int modifiers;
     private final Symbol<Name> name;
     private final Symbol<Type> typeSymbol;
 
-    private InterpreterResolvedJavaType resolvedType;
+    // Computed after analysis.
+    private int offset;
 
     private final InterpreterResolvedObjectType declaringClass;
+    private InterpreterResolvedJavaType resolvedType;
+
+    private final boolean isWordStorage;
 
     private JavaConstant constantValue;
 
-    @Platforms(Platform.HOSTED_ONLY.class) private ResolvedJavaField originalField;
+    @Platforms(Platform.HOSTED_ONLY.class) private AnalysisField originalField;
 
     /**
      * Ensures that the field metadata is kept for the interpreter, without forcing it into the
@@ -72,62 +77,68 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
      */
     @Platforms(Platform.HOSTED_ONLY.class) private boolean artificiallyReachable;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private InterpreterResolvedJavaField(ResolvedJavaField originalField,
-                    Symbol<Name> name, int modifiers,
+    private InterpreterResolvedJavaField(
+                    Symbol<Name> name, Symbol<Type> typeSymbol, int modifiers,
                     InterpreterResolvedJavaType resolvedType, InterpreterResolvedObjectType declaringClass,
-                    int offset, JavaConstant constant) {
-        this.originalField = originalField;
+                    int offset,
+                    JavaConstant constant,
+                    boolean isWordStorage) {
         this.name = MetadataUtil.requireNonNull(name);
-        this.typeSymbol = resolvedType.getSymbolicType();
+        this.typeSymbol = MetadataUtil.requireNonNull(typeSymbol);
         this.modifiers = modifiers;
-        this.resolvedType = MetadataUtil.requireNonNull(resolvedType);
         this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
         this.offset = offset;
         this.constantValue = constant;
-    }
-
-    private InterpreterResolvedJavaField(Symbol<Name> name, int modifiers, InterpreterResolvedJavaType resolvedType, InterpreterResolvedObjectType declaringClass, int offset, JavaConstant constant) {
-        this.name = MetadataUtil.requireNonNull(name);
-        this.typeSymbol = resolvedType.getSymbolicType();
-        this.modifiers = modifiers;
-        this.resolvedType = MetadataUtil.requireNonNull(resolvedType);
-        this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
-        this.offset = offset;
-        this.constantValue = constant;
-    }
-
-    private InterpreterResolvedJavaField(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
-        this.name = f.getName();
-        this.typeSymbol = f.getType();
-        this.modifiers = f.getFlags();
-        this.declaringClass = declaringClass;
-        this.offset = offset;
-        if (TypeSymbols.isPrimitive(f.getType())) {
+        this.isWordStorage = isWordStorage;
+        this.resolvedType = resolvedType;
+        if (resolvedType == null && TypeSymbols.isPrimitive(typeSymbol)) {
             // Primitive types are trivially resolved.
-            this.resolvedType = InterpreterResolvedPrimitiveType.fromKind(JavaKind.fromPrimitiveOrVoidTypeChar((char) getSymbolicType().byteAt(0)));
+            this.resolvedType = InterpreterResolvedPrimitiveType.fromKind(CremaTypeAccess.symbolToJvmciKind(typeSymbol));
         }
     }
 
-    public static InterpreterResolvedJavaField create(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
-        return new InterpreterResolvedJavaField(declaringClass, f, offset);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static InterpreterResolvedJavaField createAtBuildTime(AnalysisField originalField, InterpreterResolvedObjectType declaringClass) {
+        Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(originalField.getName());
+        Symbol<Type> typeSymbol = CremaTypeAccess.jvmciNameToType(originalField.getType().getName());
+        InterpreterResolvedJavaField field = new InterpreterResolvedJavaField(
+                        nameSymbol, typeSymbol, originalField.getModifiers(),
+                        /*- resolvedType */ null,
+                        declaringClass,
+                        OFFSET_UNINITIALIZED,
+                        /*- constantValue */ null,
+                        originalField.getType().isWordType());
+        field.setOriginalField(originalField);
+        return field;
     }
 
-    public static InterpreterResolvedJavaField create(String name, int modifiers, InterpreterResolvedJavaType type, InterpreterResolvedObjectType declaringClass, int offset, JavaConstant constant) {
+    public static InterpreterResolvedJavaField createForInterpreter(String name, int modifiers,
+                    InterpreterResolvedJavaType type, InterpreterResolvedObjectType declaringClass,
+                    int offset,
+                    JavaConstant constant) {
+        MetadataUtil.requireNonNull(type);
+        MetadataUtil.requireNonNull(declaringClass);
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        return new InterpreterResolvedJavaField(nameSymbol, modifiers, type, declaringClass, offset, constant);
+        return new InterpreterResolvedJavaField(nameSymbol, type.getSymbolicType(), modifiers, type, declaringClass, offset, constant, type.isWordType());
+    }
+
+    public static InterpreterResolvedJavaField createAtRuntime(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
+        return new InterpreterResolvedJavaField(f.getName(), f.getType(), f.getFlags(),
+                        /*- resolvedType */ null,
+                        declaringClass,
+                        offset,
+                        /*- constantValue */ null,
+                        /*- isWordStorage */ false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static InterpreterResolvedJavaField create(ResolvedJavaField originalField, String name, int modifiers, InterpreterResolvedJavaType type, InterpreterResolvedObjectType declaringClass,
-                    int offset, JavaConstant constant) {
-        Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        return new InterpreterResolvedJavaField(originalField, nameSymbol, modifiers, type, declaringClass, offset, constant);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public ResolvedJavaField getOriginalField() {
+    public AnalysisField getOriginalField() {
         return originalField;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setOriginalField(AnalysisField originalField) {
+        this.originalField = originalField;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -136,8 +147,6 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
         this.offset = InterpreterResolvedJavaField.FIELD_UNMATERIALIZED;
         this.constantValue = constant;
     }
-
-    public static final int FIELD_UNMATERIALIZED = -10;
 
     public boolean isUnmaterializedConstant() {
         return this.offset == FIELD_UNMATERIALIZED;
@@ -153,8 +162,17 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
                         this.getUnmaterializedConstant().getJavaKind() == JavaKind.Illegal;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setOffset(int offset) {
+        VMError.guarantee(this.offset == OFFSET_UNINITIALIZED || this.offset == offset, "InterpreterField offset should not be set twice.");
         this.offset = offset;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setResolvedType(InterpreterResolvedJavaType resolvedType) {
+        VMError.guarantee(this.resolvedType == null || this.resolvedType == resolvedType,
+                        "InterpreterField resolvedType should not be set twice.");
+        this.resolvedType = resolvedType;
     }
 
     @Override
@@ -178,18 +196,31 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
     }
 
     @Override
-    public JavaType getType() {
-        if (resolvedType != null) {
-            return resolvedType;
-        }
-        return UnresolvedJavaType.create(getSymbolicType().toString());
-    }
-
-    public InterpreterResolvedJavaType getResolvedType() {
+    public InterpreterResolvedJavaType getType() {
+        /*
+         * For fields created at build-time, the type is set if it is available. We explicitly do
+         * not want to trigger field type resolution at build-time.
+         *
+         * If the resolvedType is null, the type was not included in the image. If we were to create
+         * a ResolvedJavaType for it, we would force it back in.
+         */
         if (resolvedType == null) {
-            resolvedType = (InterpreterResolvedJavaType) getDeclaringClass().lookupType(UnresolvedJavaType.create(getSymbolicType().toString()), true);
+            /*
+             * Currently only exercised through JDWP field writes. Will need to be implemented once
+             * JIT is added to runtime loaded classes.
+             */
+            throw VMError.unimplemented("Runtime field type resolution.");
         }
         return resolvedType;
+    }
+
+    @Override
+    public JavaKind getJavaKind() {
+        return CremaTypeAccess.symbolToJvmciKind(getSymbolicType());
+    }
+
+    public boolean isWordStorage() {
+        return isWordStorage;
     }
 
     public Symbol<Type> getSymbolicType() {
@@ -207,8 +238,7 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
         // stored in the image heap.
         // Also take into account WordBase types, which have an Object kind, but the constantValue
         // is a long.
-        assert (this.getType() instanceof InterpreterResolvedJavaType resolved && resolved.isWordType()) ||
-                        constantValue == JavaConstant.ILLEGAL || getJavaKind() == constantValue.getJavaKind();
+        assert (isWordStorage()) || constantValue == JavaConstant.ILLEGAL || getJavaKind() == constantValue.getJavaKind();
         return constantValue;
     }
 
@@ -224,7 +254,7 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
 
     @Override
     public String toString() {
-        return "InterpreterResolvedJavaField<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getType().getName() + " offset=" + this.getOffset() + ">";
+        return "InterpreterResolvedJavaField<holder=" + getDeclaringClass().getName() + " name=" + name + " descriptor=" + typeSymbol + " offset=" + offset + ">";
     }
 
     @Override
