@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
+
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -148,6 +150,16 @@ public class PointstoOptions {
 
     @Option(help = "Report analysis statistics.")//
     public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
+
+    /**
+     * The {@link TypeState} memory footprint report enabled by this option is also generated as a
+     * part of {@link #PrintPointsToStatistics}. However, running the full
+     * {@link #PrintPointsToStatistics} is resource-intensive, so we expose
+     * {@code PrintTypeStateMemoryFootprint} to allow computing just the footprint if the rest is
+     * not required.
+     */
+    @Option(help = "Report the memory footprint of TypeState objects used by the analysis.")//
+    public static final OptionKey<Boolean> PrintTypeStateMemoryFootprint = new OptionKey<>(false);
 
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
