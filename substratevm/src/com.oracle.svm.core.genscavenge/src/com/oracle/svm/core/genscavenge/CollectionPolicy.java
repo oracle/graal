@@ -67,6 +67,8 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static Class<? extends CollectionPolicy> getPolicyClass(String name) {
         switch (name) {
+            case "Adaptive2":
+                return AdaptiveCollectionPolicy2.class;
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
             case "LibGraal":

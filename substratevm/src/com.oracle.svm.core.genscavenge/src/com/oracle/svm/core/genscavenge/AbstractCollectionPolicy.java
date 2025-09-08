@@ -294,10 +294,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
     private void computeSizeParameters(RawSizeParameters newParamsOnStack) {
-        UnsignedWord minYoungSpaces = minSpaceSize(); // eden
-        if (HeapParameters.getMaxSurvivorSpaces() > 0) {
-            minYoungSpaces = minYoungSpaces.add(minSpaceSize().multiply(2)); // survivor from and to
-        }
+        UnsignedWord minYoungSpaces = getMinYoungSpacesSize();
         UnsignedWord minAllSpaces = minYoungSpaces.add(minSpaceSize()); // old
         UnsignedWord heapSizeLimit = UnsignedUtils.max(alignDown(getHeapSizeLimit()), minAllSpaces);
 
@@ -405,6 +402,14 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
                         promoSize,
                         initialYoung, youngSize, maxYoung,
                         minHeap, initialHeap, heapSize, maxHeap);
+    }
+
+    protected static UnsignedWord getMinYoungSpacesSize() {
+        UnsignedWord minYoung = minSpaceSize(); // eden
+        if (HeapParameters.getMaxSurvivorSpaces() > 0) {
+            minYoung = minYoung.add(minSpaceSize().multiply(2)); // survivor from and to
+        }
+        return minYoung;
     }
 
     /** The initial sizes only change when a relevant GC-specific option value is modified. */
