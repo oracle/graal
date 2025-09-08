@@ -28,7 +28,6 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -101,9 +100,9 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
-import com.oracle.svm.core.util.RuntimeImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -1283,7 +1282,7 @@ public class SubstrateDiagnostics {
         @Platforms(Platform.HOSTED_ONLY.class) //
         final int runtimeCompilationPosition;
 
-        private final List<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
+        private final AbstractImageHeapList<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
         private int[] initialInvocationCount;
 
         @Fold
@@ -1368,12 +1367,7 @@ public class SubstrateDiagnostics {
         }
 
         DiagnosticThunk getThunk(int index) {
-            /*
-             * Use an explicit cast to aid open-world analysis. Otherwise, this may trigger false
-             * positive violations of @RestrictHeapAccess since some implementations of List.get()
-             * can allocate.
-             */
-            return ((RuntimeImageHeapList<DiagnosticThunk>) thunks).get(index);
+            return thunks.get(index);
         }
 
         int getInitialInvocationCount(int index) {
