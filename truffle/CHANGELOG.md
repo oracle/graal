@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-66310: Added support for passing arrays of primitive types to native code through the Truffle NFI Panama backend.
 * GR-61292 Specialization DSL: Single specialization nodes no longer specialize on first execution unless they use assumptions, cached state, or multiple instances. This was done to improve the interpreter performance and memory footprint of such nodes. As a result, these nodes no longer invalidate on first execution, which means they can no longer be used as an implicit branch profile. Language implementations are encouraged to check whether they are relying on this behavior and insert explicit branch profiles instead (see `BranchProfile` or `InlinedBranchProfile`).
 * GR-64005: Bytecode DSL: `@Operation` annotated classes can now inherit specializations and methods from super classes which are also declared in the same bytecode root node class. Language implementations no longer need to use operation proxies to use specialization inheritance.
+* GR-67146: Specialization DSL: Added `@Bind` support for frames (including materialized frames).
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

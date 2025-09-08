@@ -864,6 +864,11 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+        for (CacheExpression cache : getCaches()) {
+            if (cache.isRequiresFrame()) {
+                return true;
+            }
+        }
         return false;
     }
 

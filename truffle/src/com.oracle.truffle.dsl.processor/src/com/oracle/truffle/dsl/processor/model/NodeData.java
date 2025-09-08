@@ -321,19 +321,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return getChildExecutions().size();
     }
 
-    public boolean isFrameUsedByAnyGuard() {
-        for (SpecializationData specialization : specializations) {
-            if (!specialization.isReachable()) {
-                continue;
-            }
-
-            if (specialization.isFrameUsedByGuard()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public List<CreateCastData> getCasts() {
         return casts;
     }

@@ -867,6 +867,11 @@ public class FlatNodeGenFactory {
             if (specialization.getFrame() != null) {
                 return true;
             }
+            for (CacheExpression cacheExpression : specialization.getCaches()) {
+                if (cacheExpression.isRequiresFrame()) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -7103,7 +7108,7 @@ public class FlatNodeGenFactory {
             } else {
                 CodeTree tree = plugs.bindExpressionValue(frameState, variable);
                 if (tree != null) {
-                    bindings.put(variable, new LocalVariable(variable.getResolvedType(), "$bytecode", tree));
+                    bindings.put(variable, new LocalVariable(variable.getResolvedType(), variable.getName(), tree));
                 } else {
                     if (specialization.isNodeReceiverVariable(variable.getResolvedVariable())) {
                         CodeTree accessor = createNodeAccess(frameState, specialization);
@@ -8072,6 +8077,10 @@ public class FlatNodeGenFactory {
             } else {
                 return bool;
             }
+        }
+
+        public TypeMirror getFrameType() {
+            return factory.node.getFrameType();
         }
 
         public boolean isSpecializationClassInitialized(SpecializationData specialization) {
