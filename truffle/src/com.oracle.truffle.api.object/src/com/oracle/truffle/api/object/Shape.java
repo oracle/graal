@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -481,7 +481,7 @@ public final class Shape {
         /**
          * Sets an assumption that allows specializations on constant object instances with this
          * shape, as long as the assumption is valid. The assumption should be valid only if code is
-         * not shared across contexts and invalidated when this is not longer true. The assumption
+         * not shared across contexts and invalidated when this is no longer true. The assumption
          * may be {@code null} in which case this feature is disabled (the default).
          *
          * @see #propertyAssumptions(boolean)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
@@ -164,6 +165,8 @@ public class TruffleGraphBuilderPlugins {
         public static final OptionKey<Boolean> TruffleTrustedTypeCast = new OptionKey<>(true);
         @Option(help = "Whether Truffle frame field reads are trusted final.", type = OptionType.Debug) //
         public static final OptionKey<Boolean> TruffleTrustedFinalFrameFields = new OptionKey<>(true);
+        @Option(help = "Whether Truffle DynamicObject property reads are trusted final.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> TruffleTrustedFinalProperties = new OptionKey<>(true);
 
     }
 
@@ -1147,6 +1150,7 @@ public class TruffleGraphBuilderPlugins {
 
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.UnsafeAccess));
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, anyConstant, usedJavaKinds);
+        registerUnsafeLoadFinalPlugins(r, canDelayIntrinsification, types, JavaKind.Int, JavaKind.Long, JavaKind.Double, JavaKind.Object);
         registerUnsafeCast(r, types, canDelayIntrinsification);
         registerBooleanCast(r);
         registerArrayCopy(r);
@@ -1274,8 +1278,8 @@ public class TruffleGraphBuilderPlugins {
 
     static class CustomizedUnsafeLoadPlugin extends RequiredInvocationPlugin {
 
-        private final JavaKind returnKind;
-        private final boolean canDelayIntrinsification;
+        protected final JavaKind returnKind;
+        protected final boolean canDelayIntrinsification;
 
         CustomizedUnsafeLoadPlugin(JavaKind returnKind, boolean canDelayIntrinsification, String name, Type... argumentTypes) {
             super(name, argumentTypes);
@@ -1309,6 +1313,146 @@ public class TruffleGraphBuilderPlugins {
                 logPerformanceWarningLocationNotConstant(location, targetMethod, load);
                 return true;
             }
+        }
+    }
+
+    private static void registerUnsafeLoadFinalPlugins(Registration r, boolean canDelayIntrinsification, KnownTruffleTypes types, JavaKind... kinds) {
+        Objects.requireNonNull(types);
+        for (JavaKind kind : kinds) {
+            String kindName = kind.getJavaName();
+            kindName = Character.toUpperCase(kindName.charAt(0)) + kindName.substring(1);
+            String getName = "unsafeGetFinal" + kindName;
+            r.register(new CustomizedUnsafeLoadFinalPlugin(kind, canDelayIntrinsification, types,
+                            getName, Object.class, long.class, boolean.class, Object.class,
+                            new ResolvedJavaSymbol(types.Shape), Object.class));
+        }
+    }
+
+    /**
+     * Like {@link CustomizedUnsafeLoadPlugin}, but tries to constant-fold the value if the
+     * DynamicObject is constant and the provided final assumption is valid.
+     */
+    static class CustomizedUnsafeLoadFinalPlugin extends CustomizedUnsafeLoadPlugin {
+
+        private final KnownTruffleTypes types;
+
+        CustomizedUnsafeLoadFinalPlugin(JavaKind returnKind, boolean canDelayIntrinsification, KnownTruffleTypes types,
+                        String name, Type... argumentTypes) {
+            super(returnKind, canDelayIntrinsification, name, argumentTypes);
+            this.types = types;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                        ValueNode object, ValueNode offset, ValueNode condition, ValueNode location, ValueNode expectedShape, ValueNode finalAssumption) {
+            if (canDelayIntrinsification) {
+                return false;
+            }
+            if (Options.TruffleTrustedFinalProperties.getValue(b.getOptions())) {
+                if (tryConstantFold(b, object, offset, location, expectedShape, finalAssumption)) {
+                    return true;
+                }
+            }
+            return super.apply(b, targetMethod, receiver, object, offset, condition, location);
+        }
+
+        private boolean tryConstantFold(GraphBuilderContext b, ValueNode object, ValueNode offset, ValueNode location, ValueNode expectedShape, ValueNode finalAssumption) {
+            if (!offset.isConstant()) {
+                return false;
+            }
+            if (!location.isConstant()) {
+                return false;
+            }
+            if (b.getAssumptions() == null) {
+                return false;
+            }
+            if (!expectedShape.isConstant() || expectedShape.isNullConstant()) {
+                return false;
+            }
+            if (!finalAssumption.isConstant() || finalAssumption.isNullConstant()) {
+                return false;
+            }
+            JavaConstant finalAssumptionConst = finalAssumption.asJavaConstant();
+            /*
+             * "object" is either a DynamicObject (field access) or loading an array field from a
+             * DynamicObject (array access). The DynamicObject needs to be PE-constant (but not the
+             * array) for constant-folding of effectively final properties.
+             */
+            JavaConstant objectConst;
+            ResolvedJavaField arrayField = null;
+            if (object.isConstant()) {
+                objectConst = object.asJavaConstant();
+            } else if (GraphUtil.unproxify(object) instanceof LoadFieldNode loadField && loadField.object().isConstant()) {
+                objectConst = loadField.object().asJavaConstant();
+                arrayField = loadField.field();
+            } else {
+                return false;
+            }
+
+            MetaAccessProvider metaAccess = b.getMetaAccess();
+            ConstantReflectionProvider constantReflection = b.getConstantReflection();
+            JavaConstant isValid = constantReflection.readFieldValue(types.AbstractAssumption_isValid, finalAssumptionConst);
+            if (isValid == null || !isValid.asBoolean()) {
+                return false;
+            }
+
+            long offsetConst = offset.asJavaConstant().asLong();
+            JavaConstant sourceConst; // either DynamicObject or array constant
+            if (arrayField == null) {
+                sourceConst = objectConst;
+                ResolvedJavaType objectType = metaAccess.lookupJavaType(sourceConst);
+                ResolvedJavaField instanceField = objectType.findInstanceFieldWithOffset(offsetConst, returnKind);
+                if (instanceField == null) {
+                    return false;
+                }
+            } else {
+                sourceConst = constantReflection.readFieldValue(arrayField, objectConst);
+                if (sourceConst == null) {
+                    return false;
+                }
+                /*
+                 * Confirm that the constant is indeed an array and check that the array element
+                 * offset is in bounds.
+                 */
+                Integer arrayLength = constantReflection.readArrayLength(sourceConst);
+                if (arrayLength == null) {
+                    return false;
+                }
+            }
+
+            /*
+             * Check that the object still has the expected shape. While this is not strictly
+             * necessary for correctness since the assumption should suffice as a guarantee, this
+             * ensures we don't attempt to constant-fold values and register assumptions when the
+             * shape check won't succeed anyway, which could cause needless invalidations of the
+             * compiled code. Also helps avoid potential out-of-bounds accesses due to a shape
+             * change.
+             */
+            JavaConstant currentShape = constantReflection.readFieldValue(types.DynamicObject_shape, objectConst);
+            if (currentShape == null || !constantReflection.constantEquals(currentShape, expectedShape.asJavaConstant())) {
+                return false;
+            }
+
+            JavaConstant constant;
+            try {
+                if (returnKind.isObject()) {
+                    constant = constantReflection.getMemoryAccessProvider().readObjectConstant(sourceConst, offsetConst);
+                } else {
+                    constant = constantReflection.getMemoryAccessProvider().readPrimitiveConstant(returnKind, sourceConst, offsetConst, returnKind.getBitCount());
+                }
+            } catch (IllegalArgumentException ignored) {
+                return false;
+            }
+
+            b.getAssumptions().record(new TruffleAssumption(finalAssumptionConst));
+
+            b.addPush(returnKind, b.add(ConstantNode.forConstant(constant, metaAccess)));
+            return true;
+        }
+
+        @Override
+        public boolean isOptional() {
+            return true;
         }
     }
 
