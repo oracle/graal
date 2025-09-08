@@ -138,35 +138,36 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    int maxRegisterNumber() {
-        return maxReg;
+    /**
+     * Checks if a register with the given number is considered active. A register is considered
+     * active if its number falls within the range defined by {@link #minReg} and {@link #maxReg}.
+     * This is a quick check membership check for {@link #availableRegs}.
+     */
+    boolean isActiveRegister(int reg) {
+        return reg >= minReg && reg <= maxReg;
     }
 
-    int minRegisterNumber() {
-        return minReg;
-    }
-
-    boolean isRegisterInRange(int reg) {
-        return reg >= minRegisterNumber() && reg <= maxRegisterNumber();
+    /**
+     * Checks if the given interval is assigned to a register within the valid range of register
+     * numbers.
+     */
+    boolean isActiveRegister(Interval interval) {
+        return isActiveRegister(asRegister(interval.location()).number);
     }
 
     void excludeFromUse(Interval i) {
         Value location = i.location();
         int i1 = asRegister(location).number;
-        if (isRegisterInRange(i1)) {
+        if (isActiveRegister(i1)) {
             usePos[i1] = 0;
         }
-    }
-
-    boolean isRegisterInterval(Interval interval) {
-        return isRegisterInRange(asRegister(interval.location()).number);
     }
 
     void setUsePos(Interval interval, int intersects, boolean onlyProcessUsePos) {
         if (intersects != -1) {
             assert intersects != 0 : "must use excludeFromUse to set usePos to 0";
             int i = asRegister(interval.location()).number;
-            if (isRegisterInRange(i)) {
+            if (isActiveRegister(i)) {
                 if (usePos[i] > intersects) {
                     usePos[i] = intersects;
                 }
@@ -183,10 +184,10 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     private void setUsePosAtIntersection(Interval interval, Interval current) {
-        if (isRegisterInterval(interval)) {
+        if (isActiveRegister(interval)) {
             int i = asRegister(interval.location()).number;
             int savedUsePos = usePos[i];
-            int intersects = interval.currentIntersectsAt(current, savedUsePos);
+            int intersects = interval.currentIntersectsAtLimit(current, savedUsePos);
             if (intersects != -1) {
                 assert intersects != 0 : "must use excludeFromUse to set usePos to 0";
                 if (usePos[i] > intersects) {
@@ -198,8 +199,8 @@ class LinearScanWalker extends IntervalWalker {
 
     private void setBlockPos(Interval interval, Interval current) {
         int reg = asRegister(interval.location()).number;
-        if (isRegisterInRange(reg)) {
-            int intersects = interval.currentIntersectsAt(current, Math.max(usePos[reg], blockPos[reg]));
+        if (isActiveRegister(reg)) {
+            int intersects = interval.currentIntersectsAtLimit(current, Math.max(usePos[reg], blockPos[reg]));
             if (intersects != -1) {
                 if (blockPos[reg] > intersects) {
                     blockPos[reg] = intersects;
@@ -240,10 +241,10 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(freeCollectInactiveFixed)) {
             Interval interval = inactiveLists.get(RegisterBinding.Fixed);
             while (!interval.isEndMarker()) {
-                if (isRegisterInterval(interval)) {
+                if (isActiveRegister(interval)) {
                     int currentFrom = interval.currentFrom();
                     if (current.to() <= currentFrom) {
-                        assert !interval.currentIntersects(current) : "must not intersect";
+                        assert !(interval.currentIntersectsAt(current) != -1) : "must not intersect";
                         int i = asRegister(interval.location()).number;
                         if (usePos[i] > currentFrom) {
                             usePos[i] = currentFrom;
@@ -262,7 +263,7 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(freeCollectInactiveAny)) {
             Interval interval = inactiveLists.get(RegisterBinding.Any);
             while (!interval.isEndMarker()) {
-                if (isRegisterInterval(interval)) {
+                if (isActiveRegister(interval)) {
                     setUsePosAtIntersection(interval, current);
                 }
                 interval = interval.next;
@@ -289,7 +290,7 @@ class LinearScanWalker extends IntervalWalker {
                 if (current.to() > interval.currentFrom()) {
                     setBlockPos(interval, current);
                 } else {
-                    assert !interval.currentIntersects(current) : "invalid optimization: intervals intersect";
+                    assert !(interval.currentIntersectsAt(current) != -1) : "invalid optimization: intervals intersect";
                 }
 
                 interval = interval.next;
@@ -302,7 +303,7 @@ class LinearScanWalker extends IntervalWalker {
         try (DebugCloseable t = allocator.start(spillCollectActiveAny)) {
             Interval interval = activeLists.get(RegisterBinding.Any);
             while (!interval.isEndMarker()) {
-                if (isRegisterInterval(interval)) {
+                if (isActiveRegister(interval)) {
                     setUsePos(interval, Math.min(interval.nextUsage(registerPriority, currentPosition), interval.to()), false);
                 }
                 interval = interval.next;
@@ -316,13 +317,13 @@ class LinearScanWalker extends IntervalWalker {
             Interval interval = inactiveLists.get(RegisterBinding.Any);
             int intervalBinarySearchLimit = allocator.intervalBinarySearchLimit;
             while (!interval.isEndMarker()) {
-                if (isRegisterInterval(interval)) {
+                if (isActiveRegister(interval)) {
                     boolean intersects;
                     if (intervalBinarySearchLimit != -1 &&
                                     (interval.rangePairCount() > intervalBinarySearchLimit || current.rangePairCount() > intervalBinarySearchLimit)) {
                         intersects = interval.binarySearchInterval(current);
                     } else {
-                        intersects = interval.currentIntersects(current);
+                        intersects = interval.currentIntersectsAt(current) != -1;
                     }
                     if (intersects) {
                         setUsePos(interval, Math.min(interval.nextUsage(RegisterPriority.LiveAtLoopEnd, currentPosition), interval.to()), false);
@@ -845,7 +846,7 @@ class LinearScanWalker extends IntervalWalker {
 
             Register hint = null;
             Interval locationHint = interval.locationHint(true);
-            if (locationHint != null && locationHint.location() != null && isRegisterInterval(locationHint)) {
+            if (locationHint != null && locationHint.location() != null && isActiveRegister(locationHint)) {
                 hint = asRegister(locationHint.location());
                 if (debug.isLogEnabled()) {
                     debug.log("hint register %d from interval %s", hint.number, locationHint);
