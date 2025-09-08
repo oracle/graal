@@ -313,7 +313,6 @@ import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
@@ -1454,20 +1453,15 @@ public class NativeImageGenerator {
         }
 
         final boolean useExactMathPlugins = SubstrateOptions.useLIRBackend();
-        registerInvocationPlugins(hostedSnippetReflection, plugins.getInvocationPlugins(), replacements,
-                        useExactMathPlugins, true, supportsStubBasedPlugins, providers.getLowerer());
+        registerInvocationPlugins(hostedSnippetReflection, plugins.getInvocationPlugins(), useExactMathPlugins, true, supportsStubBasedPlugins);
 
-        Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
-        ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        /* registerForeignCallMath */ false, options);
+        ImageSingletons.lookup(TargetGraphBuilderPlugins.class).registerPlugins(plugins, options);
 
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
                         loader,
                         plugins.getInvocationPlugins(),
-                        replacements,
                         reason,
-                        architecture,
                         supportsStubBasedPlugins);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, plugins, reason));

@@ -1232,14 +1232,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return ((AMD64) target().arch).getFeatures().contains(feature);
     }
 
-    public boolean supportsCPUFeature(String feature) {
-        try {
-            return ((AMD64) target().arch).getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
     public boolean usePopCountInstruction() {
         return supportsCPUFeature(CPUFeature.POPCNT);
     }
