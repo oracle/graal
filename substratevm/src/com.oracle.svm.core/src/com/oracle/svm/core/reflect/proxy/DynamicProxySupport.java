@@ -156,7 +156,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
             }
             return clazz;
         } catch (Throwable t) {
-            LogUtils.warning("Could not create a proxy class from list of interfaces: %s. Reason: %s", Arrays.toString(interfaces), t.getMessage());
             return t;
         }
     }

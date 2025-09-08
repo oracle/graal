@@ -385,8 +385,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
         abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
-            Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
-            register(cnd, proxyClass);
+            try {
+                Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
+                register(cnd, proxyClass);
+            } catch (IllegalArgumentException t) {
+                /* ignore: can't serialize class that can't be instantiated */
+            }
         });
     }
 
