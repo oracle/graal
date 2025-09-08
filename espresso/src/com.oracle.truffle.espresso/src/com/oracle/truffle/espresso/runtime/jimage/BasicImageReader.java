@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
@@ -59,7 +60,16 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
 
         channel = FileChannel.open(imagePath, StandardOpenOption.READ);
 
-        ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+        ByteBuffer map;
+        try {
+            map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+        } catch(UnsupportedOperationException e) {
+            long read = 0;
+            map = ByteBuffer.allocateDirect(Math.toIntExact(channel.size()));
+            while(read < channel.size()) {
+                read += channel.read(map);
+            }
+        }
 
         int headerSize = ImageHeader.getHeaderSize();
         if (map.capacity() < headerSize) {
