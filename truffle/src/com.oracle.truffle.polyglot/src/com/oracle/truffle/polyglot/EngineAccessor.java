@@ -1259,24 +1259,22 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostException is supported and returns false
-            // because languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostException(exception);
+        public boolean isHostException(Throwable exception) {
+            InteropLibrary interop = InteropLibrary.getUncached(exception);
+            return interop.hasHostObject(exception) && interop.isException(exception);
         }
 
         @Override
-        public Throwable asHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            Throwable host = context.engine.host.unboxHostException(exception);
-            if (host == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException("Provided value not a host exception.");
+        public Throwable asHostException(Throwable exception) throws Exception {
+            if (exception != null) {
+                InteropLibrary interop = InteropLibrary.getUncached(exception);
+                boolean isHostException = interop.hasHostObject(exception) && interop.isException(exception);
+                if (isHostException) {
+                    return (Throwable) interop.getHostObject(exception);
+                }
             }
-            return host;
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("Provided value not a host exception.");
         }
 
         @Override
@@ -1543,10 +1541,14 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object asHostObject(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            assert isHostObject(languageContext, obj);
-            return context.engine.host.unboxHostObject(obj);
+        public Object asHostObject(Object obj) throws Exception {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            if (interop.hasHostObject(obj)) {
+                return interop.getHostObject(obj);
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("Provided value not a host object.");
+            }
         }
 
         @Override
@@ -1560,13 +1562,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostObject(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostObject is supported and returns false because
-            // languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostObject(obj);
+        public boolean isHostObject(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.hasHostObject(obj);
         }
 
         @Override

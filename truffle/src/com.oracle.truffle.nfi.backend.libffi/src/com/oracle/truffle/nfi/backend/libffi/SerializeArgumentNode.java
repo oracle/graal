@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -628,17 +629,25 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
-        final boolean isHostObject(Object value) {
-            return LibFFIContext.get(this).env.isHostObject(value);
+        final boolean isHostObject(Object value, InteropLibrary interop) {
+            return interop.hasHostObject(value);
         }
 
-        final Object asHostObject(Object value) {
-            return LibFFIContext.get(this).env.asHostObject(value);
+        final Object asHostObject(Object value, InteropLibrary interop) {
+            try {
+                return interop.getHostObject(value);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            } catch (HeapIsolationException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnsupportedOperationException(e);
+            }
         }
 
-        @Specialization(guards = {"isHostObject(value)", "tag != null"})
+        @Specialization(guards = {"isHostObject(value, interop)", "tag != null"})
         void doHostObject(@SuppressWarnings("unused") Object value, NativeArgumentBuffer buffer,
-                        @Bind("asHostObject(value)") Object hostObject,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Bind("asHostObject(value, interop)") Object hostObject,
                         @Bind("getTypeTag.execute(hostObject)") TypeTag tag) {
             buffer.putObject(tag, hostObject, type.size);
         }

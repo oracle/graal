@@ -3009,6 +3009,39 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns {@code true} if the argument is wrapped Java host language object. This method must
+     * not cause any observable side-effects. If this method is implemented then also
+     * {@link #getHostObject(Object)} must be implemented.
+     *
+     * @see #getHostObject(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = "getHostObject")
+    public boolean hasHostObject(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the Java host object representation of the given Truffle guest object.
+     * <p>
+     * Implementations of this method must not produce any observable side effects. If this method
+     * is implemented, {@link #hasHostObject(Object)} must also be implemented and return
+     * {@code true} for the same receiver.
+     *
+     * @throws UnsupportedMessageException if {@link #hasHostObject(Object)} returns {@code false}
+     *             for the given receiver.
+     * @throws HeapIsolationException if the guest object represents a host object located in a
+     *             foreign heap, for example in a polyglot isolate.
+     *
+     * @see #hasHostObject(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = "hasHostObject")
+    public Object getHostObject(Object receiver) throws UnsupportedMessageException, HeapIsolationException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns the library factory for the interop library. Short-cut for
      * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}.
      *
@@ -5518,6 +5551,36 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasHostObject(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasHostObject(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.hasHostObject(receiver);
+            if (result) {
+                try {
+                    delegate.getHostObject(receiver);
+                } catch (InteropException e) {
+                    assert e instanceof HeapIsolationException : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            } else {
+                assert assertHasNoHostObject(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        private boolean assertHasNoHostObject(Object receiver) {
+            try {
+                delegate.getHostObject(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException | HeapIsolationException e) {
+            }
+            return true;
+        }
+
+        @Override
         public String getLanguageId(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.getLanguageId(receiver);
@@ -5532,6 +5595,26 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !wasHasLanguageId : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHostObject(Object receiver) throws HeapIsolationException, UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHostObject(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasHostObject = delegate.hasHostObject(receiver);
+            try {
+                Object result = delegate.getHostObject(receiver);
+                assert wasHasHostObject : violationInvariant(receiver);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !wasHasHostObject : violationInvariant(receiver);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof HeapIsolationException : violationInvariant(receiver);
                 throw e;
             }
         }

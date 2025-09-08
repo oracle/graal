@@ -115,7 +115,13 @@ final class HostAccessor extends Accessor {
 
         @Override
         public Object unboxDisconnectedHostObject(Object hostValue) {
-            return HostObject.valueOf(null, hostValue);
+            Object v = HostLanguage.unwrapIfScoped(null, hostValue);
+            if (v instanceof HostObject) {
+                return ((HostObject) v).obj;
+            } else if (v instanceof HostException) {
+                return ((HostException) v).delegate.obj;
+            }
+            return v;
         }
 
         @Override

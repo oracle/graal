@@ -53,6 +53,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
+import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -1951,6 +1953,89 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertEquals(42, memberLib.invokeMember(obj, memberName));
         obj.readSideEffects = false;
         assertEquals(42, memberLib.invokeMember(obj, memberName));
+    }
+
+    @Test
+    public void testHasHostObject() {
+        GetHostObjectTest hostObject = new GetHostObjectTest();
+        InteropLibrary hostObjectLib = createLibrary(InteropLibrary.class, hostObject);
+
+        hostObject.hasHostObject = true;
+        hostObject.hostObjectProvider = () -> {
+            throw UnsupportedMessageException.create();
+        };
+        assertFails(() -> hostObjectLib.hasHostObject(hostObject), AssertionError.class);
+
+        hostObject.hostObjectProvider = () -> Pair.create(42, "42");
+        assertTrue(hostObjectLib.hasHostObject(hostObject));
+
+        hostObject.hostObjectProvider = () -> {
+            throw HeapIsolationException.create();
+        };
+        assertTrue(hostObjectLib.hasHostObject(hostObject));
+
+        hostObject.hasHostObject = false;
+        hostObject.hostObjectProvider = null;
+        assertFalse(hostObjectLib.hasHostObject(hostObject));
+
+        hostObject.hostObjectProvider = () -> Pair.create(42, "42");
+        assertFails(() -> hostObjectLib.hasHostObject(hostObject), AssertionError.class);
+
+        hostObject.hostObjectProvider = () -> {
+            throw HeapIsolationException.create();
+        };
+        assertFalse(hostObjectLib.hasHostObject(hostObject));
+    }
+
+    @Test
+    public void testGetHostObject() throws UnsupportedMessageException, HeapIsolationException {
+        GetHostObjectTest hostObject = new GetHostObjectTest();
+        InteropLibrary l = createLibrary(InteropLibrary.class, hostObject);
+
+        hostObject.hasHostObject = false;
+        hostObject.hostObjectProvider = null;
+        assertFails(() -> l.getHostObject(hostObject), UnsupportedMessageException.class);
+
+        hostObject.hasHostObject = true;
+        Object value = new Object();
+        hostObject.hostObjectProvider = () -> value;
+        assertSame(value, l.getHostObject(hostObject));
+
+        hostObject.hasHostObject = true;
+        hostObject.hostObjectProvider = null;
+        assertFails(() -> l.getHostObject(hostObject), AssertionError.class);
+
+        hostObject.hasHostObject = false;
+        hostObject.hostObjectProvider = () -> value;
+        assertFails(() -> l.getHostObject(hostObject), AssertionError.class);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class GetHostObjectTest implements TruffleObject {
+
+        boolean hasHostObject;
+        HostObjectProvider hostObjectProvider;
+
+        @ExportMessage
+        boolean hasHostObject() {
+            return hasHostObject;
+        }
+
+        @ExportMessage
+        Object getHostObject() throws UnsupportedMessageException, HeapIsolationException {
+            if (hostObjectProvider != null) {
+                return hostObjectProvider.call();
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface HostObjectProvider extends Callable<Object> {
+
+        @Override
+        Object call() throws UnsupportedMessageException, HeapIsolationException;
     }
 
     @SuppressWarnings("static-method")
