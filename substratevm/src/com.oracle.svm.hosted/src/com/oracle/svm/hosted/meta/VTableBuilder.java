@@ -156,11 +156,11 @@ public final class VTableBuilder {
 
                 // retrieve method from open world
                 if (slotMethod.getDeclaringClass().isInterface()) {
-                    int interfaceTypeID = slotMethod.getDeclaringClass().getTypeID();
+                    int interfaceID = slotMethod.getDeclaringClass().getInterfaceID();
                     int[] typeCheckSlots = type.getOpenTypeWorldTypeCheckSlots();
                     boolean found = false;
                     for (int itableIdx = 0; itableIdx < type.getNumInterfaceTypes(); itableIdx++) {
-                        if (typeCheckSlots[type.getNumClassTypes() + itableIdx] == interfaceTypeID) {
+                        if (typeCheckSlots[type.getNumClassTypes() + itableIdx] == interfaceID) {
                             HostedMethod dispatchResult = type.openTypeWorldDispatchTables[type.itableStartingOffsets[itableIdx] + slotMethod.getVTableIndex()];
                             assert dispatchResult.equals(resolvedMethod) : Assertions.errorMessage(slotMethod, dispatchResult, resolvedMethod);
                             found = true;
