@@ -64,8 +64,8 @@ public final class ClasspathFile {
     @Override
     public String toString() {
         if (classpathEntry.isArchive()) {
-            return classpathEntry.file().getAbsolutePath() + '!' + name;
+            return classpathEntry.path() + '!' + name;
         }
-        return classpathEntry.file().getAbsolutePath() + File.separatorChar + name;
+        return classpathEntry.path() + File.separatorChar + name;
     }
 }
