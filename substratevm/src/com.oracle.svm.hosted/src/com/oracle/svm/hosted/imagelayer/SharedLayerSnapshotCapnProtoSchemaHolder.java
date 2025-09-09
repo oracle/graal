@@ -4040,7 +4040,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class ImageSingletonKey {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)2,(short)1);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)3,(short)1);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4110,6 +4110,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(96, value);
       }
 
+      public final int getKeyStoreId() {
+        return _getIntField(4);
+      }
+      public final void setKeyStoreId(int value) {
+        _setIntField(4, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -4140,13 +4147,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(96);
       }
 
+      public final int getKeyStoreId() {
+        return _getIntField(4);
+      }
+
     }
 
   }
 
 
   public static class ImageSingletonObject {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)4);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)3);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4195,47 +4206,42 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder initClassName(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, size);
       }
-      public final boolean hasStore() {
+      public final int getKeyStoreId() {
+        return _getIntField(1);
+      }
+      public final void setKeyStoreId(int value) {
+        _setIntField(1, value);
+      }
+
+      public final boolean hasRecreateClass() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Builder> getStore() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 1, null, 0);
-      }
-      public final void setStore(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Reader> value) {
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 1, value);
-      }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Builder> initStore(int size) {
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 1, size);
-      }
-      public final boolean hasRecreateClass() {
-        return !_pointerFieldIsNull(2);
-      }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateClass() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
       public final void setRecreateClass(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, value);
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
       }
       public final void setRecreateClass(String value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateClass(int size) {
-        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, size);
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
       }
       public final boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(3);
+        return !_pointerFieldIsNull(2);
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 3, null, 0, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
       }
       public final void setRecreateMethod(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 3, value);
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, value);
       }
       public final void setRecreateMethod(String value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 3, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateMethod(int size) {
-        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 3, size);
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, size);
       }
     }
 
@@ -4255,25 +4261,92 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, null, 0, 0);
       }
 
-      public final boolean hasStore() {
-        return !_pointerFieldIsNull(1);
-      }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Reader> getStore() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 1, null, 0);
+      public final int getKeyStoreId() {
+        return _getIntField(1);
       }
 
       public boolean hasRecreateClass() {
-        return !_pointerFieldIsNull(2);
+        return !_pointerFieldIsNull(1);
       }
       public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateClass() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
 
       public boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(3);
+        return !_pointerFieldIsNull(2);
       }
       public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 3, null, 0, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
+      }
+
+    }
+
+  }
+
+
+  public static class KeyStoreInstance {
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)1);
+    public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+        return KeyStoreInstance.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+      Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final int getId() {
+        return _getIntField(0);
+      }
+      public final void setId(int value) {
+        _setIntField(0, value);
+      }
+
+      public final boolean hasKeyStore() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Builder> getKeyStore() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 0, null, 0);
+      }
+      public final void setKeyStore(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 0, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Builder> initKeyStore(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 0, size);
+      }
+    }
+
+    public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+      Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final int getId() {
+        return _getIntField(0);
+      }
+
+      public final boolean hasKeyStore() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.Reader> getKeyStore() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry.listFactory, 0, null, 0);
       }
 
     }
@@ -4814,7 +4887,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)16);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)17);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -5083,6 +5156,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Builder> initCGlobals(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, size);
       }
+      public final boolean hasKeyStoreInstances() {
+        return !_pointerFieldIsNull(16);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.Builder> getKeyStoreInstances() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.listFactory, 16, null, 0);
+      }
+      public final void setKeyStoreInstances(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.listFactory, 16, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.Builder> initKeyStoreInstances(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.listFactory, 16, size);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -5232,6 +5317,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> getCGlobals() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.listFactory, 15, null, 0);
+      }
+
+      public final boolean hasKeyStoreInstances() {
+        return !_pointerFieldIsNull(16);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.Reader> getKeyStoreInstances() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreInstance.listFactory, 16, null, 0);
       }
 
     }
@@ -6709,10 +6801,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(3, value);
       }
 
-      public final int getNumInterfaceTypes() {
+      public final int getNumIterableInterfaceTypes() {
         return _getIntField(4);
       }
-      public final void setNumInterfaceTypes(int value) {
+      public final void setNumIterableInterfaceTypes(int value) {
         _setIntField(4, value);
       }
 
@@ -6752,6 +6844,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.Builder> initDispatchTableSlotValues(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.listFactory, 2, size);
       }
+      public final int getInterfaceId() {
+        return _getIntField(5);
+      }
+      public final void setInterfaceId(int value) {
+        _setIntField(5, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -6775,7 +6874,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(3);
       }
 
-      public final int getNumInterfaceTypes() {
+      public final int getNumIterableInterfaceTypes() {
         return _getIntField(4);
       }
 
@@ -6798,6 +6897,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.Reader> getDispatchTableSlotValues() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.listFactory, 2, null, 0);
+      }
+
+      public final int getInterfaceId() {
+        return _getIntField(5);
       }
 
     }

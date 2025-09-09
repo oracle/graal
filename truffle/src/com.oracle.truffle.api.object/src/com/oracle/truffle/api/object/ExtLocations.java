@@ -152,28 +152,6 @@ abstract class ExtLocations {
         }
     }
 
-    sealed interface BooleanLocation extends TypedLocation, com.oracle.truffle.api.object.BooleanLocation {
-        @Override
-        boolean getBoolean(DynamicObject store, boolean guard);
-
-        @Override
-        default boolean getBoolean(DynamicObject store, Shape shape) {
-            return getBoolean(store, store.getShape() == shape);
-        }
-
-        void setBoolean(DynamicObject store, boolean value, boolean guard, boolean init);
-
-        @Override
-        default void setBoolean(DynamicObject store, boolean value, Shape shape) {
-            setBoolean(store, value, store.getShape() == shape, false);
-        }
-
-        @Override
-        default Class<Boolean> getType() {
-            return boolean.class;
-        }
-    }
-
     abstract static sealed class ValueLocation extends LocationImpl {
 
         private final Object value;
@@ -769,12 +747,23 @@ abstract class ExtLocations {
         }
     }
 
-    abstract static sealed class AbstractPrimitiveFieldLocation extends InstanceLocation implements FieldLocation {
+    /**
+     * Non-sealed because there used to be BooleanFieldLocation and Graal.js still uses
+     * {@link com.oracle.truffle.api.object.BooleanLocation}. If sealed it would cause a javac
+     * error:
+     *
+     * <pre>
+     * .../PropertySetNode.java:577: error: incompatible types: Location cannot be converted to BooleanLocation
+     *             this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
+     * </pre>
+     */
+    abstract static non-sealed class AbstractPrimitiveFieldLocation extends InstanceLocation implements FieldLocation {
 
         protected final FieldInfo field;
 
         AbstractPrimitiveFieldLocation(int index, FieldInfo field, Assumption finalAssumption) {
             super(index, finalAssumption);
+            assert field.type() == long.class : field;
             this.field = Objects.requireNonNull(field);
         }
 
@@ -804,7 +793,6 @@ abstract class ExtLocations {
 
         IntFieldLocation(int index, FieldInfo field, Assumption finalAssumption) {
             super(index, field, finalAssumption);
-            assert field.type() == long.class || field.type() == int.class : field;
         }
 
         @Override
@@ -815,18 +803,10 @@ abstract class ExtLocations {
         @Override
         public int getInt(DynamicObject store, boolean guard) {
             if (UseVarHandle) {
-                if (field.type() == long.class) {
-                    return (int) (long) field.varHandle().get(store);
-                } else {
-                    return (int) field.varHandle().get(store);
-                }
+                return (int) (long) field.varHandle().get(store);
             }
             field.receiverCheck(store);
-            if (field.type() == long.class) {
-                return (int) UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this);
-            } else {
-                return UnsafeAccess.unsafeGetInt(store, getOffset(), guard, this);
-            }
+            return (int) UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this);
         }
 
         @Override
@@ -848,19 +828,11 @@ abstract class ExtLocations {
 
         private void setIntInternal(DynamicObject store, int value) {
             if (UseVarHandle) {
-                if (field.type() == long.class) {
-                    field.varHandle().set(store, value & 0xffff_ffffL);
-                } else {
-                    field.varHandle().set(store, value);
-                }
+                field.varHandle().set(store, value & 0xffff_ffffL);
                 return;
             }
             field.receiverCheck(store);
-            if (field.type() == long.class) {
-                UnsafeAccess.unsafePutLong(store, getOffset(), value & 0xffff_ffffL, this);
-            } else {
-                UnsafeAccess.unsafePutInt(store, getOffset(), value, this);
-            }
+            UnsafeAccess.unsafePutLong(store, getOffset(), value & 0xffff_ffffL, this);
         }
 
         @Override
@@ -886,13 +858,10 @@ abstract class ExtLocations {
 
     static final class DoubleFieldLocation extends AbstractPrimitiveFieldLocation implements DoubleLocation {
         private final boolean allowInt;
-        private final byte slotSize;
 
-        DoubleFieldLocation(int index, FieldInfo field, boolean allowInt, int slotSize, Assumption finalAssumption) {
+        DoubleFieldLocation(int index, FieldInfo field, boolean allowInt, Assumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
-            assert slotSize >= 1 && slotSize <= 2;
-            this.slotSize = (byte) slotSize;
         }
 
         @Override
@@ -906,11 +875,7 @@ abstract class ExtLocations {
                 return Double.longBitsToDouble((long) field.varHandle().get(store));
             }
             field.receiverCheck(store);
-            if (field.type() == long.class) {
-                return Double.longBitsToDouble(UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this));
-            } else {
-                return UnsafeAccess.unsafeGetDouble(store, getOffset(), guard, this);
-            }
+            return Double.longBitsToDouble(UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this));
         }
 
         @Override
@@ -927,11 +892,7 @@ abstract class ExtLocations {
                 return;
             }
             field.receiverCheck(store);
-            if (field.type() == long.class) {
-                UnsafeAccess.unsafePutLong(store, getOffset(), Double.doubleToRawLongBits(value), this);
-            } else {
-                UnsafeAccess.unsafePutDouble(store, getOffset(), value, this);
-            }
+            UnsafeAccess.unsafePutLong(store, getOffset(), Double.doubleToRawLongBits(value), this);
         }
 
         @Override
@@ -970,12 +931,12 @@ abstract class ExtLocations {
 
         @Override
         public int primitiveFieldCount() {
-            return slotSize;
+            return 1;
         }
 
         @Override
         public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), slotSize);
+            locationVisitor.visitPrimitiveField(getIndex(), 1);
         }
 
         @Override
@@ -986,74 +947,6 @@ abstract class ExtLocations {
         @Override
         public boolean isImplicitCastIntToDouble() {
             return allowInt;
-        }
-    }
-
-    static final class BooleanFieldLocation extends AbstractPrimitiveFieldLocation implements BooleanLocation {
-
-        BooleanFieldLocation(int index, FieldInfo field, Assumption finalAssumption) {
-            super(index, field, finalAssumption);
-            assert field.type() == int.class : field;
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return getBoolean(store, guard);
-        }
-
-        @Override
-        public boolean getBoolean(DynamicObject store, boolean guard) {
-            if (UseVarHandle) {
-                return UnsafeAccess.booleanCast((int) field.varHandle().get(store));
-            }
-            field.receiverCheck(store);
-            return UnsafeAccess.booleanCast(UnsafeAccess.unsafeGetInt(store, getOffset(), guard, this));
-        }
-
-        @Override
-        public void setBoolean(DynamicObject store, boolean value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            setBooleanInternal(store, value);
-        }
-
-        private void setBooleanInternal(DynamicObject store, boolean value) {
-            if (UseVarHandle) {
-                field.varHandle().set(store, UnsafeAccess.intCast(value));
-                return;
-            }
-            field.receiverCheck(store);
-            UnsafeAccess.unsafePutInt(store, getOffset(), UnsafeAccess.intCast(value), this);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (canStore(value)) {
-                setBoolean(store, (boolean) value, guard, init);
-            } else {
-                throw incompatibleLocationException();
-            }
-        }
-
-        @Override
-        public boolean canStore(Object value) {
-            return value instanceof Boolean;
-        }
-
-        @Override
-        public Class<Boolean> getType() {
-            return boolean.class;
-        }
-
-        @Override
-        public int primitiveFieldCount() {
-            return INT_FIELD_SLOT_SIZE;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), INT_FIELD_SLOT_SIZE);
         }
     }
 
@@ -1224,13 +1117,10 @@ abstract class ExtLocations {
 
     static final class LongFieldLocation extends AbstractPrimitiveFieldLocation implements LongLocation {
         private final boolean allowInt;
-        private final byte slotSize;
 
-        LongFieldLocation(int index, FieldInfo field, boolean allowInt, int slotSize, Assumption finalAssumption) {
+        LongFieldLocation(int index, FieldInfo field, boolean allowInt, Assumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
-            assert slotSize >= 1 && slotSize <= 2;
-            this.slotSize = (byte) slotSize;
         }
 
         @Override
@@ -1295,12 +1185,12 @@ abstract class ExtLocations {
 
         @Override
         public int primitiveFieldCount() {
-            return slotSize;
+            return 1;
         }
 
         @Override
         public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), slotSize);
+            locationVisitor.visitPrimitiveField(getIndex(), 1);
         }
 
         @Override

@@ -805,6 +805,53 @@ The most common causes are:
 
 The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
 
+## Uncovering Optimization Barriers: Compiler-Level Insights for Truffle Apps
+
+Once you are comfortable profiling Truffle applications and analyzing results (see [Profiling](Profiling.md)), you may reach a point where you wonder, “Why is this benchmark slower than expected?” 
+After determining that the majority of execution time is spent in compiled code, the next step is a deeper analysis of the generated machine code.
+
+Start by identifying “hot” compilation units and addressing any Truffle performance warnings (see Step 4 of this document). 
+However, you may still encounter limitations in performance even after resolving these.
+
+In such cases, reviewing compiler-level performance warnings can be insightful. 
+While in-depth knowledge of Graal compiler internals is not required here, some warnings surfaced at the compiler level can be actionable by Truffle developers.
+
+The Graal compiler offers a compiler analysis phase that emits performance warnings during code compilation. 
+These are similar to Truffle performance warnings but may surface later in the pipeline and are not always directly actionable.
+
+### Enabling Compiler-Level Metrics
+To enable reporting of these metrics, launch your application with:
+```
+--vm.Djdk.graal.ReportHotMetrics=<method filter>
+```
+This prints warnings and hot spots to `stdout` for all compilation units.
+
+To narrow the output to specific methods or functions, use known method names like `*wasm-function:5311*`:
+```
+--vm.Djdk.graal.ReportHotMetrics='*wasm-function:5311*'
+```
+To improve the quality of the generated data, run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
+
+### Example Output
+```
+Reporting hot metrics before HighTierLoweringPhase during compilation of wasm-function:5311
+[Hot Code Warning] Unknown profile for 704|If with f=241.99984874999717 in hot loop Loop (depth=1) 4951258|LoopBegin, node source position is 
+        at org.graalvm.wasm.nodes.WasmFunctionNode.executeBodyFromOffset(WasmFunctionNode.java:363) [bci: 1654]
+        at org.graalvm.wasm.nodes.WasmFunctionNode.execute(WasmFunctionNode.java:241) [bci: 15]
+        [...cut for brevity...]
+        Potential Action Item: Add profile to the top-of-stack source location.
+```
+
+### Interpreting Results:
+* `[Hot Code Info]` lines highlight the hottest basic blocks and loops.
+  * “Local frequency” is the number of times the block is executed per loop iteration.
+  * “Global frequency” is across the entire method. A value of 1 means the basic block executes once per method invocation.
+* `[Hot Code Warning]` denotes locations or IR patterns that may inhibit optimization.
+  * Warnings include, for example, missing profile data in hot paths (for example, `unknown profile for 704|If …`), which is a common actionable warning.
+
+Some warnings may be actionable, while others are for informational purposes. If you encounter frequent or unexplained compiler warnings in your hottest methods and are unsure how to proceed, please reach out to the Truffle community via our Slack channels for advice.
+
+
 ## Ideal Graph Visualizer
 
 The [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md) is a tool to understand Truffle ASTs and the Graal Compiler graphs.

@@ -193,4 +193,12 @@ public final class RuntimeAssertionsSupport {
     public boolean desiredAssertionStatus(Class<?> clazz) {
         return desiredAssertionStatusImpl(clazz.getName(), clazz.getClassLoader());
     }
+
+    public boolean getDefaultAssertionStatus() {
+        return defaultAssertionStatus;
+    }
+
+    public boolean getDefaultSystemAssertionStatus() {
+        return systemAssertionStatus;
+    }
 }

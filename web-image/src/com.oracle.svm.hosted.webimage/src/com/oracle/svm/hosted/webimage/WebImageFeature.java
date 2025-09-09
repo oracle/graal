@@ -274,6 +274,7 @@ public class WebImageFeature implements InternalFeature {
         rci.initializeAtRunTime(WebImageFileSystem.class, "Static fields need to read system properties at runtime");
         rci.initializeAtRunTime(FileSystemInitializer.class, "Static fields need to read system properties at runtime");
         rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", "Parts of static initializer is substituted to inject custom FileSystemProvider");
+        rci.initializeAtRunTime("java.util.zip.ZipFile$Source", "avoid initializing wrong file system");
 
         for (Class<? extends JSObject> jsObjectSubclass : accessImpl.findSubclasses(JSObject.class)) {
             rci.initializeAtRunTime(jsObjectSubclass,

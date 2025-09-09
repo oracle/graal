@@ -131,7 +131,7 @@ public class VectorAPIRearrangeOpNode extends VectorAPIMacroNode implements Cano
         GraalError.guarantee(CodeUtil.isPowerOf2(v.getVectorLength()), "vector length must be power of 2: %s", v.getVectorLength());
         int indexMask = v.getVectorLength() - 1;
         for (int i = 0; i < v.getVectorLength(); i++) {
-            int shuffledIndex = ((JavaConstant) sh.getValue(i)).asInt() & indexMask;
+            int shuffledIndex = (int) ((JavaConstant) sh.getValue(i)).asLong() & indexMask;
             newValues[i] = v.getValue(shuffledIndex);
         }
         return new SimdConstant(newValues);

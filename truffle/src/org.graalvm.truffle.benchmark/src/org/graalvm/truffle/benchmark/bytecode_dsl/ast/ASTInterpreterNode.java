@@ -38,23 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode;
+package org.graalvm.truffle.benchmark.bytecode_dsl.ast;
 
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ConstNodeGen;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
 
-public abstract class BenchmarkLanguageNode extends Node {
+public abstract class ASTInterpreterNode extends Node {
 
     protected static final Object VOID = new Object();
 
@@ -83,38 +83,9 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    public static class BenchmarkLanguageRootNode extends RootNode {
-
-        @Child BenchmarkLanguageNode body;
-
-        public BenchmarkLanguageRootNode(BenchmarkLanguage lang, int locals, BenchmarkLanguageNode body) {
-            super(lang, createFrame(locals));
-            this.body = body;
-        }
-
-        private static FrameDescriptor createFrame(int locals) {
-            FrameDescriptor.Builder b = FrameDescriptor.newBuilder(locals);
-            b.addSlots(locals, FrameSlotKind.Illegal);
-            return b.build();
-        }
-
-        @Override
-        @ExplodeLoop
-        public Object execute(VirtualFrame frame) {
-            try {
-                body.execute(frame);
-            } catch (ReturnException ex) {
-                return ex.getValue();
-            }
-
-            throw new AssertionError();
-        }
-
-    }
-
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    public abstract static class AddNode extends BenchmarkLanguageNode {
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class AddNode extends ASTInterpreterNode {
         @Specialization
         public int addInts(int lhs, int rhs) {
             return lhs + rhs;
@@ -127,9 +98,39 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    public abstract static class ModNode extends BenchmarkLanguageNode {
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class MultNode extends ASTInterpreterNode {
+        @Specialization
+        public int multInts(int lhs, int rhs) {
+            return lhs * rhs;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public Object fallback(Object lhs, Object rhs) {
+            throw new AssertionError();
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class DivNode extends ASTInterpreterNode {
+        @Specialization
+        public int divInts(int lhs, int rhs) {
+            return lhs / rhs;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public Object fallback(Object lhs, Object rhs) {
+            throw new AssertionError();
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class ModNode extends ASTInterpreterNode {
         @Specialization
         public int modInts(int lhs, int rhs) {
             return lhs % rhs;
@@ -142,9 +143,9 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    public abstract static class LessNode extends BenchmarkLanguageNode {
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class LessNode extends ASTInterpreterNode {
         @Specialization
         public boolean compareInts(int lhs, int rhs) {
             return lhs < rhs;
@@ -157,8 +158,8 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    public abstract static class StoreLocalNode extends BenchmarkLanguageNode {
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class StoreLocalNode extends ASTInterpreterNode {
 
         private final int local;
 
@@ -173,15 +174,15 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    @NodeChild(type = BenchmarkLanguageNode.class)
-    public abstract static class ReturnNode extends BenchmarkLanguageNode {
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class ReturnNode extends ASTInterpreterNode {
         @Specialization
         public Object doReturn(Object value) {
             throw new ReturnException(value);
         }
     }
 
-    public abstract static class LoadLocalNode extends BenchmarkLanguageNode {
+    public abstract static class LoadLocalNode extends ASTInterpreterNode {
         private final int local;
 
         LoadLocalNode(int local) {
@@ -194,17 +195,17 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    public static class IfNode extends BenchmarkLanguageNode {
-        @Child BenchmarkLanguageNode condition;
-        @Child BenchmarkLanguageNode thenBranch;
-        @Child BenchmarkLanguageNode elseBranch;
+    public static class IfNode extends ASTInterpreterNode {
+        @Child ASTInterpreterNode condition;
+        @Child ASTInterpreterNode thenBranch;
+        @Child ASTInterpreterNode elseBranch;
         private final CountingConditionProfile profile;
 
-        public static IfNode create(BenchmarkLanguageNode condition, BenchmarkLanguageNode thenBranch, BenchmarkLanguageNode elseBranch) {
+        public static IfNode create(ASTInterpreterNode condition, ASTInterpreterNode thenBranch, ASTInterpreterNode elseBranch) {
             return new IfNode(condition, thenBranch, elseBranch);
         }
 
-        IfNode(BenchmarkLanguageNode condition, BenchmarkLanguageNode thenBranch, BenchmarkLanguageNode elseBranch) {
+        IfNode(ASTInterpreterNode condition, ASTInterpreterNode thenBranch, ASTInterpreterNode elseBranch) {
             this.condition = condition;
             this.thenBranch = thenBranch;
             this.elseBranch = elseBranch;
@@ -222,17 +223,17 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    public static class WhileNode extends BenchmarkLanguageNode {
+    public static class WhileNode extends ASTInterpreterNode {
 
-        @Child private BenchmarkLanguageNode condition;
-        @Child private BenchmarkLanguageNode body;
+        @Child private ASTInterpreterNode condition;
+        @Child private ASTInterpreterNode body;
         private final CountingConditionProfile profile;
 
-        public static WhileNode create(BenchmarkLanguageNode condition, BenchmarkLanguageNode body) {
+        public static WhileNode create(ASTInterpreterNode condition, ASTInterpreterNode body) {
             return new WhileNode(condition, body);
         }
 
-        WhileNode(BenchmarkLanguageNode condition, BenchmarkLanguageNode body) {
+        WhileNode(ASTInterpreterNode condition, ASTInterpreterNode body) {
             this.condition = condition;
             this.body = body;
             this.profile = CountingConditionProfile.create();
@@ -250,28 +251,74 @@ public abstract class BenchmarkLanguageNode extends Node {
         }
     }
 
-    public static class BlockNode extends BenchmarkLanguageNode {
-        @Children final BenchmarkLanguageNode[] nodes;
+    public static class BlockNode extends ASTInterpreterNode {
+        @Children final ASTInterpreterNode[] nodes;
 
-        public static final BlockNode create(BenchmarkLanguageNode... nodes) {
+        public static final BlockNode create(ASTInterpreterNode... nodes) {
             return new BlockNode(nodes);
         }
 
-        BlockNode(BenchmarkLanguageNode[] nodes) {
+        BlockNode(ASTInterpreterNode[] nodes) {
             this.nodes = nodes;
         }
 
         @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
-            for (BenchmarkLanguageNode node : nodes) {
+            for (ASTInterpreterNode node : nodes) {
                 node.execute(frame);
             }
             return VOID;
         }
     }
 
-    public abstract static class ConstNode extends BenchmarkLanguageNode {
+    public static class SwitchNode extends ASTInterpreterNode {
+        @Child ASTInterpreterNode valueNode;
+        @Children final ASTInterpreterNode[] caseValues;
+        @Children final ASTInterpreterNode[] caseNodes;
+
+        public static final SwitchNode create(ASTInterpreterNode valueNode, Object... cases) {
+            if (cases.length % 2 != 0) {
+                throw new AssertionError("cases should be value-node pairs");
+            }
+            ASTInterpreterNode[] caseValues = new ASTInterpreterNode[cases.length / 2];
+            ASTInterpreterNode[] caseNodes = new ASTInterpreterNode[cases.length / 2];
+            for (int i = 0; i < caseValues.length; i++) {
+                if (!(cases[i * 2] instanceof Integer num)) {
+                    throw new AssertionError("invalid case value at index " + (i * 2) + ": " + cases[i * 2]);
+                }
+                if (!(cases[i * 2 + 1] instanceof ASTInterpreterNode node)) {
+                    throw new AssertionError("invalid case node at index " + (i * 2 + 1) + ": " + cases[i * 2 + 1]);
+                }
+                caseValues[i] = ConstNodeGen.create(num);
+                caseNodes[i] = node;
+            }
+            return new SwitchNode(valueNode, caseValues, caseNodes);
+        }
+
+        SwitchNode(ASTInterpreterNode value, ASTInterpreterNode[] caseValues, ASTInterpreterNode[] caseNodes) {
+            if (caseValues.length != caseNodes.length) {
+                throw new AssertionError("case size mismatch: " + caseValues.length + " versus " + caseNodes.length);
+            }
+            this.valueNode = value;
+            this.caseValues = caseValues;
+            this.caseNodes = caseNodes;
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            Object value = this.valueNode.execute(frame);
+            for (int i = 0; i < caseValues.length; i++) {
+                if (value == caseValues[i].execute(frame)) {
+                    return caseNodes[i].execute(frame);
+                }
+            }
+            return CompilerDirectives.shouldNotReachHere("unhandled value " + value);
+        }
+    }
+
+    public abstract static class ConstNode extends ASTInterpreterNode {
 
         private final int value;
 
@@ -282,6 +329,31 @@ public abstract class BenchmarkLanguageNode extends Node {
         @Specialization
         public int doIt() {
             return value;
+        }
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    public abstract static class LoadArgumentNode extends ASTInterpreterNode {
+        @Specialization
+        public static Object perform(VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class ArrayLengthNode extends ASTInterpreterNode {
+        @Specialization
+        public static int doArray(int[] array) {
+            return array.length;
+        }
+    }
+
+    @NodeChild(value = "array", type = ASTInterpreterNode.class)
+    @NodeChild(value = "i", type = ASTInterpreterNode.class)
+    public abstract static class ArrayIndexNode extends ASTInterpreterNode {
+        @Specialization
+        public static int doArray(int[] array, int i) {
+            return array[i];
         }
     }
 }

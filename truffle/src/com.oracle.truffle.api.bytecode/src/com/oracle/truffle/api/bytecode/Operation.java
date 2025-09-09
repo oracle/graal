@@ -62,10 +62,12 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * <li>The operation class should be nested inside the bytecode root node class.
  * <li>The operation class should be {@code static} {@code final}, and have at least package-private
  * visibility.
- * <li>The operation class should not extend/implement any other class/interface. (For convenient
- * access to helper methods/fields from Truffle DSL expressions, consider using
+ * <li>The operation class may extend other static classes to inherit specializations, but they must
+ * adhere to the same restrictions as operation classes. This is useful to share common
+ * specializations across multiple operations.
+ * <li>For convenient access to helper methods/fields from Truffle DSL expressions, consider using
  * {@link com.oracle.truffle.api.dsl.ImportStatic}. Static imports can be declared on the root node
- * or on individual operations; operation imports take precedence over root node imports.)
+ * or on individual operations; operation imports take precedence over root node imports.
  * <li>The operation class should not contain instance members.
  * <li>The specializations also have some differences:
  * <ul>

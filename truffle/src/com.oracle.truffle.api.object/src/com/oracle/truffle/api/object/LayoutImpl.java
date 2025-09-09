@@ -71,7 +71,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     private final List<FieldInfo> objectFields;
     private final List<FieldInfo> primitiveFields;
-    private final int primitiveFieldMaxSize;
 
     LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, LayoutInfo layoutInfo, int allowedImplicitCasts) {
         this.strategy = strategy;
@@ -80,7 +79,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.allowedImplicitCasts = allowedImplicitCasts;
         this.objectFields = layoutInfo.objectFields;
         this.primitiveFields = layoutInfo.primitiveFields;
-        this.primitiveFieldMaxSize = layoutInfo.primitiveFieldMaxSize;
     }
 
     @Override
@@ -116,10 +114,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     int getPrimitiveFieldCount() {
         return primitiveFields.size();
-    }
-
-    int getPrimitiveFieldMaxSize() {
-        return primitiveFieldMaxSize;
     }
 
     public LayoutStrategy getStrategy() {
@@ -225,26 +219,11 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return primitiveFields.get(index);
     }
 
-    static int getFieldSizeByClass(Class<?> c) {
-        if (c.equals(Boolean.class) || c.equals(Byte.class) || c.equals(byte.class) || c.equals(boolean.class)) {
-            return 1;
-        } else if (c.equals(Short.class) || c.equals(Character.class) || c.equals(char.class) || c.equals(short.class)) {
-            return 2;
-        } else if (c.equals(Float.class) || c.equals(Integer.class) || c.equals(float.class) || c.equals(int.class)) {
-            return 4;
-        } else if (c.equals(Double.class) || c.equals(Long.class) || c.equals(double.class) || c.equals(long.class)) {
-            return 8;
-        } else {
-            throw new IllegalArgumentException("Field size for class " + c + " is not supported.");
-        }
-    }
-
     private static final class LayoutInfo {
 
         final Class<? extends DynamicObject> clazz;
         final List<FieldInfo> objectFields;
         final List<FieldInfo> primitiveFields;
-        final int primitiveFieldMaxSize;
 
         static LayoutInfo getOrCreateNewLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass, MethodHandles.Lookup layoutLookup) {
             LayoutInfo layoutInfo = (LayoutInfo) LAYOUT_INFO_MAP.get(dynamicObjectClass);
@@ -285,13 +264,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
             this.objectFields = List.copyOf(objectFieldList);
             this.primitiveFields = List.copyOf(primitiveFieldList);
-
-            int maxFieldSize = 0;
-            for (FieldInfo fieldInfo : primitiveFields) {
-                int fieldSize = getFieldSizeByClass(fieldInfo.type());
-                maxFieldSize = Math.max(maxFieldSize, fieldSize);
-            }
-            this.primitiveFieldMaxSize = maxFieldSize;
         }
 
         /**
@@ -335,8 +307,6 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
                     hasDynamicFields = true;
                     if (field.getType() == Object.class) {
                         objectFieldList.add(FieldInfo.fromField(field, varHandle));
-                    } else if (field.getType() == int.class) {
-                        primitiveFieldList.add(FieldInfo.fromField(field, varHandle));
                     } else if (field.getType() == long.class) {
                         primitiveFieldList.add(FieldInfo.fromField(field, varHandle));
                     }
@@ -350,8 +320,8 @@ final class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         }
 
         private static void checkDynamicFieldType(Field field) {
-            if (field.getType() != Object.class && field.getType() != int.class && field.getType() != long.class) {
-                throw new IllegalArgumentException("@DynamicField annotated field type must be either Object or int or long: " + field);
+            if (field.getType() != Object.class && field.getType() != long.class) {
+                throw new IllegalArgumentException("@DynamicField annotated field type must be either Object or long: " + field);
             }
             if (Modifier.isFinal(field.getModifiers())) {
                 throw new IllegalArgumentException("@DynamicField annotated field must not be final: " + field);

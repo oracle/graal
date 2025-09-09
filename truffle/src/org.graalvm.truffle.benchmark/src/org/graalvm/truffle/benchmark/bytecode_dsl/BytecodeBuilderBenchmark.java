@@ -38,12 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode;
+package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import java.util.function.Consumer;
 
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
-import org.graalvm.truffle.benchmark.bytecode.BytecodeBenchmarkRootNodeAll.Builder;
+import org.graalvm.truffle.benchmark.bytecode_dsl.BytecodeDSLBenchmarkRootNodeAllOpts.Builder;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
@@ -199,7 +199,7 @@ public class BytecodeBuilderBenchmark extends TruffleBenchmark {
     @Benchmark
     @OperationsPerInvocation(100)
     public Object buildManyRoots() {
-        return BytecodeBenchmarkRootNodeAll.create(null, BytecodeConfig.DEFAULT, (b) -> {
+        return BytecodeDSLBenchmarkRootNodeAllOpts.create(null, BytecodeConfig.DEFAULT, (b) -> {
             for (int i = 0; i < 100; i++) {
                 parse(b, null);
             }
@@ -207,16 +207,16 @@ public class BytecodeBuilderBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public BytecodeBenchmarkRootNode buildSingleRoot() {
-        return BytecodeBenchmarkRootNodeAll.create(null, BytecodeConfig.DEFAULT, (b) -> {
+    public BytecodeDSLBenchmarkRootNode buildSingleRoot() {
+        return BytecodeDSLBenchmarkRootNodeAllOpts.create(null, BytecodeConfig.DEFAULT, (b) -> {
             parse(b, null);
         }).getNode(0);
     }
 
     @Benchmark
     @OperationsPerInvocation(100)
-    public BytecodeBenchmarkRootNode buildRecursive() {
-        return BytecodeBenchmarkRootNodeAll.create(null, BytecodeConfig.DEFAULT, (b) -> {
+    public BytecodeDSLBenchmarkRootNode buildRecursive() {
+        return BytecodeDSLBenchmarkRootNodeAllOpts.create(null, BytecodeConfig.DEFAULT, (b) -> {
             decrementAndParse(b, 100);
         }).getNode(0);
     }

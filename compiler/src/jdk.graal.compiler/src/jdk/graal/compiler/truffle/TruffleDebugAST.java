@@ -54,17 +54,17 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Represents a TruffleAST constructed from Truffle nodes using constant reflection. Note this AST
+ * Represents a Truffle AST constructed from Truffle nodes using constant reflection. Note this AST
  * is currently only constructed for AST dumping to IGV.
  *
  * @see TruffleDebugHandlersFactory for details on dumping
  */
-final class TruffleAST implements JavaMethodContext {
+final class TruffleDebugAST implements JavaMethodContext {
 
     static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
 
     private final ASTNode root;
-    private final List<TruffleAST.ASTBlock> blocks = new ArrayList<>();
+    private final List<TruffleDebugAST.ASTBlock> blocks = new ArrayList<>();
     private final List<ASTNode> nodes = new ArrayList<>();
     private final TruffleCompilationTask task;
     private final TruffleCompilable compilable;
@@ -72,7 +72,7 @@ final class TruffleAST implements JavaMethodContext {
     private final CallTree callTree;
     private int currentId = 0;
 
-    private TruffleAST(PartialEvaluator partialEvaluator, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
+    private TruffleDebugAST(PartialEvaluator partialEvaluator, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
         this.partialEvaluator = partialEvaluator;
         this.compilable = compilable;
         this.callTree = callTree;
@@ -83,8 +83,8 @@ final class TruffleAST implements JavaMethodContext {
         buildTree(rootNode, root, root.block);
     }
 
-    static TruffleAST create(PartialEvaluator config, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
-        return new TruffleAST(config, task, compilable, callTree);
+    static TruffleDebugAST create(PartialEvaluator config, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
+        return new TruffleDebugAST(config, task, compilable, callTree);
     }
 
     private JavaConstant readRootNode(TruffleCompilable c) {
@@ -100,8 +100,8 @@ final class TruffleAST implements JavaMethodContext {
         return new TruffleDebugJavaMethod(task, compilable);
     }
 
-    private ASTNode makeASTNode(ASTNode parent, TruffleAST.ASTBlock blockParent, JavaConstant node) {
-        TruffleAST.ASTBlock block = null;
+    private ASTNode makeASTNode(ASTNode parent, TruffleDebugAST.ASTBlock blockParent, JavaConstant node) {
+        TruffleDebugAST.ASTBlock block = null;
         if (blockParent == null) {
             block = makeASTBlock(null, callTree != null ? callTree.getRoot() : null);
         } else {
@@ -131,7 +131,7 @@ final class TruffleAST implements JavaMethodContext {
                 }
             }
             if (found != null && found.getState() == CallNode.State.Inlined) {
-                TruffleAST.ASTBlock block = makeASTBlock(parent.block, found);
+                TruffleDebugAST.ASTBlock block = makeASTBlock(parent.block, found);
                 TruffleCompilable ast = block.callNode.getDirectCallTarget();
                 buildTree(readRootNode(ast), astNode, block);
 
@@ -149,8 +149,8 @@ final class TruffleAST implements JavaMethodContext {
         rootNode.properties.put("rootName", rootName);
     }
 
-    private TruffleAST.ASTBlock makeASTBlock(TruffleAST.ASTBlock parentBlock, CallNode callNode) {
-        final TruffleAST.ASTBlock astBlock = new ASTBlock(blocks.size(), callNode);
+    private TruffleDebugAST.ASTBlock makeASTBlock(TruffleDebugAST.ASTBlock parentBlock, CallNode callNode) {
+        final TruffleDebugAST.ASTBlock astBlock = new ASTBlock(blocks.size(), callNode);
         blocks.add(astBlock);
         if (parentBlock != null) {
             parentBlock.successors.add(astBlock);
@@ -158,7 +158,7 @@ final class TruffleAST implements JavaMethodContext {
         return astBlock;
     }
 
-    private void buildTree(JavaConstant parent, ASTNode astParent, TruffleAST.ASTBlock blockParent) {
+    private void buildTree(JavaConstant parent, ASTNode astParent, TruffleDebugAST.ASTBlock blockParent) {
         if (astParent == null) {
             return;
         }
@@ -197,7 +197,7 @@ final class TruffleAST implements JavaMethodContext {
         return partialEvaluator.config.lastTier().providers().getConstantReflection();
     }
 
-    private ASTNode addNode(ASTNode parent, TruffleAST.ASTBlock blockParent, JavaConstant node, String edgeLabel) {
+    private ASTNode addNode(ASTNode parent, TruffleDebugAST.ASTBlock blockParent, JavaConstant node, String edgeLabel) {
         if (node.isNull()) {
             return null;
         }
@@ -221,7 +221,7 @@ final class TruffleAST implements JavaMethodContext {
 
     private static class ASTBlock {
         private final int id;
-        private final List<TruffleAST.ASTBlock> successors = new ArrayList<>();
+        private final List<TruffleDebugAST.ASTBlock> successors = new ArrayList<>();
         private final List<ASTNode> nodes = new ArrayList<>();
         private final CallNode callNode;
 
@@ -292,20 +292,20 @@ final class TruffleAST implements JavaMethodContext {
 
     }
 
-    static final class ASTDumpStructure implements GraphStructure<TruffleAST, ASTNode, ASTNodeClass, List<ASTEdge>>, GraphBlocks<TruffleAST, ASTBlock, ASTNode> {
+    static final class ASTDumpStructure implements GraphStructure<TruffleDebugAST, ASTNode, ASTNodeClass, List<ASTEdge>>, GraphBlocks<TruffleDebugAST, ASTBlock, ASTNode> {
 
         @Override
-        public TruffleAST graph(TruffleAST currentGraph, Object obj) {
-            return obj instanceof TruffleAST ? (TruffleAST) obj : null;
+        public TruffleDebugAST graph(TruffleDebugAST currentGraph, Object obj) {
+            return obj instanceof TruffleDebugAST ? (TruffleDebugAST) obj : null;
         }
 
         @Override
-        public Iterable<? extends ASTNode> nodes(TruffleAST graph) {
+        public Iterable<? extends ASTNode> nodes(TruffleDebugAST graph) {
             return graph.nodes;
         }
 
         @Override
-        public int nodesCount(TruffleAST graph) {
+        public int nodesCount(TruffleDebugAST graph) {
             return graph.nodes.size();
         }
 
@@ -320,7 +320,7 @@ final class TruffleAST implements JavaMethodContext {
         }
 
         @Override
-        public void nodeProperties(TruffleAST graph, ASTNode node, Map<String, ? super Object> properties) {
+        public void nodeProperties(TruffleDebugAST graph, ASTNode node, Map<String, ? super Object> properties) {
             properties.putAll(node.properties);
         }
 
@@ -380,12 +380,12 @@ final class TruffleAST implements JavaMethodContext {
         }
 
         @Override
-        public Collection<? extends ASTNode> edgeNodes(TruffleAST graph, ASTNode node, List<ASTEdge> port, int index) {
+        public Collection<? extends ASTNode> edgeNodes(TruffleDebugAST graph, ASTNode node, List<ASTEdge> port, int index) {
             return List.of(port.get(index).node);
         }
 
         @Override
-        public Collection<? extends ASTBlock> blocks(TruffleAST graph) {
+        public Collection<? extends ASTBlock> blocks(TruffleDebugAST graph) {
             return graph.blocks;
         }
 
@@ -395,7 +395,7 @@ final class TruffleAST implements JavaMethodContext {
         }
 
         @Override
-        public Collection<? extends ASTNode> blockNodes(TruffleAST info, ASTBlock block) {
+        public Collection<? extends ASTNode> blockNodes(TruffleDebugAST info, ASTBlock block) {
             return block.nodes;
         }
 

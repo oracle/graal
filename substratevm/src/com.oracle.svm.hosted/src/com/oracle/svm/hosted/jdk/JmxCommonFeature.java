@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -157,28 +157,28 @@ public class JmxCommonFeature implements InternalFeature {
      * </p>
      */
     private static void configureProxy(BeforeAnalysisAccess access) {
-        DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.GarbageCollectorMXBean"),
+        ProxyRegistry proxyRegistry = ImageSingletons.lookup(ProxyRegistry.class);
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.GarbageCollectorMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.OperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.ThreadMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.BufferPoolMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.ClassLoadingMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.CompilationMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.GarbageCollectorMXBean"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.OperatingSystemMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.ThreadMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.BufferPoolMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.ClassLoadingMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.CompilationMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.GarbageCollectorMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryManagerMXBean"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryManagerMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryManagerMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryPoolMXBean"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryManagerMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryPoolMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryMXBean"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.MemoryMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.OperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.RuntimeMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.ThreadMXBean"));
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.OperatingSystemMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.RuntimeMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.lang.management.ThreadMXBean"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
     }
 

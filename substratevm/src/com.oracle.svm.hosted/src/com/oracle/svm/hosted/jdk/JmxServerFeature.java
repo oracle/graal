@@ -46,7 +46,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
@@ -87,12 +87,12 @@ public class JmxServerFeature implements InternalFeature {
     }
 
     private static void configureProxy(BeforeAnalysisAccess access) {
-        DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
+        ProxyRegistry proxyRegistry = ImageSingletons.lookup(ProxyRegistry.class);
 
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.rmi.Remote"),
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.rmi.Remote"),
                         access.findClassByName("java.rmi.registry.Registry"));
 
-        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("javax.management.remote.rmi.RMIServer"));
+        proxyRegistry.registerProxy(ConfigurationCondition.alwaysTrue(), access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
     /**

@@ -237,4 +237,16 @@ public interface VersionFilter extends LanguageFilter {
             return version.java25OrEarlier();
         }
     }
+
+    final class Java26OrLater implements VersionFilter {
+        public static final Java26OrLater INSTANCE = new Java26OrLater();
+
+        private Java26OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java26OrLater();
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,7 +95,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
             if (excludesObject != null) {
                 List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
                 for (Object object : excludes) {
-                    parsePatternEntry(object, registry::ignoreResources, null, "'excludes' list");
+                    parsePatternEntry(object, (condition, pattern) -> registry.ignoreResources(condition, pattern, origin), null, "'excludes' list");
                 }
             }
         } else { // Old format: may be deprecated in future versions

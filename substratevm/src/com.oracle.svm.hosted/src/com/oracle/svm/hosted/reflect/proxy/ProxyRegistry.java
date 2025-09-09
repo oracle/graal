@@ -33,8 +33,9 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.LogUtils;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
-public class ProxyRegistry extends ConditionalConfigurationRegistry implements BiConsumer<ConfigurationCondition, List<String>> {
+public class ProxyRegistry extends ConditionalConfigurationRegistry implements RuntimeProxyRegistrySupport, BiConsumer<ConfigurationCondition, List<String>> {
     private final DynamicProxyRegistry dynamicProxySupport;
     private final ImageClassLoader imageClassLoader;
 
@@ -47,11 +48,16 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements B
     public void accept(ConfigurationCondition condition, List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            registerConditionalConfiguration(condition, (cnd) -> {
-                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-                dynamicProxySupport.addProxyClass(cnd, interfaces);
-            });
+            registerProxy(condition, interfaces);
         }
+    }
+
+    @Override
+    public Class<?> registerProxy(ConfigurationCondition condition, Class<?>... interfaces) {
+        abortIfSealed();
+        requireNonNull(interfaces, "interface", "proxy class creation");
+        registerConditionalConfiguration(condition, (cnd) -> dynamicProxySupport.addProxyClass(cnd, interfaces));
+        return dynamicProxySupport.getProxyClassHosted(interfaces);
     }
 
     public Class<?> createProxyClassForSerialization(List<String> proxies) {

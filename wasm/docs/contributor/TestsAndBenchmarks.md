@@ -54,7 +54,7 @@ To compile these programs, you will need to install additional dependencies on y
 To build these additional tests and benchmarks, you need to:
 
 1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html).
-    We currently test against Emscripten **1.39.13**.
+    We currently test against Emscripten **4.0.10**.
     ```bash
     $ cd [preferred emsdk install location]
 
@@ -129,7 +129,7 @@ The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` MX proje
 For the benchmarks to run, `NODE_DIR` has to be set. You can use the node version that is part of Emscripten, for example:
 
 ```bash
-$ export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
+$ export NODE_DIR=[path to emsdk]/node/22.16.0_64bit/bin
 ```
 
 After building the additional benchmarks, as described in the last section, they can be executed as follows:

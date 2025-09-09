@@ -122,10 +122,10 @@ public final class Shape {
 
     private final int objectArraySize;
     private final int objectArrayCapacity;
-    private final int objectFieldSize;
-    private final int primitiveFieldSize;
     private final int primitiveArraySize;
     private final int primitiveArrayCapacity;
+    private final short objectFieldSize;
+    private final short primitiveFieldSize;
 
     private final int depth;
     private final int propertyCount;
@@ -1230,10 +1230,11 @@ public final class Shape {
 
         this.objectArraySize = objectArraySize;
         this.objectArrayCapacity = capacityFromSize(objectArraySize);
-        this.objectFieldSize = objectFieldSize;
-        this.primitiveFieldSize = primitiveFieldSize;
         this.primitiveArraySize = primitiveArraySize;
         this.primitiveArrayCapacity = capacityFromSize(primitiveArraySize);
+        assert objectFieldSize <= ExtLocations.MAX_DYNAMIC_FIELDS && primitiveFieldSize <= ExtLocations.MAX_DYNAMIC_FIELDS;
+        this.objectFieldSize = (short) objectFieldSize;
+        this.primitiveFieldSize = (short) primitiveFieldSize;
 
         if (parent != null) {
             this.propertyCount = makePropertyCount(parent, propertyMap, transitionFromParent);

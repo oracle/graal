@@ -17,9 +17,7 @@ Modules that are permitted to perform _restricted_ native operations (including 
 
 ## Foreign Memory
 
-Native Image supports most foreign memory features.
-Support for shared arenas (`Arena.ofShared()`) is still experimental and needs to be explicitly enabled with `-H:+SharedArenaSupport` (together with `-H:+UnlockExperimentalVMOptions`).
-Note: Building a native image that includes calls to `Arena.ofShared()` will still succeed even if support for shared arenas is disabled. However, an exception will be thrown at run time when the application attempts to close the shared arena.
+Native Image supports all foreign memory features.
 
 ## Foreign Functions
 

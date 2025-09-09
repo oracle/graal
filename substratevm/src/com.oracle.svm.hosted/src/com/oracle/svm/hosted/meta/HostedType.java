@@ -135,6 +135,8 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     protected int[] openTypeWorldTypeCheckSlots;
 
+    protected int interfaceID;
+
     // endregion open-world only fields
 
     /**
@@ -280,6 +282,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public int getInterfaceID() {
+        return interfaceID;
+    }
+
+    @Override
     public boolean isWordType() {
         /* Word types have the kind Object, but a primitive storageKind. */
         boolean wordType = kind != storageKind;
@@ -296,8 +303,9 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return allDeclaredMethods;
     }
 
-    public void loadTypeID(int newTypeID) {
+    public void loadTypeAndInterfaceID(int newTypeID, int newInterfaceID) {
         this.typeID = newTypeID;
+        this.interfaceID = newInterfaceID;
         this.loadedFromPriorLayer = true;
     }
 

@@ -149,6 +149,22 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testRangeCheck");
         runTest("testImplicitCast");
         runTest("testNativeCall");
+        runTest("testBCDSLPrologIfVersion");
+    }
+
+    /*
+     * Test for GR-69170
+     */
+    @BytecodeInterpreterSwitch
+    static Object testBCDSLPrologIfVersion(int value) {
+        Object o = null;
+        if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
+            GraalDirectives.deoptimize();
+            o = new Object();
+        }
+        // must be inlined
+        trivialMethod();
+        return o;
     }
 
     void runTest(String methodName) {

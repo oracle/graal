@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.meta;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -39,15 +40,25 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.vm.ci.meta.JavaType;
 
 /**
  * This class assigns each type an id, determines stamp metadata, and generates the information
@@ -58,7 +69,7 @@ import jdk.graal.compiler.debug.Assertions;
  * an open- or closed-type world assumption.
  *
  * <h3>Closed-World Type Information</h3>
- * 
+ * <p>
  * With a closed-world type world assumption, Native image type checks are performed by a range
  * check (see {@link com.oracle.svm.core.graal.snippets.TypeSnippets} for specific implementation
  * details).
@@ -98,17 +109,52 @@ import jdk.graal.compiler.debug.Assertions;
  * <p>
  * Identifying strictly overlapping relations allows the C1P problem to be decomposed and solved in
  * an incremental manner.
- * 
+ *
  * <h3>Open-World Type Information</h3>
- * 
+ * <p>
  * Under the open-world type strategy, new (currently unknown) subtypes may be created at a later
  * point; therefore, the range check implementation described above is not possible to use. Instead,
  * when checking against an instance class we can use a
  * <a href="https://dl.acm.org/doi/10.1145/115372.115297">Cohen display</a> to limit the
- * computational overhead. For checks against interfaces, in the dynamic hub we include a list of
- * all interface ids the type implements.
+ * computational overhead. For checks against interfaces, depending on the value of
+ * {@link SubstrateOptions#useInterfaceHashing()}, a perfect-hashing-based approach or an iterative
+ * approach based on an interface list in the dynamic hub is used.
  *
- * The implementation of the open-world typecheck can be found in {@link OpenTypeWorldSnippets}.
+ * <h4>Without Interface Hashing</h4>
+ * <p>
+ * {@link DynamicHub#getOpenTypeWorldTypeCheckSlots() openTypeWorldTypeCheckSlots} contain two
+ * entries per interface, one for the typeID and one for the itable offset:
+ *
+ * <pre>
+ * checkSlots = [...typeIDs... ; interfaceID_0 ; itableOffset_0 ; ...]
+ * </pre>
+ *
+ * <h4>With Interface Hashing</h4>
+ * <p>
+ * {@link DynamicHub#getOpenTypeWorldTypeCheckSlots() openTypeWorldTypeCheckSlots} only contain
+ * information about the type hierarchy:
+ *
+ * <pre>
+ * checkSlots = [ ... ; parent.typeID ; this.typeID]
+ * </pre>
+ * <p>
+ * Type check information for interfaces is encoded in a hash table. Interfaces that have an
+ * interfaceIDs > {@link SubstrateOptions#InterfaceHashingMaxId} are encoded in the checkSlots array
+ * as before. This hash table is computed based on the implemented interfaces. The hash table
+ * entries encode the following:
+ *
+ * <pre>
+ * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubTypeCheckUtil#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
+ * </pre>
+ *
+ * Thus, interfaceIDs encoded in hash tables must be > 0, to properly distinguish them from empty
+ * hash table entries.
+ * <p>
+ * The implementation of the open-world typechecks can be found in {@link OpenTypeWorldSnippets},
+ * the loading of interface methods can be found in {@link OpenTypeWorldDispatchTableSnippets}. The
+ * type check data for dynamic hubs is computed in
+ * {@link DynamicHubTypeCheckUtil#computeOpenTypeWorldTypeCheckData} with the hashing function being
+ * defined in {@link DynamicHubTypeCheckUtil#hash}.
  */
 public final class TypeCheckBuilder {
     public static final int UNINITIALIZED_TYPECHECK_SLOTS = -1;
@@ -157,15 +203,18 @@ public final class TypeCheckBuilder {
     };
     private final boolean isClosedTypeWorld;
 
+    public record StartingTypeIDs(int startingTypeID, int startingInterfaceID) {
+    }
+
     public static int buildTypeMetadata(HostedUniverse hUniverse, Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType, hUniverse.hostVM().isClosedTypeWorld());
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            builder.buildTypeInformation(hUniverse, 0);
+            builder.buildTypeInformation(hUniverse, 0, 1);
             builder.calculateClosedTypeWorldTypeMetadata();
             return builder.getNumTypeCheckSlots();
         } else {
-            int startingTypeID = OpenTypeWorldFeature.loadTypeInfo(builder.heightOrderedTypes);
-            builder.buildTypeInformation(hUniverse, startingTypeID);
+            var startingTypeIDs = OpenTypeWorldFeature.loadTypeInfo(builder.heightOrderedTypes);
+            builder.buildTypeInformation(hUniverse, startingTypeIDs.startingTypeID, startingTypeIDs.startingInterfaceID);
             builder.calculateOpenTypeWorldTypeMetadata();
             // GR-64324 re-enable once type duplicates get assigned the same typecheckID
             // assert OpenTypeWorldFeature.validateTypeInfo(builder.heightOrderedTypes);
@@ -206,7 +255,7 @@ public final class TypeCheckBuilder {
 
     /**
      * Checks whether this type should be included.
-     *
+     * <p>
      * Currently, all types are included; however, in the future, only reachable types should be
      * included.
      */
@@ -278,11 +327,11 @@ public final class TypeCheckBuilder {
 
     /**
      * Generates a list of immediate subtypes for each included type.
-     *
+     * <p>
      * Because potentially not all parent array types are present, a type parent map is initially
      * calculated for the element types. Then, for each dimension, each present array type is linked
      * to its nearest reachable parent.
-     *
+     * <p>
      * This method assumes that the entire type hierarchy is included for element types, but not for
      * array types.
      */
@@ -451,24 +500,38 @@ public final class TypeCheckBuilder {
      * <li>strengthenStampType</li>
      * <li>uniqueConcreteImplementation</li>
      * </ul>
-     *
+     * <p>
      * The stamps are calculated by performing a dataflow analysis of the {@link #subtypeMap}.
      */
-    public void buildTypeInformation(HostedUniverse hUniverse, int startingTypeID) {
+    public void buildTypeInformation(HostedUniverse hUniverse, int startingTypeID, int startingInterfaceID) {
+        assert startingInterfaceID > 0 : "InterfaceID must not be 0 to be distinct from empty hash table entries when using interface hashing";
         hUniverse.orderedTypes = heightOrderedTypes;
 
+        UnmodifiableEconomicMap<JavaType, Integer> interfaceIdLookup = rankInterfacesByImplementors();
+
+        int nextInterfaceID = startingInterfaceID + interfaceIdLookup.size();
         int nextTypeID = startingTypeID;
+
         for (HostedType type : heightOrderedTypes) {
             if (type.typeID != -1) {
-                assert type.loadedFromPriorLayer && type.typeID < startingTypeID : "Type initialized multiple times: " + type;
+                assert type.loadedFromPriorLayer && type.typeID < startingTypeID && type.interfaceID < startingInterfaceID : "Type initialized multiple times: " + type;
             } else {
                 type.typeID = nextTypeID++;
+                if (isInterface(type)) {
+                    if (interfaceIdLookup.containsKey(type)) {
+                        type.interfaceID = interfaceIdLookup.get(type);
+                    } else {
+                        type.interfaceID = nextInterfaceID++;
+                    }
+                } else {
+                    type.interfaceID = DynamicHub.NO_INTERFACE_ID;
+                }
             }
             VMError.guarantee(type.subTypes == null, "Type initialized multiple times: %s", type);
             type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
 
-        DynamicHubSupport.currentLayer().setMaxTypeId(nextTypeID);
+        DynamicHubSupport.currentLayer().setMaxTypeIds(nextTypeID, nextInterfaceID);
 
         /*
          * Search through list in reverse order so that all of a type's subtypes are traversed
@@ -1978,12 +2041,13 @@ public final class TypeCheckBuilder {
             }
 
             int numInterfaceTypes = info.implementedInterfaces.size();
-            List<HostedType> orderedInterfaces = info.implementedInterfaces.stream().sorted(Comparator.comparingInt(HostedType::getTypeID)).toList();
-            int[] interfaceTypeIDs = orderedInterfaces.stream().mapToInt(HostedType::getTypeID).toArray();
+            List<HostedType> orderedInterfaces = info.implementedInterfaces.stream()
+                            .sorted(Comparator.comparingInt(HostedType::getInterfaceID)).toList();
+            int[] interfaceIDs = orderedInterfaces.stream().mapToInt(HostedType::getInterfaceID).toArray();
             int numClassTypes = info.classDisplay.length;
             int[] typeIDSlots = new int[numClassTypes + numInterfaceTypes];
             System.arraycopy(info.classDisplay, 0, typeIDSlots, 0, numClassTypes);
-            System.arraycopy(interfaceTypeIDs, 0, typeIDSlots, numClassTypes, numInterfaceTypes);
+            System.arraycopy(interfaceIDs, 0, typeIDSlots, numClassTypes, numInterfaceTypes);
             type.setOpenTypeWorldTypeCheckSlots(typeIDSlots);
             type.setTypeIDDepth(idDepth);
             type.setNumInterfaceTypes(numInterfaceTypes);
@@ -2050,5 +2114,66 @@ public final class TypeCheckBuilder {
             }
             return false;
         }
+    }
+
+    /**
+     * Computes a ranking of interfaces based on their number of implementors. Lower numbers imply
+     * more implementors. This is used in the context of interface hashing where smaller
+     * interfaceIDs for more frequently implemented interfaces allow for a more space-efficient
+     * encoding in hash tables. See {@link com.oracle.svm.hosted.meta.TypeCheckBuilder
+     * TypeCheckBuilder} for more details on interface hashing.
+     */
+    private UnmodifiableEconomicMap<JavaType, Integer> rankInterfacesByImplementors() {
+        /*
+         * Currently this analysis is only computed for the base layer interfaces to avoid
+         * collisions.
+         */
+        if (!SubstrateOptions.useInterfaceHashing() || !ImageLayerBuildingSupport.firstImageBuild()) {
+            return EconomicMap.create();
+        }
+        EconomicMap<JavaType, Integer> ranking = EconomicMap.create();
+        EconomicMap<JavaType, Integer> interfaceTypeIdToImplementors = EconomicMap.create();
+        ArrayDeque<HostedType> worklist = new ArrayDeque<>();
+
+        for (HostedType hType : allTypes) {
+            if (hType != null && hType.isConcrete() && !hType.isInterface()) {
+                worklist.push(hType);
+                while (!worklist.isEmpty()) {
+                    HostedType cur = worklist.pop();
+                    if (!cur.wrapped.isTrackedAcrossLayers()) {
+                        continue;
+                    }
+                    if (isInterface(cur)) {
+                        int curVal = interfaceTypeIdToImplementors.get(cur, 0);
+                        interfaceTypeIdToImplementors.put(cur, curVal + 1);
+                    } else {
+                        HostedType superClass = cur.getSuperclass();
+                        if (superClass != null && !superClass.equals(objectType)) {
+                            worklist.push(superClass);
+                        }
+                    }
+                    for (HostedType i : cur.getInterfaces()) {
+                        worklist.push(i);
+                    }
+                }
+            }
+        }
+
+        List<Pair<JavaType, Integer>> implCnts = new ArrayList<>();
+        MapCursor<JavaType, Integer> cursor = interfaceTypeIdToImplementors.getEntries();
+        while (cursor.advance()) {
+            Integer val = cursor.getValue();
+            if (val != null && val > 0) {
+                implCnts.add(Pair.create(cursor.getKey(), cursor.getValue()));
+            }
+        }
+        implCnts.sort((p1, p2) -> p2.getRight() - p1.getRight());
+        // interfaceIDs must not be 0 to be distinct from empty hash table entries
+        int i = 1;
+        for (var p : implCnts) {
+            ranking.put(p.getLeft(), i++);
+        }
+
+        return ranking;
     }
 }

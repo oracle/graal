@@ -584,27 +584,22 @@ public class ErrorTests {
         public static class NonFinalOperation {
         }
 
-        @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
+        @ExpectError("Operation class or super class must not be an inner class (non-static nested class). Declare the class as static.")
         @Operation
         public final class NonStaticInnerOperation {
         }
 
-        @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
+        @ExpectError("Operation class or super class must not be declared private. Remove the private modifier to make it visible.")
         @Operation
         private static final class PrivateOperation {
-        }
-
-        @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
-        @Operation
-        public static final class CloneableOperation implements Cloneable {
         }
 
         @Operation
         public static final class NonStaticMemberOperation {
 
-            @ExpectError("Operation class must not contain non-static members.") public int field;
+            @ExpectError("Operation class or super class must not contain non-static members.") public int field;
 
-            @ExpectError("Operation class must not contain non-static members.")
+            @ExpectError("Operation class or super class must not contain non-static members.")
             public void doSomething() {
             }
 
@@ -704,7 +699,6 @@ public class ErrorTests {
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadVariadicOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
@@ -713,7 +707,6 @@ public class ErrorTests {
     @OperationProxy(NonFinalOperationProxy.class)
     @OperationProxy(NonStaticInnerOperationProxy.class)
     @OperationProxy(PrivateOperationProxy.class)
-    @OperationProxy(CloneableOperationProxy.class)
     @OperationProxy(NonStaticMemberOperationProxy.class)
     @OperationProxy(BadVariadicOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
@@ -738,7 +731,7 @@ public class ErrorTests {
                 return x + y;
             }
 
-            @ExpectError("Operation class must not contain non-static members.")
+            @ExpectError("Operation class or super class must not contain non-static members.")
             public boolean guardCondition() {
                 return true;
             }
@@ -799,25 +792,20 @@ public class ErrorTests {
     public static class NonFinalOperationProxy {
     }
 
-    @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
+    @ExpectError("Operation class or super class must not be an inner class (non-static nested class). Declare the class as static.")
     @OperationProxy.Proxyable
     public final class NonStaticInnerOperationProxy {
     }
 
-    @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
+    @ExpectError("Operation class or super class must not be declared private. Remove the private modifier to make it visible.")
     @OperationProxy.Proxyable
     private static final class PrivateOperationProxy {
-    }
-
-    @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
-    @OperationProxy.Proxyable
-    public static final class CloneableOperationProxy implements Cloneable {
     }
 
     @OperationProxy.Proxyable
     public static final class NonStaticMemberOperationProxy {
 
-        @ExpectError("Operation class must not contain non-static members.") public int field;
+        @ExpectError("Operation class or super class must not contain non-static members.") public int field;
 
         @Specialization
         @ExpectError("Operation specializations must be static. Rewrite this specialization as a static method to resolve this error.%")

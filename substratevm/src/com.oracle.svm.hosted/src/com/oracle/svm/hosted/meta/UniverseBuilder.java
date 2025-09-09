@@ -44,7 +44,6 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -85,6 +84,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -95,6 +95,7 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -982,38 +983,35 @@ public class UniverseBuilder {
                 hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
                                 type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
-
-                /*
-                 * Within the open type world, interface type checks are two entries long and
-                 * contain information about both the implemented interface ids as well as their
-                 * itable starting offset within the dispatch table.
-                 */
-                int numClassTypes = type.getNumClassTypes();
-                int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (type.getNumInterfaceTypes() * 2)];
-                System.arraycopy(type.openTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, numClassTypes);
-                int typeSlotIdx = numClassTypes;
-                for (int interfaceIdx = 0; interfaceIdx < type.numInterfaceTypes; interfaceIdx++) {
-                    int typeID = type.getOpenTypeWorldTypeCheckSlots()[numClassTypes + interfaceIdx];
-                    int itableStartingOffset;
-                    if (type.itableStartingOffsets.length > 0) {
-                        itableStartingOffset = type.itableStartingOffsets[interfaceIdx];
-                    } else {
-                        itableStartingOffset = 0xBADD0D1D;
-                    }
-                    openTypeWorldTypeCheckSlots[typeSlotIdx] = typeID;
-                    /*
-                     * We directly encode the offset of the itable within the DynamicHub to limit
-                     * the amount of arithmetic needed to be performed at runtime.
-                     */
-                    int itableDynamicHubOffset = dynamicHubLayout.vTableOffset() + (itableStartingOffset * dynamicHubLayout.vTableSlotSize);
-                    openTypeWorldTypeCheckSlots[typeSlotIdx + 1] = itableDynamicHubOffset;
-                    typeSlotIdx += 2;
-                }
-
-                MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
-                hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
+                setOpenTypeWorldData(type, dynamicHubLayout, hub, useOffsets);
             }
         }
+    }
+
+    /**
+     * See {@link DynamicHubTypeCheckUtil#computeOpenTypeWorldTypeCheckData} for details on the
+     * {@link DynamicHub} type check layout in the open type world.
+     */
+    private static void setOpenTypeWorldData(HostedType type, DynamicHubLayout dynamicHubLayout, DynamicHub hub, boolean useOffsets) {
+        boolean implementsMethods = type.itableStartingOffsets.length > 0;
+        int numClassTypes = type.numClassTypes;
+        int[] typeHierarchy = new int[numClassTypes];
+        System.arraycopy(type.openTypeWorldTypeCheckSlots, 0, typeHierarchy, 0, numClassTypes);
+
+        int[] interfaceIDs = new int[type.numInterfaceTypes];
+        System.arraycopy(type.openTypeWorldTypeCheckSlots, numClassTypes, interfaceIDs, 0, type.numInterfaceTypes);
+        int[] iTableOffsets = type.itableStartingOffsets;
+
+        long vTableOffset = dynamicHubLayout.vTableOffset();
+        long vTableSlotSize = dynamicHubLayout.vTableSlotSize;
+
+        DynamicHubTypeCheckUtil.TypeCheckData typeCheckData = DynamicHubTypeCheckUtil.computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableOffsets, vTableOffset,
+                        vTableSlotSize);
+
+        MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
+        hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getInterfaceID(), type.getTypeIDDepth(), type.getNumClassTypes(), typeCheckData.numIterableInterfaces(),
+                        typeCheckData.openTypeWorldTypeCheckSlots(),
+                        typeCheckData.openTypeWorldInterfaceHashTable(), typeCheckData.openTypeWorldInterfaceHashParam());
     }
 
     private static MethodRef[] createVTable(HostedMethod[] methods, boolean useOffsets) {

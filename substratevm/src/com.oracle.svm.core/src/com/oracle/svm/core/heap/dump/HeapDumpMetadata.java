@@ -75,7 +75,6 @@ import jdk.graal.compiler.word.Word;
  * | s4 totalFieldCount         |
  * | s4 classCount              |
  * | s4 fieldNameCount          |
- * | uv maxTypeId               |
  * | (class information)*       |
  * | (field names)*             |
  * |----------------------------|

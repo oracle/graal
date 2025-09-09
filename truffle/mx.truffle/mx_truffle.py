@@ -90,9 +90,90 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
-        # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
+        # org.graalvm.truffle.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
+        # org.graalvm.truffle.compiler.benchmark.* needs OptimizedTruffleRuntime
+        extraVmArgs.append('--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED')
         return extraVmArgs
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        result = super().rules(out, benchmarks, bmSuiteArgs)
+        result_file = self.get_jmh_result_file(bmSuiteArgs)
+        suite_name = self.benchSuiteName(bmSuiteArgs)
+        result.extend([
+            JMHJsonCompilationTimingRule(result_file, suite_name, "pe-time"),
+            JMHJsonCompilationTimingRule(result_file, suite_name, "compile-time"),
+            JMHJsonCompilationTimingRule(result_file, suite_name, "code-install-time"),
+        ])
+        return result
+
+class JMHJsonCompilationTimingRule(mx_benchmark.JMHJsonRule):
+    def __init__(self, filename, suite_name, metric_name):
+        super().__init__(filename, suite_name)
+        self.metric_name = metric_name
+
+    def parse(self, text):
+        r = []
+        with open(self._prepend_working_dir(self.filename)) as fp:
+            for result in json.load(fp):
+                benchmark = self.getBenchmarkNameFromResult(result)
+                metric = result.get("secondaryMetrics", {}).get(self.metric_name)
+                if metric is None:
+                    return []
+
+                unit = JMHJsonCompilationTimingRule.standardize_unit(metric["scoreUnit"])
+
+                template = {
+                    "bench-suite" : self.suiteName,
+                    "benchmark" : self.shortenPackageName(benchmark),
+                    "metric.unit": unit,
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.type": "numeric",
+                    # full name
+                    "extra.jmh.benchmark" : benchmark,
+                }
+
+                if "params" in result:
+                    # add all parameter as a single string
+                    template["extra.jmh.params"] = ", ".join(["=".join(kv) for kv in result["params"].items()])
+                    # and also the individual values
+                    for k, v in result["params"].items():
+                        template["extra.jmh.param." + k] = str(v)
+
+                for k in self.getExtraJmhKeys():
+                    extra_value = None
+                    if k in result:
+                        extra_value = result[k]
+                    template["extra.jmh." + k] = str(extra_value)
+
+
+                summary_datapoint = template.copy()
+                summary_datapoint.update({
+                    "metric.name": self.metric_name,
+                    "metric.value": float(metric["score"])
+                })
+                r.append(summary_datapoint)
+
+                score_percentiles = metric.get("scorePercentiles")
+                if score_percentiles:
+                    distribution_metric_name = f"{self.metric_name}-distribution"
+                    for percentile, score in score_percentiles.items():
+                        percentile_datapoint = template.copy()
+                        percentile_datapoint.update({
+                            "metric.name": distribution_metric_name,
+                            "metric.value": float(score),
+                            "metric.percentile": float(percentile)
+                        })
+                        r.append(percentile_datapoint)
+        return r
+
+    @staticmethod
+    def standardize_unit(unit: str) -> str:
+        if unit.endswith("/op"):
+            # JMH emits timings "per operation", e.g., "ms/op". Drop the suffix.
+            return unit[:-len("/op")]
+        return unit
 
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 #mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)

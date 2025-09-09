@@ -673,8 +673,9 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         // typecheck info
         typeInfoBuilder.setTypecheckId(hType.getTypeID());
         typeInfoBuilder.setNumClassTypes(hType.getNumClassTypes());
-        typeInfoBuilder.setNumInterfaceTypes(hType.getNumInterfaceTypes());
+        typeInfoBuilder.setNumIterableInterfaceTypes(hType.getNumInterfaceTypes());
         SVMImageLayerWriter.initInts(typeInfoBuilder::initTypecheckSlotValues, Arrays.stream(hType.getOpenTypeWorldTypeCheckSlots()));
+        typeInfoBuilder.setInterfaceId(hType.getInterfaceID());
 
         // dispatch table info
         HostedDispatchTable hDispatchTable = typeToDispatchTable.get(hType);

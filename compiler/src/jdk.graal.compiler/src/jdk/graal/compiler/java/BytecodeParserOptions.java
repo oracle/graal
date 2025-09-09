@@ -68,5 +68,8 @@ public class BytecodeParserOptions {
     @Option(help = "Do not move allocations when the parser encounters allocations covered by an exception"
                     + " handler for OutOfMemoryError.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DoNotMoveAllocationsWithOOMEHandlers = new OptionKey<>(true);
+
+    @Option(help = "Introduce proxies in the parser.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ParserCreateProxies = new OptionKey<>(true);
     // @formatter:on
 }

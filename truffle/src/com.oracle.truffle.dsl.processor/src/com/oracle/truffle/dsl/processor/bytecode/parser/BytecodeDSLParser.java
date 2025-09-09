@@ -650,6 +650,46 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         // TODO GR-57220
 
+        resolveBoxingElimination(model, manualQuickenings);
+
+        // Validate fields for serialization.
+        if (model.enableSerialization) {
+            List<VariableElement> serializedFields = new ArrayList<>();
+            TypeElement type = model.getTemplateType();
+            while (type != null) {
+                if (ElementUtils.typeEquals(types.RootNode, type.asType())) {
+                    break;
+                }
+                for (VariableElement field : ElementFilter.fieldsIn(type.getEnclosedElements())) {
+                    if (field.getModifiers().contains(Modifier.STATIC) || field.getModifiers().contains(Modifier.TRANSIENT) || field.getModifiers().contains(Modifier.FINAL)) {
+                        continue;
+                    }
+
+                    boolean inTemplateType = model.getTemplateType() == type;
+                    boolean visible = inTemplateType ? !field.getModifiers().contains(Modifier.PRIVATE) : ElementUtils.isVisible(model.getTemplateType(), field);
+
+                    if (!visible) {
+                        model.addError(inTemplateType ? field : null, errorPrefix() +
+                                        "The field '%s' is not accessible to generated code. The field must be accessible for serialization. Add the transient modifier to the field or make it accessible to resolve this problem.",
+                                        ElementUtils.getReadableReference(model.getTemplateType(), field));
+                        continue;
+                    }
+
+                    serializedFields.add(field);
+                }
+
+                type = ElementUtils.castTypeElement(type.getSuperclass());
+            }
+
+            model.serializedFields = serializedFields;
+        }
+
+        model.finalizeInstructions();
+
+        return;
+    }
+
+    private void resolveBoxingElimination(BytecodeDSLModel model, List<QuickenDecision> manualQuickenings) {
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
          * types we generate quickening decisions for each operation and specialization in order to
@@ -741,6 +781,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 sorted((s0, s1) -> {
                                     return Long.compare(countBoxingEliminatedTypes(model, s0), countBoxingEliminatedTypes(model, s1));
                                 }).toList()) {
+
                     List<SpecializationData> specializations = boxingGroups.get(boxingGroup);
                     // filter return type
                     List<TypeMirror> parameterTypes = boxingGroup.subList(1, boxingGroup.size());
@@ -803,6 +844,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 InstructionModel baseInstruction = quickening.operation().instruction;
+
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;
             }
@@ -816,11 +858,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             for (InstructionModel instruction : model.getInstructions().toArray(InstructionModel[]::new)) {
                 switch (instruction.kind) {
                     case CUSTOM:
+
                         for (int i = 0; i < instruction.signature.dynamicOperandCount; i++) {
                             if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
                                 instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(i));
                             }
                         }
+
                         // handle boxing overloads
                         SpecializationData singleSpecialization = instruction.resolveSingleSpecialization();
                         if (singleSpecialization != null) {
@@ -848,6 +892,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                             instruction.signature, "unboxed");
                             returnTypeQuickening.returnTypeQuickening = true;
                         }
+
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
                         /*
@@ -1011,46 +1056,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.specializedType = null;
                         break;
                 }
-
             }
 
-        }
-
-        // Validate fields for serialization.
-        if (model.enableSerialization) {
-            List<VariableElement> serializedFields = new ArrayList<>();
-            TypeElement type = model.getTemplateType();
-            while (type != null) {
-                if (ElementUtils.typeEquals(types.RootNode, type.asType())) {
-                    break;
-                }
-                for (VariableElement field : ElementFilter.fieldsIn(type.getEnclosedElements())) {
-                    if (field.getModifiers().contains(Modifier.STATIC) || field.getModifiers().contains(Modifier.TRANSIENT) || field.getModifiers().contains(Modifier.FINAL)) {
-                        continue;
+            for (InstructionModel instruction1 : model.getInstructions().toArray(InstructionModel[]::new)) {
+                if (instruction1.nodeData != null) {
+                    if (instruction1.getQuickeningRoot().hasSpecializedQuickenings()) {
+                        instruction1.nodeData.setForceSpecialize(true);
                     }
-
-                    boolean inTemplateType = model.getTemplateType() == type;
-                    boolean visible = inTemplateType ? !field.getModifiers().contains(Modifier.PRIVATE) : ElementUtils.isVisible(model.getTemplateType(), field);
-
-                    if (!visible) {
-                        model.addError(inTemplateType ? field : null, errorPrefix() +
-                                        "The field '%s' is not accessible to generated code. The field must be accessible for serialization. Add the transient modifier to the field or make it accessible to resolve this problem.",
-                                        ElementUtils.getReadableReference(model.getTemplateType(), field));
-                        continue;
-                    }
-
-                    serializedFields.add(field);
                 }
-
-                type = ElementUtils.castTypeElement(type.getSuperclass());
             }
-
-            model.serializedFields = serializedFields;
         }
-
-        model.finalizeInstructions();
-
-        return;
     }
 
     private static void parseDefaultUncachedThreshold(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, DSLExpressionResolver resolver) {

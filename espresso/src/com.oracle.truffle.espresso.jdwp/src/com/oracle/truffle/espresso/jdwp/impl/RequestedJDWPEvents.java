@@ -298,7 +298,7 @@ public final class RequestedJDWPEvents {
 
         byte eventKind = input.readByte();
         int requestId = input.readInt();
-        RequestFilter requestFilter = controller.getEventFilters().getRequestFilter(requestId);
+        RequestFilter requestFilter = controller.getEventFilters().removeRequestFilter(requestId);
 
         if (requestFilter != null) {
             byte kind = requestFilter.getEventKind();

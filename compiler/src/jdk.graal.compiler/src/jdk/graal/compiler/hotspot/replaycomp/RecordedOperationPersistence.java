@@ -144,6 +144,20 @@ public class RecordedOperationPersistence {
         Object deserialize(Object json, ProxyFactory proxyFactory) throws DeserializationException;
 
         Object deserialize(Object json, ProxyFactory proxyFactory, String tag) throws DeserializationException;
+
+        /**
+         * Sets the {@link Architecture} parsed by this deserializer.
+         *
+         * @param arch the architecture
+         */
+        void setArchitecture(Architecture arch);
+
+        /**
+         * Gets the {@link Architecture} parsed by this deserializer.
+         *
+         * @return the architecture
+         */
+        Architecture getArchitecture();
     }
 
     private sealed interface ObjectSerializer {
@@ -805,7 +819,6 @@ public class RecordedOperationPersistence {
     }
 
     private static final class RegisterSerializer implements ObjectSerializer {
-
         @Override
         public Class<?> clazz() {
             return Register.class;
@@ -820,20 +833,17 @@ public class RecordedOperationPersistence {
         public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
             Register register = (Register) instance;
             objectBuilder.append("number", register.number);
-            objectBuilder.append("name", register.name);
-            objectBuilder.append("encoding", register.encoding);
-            objectBuilder.append("catName", register.getRegisterCategory().toString());
-            objectBuilder.append("containsRef", register.mayContainReference());
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
             int number = (int) json.get("number");
-            String name = (String) json.get("name");
-            int encoding = (int) json.get("encoding");
-            String catName = (String) json.get("catName");
-            boolean containsRef = (boolean) json.get("containsRef");
-            return new Register(number, encoding, name, new Register.RegisterCategory(catName, containsRef));
+            for (Register register : deserializer.getArchitecture().getRegisters()) {
+                if (register.number == number) {
+                    return register;
+                }
+            }
+            throw new DeserializationException(this, json, "Register not found");
         }
     }
 
@@ -1687,12 +1697,14 @@ public class RecordedOperationPersistence {
         public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
             String name = (String) json.get("name");
             EnumSet<?> features = (EnumSet<?>) deserializer.deserialize(json.get("features"), proxyFactory);
-            return switch (name) {
+            Architecture architecture = switch (name) {
                 case "AMD64" -> new AMD64((EnumSet<AMD64.CPUFeature>) features);
                 case "riscv64" -> new RISCV64((EnumSet<RISCV64.CPUFeature>) features);
                 case "aarch64" -> new AArch64((EnumSet<AArch64.CPUFeature>) features);
                 default -> throw new IllegalStateException("Unexpected value: " + name);
             };
+            deserializer.setArchitecture(architecture);
+            return architecture;
         }
     }
 
@@ -1932,41 +1944,55 @@ public class RecordedOperationPersistence {
         recursiveSerializer.serialize(compilationUnit, writer.valueBuilder(), RecordedCompilationUnitSerializer.TAG);
     }
 
-    private final RecursiveDeserializer recursiveDeserializer = new RecursiveDeserializer() {
-        @Override
-        @SuppressWarnings("unchecked")
-        public Object deserialize(Object json, ProxyFactory proxyFactory) throws DeserializationException {
-            if (json instanceof EconomicMap<?, ?>) {
-                EconomicMap<String, Object> map = (EconomicMap<String, Object>) json;
-                String tag = (String) map.get("tag");
-                if (tag == null) {
-                    throw new IllegalArgumentException("The JSON map does not contain a tag: " + map);
+    private RecursiveDeserializer createRecursiveDeserializer() {
+        return new RecursiveDeserializer() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object deserialize(Object json, ProxyFactory proxyFactory) throws DeserializationException {
+                if (json instanceof EconomicMap<?, ?>) {
+                    EconomicMap<String, Object> map = (EconomicMap<String, Object>) json;
+                    String tag = (String) map.get("tag");
+                    if (tag == null) {
+                        throw new IllegalArgumentException("The JSON map does not contain a tag: " + map);
+                    }
+                    ObjectSerializer deserializer = tagSerializers.get(tag);
+                    if (deserializer == null) {
+                        throw new IllegalArgumentException("No deserializer registered for tag " + tag);
+                    }
+                    return deserializer.deserialize(map, this, proxyFactory);
+                } else {
+                    return json;
                 }
-                ObjectSerializer deserializer = tagSerializers.get(tag);
-                if (deserializer == null) {
-                    throw new IllegalArgumentException("No deserializer registered for tag " + tag);
-                }
-                return deserializer.deserialize(map, this, proxyFactory);
-            } else {
-                return json;
             }
-        }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public Object deserialize(Object json, ProxyFactory proxyFactory, String tag) throws DeserializationException {
-            if (json instanceof EconomicMap<?, ?>) {
-                EconomicMap<String, Object> map = (EconomicMap<String, Object>) json;
-                ObjectSerializer deserializer = tagSerializers.get(tag);
-                if (deserializer == null) {
-                    throw new IllegalArgumentException("No deserializer registered for tag " + tag);
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object deserialize(Object json, ProxyFactory proxyFactory, String tag) throws DeserializationException {
+                if (json instanceof EconomicMap<?, ?>) {
+                    EconomicMap<String, Object> map = (EconomicMap<String, Object>) json;
+                    ObjectSerializer deserializer = tagSerializers.get(tag);
+                    if (deserializer == null) {
+                        throw new IllegalArgumentException("No deserializer registered for tag " + tag);
+                    }
+                    return deserializer.deserialize(map, this, proxyFactory);
+                } else {
+                    throw new IllegalArgumentException("Expected a map.");
                 }
-                return deserializer.deserialize(map, this, proxyFactory);
-            } else {
-                throw new IllegalArgumentException("Expected a map.");
             }
-        }
-    };
+
+            private Architecture architecture;
+
+            @Override
+            public void setArchitecture(Architecture arch) {
+                architecture = arch;
+            }
+
+            @Override
+            public Architecture getArchitecture() {
+                return architecture;
+            }
+        };
+    }
 
     /**
      * Loads a recorded compilation unit from the given reader.
@@ -1979,6 +2005,6 @@ public class RecordedOperationPersistence {
      */
     public RecordedCompilationUnit load(Reader source, ProxyFactory proxyFactory) throws IOException, DeserializationException {
         JsonParser parser = new JsonParser(source);
-        return (RecordedCompilationUnit) recursiveDeserializer.deserialize(parser.parse(), proxyFactory, RecordedCompilationUnitSerializer.TAG);
+        return (RecordedCompilationUnit) createRecursiveDeserializer().deserialize(parser.parse(), proxyFactory, RecordedCompilationUnitSerializer.TAG);
     }
 }

@@ -313,7 +313,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        if (!isAssignable(templateType.asType(), types.Node)) {
+        if (mode != ParseMode.OPERATION && !isAssignable(templateType.asType(), types.Node)) {
             return null;
         }
 

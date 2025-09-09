@@ -79,7 +79,7 @@ public final class GlobUtils {
             return sb.toString();
         }
 
-        // check if pattern contains more than 2 consecutive characters. Example: a/***/b
+        // check if pattern contains more than 2 consecutive * characters. Example: a/***/b
         if (threeConsecutiveStarsRegex.matcher(pattern).matches()) {
             sb.append("Pattern contains more than two consecutive * characters. ");
         }
@@ -129,7 +129,7 @@ public final class GlobUtils {
         }
 
         if (!sb.isEmpty()) {
-            sb.insert(0, "Pattern " + pattern + " : ");
+            sb.insert(0, "Invalid pattern " + pattern + ". Reasons: ");
         }
 
         return sb.toString();

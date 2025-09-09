@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.InsertProxyPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.truffle.phases.FrameAccessVerificationPhase;
 import jdk.graal.compiler.truffle.phases.PhiTransformPhase;
@@ -42,6 +43,7 @@ public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
     @SuppressWarnings("this-escape")
     public PostPartialEvaluationSuite(OptionValues optionValues, boolean iterativePartialEscape) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+        appendPhase(new InsertProxyPhase());
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
         appendPhase(canonicalizerPhase);
