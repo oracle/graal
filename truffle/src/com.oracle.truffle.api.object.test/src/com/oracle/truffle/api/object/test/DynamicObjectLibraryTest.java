@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -56,6 +56,11 @@ import java.util.List;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -63,10 +68,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @SuppressWarnings("deprecation")
@@ -270,7 +271,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
         setNode1.put(o1, k1, v2);
         assertEquals(v2, uncachedGet(o1, k1));
-        assertEquals(0, uncachedGetProperty(o1, k1).getFlags());
+        Assert.assertEquals(0, uncachedGetProperty(o1, k1).getFlags());
         setNode1.put(o1, k1, v1);
         assertEquals(v1, uncachedGet(o1, k1));
         setNode1.put(o2, k1, v2);
@@ -283,7 +284,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         assertSame(o1.getShape(), o3.getShape());
         uncachedPut(o3, k1, v1);
         assertEquals(v1, uncachedGet(o3, k1));
-        assertEquals(0, uncachedGetProperty(o3, k1).getFlags());
+        Assert.assertEquals(0, uncachedGetProperty(o3, k1).getFlags());
         assertSame(o1.getShape(), o3.getShape());
 
         String v3 = "asdf";
@@ -304,7 +305,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
 
         setNode3.putWithFlags(o3, k1, v1, f2);
         assertEquals(v1, uncachedGet(o3, k1));
-        assertEquals(f2, uncachedGetProperty(o3, k1).getFlags());
+        Assert.assertEquals(f2, uncachedGetProperty(o3, k1).getFlags());
     }
 
     @Test
@@ -321,7 +322,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
         setNode1.putWithFlags(o1, k1, v2, flags);
         assertEquals(v2, uncachedGet(o1, k1));
-        assertEquals(flags, uncachedGetProperty(o1, k1).getFlags());
+        Assert.assertEquals(flags, uncachedGetProperty(o1, k1).getFlags());
         setNode1.putWithFlags(o1, k1, v1, flags);
         assertEquals(v1, uncachedGet(o1, k1));
         setNode1.putWithFlags(o2, k1, v2, flags);
@@ -334,7 +335,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         assertNotSame(o1.getShape(), o3.getShape());
         uncachedPut(o3, k1, v1, flags);
         assertEquals(v1, uncachedGet(o3, k1));
-        assertEquals(flags, uncachedGetProperty(o3, k1).getFlags());
+        Assert.assertEquals(flags, uncachedGetProperty(o3, k1).getFlags());
         // assertSame(o1.getShape(), o3.getShape());
 
         String v3 = "asdf";
@@ -355,7 +356,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
 
         setNode3.putWithFlags(o3, k1, v1, f2);
         assertEquals(v1, uncachedGet(o3, k1));
-        assertEquals(f2, uncachedGetProperty(o3, k1).getFlags());
+        Assert.assertEquals(f2, uncachedGetProperty(o3, k1).getFlags());
     }
 
     @Test
@@ -484,16 +485,16 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         uncachedPut(o1, k1, v1, 0);
         assertTrue(lib.setPropertyFlags(o1, k1, f1));
         assertEquals(f1, lib.getPropertyFlagsOrDefault(o1, k1, -1));
-        assertEquals(f1, uncachedGetProperty(o1, k1).getFlags());
+        Assert.assertEquals(f1, uncachedGetProperty(o1, k1).getFlags());
         assertTrue(updatePropertyFlags(lib, o1, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o1, k1, -1));
-        assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
+        Assert.assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
 
         Shape before = o1.getShape();
         assertTrue(lib.setPropertyFlags(o1, k1, f3));
         assertFalse(updatePropertyFlags(lib, o1, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o1, k1, -1));
-        assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
+        Assert.assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
         assertSame(before, o1.getShape());
 
         DynamicObject o2 = createEmpty();

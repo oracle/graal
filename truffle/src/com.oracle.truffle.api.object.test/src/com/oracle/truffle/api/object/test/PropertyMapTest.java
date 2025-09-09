@@ -38,10 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeMethod;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
@@ -51,11 +51,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.junit.Test;
-
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import org.junit.Test;
 
 @SuppressWarnings("deprecation")
 public class PropertyMapTest {

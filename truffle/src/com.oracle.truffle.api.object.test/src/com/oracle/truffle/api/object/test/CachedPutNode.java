@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,12 +48,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
 @GenerateInline(false)
-abstract class CachedGetNode extends Node {
-    public abstract Object execute(DynamicObject obj, Object key);
+abstract class CachedPutNode extends Node {
+    public abstract void execute(DynamicObject obj, Object key, Object value);
 
     @Specialization(limit = "3")
-    static Object read(DynamicObject obj, Object key,
+    static void write(DynamicObject obj, Object key, Object value,
                     @CachedLibrary("obj") DynamicObjectLibrary lib) {
-        return lib.getOrDefault(obj, key, null);
+        lib.put(obj, key, value);
     }
 }

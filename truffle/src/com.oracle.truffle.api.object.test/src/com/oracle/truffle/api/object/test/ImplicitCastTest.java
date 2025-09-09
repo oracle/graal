@@ -38,15 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.getLocationType;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.Shape.Builder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,10 +59,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @SuppressWarnings("deprecation")
@@ -81,7 +82,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     @Parameter(3) public Class<?> otherPrimClass;
 
     private DynamicObject newInstanceWithImplicitCast() {
-        Shape.Builder b = Shape.newBuilder();
+        Builder b = Shape.newBuilder();
         b.allowImplicitCastIntToLong(otherPrimClass == long.class);
         b.allowImplicitCastIntToDouble(otherPrimClass == double.class);
         Shape rootShape = b.build();

@@ -38,10 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.ext.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertObjectLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertPrimitiveLocation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -50,16 +50,16 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.object.ext.test.ObjectModelRegressionTest.TestDynamicObject;
+import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)

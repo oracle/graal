@@ -38,22 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
 
-@GenerateInline(false)
-abstract class CachedPutNode extends Node {
-    public abstract void execute(DynamicObject obj, Object key, Object value);
+class TestDynamicObjectDefault extends TestDynamicObject {
+    @DynamicField Object o0;
+    @DynamicField Object o1;
+    @DynamicField Object o2;
+    @DynamicField Object o3;
+    @DynamicField long p0;
+    @DynamicField long p1;
+    @DynamicField long p2;
 
-    @Specialization(limit = "3")
-    static void write(DynamicObject obj, Object key, Object value,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
-        lib.put(obj, key, value);
+    protected TestDynamicObjectDefault(Shape shape) {
+        super(shape);
     }
 }

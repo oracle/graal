@@ -38,23 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.ext.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.getTypeAssumption;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.getTypeAssumptionRecord;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.getTypeAssumption;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.getTypeAssumptionRecord;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.junit.Test;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.junit.Test;
 
 public class GR52036 {
 
