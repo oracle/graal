@@ -143,6 +143,27 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
     }
 
     @Test
+    public void testAddNewPropertyOnObsoleteShape() {
+        Shape emptyShape = newEmptyShape();
+        DynamicObject a = newInstance(emptyShape);
+        DynamicObject b = newInstance(emptyShape);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, a);
+
+        library.put(a, "x", 1);
+        library.put(b, "x", 1);
+        library.put(b, "x", "");
+        assertTrue(b.getShape().isValid()); // updated by put()
+        assertFalse(a.getShape().isValid()); // obsolete
+        library.put(a, "y", 2); // put on obsolete shape
+        assertTrue(a.getShape().isValid());
+
+        assertEquals(1, library.getOrDefault(a, "x", null));
+        assertEquals("", library.getOrDefault(b, "x", null));
+        assertEquals(2, library.getOrDefault(a, "y", null));
+    }
+
+    @Test
     public void testRemovePropertyOnObsoleteShape() {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
