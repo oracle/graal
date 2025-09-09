@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Location.LocationVisitor;
 import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
@@ -438,6 +439,7 @@ final class ObsolescenceStrategy {
     private ObsolescenceStrategy() {
     }
 
+    @TruffleBoundary
     boolean updateShape(DynamicObject object) {
         boolean changed = checkForObsoleteShapeAndMigrate(object);
         // shape should be valid now, but we cannot assert this due to a possible race

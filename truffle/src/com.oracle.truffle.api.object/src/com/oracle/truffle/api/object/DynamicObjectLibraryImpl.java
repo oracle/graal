@@ -269,13 +269,8 @@ abstract class DynamicObjectLibraryImpl {
         if (cachedShape.isValid()) {
             return false;
         } else {
-            return updateShapeImpl(object);
+            return ObsolescenceStrategy.singleton().updateShape(object);
         }
-    }
-
-    @TruffleBoundary
-    static boolean updateShapeImpl(DynamicObject object) {
-        return ObsolescenceStrategy.singleton().updateShape(object);
     }
 
     @ExportMessage
@@ -314,7 +309,7 @@ abstract class DynamicObjectLibraryImpl {
     private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
                     Shape initialShape, Property propertyOfInitialShape) {
         CompilerAsserts.neverPartOfCompilation();
-        updateShapeImpl(object);
+        ObsolescenceStrategy.singleton().updateShape(object);
         Shape oldShape;
         Property existingProperty;
         Shape newShape;
@@ -345,7 +340,7 @@ abstract class DynamicObjectLibraryImpl {
                     property = newShape.getProperty(key);
                 }
             }
-        } while (updateShapeImpl(object));
+        } while (ObsolescenceStrategy.singleton().updateShape(object));
 
         assert object.getShape() == oldShape;
         Location location = property.getLocation();
@@ -353,7 +348,7 @@ abstract class DynamicObjectLibraryImpl {
             DynamicObjectSupport.grow(object, oldShape, newShape);
             location.setSafe(object, value, false, true);
             DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-            updateShapeImpl(object);
+            ObsolescenceStrategy.singleton().updateShape(object);
         } else {
             location.setSafe(object, value, false, false);
         }
@@ -732,7 +727,7 @@ abstract class DynamicObjectLibraryImpl {
         @TruffleBoundary
         @Override
         public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
-            updateShapeImpl(object);
+            ObsolescenceStrategy.singleton().updateShape(object);
             Shape oldShape = object.getShape();
             Property existingProperty = oldShape.getProperty(key);
             if (existingProperty == null) {
@@ -742,7 +737,7 @@ abstract class DynamicObjectLibraryImpl {
                 Shape newShape = changePropertyFlags(oldShape, existingProperty, propertyFlags);
                 if (newShape != oldShape) {
                     object.setShape(newShape);
-                    updateShapeImpl(object);
+                    ObsolescenceStrategy.singleton().updateShape(object);
                 }
             }
             return true;
@@ -1750,7 +1745,7 @@ abstract class DynamicObjectLibraryImpl {
 
         protected final void maybeUpdateShape(DynamicObject store) {
             if (newShapeValidAssumption == Assumption.NEVER_VALID) {
-                updateShapeImpl(store);
+                ObsolescenceStrategy.singleton().updateShape(store);
             }
         }
 
