@@ -22,35 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.hub;
 
-import java.util.List;
+interface DynamicHubMetadata {
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+    Object[] getEnclosingMethod(DynamicHub declaringClass);
 
-import com.oracle.svm.espresso.classfile.ParserKlass;
+    Object[] getSigners(DynamicHub declaringClass);
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+    byte[] getRawAnnotations(DynamicHub declaringClass);
 
-public interface CremaSupport {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
+    byte[] getRawTypeAnnotations(DynamicHub declaringClass);
 
-    int getAfterFieldsOffset(DynamicHub hub);
+    Class<?>[] getDeclaredClasses(DynamicHub declaringClass);
 
-    interface CremaDispatchTable {
-        int vtableLength();
+    Class<?>[] getNestMembers(DynamicHub declaringClass);
 
-        int itableLength(Class<?> iface);
-    }
-
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
-
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
-
-    static CremaSupport singleton() {
-        return ImageSingletons.lookup(CremaSupport.class);
-    }
+    Class<?>[] getPermittedSubClasses(DynamicHub declaringClass);
 }
