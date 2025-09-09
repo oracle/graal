@@ -197,6 +197,11 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
+    public boolean isHostStackTraceVisibleToGuest() {
+        return false;
+    }
+
+    @Override
     public boolean isGuestToHostRootNode(Object rootNode) {
         return TestAPIAccessor.HOST.isGuestToHostRootNode((RootNode) rootNode);
     }
