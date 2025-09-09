@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.LocationImpl.expectDouble;
-import static com.oracle.truffle.api.object.LocationImpl.expectInteger;
-import static com.oracle.truffle.api.object.LocationImpl.expectLong;
+import static com.oracle.truffle.api.object.Location.expectDouble;
+import static com.oracle.truffle.api.object.Location.expectInteger;
+import static com.oracle.truffle.api.object.Location.expectLong;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -298,17 +298,13 @@ abstract class DynamicObjectLibraryImpl {
         return cachedShape.getPropertyArray();
     }
 
-    static LocationImpl getLocation(Property existing) {
-        return (LocationImpl) existing.getLocation();
-    }
-
     @TruffleBoundary
     protected static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
         if (existingProperty == null && Flags.isSetExisting(putFlags)) {
             return false;
         }
         if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
-            getLocation(existingProperty).setSafe(object, value, false, false);
+            existingProperty.getLocation().setSafe(object, value, false, false);
             return true;
         } else {
             return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
@@ -352,7 +348,7 @@ abstract class DynamicObjectLibraryImpl {
         } while (updateShapeImpl(object));
 
         assert object.getShape() == oldShape;
-        LocationImpl location = getLocation(property);
+        Location location = property.getLocation();
         if (oldShape != newShape) {
             DynamicObjectSupport.grow(object, oldShape, newShape);
             location.setSafe(object, value, false, true);
@@ -429,14 +425,14 @@ abstract class DynamicObjectLibraryImpl {
                 Property from = shapeBefore.getProperty(key);
                 Property to = shapeAfter.getProperty(key);
 
-                LocationImpl fromLoc = getLocation(from);
-                LocationImpl toLoc = getLocation(to);
-                if (LocationImpl.isSameLocation(toLoc, fromLoc)) {
+                Location fromLoc = from.getLocation();
+                Location toLoc = to.getLocation();
+                if (Location.isSameLocation(toLoc, fromLoc)) {
                     continue;
                 }
                 assert !toLoc.isValue();
-                int fromOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(fromLoc);
-                int toOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(toLoc);
+                int fromOrd = fromLoc.getOrdinal();
+                int toOrd = toLoc.getOrdinal();
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
                 canMoveInPlace &= fromOrd > toOrd;
                 moves.add(move);
@@ -448,14 +444,14 @@ abstract class DynamicObjectLibraryImpl {
                 Property to = iterator.next();
                 Property from = shapeBefore.getProperty(to.getKey());
 
-                LocationImpl fromLoc = getLocation(from);
-                LocationImpl toLoc = getLocation(to);
-                if (LocationImpl.isSameLocation(toLoc, fromLoc)) {
+                Location fromLoc = from.getLocation();
+                Location toLoc = to.getLocation();
+                if (Location.isSameLocation(toLoc, fromLoc)) {
                     continue;
                 }
                 assert !toLoc.isValue();
-                int fromOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(fromLoc);
-                int toOrd = ObsolescenceStrategy.singleton().getLocationOrdinal(toLoc);
+                int fromOrd = fromLoc.getOrdinal();
+                int toOrd = toLoc.getOrdinal();
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
                 canMoveInPlace &= fromOrd > toOrd;
                 moves.add(move);
@@ -463,7 +459,7 @@ abstract class DynamicObjectLibraryImpl {
         }
         if (canMoveInPlace) {
             if (moves.isEmpty()) {
-                LocationImpl removedPropertyLoc = getLocation(removedProperty);
+                Location removedPropertyLoc = removedProperty.getLocation();
                 if (!removedPropertyLoc.isPrimitive()) {
                     // Use a no-op move to clear the location of the removed property.
                     moves.add(new Move(removedPropertyLoc, removedPropertyLoc, 0, 0));
@@ -487,14 +483,14 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     private static final class Move implements Comparable<Move> {
-        private final LocationImpl fromLoc;
-        private final LocationImpl toLoc;
+        private final Location fromLoc;
+        private final Location toLoc;
         private final int fromOrd;
         private final int toOrd;
 
         private static final Move[] EMPTY_ARRAY = new Move[0];
 
-        Move(LocationImpl fromLoc, LocationImpl toLoc, int fromOrd, int toOrd) {
+        Move(Location fromLoc, Location toLoc, int fromOrd, int toOrd) {
             assert (fromLoc == toLoc) == (fromOrd == toOrd);
             this.fromLoc = fromLoc;
             this.toLoc = toLoc;
@@ -678,7 +674,7 @@ abstract class DynamicObjectLibraryImpl {
         public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return getLocation(existing).get(object, false);
+                return existing.getLocation().get(object, false);
             } else {
                 return defaultValue;
             }
@@ -689,7 +685,7 @@ abstract class DynamicObjectLibraryImpl {
         public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return getLocation(existing).getInt(object, false);
+                return existing.getLocation().getInt(object, false);
             } else {
                 return expectInteger(defaultValue);
             }
@@ -700,7 +696,7 @@ abstract class DynamicObjectLibraryImpl {
         public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return getLocation(existing).getLong(object, false);
+                return existing.getLocation().getLong(object, false);
             } else {
                 return expectLong(defaultValue);
             }
@@ -711,7 +707,7 @@ abstract class DynamicObjectLibraryImpl {
         public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return getLocation(existing).getDouble(object, false);
+                return existing.getLocation().getDouble(object, false);
             } else {
                 return expectDouble(defaultValue);
             }
@@ -1094,28 +1090,28 @@ abstract class DynamicObjectLibraryImpl {
             public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return getLocation(cachedProperty).get(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().get(object, guard(object, cachedShape));
             }
 
             @Override
             public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return getLocation(cachedProperty).getInt(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getInt(object, guard(object, cachedShape));
             }
 
             @Override
             public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return getLocation(cachedProperty).getLong(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getLong(object, guard(object, cachedShape));
             }
 
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return getLocation(cachedProperty).getDouble(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getDouble(object, guard(object, cachedShape));
             }
 
             @Override
@@ -1307,7 +1303,7 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        LocationImpl location = getLocation(newProperty);
+                        Location location = newProperty.getLocation();
                         boolean guardCondition = object.getShape() == oldShape;
                         if (location.canStore(value)) {
                             Shape newShape = c.newShape;
@@ -1345,7 +1341,7 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        LocationImpl location = getLocation(newProperty);
+                        Location location = newProperty.getLocation();
                         Shape newShape = c.newShape;
                         boolean guardCondition = object.getShape() == oldShape;
                         if (location.isIntLocation()) {
@@ -1413,7 +1409,7 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        LocationImpl location = getLocation(newProperty);
+                        Location location = newProperty.getLocation();
                         boolean guardCondition = object.getShape() == oldShape;
                         if (location.isLongLocation()) {
                             Shape newShape = c.newShape;
@@ -1462,7 +1458,7 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        LocationImpl location = getLocation(newProperty);
+                        Location location = newProperty.getLocation();
                         boolean guardCondition = object.getShape() == oldShape;
                         if (location.isDoubleLocation()) {
                             Shape newShape = c.newShape;

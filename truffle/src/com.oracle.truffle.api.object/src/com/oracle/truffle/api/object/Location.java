@@ -44,6 +44,8 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
+import java.util.Objects;
+
 /**
  * Property location.
  *
@@ -54,7 +56,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * @see DynamicObject
  * @since 0.8 or earlier
  */
-public abstract sealed class Location permits LocationImpl {
+public abstract sealed class Location permits ExtLocations.InstanceLocation, ExtLocations.ValueLocation {
     /**
      * Constructor for subclasses.
      *
@@ -123,7 +125,7 @@ public abstract sealed class Location permits LocationImpl {
      * @since 22.2
      */
     protected int getInt(DynamicObject store, boolean guard) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
+        return expectInteger(get(store, guard));
     }
 
     /**
@@ -135,7 +137,7 @@ public abstract sealed class Location permits LocationImpl {
      * @since 22.2
      */
     protected long getLong(DynamicObject store, boolean guard) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
+        return expectLong(get(store, guard));
     }
 
     /**
@@ -147,7 +149,7 @@ public abstract sealed class Location permits LocationImpl {
      * @since 22.2
      */
     protected double getDouble(DynamicObject store, boolean guard) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
+        return expectDouble(get(store, guard));
     }
 
     /**
@@ -163,7 +165,11 @@ public abstract sealed class Location permits LocationImpl {
     @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        throw CompilerDirectives.shouldNotReachHere();
+        try {
+            set(store, value, checkShape(store, shape), false);
+        } catch (UncheckedIncompatibleLocationException e) {
+            throw incompatibleLocation();
+        }
     }
 
     /**
@@ -177,7 +183,85 @@ public abstract sealed class Location permits LocationImpl {
     @Deprecated(since = "22.2")
     @SuppressWarnings({"unused", "deprecation"})
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
-        throw incompatibleLocation();
+        if (canStore(value)) {
+            DynamicObjectSupport.grow(store, oldShape, newShape);
+            setSafe(store, value, false, true);
+            DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
+        } else {
+            throw incompatibleLocation();
+        }
+    }
+
+    /**
+     * Sets the value of this property storage location.
+     *
+     * @param store the {@link DynamicObject} that holds this storage location.
+     * @param value the value to be stored.
+     * @param guard the result of the shape check guarding this property write or {@code false}.
+     * @param init if true, this is the initial assignment of a property location; ignore final.
+     * @throws UncheckedIncompatibleLocationException if the value cannot be stored in this storage
+     *             location.
+     * @see #setSafe(DynamicObject, Object, boolean, boolean)
+     */
+    abstract void set(DynamicObject store, Object value, boolean guard, boolean init);
+
+    /**
+     * @see #set(DynamicObject, Object, boolean, boolean)
+     * @see #setIntSafe(DynamicObject, int, boolean, boolean)
+     */
+    void setInt(DynamicObject store, int value, boolean guard, boolean init) {
+        set(store, value, guard, init);
+    }
+
+    /**
+     * @see #set(DynamicObject, Object, boolean, boolean)
+     * @see #setLongSafe(DynamicObject, long, boolean, boolean)
+     */
+    void setLong(DynamicObject store, long value, boolean guard, boolean init) {
+        set(store, value, guard, init);
+    }
+
+    /**
+     * @see #set(DynamicObject, Object, boolean, boolean)
+     * @see #setDoubleSafe(DynamicObject, double, boolean, boolean)
+     */
+    void setDouble(DynamicObject store, double value, boolean guard, boolean init) {
+        set(store, value, guard, init);
+    }
+
+    /**
+     * @see #set(DynamicObject, Object, boolean, boolean)
+     */
+    final void setSafe(DynamicObject store, Object value, boolean guard, boolean init) {
+        set(store, value, guard, init);
+    }
+
+    /**
+     * @see #setInt(DynamicObject, int, boolean, boolean)
+     */
+    final void setIntSafe(DynamicObject store, int value, boolean guard, boolean init) {
+        setInt(store, value, guard, init);
+    }
+
+    /**
+     * @see #setLong(DynamicObject, long, boolean, boolean)
+     */
+    final void setLongSafe(DynamicObject store, long value, boolean guard, boolean init) {
+        setLong(store, value, guard, init);
+    }
+
+    /**
+     * @see #setDouble(DynamicObject, double, boolean, boolean)
+     */
+    final void setDoubleSafe(DynamicObject store, double value, boolean guard, boolean init) {
+        setDouble(store, value, guard, init);
+    }
+
+    /**
+     * Equivalent to {@link Shape#check(DynamicObject)}.
+     */
+    static boolean checkShape(DynamicObject store, Shape shape) {
+        return store.getShape() == shape;
     }
 
     /**
@@ -229,7 +313,9 @@ public abstract sealed class Location permits LocationImpl {
      * @since 0.8 or earlier
      */
     @Override
-    public abstract int hashCode();
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 
     /**
      * Abstract to force overriding.
@@ -237,7 +323,115 @@ public abstract sealed class Location permits LocationImpl {
      * @since 0.8 or earlier
      */
     @Override
-    public abstract boolean equals(Object obj);
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        String typeString = Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
+        return typeString + getWhereString();
+    }
+
+    protected String getWhereString() {
+        return "";
+    }
+
+    /**
+     * Get the number of in-object {@link Object} fields this location requires.
+     */
+    public int objectFieldCount() {
+        return 0;
+    }
+
+    /**
+     * Get the number of in-object primitive fields this location requires.
+     */
+    public int primitiveFieldCount() {
+        return 0;
+    }
+
+    /**
+     * Get the number of primitive array elements this location requires.
+     */
+    int primitiveArrayCount() {
+        return 0;
+    }
+
+    /**
+     * Accept a visitor for location allocation for this and every nested location.
+     *
+     * @param locationVisitor visitor to be notified of every allocated slot in use by this location
+     */
+    abstract void accept(LocationVisitor locationVisitor);
+
+    static boolean isSameLocation(Location loc1, Location loc2) {
+        return loc1 == loc2 || loc1.equals(loc2);
+    }
+
+    final boolean isIntLocation() {
+        return this instanceof ExtLocations.IntLocation;
+    }
+
+    final boolean isDoubleLocation() {
+        return this instanceof ExtLocations.DoubleLocation;
+    }
+
+    final boolean isLongLocation() {
+        return this instanceof ExtLocations.LongLocation;
+    }
+
+    boolean isImplicitCastIntToLong() {
+        return false;
+    }
+
+    boolean isImplicitCastIntToDouble() {
+        return false;
+    }
+
+    static int expectInteger(Object value) throws UnexpectedResultException {
+        if (value instanceof Integer) {
+            return (int) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static double expectDouble(Object value) throws UnexpectedResultException {
+        if (value instanceof Double) {
+            return (double) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static long expectLong(Object value) throws UnexpectedResultException {
+        if (value instanceof Long) {
+            return (long) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    Class<?> getType() {
+        return null;
+    }
+
+    void clear(@SuppressWarnings("unused") DynamicObject store) {
+    }
+
+    abstract int getOrdinal();
+
+    static RuntimeException incompatibleLocationException() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw UncheckedIncompatibleLocationException.instance();
+    }
 
     /**
      * Returns {@code true} if this is a declared value location.
@@ -304,5 +498,31 @@ public abstract sealed class Location permits LocationImpl {
         } else {
             return null;
         }
+    }
+
+    /**
+     * This exception is thrown on an attempt to assign an incompatible value to a location.
+     */
+    @SuppressWarnings("serial")
+    static final class UncheckedIncompatibleLocationException extends RuntimeException {
+        private static final UncheckedIncompatibleLocationException INSTANCE = new UncheckedIncompatibleLocationException();
+
+        private UncheckedIncompatibleLocationException() {
+            super(null, null, false, false);
+        }
+
+        static UncheckedIncompatibleLocationException instance() {
+            return INSTANCE;
+        }
+    }
+
+    interface LocationVisitor {
+        void visitObjectField(int index, int count);
+
+        void visitObjectArray(int index, int count);
+
+        void visitPrimitiveField(int index, int count);
+
+        void visitPrimitiveArray(int index, int count);
     }
 }

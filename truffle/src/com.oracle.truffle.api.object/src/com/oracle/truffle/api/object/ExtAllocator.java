@@ -85,7 +85,7 @@ final class ExtAllocator extends BaseAllocator {
     }
 
     @Override
-    public LocationImpl constantLocation(Object value) {
+    public Location constantLocation(Object value) {
         return new ExtLocations.ConstantLocation(value);
     }
 
@@ -115,7 +115,7 @@ final class ExtAllocator extends BaseAllocator {
                 FieldInfo fieldInfo = l.getObjectField(insertPos);
                 TypeAssumption initialTypeAssumption = getTypeAssumption(oldLocation, value);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                LocationImpl location = newObjectFieldLocationWithAssumption(insertPos, fieldInfo, initialTypeAssumption, initialFinalAssumption);
+                Location location = newObjectFieldLocationWithAssumption(insertPos, fieldInfo, initialTypeAssumption, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -126,7 +126,7 @@ final class ExtAllocator extends BaseAllocator {
         int index = objectArraySize;
         TypeAssumption initialTypeAssumption = getTypeAssumption(oldLocation, value);
         AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-        LocationImpl location = newObjectArrayLocationWithAssumption(index, initialTypeAssumption, initialFinalAssumption);
+        Location location = newObjectArrayLocationWithAssumption(index, initialTypeAssumption, initialFinalAssumption);
         return advance(location);
     }
 
@@ -185,14 +185,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new IntFieldLocation(fieldIndex, fieldInfo, initialFinalAssumption);
+                    Location location = new IntFieldLocation(fieldIndex, fieldInfo, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, INT_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                LocationImpl location = new IntArrayLocation(index, initialFinalAssumption);
+                Location location = new IntArrayLocation(index, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -207,14 +207,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new DoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, initialFinalAssumption);
+                    Location location = new DoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, DOUBLE_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                LocationImpl location = new DoubleArrayLocation(index, allowIntToDouble, initialFinalAssumption);
+                Location location = new DoubleArrayLocation(index, allowIntToDouble, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -247,14 +247,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    LocationImpl location = new LongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, initialFinalAssumption);
+                    Location location = new LongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, LONG_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                LocationImpl location = new LongArrayLocation(index, allowIntToLong, initialFinalAssumption);
+                Location location = new LongArrayLocation(index, allowIntToLong, initialFinalAssumption);
                 return advance(location);
             }
         }

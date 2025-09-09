@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-abstract sealed class BaseAllocator implements LocationImpl.LocationVisitor permits ExtAllocator {
+abstract sealed class BaseAllocator implements Location.LocationVisitor permits ExtAllocator {
     protected final LayoutImpl layout;
     protected int objectArraySize;
     protected int objectFieldSize;
@@ -84,13 +84,11 @@ abstract sealed class BaseAllocator implements LocationImpl.LocationVisitor perm
 
     protected abstract Location locationForValueUpcast(Object value, Location oldLocation, int putFlags);
 
-    protected <T extends Location> T advance(T location0) {
-        if (location0 instanceof LocationImpl location) {
-            location.accept(this);
-            assert layout.hasPrimitiveExtensionArray() || primitiveArraySize == 0;
-        }
+    protected <T extends Location> T advance(T location) {
+        location.accept(this);
+        assert layout.hasPrimitiveExtensionArray() || primitiveArraySize == 0;
         depth++;
-        return location0;
+        return location;
     }
 
     /**

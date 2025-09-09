@@ -99,11 +99,11 @@ public abstract class DOTestAsserts {
     }
 
     public static void assertSameLocation(Location location1, Location location2) {
-        Assert.assertSame(getInternalLocation(location1), getInternalLocation(location2));
+        Assert.assertSame(location1, location2);
     }
 
     public static void assertNotSameLocation(Location location1, Location location2) {
-        Assert.assertNotSame(getInternalLocation(location1), getInternalLocation(location2));
+        Assert.assertNotSame(location1, location2);
     }
 
     public static void assertSameUnderlyingLocation(Location location1, Location location2) {
@@ -120,26 +120,13 @@ public abstract class DOTestAsserts {
         }
     }
 
-    private static Location getInternalLocation(Location location) {
-        try {
-            Class<?> locations = Class.forName("com.oracle.truffle.api.object.LocationImpl");
-            Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
-                            m -> m.getName().equals("getInternalLocation")).findFirst().get();
-            getInternalLocationMethod.setAccessible(true);
-            return (Location) getInternalLocationMethod.invoke(location);
-        } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new AssertionError(e);
-        }
-    }
-
     public static Class<?> getLocationType(Location location) {
         try {
-            Class<?> locations = Class.forName("com.oracle.truffle.api.object.LocationImpl");
-            Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
+            Method getInternalLocationMethod = Arrays.stream(Location.class.getDeclaredMethods()).filter(
                             m -> m.getName().equals("getType")).findFirst().get();
             getInternalLocationMethod.setAccessible(true);
             return (Class<?>) getInternalLocationMethod.invoke(location);
-        } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+        } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
     }
