@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -35,20 +39,16 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
  * AArch64 backend for the Shenandoah load-reference barrier.
@@ -116,7 +116,11 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     // @formatter:on
     public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction op, Register thread, Register result, Register object,
                     AArch64Address loadAddress, ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean notNull) {
-        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
+        /*
+         * The slow path uses both scratch registers so allocate them both here to catch any cases
+         * where the caller might thing the scratch registers are free.
+         */
+        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister unused = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
 
             Label done = new Label();
@@ -158,6 +162,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                     try (AArch64MacroAssembler.ScratchRegister tmp1 = masm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister tmp2 = masm.getScratchRegister()) {
                         Register rtmp1 = tmp1.getRegister();
                         Register rtmp2 = tmp2.getRegister();
+                        LIRValueUtil.differentRegisters(object, rtmp1, rtmp2);
                         masm.bind(csetCheck);
                         masm.mov(rtmp1, HotSpotReplacementsUtil.shenandoahGCCSetFastTestAddr(config));
                         masm.lsr(64, rtmp2, object, HotSpotReplacementsUtil.shenandoahGCRegionSizeBytesShift(config));
