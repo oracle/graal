@@ -265,6 +265,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
+    public boolean isHostStackTraceVisibleToGuest() {
+        return api.allowsHostStackTrace(language.hostClassCache.hostAccess);
+    }
+
+    @Override
     public boolean isGuestToHostRootNode(Object rootNode) {
         return rootNode instanceof GuestToHostRootNode;
     }
