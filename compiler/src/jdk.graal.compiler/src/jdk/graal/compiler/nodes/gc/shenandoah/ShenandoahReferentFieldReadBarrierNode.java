@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodes.gc.shenandoah;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ShenandoahBarrierSetLIRGeneratorTool;
@@ -34,9 +37,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
-
 /**
  * A special case of the SATB barrier, needed to support soft and weak references. They are added
  * after reads of referents of SoftReference and WeakReference objects, and ensure that such
@@ -46,8 +46,14 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 public class ShenandoahReferentFieldReadBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {
     public static final NodeClass<ShenandoahReferentFieldReadBarrierNode> TYPE = NodeClass.create(ShenandoahReferentFieldReadBarrierNode.class);
 
-    public ShenandoahReferentFieldReadBarrierNode(AddressNode address, ValueNode expectedObject) {
+    /**
+     * Whether the reference is compressed.
+     */
+    private final boolean narrow;
+
+    public ShenandoahReferentFieldReadBarrierNode(AddressNode address, ValueNode expectedObject, boolean narrow) {
         super(TYPE, address, expectedObject, true);
+        this.narrow = narrow;
     }
 
     public ValueNode getExpectedObject() {
@@ -63,6 +69,6 @@ public class ShenandoahReferentFieldReadBarrierNode extends ObjectWriteBarrierNo
     public void generate(NodeLIRBuilderTool generator) {
         LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
         ShenandoahBarrierSetLIRGeneratorTool tool = (ShenandoahBarrierSetLIRGeneratorTool) generator.getLIRGeneratorTool().getBarrierSet();
-        tool.emitPreWriteBarrier(lirGen, generator.operand(getAddress()), lirGen.asAllocatable(generator.operand(getExpectedObject())), false);
+        tool.emitPreWriteBarrier(lirGen, generator.operand(getAddress()), lirGen.asAllocatable(generator.operand(getExpectedObject())), narrow, false);
     }
 }
