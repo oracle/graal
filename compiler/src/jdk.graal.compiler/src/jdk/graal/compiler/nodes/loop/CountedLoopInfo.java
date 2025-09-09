@@ -753,7 +753,8 @@ public class CountedLoopInfo {
      * <p>
      * For example, given this loop:
      * {@snippet :
-     * for (int i = 0; i < limit; i += 2) {}
+     * for (int i = 0; i < limit; i += 2) {
+     * }
      * }
      * Most of the time, this loop will execute a limited amount of iterations, and the value of
      * {@code i} inside the loop body will be in the interval {@code [0, limit)}. However, in the
