@@ -112,6 +112,11 @@ public class MetaspaceImpl implements Metaspace {
     }
 
     @Override
+    public int[] allocateIntArray(int length) {
+        return allocator.allocateIntArray(length);
+    }
+
+    @Override
     public void walkObjects(ObjectVisitor visitor) {
         assert VMOperation.isInProgress() : "prevent other threads from manipulating the metaspace";
         space.walkObjects(visitor);

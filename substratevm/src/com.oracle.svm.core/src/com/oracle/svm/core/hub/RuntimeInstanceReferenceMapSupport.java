@@ -106,11 +106,8 @@ public class RuntimeInstanceReferenceMapSupport {
             return toCompressedOffset(existingMetaspaceMapHolder.refMap);
         }
 
-        /* Copy the data to the metaspace. */
-        byte[] newMetaspaceMap = Metaspace.singleton().allocateByteArray(newHeapMap.length);
-        System.arraycopy(newHeapMap, 0, newMetaspaceMap, 0, newHeapMap.length);
-
-        /* Store the new reference map in the hash map. */
+        /* Copy the data to the metaspace and store the new reference map in the hash map. */
+        byte[] newMetaspaceMap = Metaspace.singleton().copyToMetaspace(newHeapMap);
         ReferenceMapHolder newMetaspaceMapHolder = new ReferenceMapHolder(newMetaspaceMap);
         refMaps.put(newMetaspaceMapHolder, newMetaspaceMapHolder);
         return toCompressedOffset(newMetaspaceMapHolder.refMap);
