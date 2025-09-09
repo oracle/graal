@@ -191,16 +191,11 @@ final class ObsolescenceStrategy {
         CompilerAsserts.neverPartOfCompilation();
         updateShape(object);
         Shape oldShape;
-        Property existingProperty;
         Shape newShape;
         Property property;
         do {
             oldShape = object.getShape();
-            if (oldShape == initialShape) {
-                existingProperty = propertyOfInitialShape;
-            } else {
-                existingProperty = oldShape.getProperty(key);
-            }
+            final Property existingProperty = reusePropertyLookup(key, initialShape, propertyOfInitialShape, oldShape);
             if (existingProperty == null) {
                 if (Flags.isSetExisting(putFlags)) {
                     return false;
@@ -233,6 +228,15 @@ final class ObsolescenceStrategy {
             location.setSafe(object, value, false, false);
         }
         return true;
+    }
+
+    static Property reusePropertyLookup(Object key, Shape cachedShape, Property cachedProperty, Shape updatedShape) {
+        assert cachedProperty == null || cachedProperty.getKey().equals(key);
+        if (updatedShape == cachedShape) {
+            return cachedProperty;
+        } else {
+            return updatedShape.getProperty(key);
+        }
     }
 
     Shape defineProperty(Shape shape, Object key, Object value, int flags) {
