@@ -120,6 +120,8 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
+import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingPhase;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
@@ -229,6 +231,8 @@ public class SVMHost extends HostVM {
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
     private final MetaAccessProvider originalMetaAccess;
 
+    private final ConstantExpressionRegistry constantExpressionRegistry;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
                     MissingRegistrationSupport missingRegistrationSupport) {
@@ -268,6 +272,8 @@ public class SVMHost extends HostVM {
         featureType = lookupOriginalType(Feature.class);
 
         verifyNamingConventions = SubstrateOptions.VerifyNamingConventions.getValue();
+
+        constantExpressionRegistry = StrictDynamicAccessInferenceFeature.isActive() ? ConstantExpressionRegistry.singleton() : null;
     }
 
     /**
@@ -1386,5 +1392,9 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
+    }
+
+    public ConstantExpressionRegistry getConstantExpressionRegistry() {
+        return constantExpressionRegistry;
     }
 }
