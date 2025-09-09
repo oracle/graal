@@ -405,11 +405,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         if (classes == null) {
             return null;
         }
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((HostedMetaAccess) metaAccess).getWrapped();
+        SubstitutionReflectivityFilter reflectivityFilter = SubstitutionReflectivityFilter.singleton();
         Set<Class<?>> reachableClasses = new HashSet<>();
         for (Class<?> clazz : classes) {
             try {
-                if (!SubstitutionReflectivityFilter.shouldExclude(clazz, aMetaAccess, aMetaAccess.getUniverse())) {
+                if (!reflectivityFilter.shouldExclude(clazz)) {
                     metaAccess.lookupJavaType(clazz);
                     reachableClasses.add(clazz);
                 }
