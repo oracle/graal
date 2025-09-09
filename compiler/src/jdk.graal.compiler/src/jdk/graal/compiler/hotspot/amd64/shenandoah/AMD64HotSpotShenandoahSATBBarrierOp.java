@@ -24,6 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.amd64.shenandoah;
 
+import static jdk.graal.compiler.asm.Assembler.guaranteeDifferentRegisters;
+import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriersSlowPathOnly;
+import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarriers;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -47,11 +52,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-import static jdk.graal.compiler.asm.Assembler.guaranteeDifferentRegisters;
-import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriersSlowPathOnly;
-import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarriers;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-
 /**
  * X86 backend for the Shenandoah SATB barrier.
  */
@@ -72,6 +72,11 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
     private final boolean nonNull;
 
     /**
+     * Whether the reference is compressed.
+     */
+    private final boolean narrow;
+
+    /**
      * The store address.
      */
     @Alive private Value address;
@@ -90,7 +95,7 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
     public AMD64HotSpotShenandoahSATBBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
                     AllocatableValue address, AllocatableValue expectedObject,
                     AllocatableValue temp, AllocatableValue temp2, AllocatableValue temp3,
-                    ForeignCallLinkage callTarget, boolean nonNull) {
+                    ForeignCallLinkage callTarget, boolean narrow, boolean nonNull) {
         super(TYPE);
         this.config = config;
         this.providers = providers;
@@ -102,11 +107,12 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
         this.temp3 = temp3;
         this.callTarget = callTarget;
         this.nonNull = nonNull;
+        this.narrow = narrow;
         GraalError.guarantee(expectedObject.equals(Value.ILLEGAL) || expectedObject.getPlatformKind().getSizeInBytes() == 8, "expected uncompressed pointer");
     }
 
     public void loadObject(AMD64MacroAssembler masm, Register preVal, Register immediateAddress) {
-        if (config.useCompressedOops) {
+        if (narrow) {
             masm.movl(preVal, new AMD64Address(immediateAddress));
             CompressEncoding encoding = config.getOopEncoding();
             AMD64Move.UncompressPointerOp.emitUncompressCode(masm, preVal, encoding.getShift(), providers.getRegisters().getHeapBaseRegister(), false);

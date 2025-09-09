@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.Value;
 public interface ShenandoahBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
     Value emitLoadReferenceBarrier(LIRGeneratorTool tool, Value obj, Value address, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean narrow, boolean notNull);
 
-    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
+    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean narrow, boolean nonNull);
 
     void emitCardBarrier(LIRGeneratorTool lirTool, Value address);
 }

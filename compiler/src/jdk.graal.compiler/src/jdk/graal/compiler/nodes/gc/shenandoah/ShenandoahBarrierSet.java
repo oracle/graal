@@ -229,7 +229,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
                          * be explicitly skipped when this is an initializing store. No keep-alive
                          * means no need for the pre-barrier.
                          */
-                        addShenandoahSATBBarrier(node, node.getAddress(), expectedValue, graph);
+                        addShenandoahSATBBarrier(node, node.getAddress(), writtenValue, expectedValue, graph);
                     }
                     if (!init && useCardBarrier && !StampTool.isPointerAlwaysNull(writtenValue)) {
                         graph.addAfterFixed(node, graph.add(new ShenandoahCardBarrierNode(node.getAddress())));
@@ -270,7 +270,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
                 }
                 if (useSATBBarrier) {
                     boolean narrow = node.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp;
-                    ShenandoahReferentFieldReadBarrierNode barrier = graph.add(new ShenandoahReferentFieldReadBarrierNode(node.getAddress(), maybeUncompressReference(node, narrow)));
+                    ShenandoahReferentFieldReadBarrierNode barrier = graph.add(new ShenandoahReferentFieldReadBarrierNode(node.getAddress(), maybeUncompressReference(node, narrow), narrow));
                     graph.addAfterFixed(node, barrier);
                 }
             }
@@ -291,9 +291,11 @@ public class ShenandoahBarrierSet implements BarrierSet {
         return value;
     }
 
-    private void addShenandoahSATBBarrier(FixedAccessNode node, AddressNode address, ValueNode value, StructuredGraph graph) {
-        boolean narrow = value != null && value.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp;
-        ShenandoahSATBBarrierNode preBarrier = graph.add(new ShenandoahSATBBarrierNode(address, maybeUncompressReference(value, narrow)));
+    void addShenandoahSATBBarrier(FixedAccessNode node, AddressNode address, ValueNode writtenValue, ValueNode expectedValue, StructuredGraph graph) {
+        boolean narrow = writtenValue.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp;
+        assert expectedValue == null || narrow == (expectedValue.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp) : narrow + " " + expectedValue;
+
+        ShenandoahSATBBarrierNode preBarrier = graph.add(new ShenandoahSATBBarrierNode(address, maybeUncompressReference(expectedValue, narrow), narrow));
         GraalError.guarantee(!node.getUsedAsNullCheck(), "trapping null checks are inserted after write barrier insertion: ", node);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);

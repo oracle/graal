@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodes.gc.shenandoah;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
+
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
@@ -39,9 +42,6 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
-
 /**
  * Shenandoah SATB barrier. Supports concurrent marking, by implementing the so-called
  * snapshot-at-the-beginning (SATB). The barrier ensures that we see a consistent and complete
@@ -53,8 +53,14 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 public final class ShenandoahSATBBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {
     public static final NodeClass<ShenandoahSATBBarrierNode> TYPE = NodeClass.create(ShenandoahSATBBarrierNode.class);
 
-    public ShenandoahSATBBarrierNode(AddressNode address, ValueNode expectedObject) {
+    /**
+     * Whether the reference is compressed.
+     */
+    private final boolean narrow;
+
+    public ShenandoahSATBBarrierNode(AddressNode address, ValueNode expectedObject, boolean narrow) {
         super(TYPE, address, expectedObject, true);
+        this.narrow = narrow;
     }
 
     public ValueNode getExpectedObject() {
@@ -79,7 +85,7 @@ public final class ShenandoahSATBBarrierNode extends ObjectWriteBarrierNode impl
                 GraalError.guarantee(expectedObject.stamp(NodeView.DEFAULT) instanceof ObjectStamp, "expecting full size object");
             }
             ShenandoahBarrierSetLIRGeneratorTool tool = (ShenandoahBarrierSetLIRGeneratorTool) generator.getLIRGeneratorTool().getBarrierSet();
-            tool.emitPreWriteBarrier(lirGen, generator.operand(getAddress()), operand, nonNull);
+            tool.emitPreWriteBarrier(lirGen, generator.operand(getAddress()), operand, narrow, nonNull);
         }
     }
 }

@@ -83,7 +83,7 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
     }
 
     @Override
-    public void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull) {
+    public void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean narrow, boolean nonNull) {
         AllocatableValue temp = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         // If the assembly must load the value then it's needs a temporary to store it
         AllocatableValue temp2 = expectedObject.equals(Value.ILLEGAL) ? lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD)) : Value.ILLEGAL;
@@ -95,7 +95,7 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
 
         ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_WRITE_BARRIER_PRE);
         lirTool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        lirTool.append(new AMD64HotSpotShenandoahSATBBarrierOp(config, providers, addressValue, expectedObject, temp, temp2, temp3, callTarget, nonNull));
+        lirTool.append(new AMD64HotSpotShenandoahSATBBarrierOp(config, providers, addressValue, expectedObject, temp, temp2, temp3, callTarget, narrow, nonNull));
     }
 
     @Override

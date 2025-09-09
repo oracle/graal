@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
+import static jdk.graal.compiler.asm.Assembler.guaranteeDifferentRegisters;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriersSlowPathOnly;
+import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarriers;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -46,12 +52,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-import static jdk.graal.compiler.asm.Assembler.guaranteeDifferentRegisters;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
-import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriersSlowPathOnly;
-import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarriers;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-
 /**
  * AArch64 backend for the Shenandoah SATB barrier.
  */
@@ -72,6 +72,11 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
     private final boolean nonNull;
 
     /**
+     * Whether the reference is compressed.
+     */
+    private final boolean narrow;
+
+    /**
      * The store address.
      */
     @Alive private Value address;
@@ -86,7 +91,7 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value temp2;
 
     public AArch64HotSpotShenandoahSATBBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                    AllocatableValue address, AllocatableValue expectedObject, AllocatableValue temp, AllocatableValue temp2, ForeignCallLinkage callTarget, boolean nonNull) {
+                    AllocatableValue address, AllocatableValue expectedObject, AllocatableValue temp, AllocatableValue temp2, ForeignCallLinkage callTarget, boolean narrow, boolean nonNull) {
         super(TYPE);
         this.config = config;
         this.providers = providers;
@@ -97,11 +102,12 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
         this.temp2 = temp2;
         this.callTarget = callTarget;
         this.nonNull = nonNull;
+        this.narrow = narrow;
         GraalError.guarantee(expectedObject.equals(Value.ILLEGAL) || expectedObject.getPlatformKind().getSizeInBytes() == 8, "expected uncompressed pointer");
     }
 
     public void loadObject(AArch64MacroAssembler masm, Register preVal, Register immediateAddress) {
-        if (config.useCompressedOops) {
+        if (narrow) {
             masm.ldr(32, preVal, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, immediateAddress, 0));
             CompressEncoding encoding = config.getOopEncoding();
             AArch64Move.UncompressPointerOp.emitUncompressCode(masm, preVal, preVal, encoding, false, providers.getRegisters().getHeapBaseRegister(), false);
