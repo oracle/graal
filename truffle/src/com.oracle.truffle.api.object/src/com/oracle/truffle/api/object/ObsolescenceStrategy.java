@@ -68,19 +68,16 @@ import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
 
 @SuppressWarnings("deprecation")
-final class ObsolescenceStrategy {
-
-    private static final ObsolescenceStrategy SINGLETON = new ObsolescenceStrategy();
-
-    static ObsolescenceStrategy singleton() {
-        return SINGLETON;
-    }
+abstract class ObsolescenceStrategy {
 
     private static final DebugCounter makeSuccessorShapeCount = DebugCounter.create("Rebuild shape count");
     private static final DebugCounter reshapeCount = DebugCounter.create("Reshape count");
     private static final int TRACE_RESHAPE_LIMIT = 500;
 
     @SuppressWarnings("serial") private static final Error STACK_OVERFLOW_ERROR = new NonrecoverableError();
+
+    private ObsolescenceStrategy() {
+    }
 
     /**
      * Removes a property without moving property locations, leaving a gap that is lost forever.
@@ -174,7 +171,7 @@ final class ObsolescenceStrategy {
     }
 
     @TruffleBoundary
-    boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
         if (existingProperty == null) {
             if (Flags.isPutIfPresent(putFlags)) {
                 return false;
@@ -190,7 +187,7 @@ final class ObsolescenceStrategy {
         return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
     }
 
-    private boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
+    private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
                     Shape initialShape, Property propertyOfInitialShape) {
         CompilerAsserts.neverPartOfCompilation();
         updateShape(object);
@@ -248,11 +245,11 @@ final class ObsolescenceStrategy {
         }
     }
 
-    Shape defineProperty(Shape shape, Object key, Object value, int flags) {
+    static Shape defineProperty(Shape shape, Object key, Object value, int flags) {
         return defineProperty(shape, key, value, flags, Flags.DEFAULT);
     }
 
-    Shape defineProperty(Shape shape, Object key, Object value, int flags, int putFlags) {
+    static Shape defineProperty(Shape shape, Object key, Object value, int flags, int putFlags) {
         Shape oldShape = shape;
         if (!oldShape.isValid()) {
             oldShape = ensureValid(oldShape);
@@ -261,7 +258,7 @@ final class ObsolescenceStrategy {
         return defineProperty(oldShape, key, value, flags, existing, putFlags);
     }
 
-    Shape defineProperty(Shape oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
+    static Shape defineProperty(Shape oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
         if (existing == null) {
             return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
         } else {
@@ -277,7 +274,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
+    private static Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
         if (!Flags.isConstant(putFlags)) {
             Class<?> locationType = detectLocationType(value);
             if (locationType != null) {
@@ -294,7 +291,7 @@ final class ObsolescenceStrategy {
         return addProperty(oldShape, property);
     }
 
-    private Class<?> detectLocationType(Object value) {
+    private static Class<?> detectLocationType(Object value) {
         if (value instanceof Integer) {
             return int.class;
         } else if (value instanceof Double) {
@@ -308,11 +305,11 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Location createLocationForValue(Shape shape, Object value, int putFlags) {
+    private static Location createLocationForValue(Shape shape, Object value, int putFlags) {
         return ((ExtAllocator) shape.allocator()).locationForValue(value, putFlags);
     }
 
-    private Shape definePropertyChangeFlags(Shape oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
+    private static Shape definePropertyChangeFlags(Shape oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
         assert existing.getFlags() != propertyFlags;
         if (existing.getLocation().canStore(value)) {
             Property newProperty = Property.create(existing.getKey(), existing.getLocation(), propertyFlags);
@@ -322,7 +319,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
+    static Shape definePropertyGeneralize(Shape oldShape, Property oldProperty, Object value, int putFlags) {
         if (oldProperty.getLocation().isValue()) {
             Location newLocation = createLocationForValue(oldShape, value, putFlags);
             Property newProperty = oldProperty.relocate(newLocation);
@@ -333,7 +330,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    Shape removeProperty(Shape shape, Property property) {
+    static Shape removeProperty(Shape shape, Property property) {
         if (property.getLocation() instanceof ExtLocations.InstanceLocation instanceLocation) {
             instanceLocation.maybeInvalidateFinalAssumption();
         }
@@ -353,7 +350,7 @@ final class ObsolescenceStrategy {
         return indirectRemoveProperty(shape, property, transition);
     }
 
-    private RemovePropertyTransition newRemovePropertyTransition(Property property, boolean direct) {
+    private static RemovePropertyTransition newRemovePropertyTransition(Property property, boolean direct) {
         return new RemovePropertyTransition(property, toLocationOrType(property.getLocation()), direct);
     }
 
@@ -361,7 +358,7 @@ final class ObsolescenceStrategy {
      * Removes a property by rewinding and replaying property transitions; moves any subsequent
      * property locations to fill in the gap.
      */
-    private Shape indirectRemoveProperty(Shape shape, Property property, RemovePropertyTransition transition) {
+    private static Shape indirectRemoveProperty(Shape shape, Property property, RemovePropertyTransition transition) {
         Shape owningShape = getShapeFromProperty(shape, property.getKey());
         if (owningShape == null) {
             return null;
@@ -387,11 +384,11 @@ final class ObsolescenceStrategy {
         return shape.addIndirectTransition(transition, newShape);
     }
 
-    private Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
+    private static Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         return directReplaceProperty(shape, oldProperty, newProperty, true);
     }
 
-    private Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty, boolean ensureValid) {
+    private static Shape directReplaceProperty(Shape shape, Property oldProperty, Property newProperty, boolean ensureValid) {
         Shape newShape = directReplacePropertyInner(shape, oldProperty, newProperty);
 
         Property actualProperty = newShape.getProperty(newProperty.getKey());
@@ -401,11 +398,11 @@ final class ObsolescenceStrategy {
         return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    Shape addProperty(Shape shape, Property property) {
+    static Shape addProperty(Shape shape, Property property) {
         return addProperty(shape, property, true);
     }
 
-    private Shape addProperty(Shape shape, Property property, boolean ensureValid) {
+    private static Shape addProperty(Shape shape, Property property, boolean ensureValid) {
         Shape newShape = addPropertyInner(shape, property);
 
         Property actualProperty = newShape.getLastProperty();
@@ -415,7 +412,7 @@ final class ObsolescenceStrategy {
         return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    private Shape addPropertyInner(Shape shape, Property property) {
+    private static Shape addPropertyInner(Shape shape, Property property) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
 
         AddPropertyTransition addTransition = newAddPropertyTransition(property);
@@ -436,17 +433,17 @@ final class ObsolescenceStrategy {
         return newShape;
     }
 
-    private Shape ensureSpace(Shape shape, Location location) {
+    private static Shape ensureSpace(Shape shape, Location location) {
         Objects.requireNonNull(location);
         assert assertLocationInRange(shape, location);
         return shape;
     }
 
-    private AddPropertyTransition newAddPropertyTransition(Property property) {
+    private static AddPropertyTransition newAddPropertyTransition(Property property) {
         return new AddPropertyTransition(property, toLocationOrType(property.getLocation()));
     }
 
-    private Object toLocationOrType(Location location) {
+    private static Object toLocationOrType(Location location) {
         Class<?> type = location.getType();
         if (type != null) {
             return type;
@@ -454,7 +451,7 @@ final class ObsolescenceStrategy {
         return location;
     }
 
-    private Shape applyTransition(Shape shape, Transition transition, boolean append) {
+    private static Shape applyTransition(Shape shape, Transition transition, boolean append) {
         if (transition instanceof AddPropertyTransition) {
             Property property = ((AddPropertyTransition) transition).getProperty();
             Shape newShape;
@@ -489,7 +486,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
+    private static void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
         assert generalProperty.isSame(specificProperty) : generalProperty;
         assert generalProperty.getLocation() == specificProperty.getLocation() ||
                         generalProperty.getLocation().getType() == specificProperty.getLocation().getType() : generalProperty;
@@ -511,17 +508,14 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private ObsolescenceStrategy() {
-    }
-
     @TruffleBoundary
-    boolean updateShape(DynamicObject object) {
+    static boolean updateShape(DynamicObject object) {
         boolean changed = checkForObsoleteShapeAndMigrate(object);
         // shape should be valid now, but we cannot assert this due to a possible race
         return changed;
     }
 
-    private Shape ensureValid(Shape newShape) {
+    private static Shape ensureValid(Shape newShape) {
         Shape nextShape = newShape;
         // if it's been obsoleted (cached shape), skip over
         if (!nextShape.isValid()) {
@@ -531,7 +525,7 @@ final class ObsolescenceStrategy {
         return nextShape;
     }
 
-    private Shape generalizeProperty(Property oldProperty, Object value, Shape oldShape, Shape newShape, int putFlags) {
+    private static Shape generalizeProperty(Property oldProperty, Object value, Shape oldShape, Shape newShape, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             Location oldLocation = oldProperty.getLocation();
             Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
@@ -546,7 +540,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Shape generalizePropertyWithFlags(Shape oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
+    private static Shape generalizePropertyWithFlags(Shape oldShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             assert !oldProperty.getLocation().canStore(value);
             Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
@@ -560,7 +554,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    Shape replaceProperty(Shape shape, Property oldProperty, Property newProperty) {
+    static Shape replaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         if (shape.isShared() || oldProperty.getLocation().isValue()) {
             return directReplaceProperty(shape, oldProperty, newProperty);
         } else {
@@ -568,7 +562,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Shape indirectReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
+    private static Shape indirectReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
         assert !shape.isShared();
         assert oldProperty.getKey().equals(newProperty.getKey());
         Object key = newProperty.getKey();
@@ -629,11 +623,11 @@ final class ObsolescenceStrategy {
         return newShape;
     }
 
-    BaseAllocator createAllocator(Shape shape) {
+    static BaseAllocator createAllocator(Shape shape) {
         return new ExtAllocator(shape);
     }
 
-    private Shape getObsoletedBy(Shape shape) {
+    private static Shape getObsoletedBy(Shape shape) {
         if (shape.isValid()) {
             return null;
         }
@@ -663,7 +657,7 @@ final class ObsolescenceStrategy {
      * properties over; this is due to append/put not necessarily progressing linear (may reorder
      * properties to make space for extension array).
      */
-    private void reshape(DynamicObject store) {
+    private static void reshape(DynamicObject store) {
         CompilerAsserts.neverPartOfCompilation();
         reshapeCount.inc();
 
@@ -738,7 +732,7 @@ final class ObsolescenceStrategy {
         return true;
     }
 
-    private Shape makeSuccessorShape(Shape oldShape) {
+    private static Shape makeSuccessorShape(Shape oldShape) {
         makeSuccessorShapeCount.inc();
 
         assert !oldShape.isValid();
@@ -813,7 +807,7 @@ final class ObsolescenceStrategy {
         toProperty.getLocation().set(toObject, value, false, true);
     }
 
-    private boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {
+    private static boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {
         Shape currentShape = store.getShape();
         if (currentShape.isValid()) {
             return false;
@@ -822,7 +816,7 @@ final class ObsolescenceStrategy {
         return migrateObsoleteShape(currentShape, store);
     }
 
-    private boolean migrateObsoleteShape(Shape currentShape, DynamicObject store) {
+    private static boolean migrateObsoleteShape(Shape currentShape, DynamicObject store) {
         CompilerAsserts.neverPartOfCompilation();
         synchronized (currentShape.getMutex()) {
             if (!currentShape.isValid()) {
@@ -834,7 +828,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Shape rebuildObsoleteShape(Shape oldShape, Shape owningShape) {
+    private static Shape rebuildObsoleteShape(Shape oldShape, Shape owningShape) {
         assert !owningShape.isValid();
         if (oldShape.isValid()) {
             // The shape is not marked obsolete despite the parent shape owning the property being
@@ -852,7 +846,7 @@ final class ObsolescenceStrategy {
         return makeSuccessorShape(oldShape);
     }
 
-    private Shape generalizeHelper(Property currentProperty, Object value, Shape currentShape, int putFlags) {
+    private static Shape generalizeHelper(Property currentProperty, Object value, Shape currentShape, int putFlags) {
         Shape oldShape = currentShape;
         Property oldProperty = currentProperty;
         assert !oldProperty.getLocation().canStore(value);
@@ -901,7 +895,7 @@ final class ObsolescenceStrategy {
         }
     }
 
-    private Shape obsoleteAndMakeShapeWithProperty(Property oldProperty, Shape oldShape, Shape owningShape, Property newProperty) {
+    private static Shape obsoleteAndMakeShapeWithProperty(Property oldProperty, Shape oldShape, Shape owningShape, Property newProperty) {
         Shape newOwningShape = makeNewOwningShape(owningShape, newProperty);
         assert owningShape != newOwningShape;
         // both owning shapes should be valid, but we cannot assert this due to a possible race
@@ -909,7 +903,7 @@ final class ObsolescenceStrategy {
         return rebuildObsoleteShape(oldShape, owningShape);
     }
 
-    private Shape makeNewOwningShape(Shape owningShape, Property newProperty) {
+    private static Shape makeNewOwningShape(Shape owningShape, Property newProperty) {
         Shape oldParentShape = owningShape.getParent();
         Transition transitionFromParent = owningShape.getTransitionFromParent();
         if (transitionFromParent instanceof DirectReplacePropertyTransition) {
