@@ -73,6 +73,11 @@ class MetaspaceObjectAllocator {
         return (byte[]) allocateArrayLikeObject(hub, length);
     }
 
+    public int[] allocateIntArray(int length) {
+        DynamicHub hub = DynamicHub.fromClass(int[].class);
+        return (int[]) allocateArrayLikeObject(hub, length);
+    }
+
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private Object allocateArrayLikeObject(DynamicHub hub, int arrayLength) {
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), arrayLength);
