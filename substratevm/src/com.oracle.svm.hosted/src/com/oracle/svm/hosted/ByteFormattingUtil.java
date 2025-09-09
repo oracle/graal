@@ -25,33 +25,29 @@
 package com.oracle.svm.hosted;
 
 public class ByteFormattingUtil {
-    private static final double BYTES_TO_KB = 1000d;
-    private static final double BYTES_TO_MB = 1000d * 1000d;
-    private static final double BYTES_TO_GB = 1000d * 1000d * 1000d;
+    private static final long KiB_TO_BYTES = 1024L;
+    private static final long MiB_TO_BYTES = 1024L * KiB_TO_BYTES;
+    private static final long GiB_TO_BYTES = 1024L * MiB_TO_BYTES;
 
     public static String bytesToHuman(long bytes) {
         assert bytes >= 0;
-        if (bytes < BYTES_TO_KB) {
-            return plainBytes(bytes, "B");
-        } else if (bytes < BYTES_TO_MB) {
-            return toHuman(bytes / BYTES_TO_KB, "kB");
-        } else if (bytes < BYTES_TO_GB) {
-            return toHuman(bytes / BYTES_TO_MB, "MB");
+        if (bytes < KiB_TO_BYTES) {
+            return bytes + "B";
+        } else if (bytes < MiB_TO_BYTES) {
+            return toHuman((double) bytes / KiB_TO_BYTES, "KiB");
+        } else if (bytes < GiB_TO_BYTES) {
+            return toHuman((double) bytes / MiB_TO_BYTES, "MiB");
         } else {
             return bytesToHumanGB(bytes);
         }
     }
 
     public static String bytesToHumanGB(long bytes) {
-        return toHuman(bytes / BYTES_TO_GB, "GB");
+        return toHuman((double) bytes / GiB_TO_BYTES, "GiB");
     }
 
     private static String toHuman(double value, String unit) {
         return "%.2f%s".formatted(value, unit);
     }
 
-    private static String plainBytes(long value, String unit) {
-        assert 0 <= value && value < BYTES_TO_KB;
-        return "%d%s".formatted(value, unit);
-    }
 }
