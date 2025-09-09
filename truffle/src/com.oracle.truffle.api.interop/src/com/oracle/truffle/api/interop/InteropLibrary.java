@@ -5474,7 +5474,7 @@ public abstract class InteropLibrary extends Library {
             return delegate.hasLanguageId(receiver);
         }
 
-        @Abstract(ifExported = {"hasLanguageId"})
+        @Override
         public String getLanguageId(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.getLanguageId(receiver);
