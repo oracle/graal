@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -107,16 +106,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved,
-                        @Cached InitCheck initCheck) {
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(self);
             Klass klass = findType(field.getType(), field.getDeclaringKlass(), false, meta);
             if (klass != null) {
                 LOGGER.finer(() -> "ERJF.getType0 found " + klass);
-                return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
+                return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
             } else if (StaticObject.isNull(unresolved)) {
+                meta.jvmci.UnresolvedJavaType.safeInitialize();
                 return (StaticObject) createUnresolved.call(meta.toGuestString(field.getType()));
             } else {
                 assert field.getType().toString().equals(meta.toHostString(meta.jvmci.UnresolvedJavaType_name.getObject(unresolved)));
