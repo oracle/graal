@@ -263,7 +263,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
             assertEquals("<proxyLanguage> ownerObjectName.testObject(Unnamed:1)", e.toHostFrame().toString());
             assertEquals("test", e.getSourceLocation().getCharacters());
             assertEquals(source, e.getSourceLocation().getSource());
-            assertEquals("testObject", e.getRootName());
+            assertEquals("ownerObjectName.testObject", e.getRootName());
 
             while (trace.hasNext()) {
                 e = trace.next();
