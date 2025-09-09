@@ -1314,6 +1314,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean allowsHostStackTrace(Object hostAccess) {
+            return ((HostAccess) hostAccess).hostStackFrames == HostAccess.HostStackFrames.ALL;
+        }
+
+        @Override
         public boolean allowsAccessInheritance(Object access) {
             return ((HostAccess) access).allowAccessInheritance;
         }

@@ -317,6 +317,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsPublicAccess(Object hostAccess);
 
+        public abstract boolean allowsHostStackTrace(Object hostAccess);
+
         public abstract boolean allowsAccessInheritance(Object hostAccess);
 
         public abstract Object getHostAccessImpl(Object hostAccess);
@@ -1056,9 +1058,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsPublicAccess();
 
-        public final boolean isHostStackTraceVisibleToGuest() {
-            return allowsPublicAccess();
-        }
+        public abstract boolean isHostStackTraceVisibleToGuest();
 
         public abstract boolean isGuestToHostRootNode(Object rootNode);
     }

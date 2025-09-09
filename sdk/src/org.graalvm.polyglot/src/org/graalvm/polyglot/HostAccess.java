@@ -120,15 +120,16 @@ public final class HostAccess {
     private final EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
     private final EconomicSet<Executable> disableMethodScoping;
     final Lookup methodLookup;
+    final HostStackFrames hostStackFrames;
     volatile Object impl;
 
     private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false,
-                    null, false, null, null, null);
+                    null, false, null, null, null, HostStackFrames.NONE);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
      * annotated with {@linkplain Export @Export} and were declared in public class. This is the
-     * default configuration if {@link Context.Builder#allowAllAccess(boolean)} is
+     * default configuration if {@link HostAccess.Builder#allowPublicAccess(boolean)} is
      * <code>false</code>.
      * <p>
      * Equivalent of using the following builder configuration:
@@ -213,6 +214,7 @@ public final class HostAccess {
                     allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
                     allowIterableAccess(true).allowIteratorAccess(true).allowMapAccess(true).//
                     allowAccessInheritance(true).//
+                    allowHostStackFrames(HostStackFrames.ALL).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -333,6 +335,32 @@ public final class HostAccess {
         EXECUTABLE_TO_JAVA_INTERFACE,
     }
 
+    /**
+     * Defines the visibility policy for host stack frames as observed by guest applications.
+     * <p>
+     * This setting controls whether stack frames originating from the host are exposed to the guest
+     * application when inspecting exception stack traces.
+     *
+     * @since 26.0
+     * @see Builder#allowHostStackFrames(HostStackFrames)
+     */
+    public enum HostStackFrames {
+
+        /**
+         * Host stack frames are visible to the guest application.
+         *
+         * @since 26.0
+         */
+        ALL,
+
+        /**
+         * Host stack frames are hidden from the guest application.
+         *
+         * @since 26.0
+         */
+        NONE
+    }
+
     HostAccess(EconomicSet<Class<? extends Annotation>> annotations, EconomicMap<Class<?>, Boolean> excludeTypes, EconomicSet<AnnotatedElement> members,
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
@@ -340,7 +368,7 @@ public final class HostAccess {
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
                     boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowBigIntegerNumberAccess, boolean allowAccessInheritance,
                     MutableTargetMapping[] allowMutableTargetMappings, boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations,
-                    EconomicSet<Executable> disableMethodScoping, Lookup methodLookup) {
+                    EconomicSet<Executable> disableMethodScoping, Lookup methodLookup, HostStackFrames hostStackFrames) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -365,6 +393,7 @@ public final class HostAccess {
         this.disableMethodScopingAnnotations = disableMethodScopingAnnotations;
         this.disableMethodScoping = disableMethodScoping;
         this.methodLookup = methodLookup;
+        this.hostStackFrames = hostStackFrames;
     }
 
     /**
@@ -393,7 +422,8 @@ public final class HostAccess {
                         && equalsSet(implementableTypes, other.implementableTypes)//
                         && Objects.equals(targetMappings, other.targetMappings)//
                         && equalsSet(accessAnnotations, other.accessAnnotations)//
-                        && Arrays.equals(allowMutableTargetMappings, other.allowMutableTargetMappings);
+                        && Arrays.equals(allowMutableTargetMappings, other.allowMutableTargetMappings)//
+                        && hostStackFrames == other.hostStackFrames;
     }
 
     /**
@@ -418,7 +448,8 @@ public final class HostAccess {
                         hashSet(implementableTypes),
                         hashSet(members),
                         targetMappings,
-                        hashSet(accessAnnotations));
+                        hashSet(accessAnnotations),
+                        hostStackFrames);
     }
 
     private static <T, V> int hashMap(EconomicMap<T, V> map) {
@@ -796,6 +827,7 @@ public final class HostAccess {
         private EconomicSet<Executable> disableMethodScoping;
         private String name;
         private Lookup methodLookup;
+        private HostStackFrames hostStackFrames;
 
         Builder() {
         }
@@ -823,6 +855,7 @@ public final class HostAccess {
             this.methodScopingDefault = access.methodScopingDefault;
             this.disableMethodScopingAnnotations = copySet(access.disableMethodScopingAnnotations, Equivalence.IDENTITY);
             this.disableMethodScoping = copySet(access.disableMethodScoping, Equivalence.IDENTITY);
+            this.hostStackFrames = access.hostStackFrames;
         }
 
         /**
@@ -850,6 +883,10 @@ public final class HostAccess {
          */
         public Builder allowPublicAccess(boolean allow) {
             allowPublic = allow;
+            // Compatibility behavior
+            if (hostStackFrames == null) {
+                hostStackFrames = HostStackFrames.ALL;
+            }
             return this;
         }
 
@@ -1369,15 +1406,38 @@ public final class HostAccess {
         }
 
         /**
+         * Configures the visibility of host stack frames to the guest application.
+         * <p>
+         * By default, guest applications do not have access to host stack frames unless either
+         * {@link HostAccess#ALL} is specified, or host stack frame visibility is explicitly enabled
+         * through {@code builder.allowHostStackFrames(HostStackFrames.ALL)}. For backward
+         * compatibility, host stack frames are also implicitly enabled when
+         * {@link #allowPublicAccess(boolean)} is invoked.
+         *
+         * @param value the policy determining how host stack frames are exposed to the guest
+         * @throws NullPointerException if {@code value} is {@code null}
+         * @since 26.0
+         */
+        public Builder allowHostStackFrames(HostStackFrames value) {
+            Objects.requireNonNull(value);
+            this.hostStackFrames = value;
+            return this;
+        }
+
+        /**
          * Creates an instance of the custom host access configuration.
          *
          * @since 19.0
          */
         public HostAccess build() {
+            HostStackFrames useHostStackFrames = hostStackFrames;
+            if (useHostStackFrames == null) {
+                useHostStackFrames = HostStackFrames.NONE;
+            }
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
                             allowIteratorAccess, allowMapAccess, allowBigIntegerNumberAccess, allowAccessInheritance, allowMutableTargetMappings, methodScopingDefault, disableMethodScopingAnnotations,
-                            disableMethodScoping, methodLookup);
+                            disableMethodScoping, methodLookup, useHostStackFrames);
         }
     }
 
