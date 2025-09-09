@@ -38,17 +38,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Weekly Reachability Metadata Tests
+name: Weekly Spring Tests
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/reachability-metadata-template.yml'
-      - '.github/workflows/reachability-metadata.yml'
-  schedule:
-  - cron: '0 1 * * 1'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      NATIVE_IMAGE_OPTIONS:
+        required: false
+        type: string
+
+env:
+  SPRING_PETCLINIC_PATH: ${{ github.workspace }}/spring-petclinic
+  SPRING_JAVA_VERSION: 21
+  NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
 
 jobs:
-  call-template:
-    uses: './.github/workflows/reachability-metadata-template.yml'
+  build-graalvm-and-spring:
+    name: Native Tests
+    runs-on: ubuntu-22.04
+    if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
+    steps:
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v4
+    - name: Build GraalVM JDK
+      uses: ./.github/actions/build-graalvm
+      with:
+        java-version: ${{ env.SPRING_JAVA_VERSION }}
+    - name: Checkout spring-projects/spring-petclinic
+      uses: actions/checkout@v4
+      with:
+        repository: spring-projects/spring-petclinic
+        path: ${{ env.SPRING_PETCLINIC_PATH }}
+    - name: Run nativeTest in spring-petclinic${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
+      run: |
+        cd ${{ env.SPRING_PETCLINIC_PATH }}
+        ./gradlew nativeTest
