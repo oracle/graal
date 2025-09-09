@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.object.Location.LocationVisitor;
 import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
@@ -149,32 +150,26 @@ final class ObsolescenceStrategy {
 
     private static boolean assertLocationInRange(final Shape shape, final Location location) {
         final LayoutImpl layout = shape.getLayout();
-        if (location instanceof LocationImpl) {
-            ((LocationImpl) location).accept(new LocationImpl.LocationVisitor() {
-                @Override
-                public void visitPrimitiveField(int index, int count) {
-                    assert index + count <= layout.getPrimitiveFieldCount();
-                }
+        location.accept(new LocationVisitor() {
+            @Override
+            public void visitPrimitiveField(int index, int count) {
+                assert index + count <= layout.getPrimitiveFieldCount();
+            }
 
-                @Override
-                public void visitObjectField(int index, int count) {
-                    assert index + count <= layout.getObjectFieldCount();
-                }
+            @Override
+            public void visitObjectField(int index, int count) {
+                assert index + count <= layout.getObjectFieldCount();
+            }
 
-                @Override
-                public void visitPrimitiveArray(int index, int count) {
-                }
+            @Override
+            public void visitPrimitiveArray(int index, int count) {
+            }
 
-                @Override
-                public void visitObjectArray(int index, int count) {
-                }
-            });
-        }
+            @Override
+            public void visitObjectArray(int index, int count) {
+            }
+        });
         return true;
-    }
-
-    int getLocationOrdinal(Location location) {
-        return ((LocationImpl) location).getOrdinal();
     }
 
     private Shape ensureSpace(Shape shape, Location location) {
@@ -376,11 +371,9 @@ final class ObsolescenceStrategy {
     }
 
     private Object toLocationOrType(Location location) {
-        if (location instanceof LocationImpl) {
-            Class<?> type = ((LocationImpl) location).getType();
-            if (type != null) {
-                return type;
-            }
+        Class<?> type = location.getType();
+        if (type != null) {
+            return type;
         }
         return location;
     }
@@ -423,7 +416,7 @@ final class ObsolescenceStrategy {
     private void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
         assert generalProperty.isSame(specificProperty) : generalProperty;
         assert generalProperty.getLocation() == specificProperty.getLocation() ||
-                        ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
+                        generalProperty.getLocation().getType() == specificProperty.getLocation().getType() : generalProperty;
         ensureSameTypeOrMoreGeneral(generalProperty.getLocation(), specificProperty.getLocation());
     }
 
@@ -740,7 +733,7 @@ final class ObsolescenceStrategy {
     }
 
     private static void setPropertyInternal(Property toProperty, DynamicObject toObject, Object value) {
-        ((LocationImpl) toProperty.getLocation()).set(toObject, value, false, true);
+        toProperty.getLocation().set(toObject, value, false, true);
     }
 
     private boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {

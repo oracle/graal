@@ -153,7 +153,7 @@ abstract class ExtLocations {
         }
     }
 
-    abstract static sealed class ValueLocation extends LocationImpl {
+    abstract static sealed class ValueLocation extends Location {
 
         private final Object value;
 
@@ -246,7 +246,7 @@ abstract class ExtLocations {
         }
     }
 
-    abstract static sealed class InstanceLocation extends LocationImpl {
+    abstract static sealed class InstanceLocation extends Location {
 
         protected final int index;
 

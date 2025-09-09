@@ -1570,7 +1570,7 @@ public final class Shape {
         PropertyMap newPropertyMap = parent.propertyMap.putCopy(addend);
 
         Shape newShape = parent.createShape(parent.objectType, parent.sharedData, newPropertyMap, addTransition, allocator, parent.flags);
-        assert newShape.hasPrimitiveArray() || ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0;
+        assert newShape.hasPrimitiveArray() || addend.getLocation().primitiveArrayCount() == 0;
         assert newShape.depth == allocator.depth;
         return newShape;
     }
