@@ -255,7 +255,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
             location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
         }
-        String rootName = host && metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
+        String rootName = metaQualifiedName != null ? metaQualifiedName + '.' + executableName : executableName;
         return new PolyglotExceptionFrame(exception, languageId, language, location, rootName, executableName, metaQualifiedName, host, null, byteCodeIndex);
     }
 
