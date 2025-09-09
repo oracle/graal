@@ -269,7 +269,7 @@ abstract class DynamicObjectLibraryImpl {
         if (cachedShape.isValid()) {
             return false;
         } else {
-            return ObsolescenceStrategy.singleton().updateShape(object);
+            return ObsolescenceStrategy.updateShape(object);
         }
     }
 
@@ -648,7 +648,7 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, int propertyFlags, int putFlags) {
-            return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, cachedShape.getProperty(key));
+            return ObsolescenceStrategy.putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, cachedShape.getProperty(key));
         }
 
         @Override
@@ -665,7 +665,7 @@ abstract class DynamicObjectLibraryImpl {
         @TruffleBoundary
         @Override
         public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
-            ObsolescenceStrategy.singleton().updateShape(object);
+            ObsolescenceStrategy.updateShape(object);
             Shape oldShape = object.getShape();
             Property existingProperty = oldShape.getProperty(key);
             if (existingProperty == null) {
@@ -675,7 +675,7 @@ abstract class DynamicObjectLibraryImpl {
                 Shape newShape = changePropertyFlags(oldShape, existingProperty, propertyFlags);
                 if (newShape != oldShape) {
                     object.setShape(newShape);
-                    ObsolescenceStrategy.singleton().updateShape(object);
+                    ObsolescenceStrategy.updateShape(object);
                 }
             }
             return true;
@@ -1225,7 +1225,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1263,7 +1263,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1331,7 +1331,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1380,7 +1380,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1465,13 +1465,13 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.isPutIfPresent(putFlags)) {
                     return oldShape;
                 } else {
-                    return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
+                    return ObsolescenceStrategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
             if (Flags.isUpdateFlags(putFlags)) {
                 if (newPropertyFlags != property.getFlags()) {
-                    return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
+                    return ObsolescenceStrategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
@@ -1479,12 +1479,12 @@ abstract class DynamicObjectLibraryImpl {
             if (!location.isDeclared() && !location.canStore(value)) {
                 // generalize
                 assert oldShape == object.getShape();
-                Shape newShape = ObsolescenceStrategy.singleton().definePropertyGeneralize(oldShape, property, value, putFlags);
+                Shape newShape = ObsolescenceStrategy.definePropertyGeneralize(oldShape, property, value, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
-                return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
+                return ObsolescenceStrategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
             } else {
                 // set existing
                 assert location.canStore(value);
@@ -1683,7 +1683,7 @@ abstract class DynamicObjectLibraryImpl {
 
         protected final void maybeUpdateShape(DynamicObject store) {
             if (newShapeValidAssumption == Assumption.NEVER_VALID) {
-                ObsolescenceStrategy.singleton().updateShape(store);
+                ObsolescenceStrategy.updateShape(store);
             }
         }
 
