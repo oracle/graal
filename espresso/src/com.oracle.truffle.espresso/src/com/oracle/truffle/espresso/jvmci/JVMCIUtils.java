@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -43,44 +44,45 @@ public final class JVMCIUtils {
     }
 
     @TruffleBoundary
-    public static ObjectKlass findInstanceType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, Meta meta) {
+    public static ObjectKlass findInstanceType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, boolean checkAccess, Meta meta) {
         assert !TypeSymbols.isArray(symbol);
         StaticObject loader = accessingKlass.getDefiningClassLoader();
         ObjectKlass klass;
         if (resolve) {
             klass = (ObjectKlass) meta.loadKlassOrFail(symbol, loader, accessingKlass.protectionDomain());
+            assert klass != null : symbol + " in " + ClassRegistry.loaderDesc(accessingKlass);
         } else {
             klass = (ObjectKlass) meta.getRegistries().findLoadedClass(symbol, loader);
         }
-        if (klass != null && !Klass.checkAccess(klass, accessingKlass)) {
+        if (checkAccess && klass != null && !Klass.checkAccess(klass, accessingKlass)) {
             return null;
         }
         return klass;
     }
 
     @TruffleBoundary
-    public static Klass findType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, Meta meta) {
+    public static Klass findType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, boolean checkAccess, Meta meta) {
         if (TypeSymbols.isPrimitive(symbol)) {
             return meta.resolvePrimitive(symbol);
         } else {
-            return findObjectType(symbol, accessingKlass, resolve, meta);
+            return findObjectType(symbol, accessingKlass, resolve, checkAccess, meta);
         }
     }
 
     @TruffleBoundary
-    public static Klass findObjectType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, Meta meta) {
+    public static Klass findObjectType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, boolean checkAccess, Meta meta) {
         if (TypeSymbols.isArray(symbol)) {
-            Klass elemental = findType(meta.getTypes().getElementalType(symbol), accessingKlass, resolve, meta);
+            Klass elemental = findType(meta.getTypes().getElementalType(symbol), accessingKlass, resolve, checkAccess, meta);
             if (elemental == null) {
                 return null;
             }
             return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(symbol));
         } else {
-            return findInstanceType(symbol, accessingKlass, resolve, meta);
+            return findInstanceType(symbol, accessingKlass, resolve, checkAccess, meta);
         }
     }
 
-    public static Klass findObjectType(int classIndex, RuntimeConstantPool pool, boolean resolve, Meta meta) {
+    public static Klass findObjectType(int classIndex, RuntimeConstantPool pool, boolean resolve, boolean checkAccess, Meta meta) {
         ResolvedConstant resolvedConstant = pool.peekResolvedOrNull(classIndex, meta);
         if (resolvedConstant != null) {
             if (!resolve && !resolvedConstant.isSuccess()) {
@@ -98,6 +100,6 @@ public final class JVMCIUtils {
         if (type == null || TypeSymbols.isPrimitive(type)) {
             return null;
         }
-        return findObjectType(type, pool.getHolder(), resolve, meta);
+        return findObjectType(type, pool.getHolder(), resolve, checkAccess, meta);
     }
 }

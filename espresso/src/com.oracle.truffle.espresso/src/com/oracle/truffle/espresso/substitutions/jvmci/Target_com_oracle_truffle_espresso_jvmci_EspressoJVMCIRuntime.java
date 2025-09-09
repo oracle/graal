@@ -130,7 +130,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                 return toJVMCIUnresolvedType(typeDescriptor, createUnresolved, meta);
             }
         }
-        Klass result = findObjectType(symbol, accessingKlass, resolve, meta);
+        Klass result = findObjectType(symbol, accessingKlass, resolve, false, meta);
         if (result == null) {
             assert !resolve;
             return toJVMCIUnresolvedType(symbol, createUnresolved, meta);
