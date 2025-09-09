@@ -173,10 +173,66 @@ final class ObsolescenceStrategy {
         return true;
     }
 
-    private Shape ensureSpace(Shape shape, Location location) {
-        Objects.requireNonNull(location);
-        assert assertLocationInRange(shape, location);
-        return shape;
+    @TruffleBoundary
+    boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
+        if (existingProperty == null && Flags.isSetExisting(putFlags)) {
+            return false;
+        }
+        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
+            existingProperty.getLocation().setSafe(object, value, false, false);
+            return true;
+        } else {
+            return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
+        }
+    }
+
+    private boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
+                    Shape initialShape, Property propertyOfInitialShape) {
+        CompilerAsserts.neverPartOfCompilation();
+        updateShape(object);
+        Shape oldShape;
+        Property existingProperty;
+        Shape newShape;
+        Property property;
+        do {
+            oldShape = object.getShape();
+            if (oldShape == initialShape) {
+                existingProperty = propertyOfInitialShape;
+            } else {
+                existingProperty = oldShape.getProperty(key);
+            }
+            if (existingProperty == null) {
+                if (Flags.isSetExisting(putFlags)) {
+                    return false;
+                } else {
+                    newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                    property = newShape.getProperty(key);
+                }
+            } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
+                newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                property = newShape.getProperty(key);
+            } else {
+                if (existingProperty.getLocation().canStore(value)) {
+                    newShape = oldShape;
+                    property = existingProperty;
+                } else {
+                    newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
+                    property = newShape.getProperty(key);
+                }
+            }
+        } while (updateShape(object));
+
+        assert object.getShape() == oldShape;
+        Location location = property.getLocation();
+        if (oldShape != newShape) {
+            DynamicObjectSupport.grow(object, oldShape, newShape);
+            location.setSafe(object, value, false, true);
+            DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
+            updateShape(object);
+        } else {
+            location.setSafe(object, value, false, false);
+        }
+        return true;
     }
 
     Shape defineProperty(Shape shape, Object key, Object value, int flags) {
@@ -365,6 +421,12 @@ final class ObsolescenceStrategy {
             newShape.invalidateValidAssumption();
         }
         return newShape;
+    }
+
+    private Shape ensureSpace(Shape shape, Location location) {
+        Objects.requireNonNull(location);
+        assert assertLocationInRange(shape, location);
+        return shape;
     }
 
     private AddPropertyTransition newAddPropertyTransition(Property property) {
