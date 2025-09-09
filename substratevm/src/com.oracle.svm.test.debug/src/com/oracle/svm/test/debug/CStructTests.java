@@ -36,10 +36,9 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.NeverInline;
-
-import jdk.graal.compiler.api.directives.GraalDirectives;
 
 @CContext(CInterfaceDebugTestDirectives.class)
 public class CStructTests {
@@ -238,10 +237,20 @@ public class CStructTests {
         System.out.println("You find " + m1);
         System.out.println("You find " + m2);
         System.out.println("You find " + m3);
-        GraalDirectives.blackhole(s);
-        GraalDirectives.blackhole(ss1);
-        GraalDirectives.blackhole(l);
-        GraalDirectives.blackhole(ss2);
+        blackhole(s);
+        blackhole(ss1);
+        blackhole(l);
+        blackhole(ss2);
+    }
+
+    @NeverInline("For testing.")
+    @SuppressWarnings("unused")
+    static void blackhole(Object value) {
+    }
+
+    @NeverInline("For testing.")
+    @SuppressWarnings("unused")
+    static void blackhole(WordBase value) {
     }
 
     public static void main(String[] args) {

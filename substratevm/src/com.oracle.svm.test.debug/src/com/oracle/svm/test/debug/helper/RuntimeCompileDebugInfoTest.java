@@ -25,8 +25,6 @@
 
 package com.oracle.svm.test.debug.helper;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +44,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -219,9 +218,6 @@ public class RuntimeCompileDebugInfoTest {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
                             "jdk.internal.vm.ci",
                             "jdk.vm.ci.code");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
-                            "jdk.graal.compiler",
-                            "jdk.graal.compiler.api.directives", "jdk.graal.compiler.word");
         }
 
         @Override
@@ -259,7 +255,7 @@ public class RuntimeCompileDebugInfoTest {
             try {
                 return runtimeCompilationFeature.prepareMethodForRuntimeCompilation(holder.getMethod(methodName, signature), config);
             } catch (NoSuchMethodException ex) {
-                throw shouldNotReachHere(ex);
+                throw VMError.shouldNotReachHere(ex);
             }
         }
     }

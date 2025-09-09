@@ -71,6 +71,8 @@ import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
@@ -120,6 +122,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private final int primitiveStartOffset;
     private final int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
+    private final boolean buildingImageLayer;
+    private final int layerNumber;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
                     RuntimeConfiguration runtimeConfiguration) {
@@ -141,6 +145,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
+
+        buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+        layerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
     }
 
     @SuppressWarnings("unused")
@@ -497,6 +504,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    public boolean isCompiledInPriorLayer(SharedMethod method) {
+        return method instanceof HostedMethod hostedMethod && hostedMethod.isCompiledInPriorLayer();
+    }
+
+    @Override
     public boolean isVirtual(SharedMethod method) {
         return method instanceof HostedMethod hostedMethod && hostedMethod.hasVTableIndex();
     }
@@ -582,8 +594,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
 
         for (ResolvedJavaField field : type.getStaticFields()) {
-            assert field instanceof HostedField;
-            structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+            HostedField hField = (HostedField) field;
+            /*
+             * If we are in a layered build only add debug info for a static field if it is
+             * installed in the current layer.
+             */
+            if (!buildingImageLayer || (hField.hasInstalledLayerNum() && layerNumber == hField.getInstalledLayerNum())) {
+                structureTypeEntry.addField(createFieldEntry(hField, structureTypeEntry));
+            }
         }
     }
 

@@ -45,22 +45,22 @@ class TestClassLoader(unittest.TestCase):
         gdb_kill()
 
     def test_instanceMethod_named_classloader(self):
-        gdb_set_breakpoint("com.oracle.svm.test.missing.classes.TestClass::instanceMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.missing.classes.TestClass::instanceMethod")
         gdb_continue()  # named classloader is called first in test code
         exec_string = gdb_output("this")
         self.assertTrue(exec_string.startswith("testClassLoader_"), f"GDB output: '{exec_string}'")  # check for correct class loader
-        self.assertIn("::com.oracle.svm.test.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
+        self.assertIn("::com.oracle.svm.test.debug.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
         self.assertIn("instanceField = null", exec_string)
         gdb_output("$other=(('java.lang.Object' *)this)")
         self.assertIn("null", gdb_advanced_print("$other.instanceField"))  # force a typecast
 
     def test_instanceMethod_unnamed_classloader(self):
-        gdb_set_breakpoint("com.oracle.svm.test.missing.classes.TestClass::instanceMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.missing.classes.TestClass::instanceMethod")
         gdb_continue()  # skip named classloader
         gdb_continue()  # unnamed classloader is called second in test code
         exec_string = gdb_output("this")
         self.assertTrue(exec_string.startswith("URLClassLoader_"), f"GDB output: '{exec_string}'")  # check for correct class loader
-        self.assertIn("::com.oracle.svm.test.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
+        self.assertIn("::com.oracle.svm.test.debug.missing.classes.TestClass = {", exec_string)  # check if TestClass has a namespace
         self.assertIn("instanceField = null", exec_string)
         gdb_output("$other=(('java.lang.Object' *)this)")
         self.assertIn("null", gdb_advanced_print("$other.instanceField"))  # force a typecast
@@ -79,9 +79,9 @@ class TestClassloaderObjUtils(unittest.TestCase):
         gdb_kill()
 
     def test_get_classloader_namespace(self):
-        gdb_set_breakpoint("com.oracle.svm.test.missing.classes.TestClass::instanceMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.missing.classes.TestClass::instanceMethod")
         gdb_run()
-        this = gdb.parse_and_eval('this')  # type = com.oracle.svm.test.missing.classes.TestClass -> testClassLoader
+        this = gdb.parse_and_eval('this')  # type = com.oracle.svm.test.debug.missing.classes.TestClass -> testClassLoader
         field = gdb.parse_and_eval('this.instanceField')  # instanceField is null
         self.assertRegex(self.svm_util.get_classloader_namespace(this), f'testClassLoader_{hex_rexp.pattern}')
         self.assertEqual(self.svm_util.get_classloader_namespace(field), "")
