@@ -293,68 +293,6 @@ abstract class DynamicObjectLibraryImpl {
         return cachedShape.getPropertyArray();
     }
 
-    @TruffleBoundary
-    protected static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
-        if (existingProperty == null && Flags.isSetExisting(putFlags)) {
-            return false;
-        }
-        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
-            existingProperty.getLocation().setSafe(object, value, false, false);
-            return true;
-        } else {
-            return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
-        }
-    }
-
-    private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
-                    Shape initialShape, Property propertyOfInitialShape) {
-        CompilerAsserts.neverPartOfCompilation();
-        ObsolescenceStrategy.singleton().updateShape(object);
-        Shape oldShape;
-        Property existingProperty;
-        Shape newShape;
-        Property property;
-        do {
-            oldShape = object.getShape();
-            if (oldShape == initialShape) {
-                existingProperty = propertyOfInitialShape;
-            } else {
-                existingProperty = oldShape.getProperty(key);
-            }
-            if (existingProperty == null) {
-                if (Flags.isSetExisting(putFlags)) {
-                    return false;
-                } else {
-                    newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
-                    property = newShape.getProperty(key);
-                }
-            } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
-                newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
-                property = newShape.getProperty(key);
-            } else {
-                if (existingProperty.getLocation().canStore(value)) {
-                    newShape = oldShape;
-                    property = existingProperty;
-                } else {
-                    newShape = ObsolescenceStrategy.singleton().defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
-                    property = newShape.getProperty(key);
-                }
-            }
-        } while (ObsolescenceStrategy.singleton().updateShape(object));
-
-        assert object.getShape() == oldShape;
-        Location location = property.getLocation();
-        if (oldShape != newShape) {
-            DynamicObjectSupport.grow(object, oldShape, newShape);
-            location.setSafe(object, value, false, true);
-            DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-            ObsolescenceStrategy.singleton().updateShape(object);
-        } else {
-            location.setSafe(object, value, false, false);
-        }
-        return true;
-    }
-
     static RemovePlan prepareRemove(Shape shapeBefore, Shape shapeAfter, Property removedProperty) {
         assert !shapeBefore.isShared();
         List<Move> moves = new ArrayList<>();
@@ -710,7 +648,7 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, int propertyFlags, int putFlags) {
-            return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, cachedShape.getProperty(key));
+            return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, cachedShape.getProperty(key));
         }
 
         @Override
@@ -1287,7 +1225,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1325,7 +1263,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
-                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1393,7 +1331,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
@@ -1442,7 +1380,7 @@ abstract class DynamicObjectLibraryImpl {
             Shape oldShape = cachedShape;
             MutateCacheData start = cache;
             if (start == MutateCacheData.GENERIC) {
-                return putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
+                return ObsolescenceStrategy.singleton().putGeneric(object, key, value, propertyFlags, putFlags, cachedShape, oldProperty);
             }
             for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
