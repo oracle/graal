@@ -114,17 +114,20 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     @SuppressWarnings("unused") private static final Method getInvalidationReasonDescriptionMethodRef;
 
     static {
-        setSpeculationLog = initialize(HotSpotNmethod.class, "setSpeculationLog", HotSpotSpeculationLog.class);
-        invalidateInstalledCodeWithReasonMethodRef = initialize(HotSpotNmethod.class, "invalidate", boolean.class, int.class);
-        invalidateInstalledCodeWithoutReasonMethodRef = initialize(InstalledCode.class, "invalidate", boolean.class);
-        getInvalidationReasonMethodRef = initialize(HotSpotNmethod.class, "getInvalidationReason");
-        getInvalidationReasonDescriptionMethodRef = initialize(HotSpotNmethod.class, "getInvalidationReasonDescription");
+        setSpeculationLog = findMethod(HotSpotNmethod.class, "setSpeculationLog", true, HotSpotSpeculationLog.class);
+        invalidateInstalledCodeWithReasonMethodRef = findMethod(HotSpotNmethod.class, "invalidate", false, boolean.class, int.class);
+        invalidateInstalledCodeWithoutReasonMethodRef = findMethod(InstalledCode.class, "invalidate", true, boolean.class);
+        getInvalidationReasonMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReason", false);
+        getInvalidationReasonDescriptionMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReasonDescription", false);
     }
 
-    private static Method initialize(Class<?> clx, String methodName, Class<?>... args) {
+    private static Method findMethod(Class<?> clazz, String methodName, boolean required, Class<?>... args) {
         try {
-            return clx.getDeclaredMethod(methodName, args);
+            return clazz.getMethod(methodName, args);
         } catch (NoSuchMethodException e) {
+            if (required) {
+                throw new InternalError(e);
+            }
             return null;
         }
     }
@@ -219,29 +222,44 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
                 reason = (String) getInvalidationReasonDescriptionMethodRef.invoke(this.installedCode);
             }
         } catch (Exception e) {
-            // ignore
+            throw new InternalError(e);
         } finally {
             runtime().getListener().onCompilationDeoptimized(this, frame, reason);
         }
     }
 
-    /**
-     * This method is intended only for resetting {@installedCode}, it should only be called on
-     * CallTargets that are already invalid.
-     */
-    public void resetInstalledCode() {
-        assert !isValid();
-        this.installedCode = INVALID_CODE;
-    }
-
-    public int getInvalidationReason() {
+    private int getInvalidationReason() {
         try {
             if (getInvalidationReasonMethodRef != null) {
                 return (int) getInvalidationReasonMethodRef.invoke(this.installedCode);
             }
         } catch (Exception e) {
-            // ignore
+            throw new InternalError(e);
         }
         return 0;
+    }
+
+    /**
+     * When running as part of HotSpot we should pay special attention to CallTargets (CTs) that
+     * have been flushed from the code cache because they were cold (According to Code Cache's
+     * heuristics). Truffle's CallTargets' Profile counter don't decay. For that reason, we need
+     * special handling for cold (according to code cache heuristics) CTs that were flushed from the
+     * code cache. Otherwise, we can enter a recompilation cycle because Truffle will always see the
+     * method as hot (because the profile counters never reset). To handle this case we reset the CT
+     * profile whenever its prior compilation was invalidated because it was cold.
+     */
+    @Override
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        if (!super.prepareForCompilation(rootCompilation, compilationTier, lastTier)) {
+            return false;
+        }
+
+        if (installedCode != INVALID_CODE && getInvalidationReason() == ((HotSpotTruffleRuntime) runtime()).getColdMethodInvalidationReason()) {
+            resetCompilationProfile();
+            installedCode = INVALID_CODE;
+            runtime().getListener().onProfileReset(this);
+            return false;
+        }
+        return true;
     }
 }

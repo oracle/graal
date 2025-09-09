@@ -54,7 +54,7 @@ import com.oracle.truffle.compiler.TruffleCompilerListener;
  * {@link TruffleCompilerListener} events to {@link OptimizedTruffleRuntimeListener} events.
  */
 @SuppressWarnings("serial")
-public final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<OptimizedTruffleRuntimeListener> implements OptimizedTruffleRuntimeListener, TruffleCompilerListener {
+final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<OptimizedTruffleRuntimeListener> implements OptimizedTruffleRuntimeListener, TruffleCompilerListener {
 
     @Override
     public boolean add(OptimizedTruffleRuntimeListener e) {

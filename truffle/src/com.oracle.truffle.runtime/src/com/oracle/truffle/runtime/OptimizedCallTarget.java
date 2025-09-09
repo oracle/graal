@@ -438,7 +438,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @Override
-    public final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
         RootNode root = this.rootNode;
         if (root == null) {
             throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");

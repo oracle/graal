@@ -176,7 +176,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         this.knownMethods = null;
     }
 
-    protected final OptimizedTruffleRuntimeListenerDispatcher listeners = new OptimizedTruffleRuntimeListenerDispatcher();
+    private final OptimizedTruffleRuntimeListenerDispatcher listeners = new OptimizedTruffleRuntimeListenerDispatcher();
 
     protected volatile TruffleCompiler truffleCompiler;
     protected volatile OptimizedCallTarget initializeCallTarget;
@@ -853,7 +853,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         Objects.requireNonNull(callTarget, "Cannot compile null call target.");
         Objects.requireNonNull(task, "Compilation task required.");
 
-        if (shouldAbortCompilation(callTarget)) {
+        boolean readyForCompilation = callTarget.prepareForCompilation(true, task.tier(), !task.hasNextTier());
+        if (!readyForCompilation) {
             return;
         }
 
@@ -1495,16 +1496,5 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     protected CompilationActivityMode getCompilationActivityMode() {
         return CompilationActivityMode.RUN_COMPILATION;
-    }
-
-    /**
-     * This method is intended to give subclasses a last say on whether the compilation should be
-     * aborted or not.
-     *
-     * @param callTarget - The OptimizedCallTarget for the compilation.
-     * @return true if the compilation should be aborted.
-     */
-    protected boolean shouldAbortCompilation(OptimizedCallTarget callTarget) {
-        return false;
     }
 }
