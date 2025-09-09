@@ -38,18 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Ignore;
-import org.junit.Test;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 public class CachedFallbackTest extends AbstractLibraryTest {

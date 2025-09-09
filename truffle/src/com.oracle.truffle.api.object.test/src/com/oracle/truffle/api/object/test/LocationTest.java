@@ -38,14 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertLocationFields;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertShapeFields;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertLocationFields;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertObjectLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertShapeFields;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.getLocationType;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeMethod;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -54,6 +54,11 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,11 +67,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @SuppressWarnings("deprecation")

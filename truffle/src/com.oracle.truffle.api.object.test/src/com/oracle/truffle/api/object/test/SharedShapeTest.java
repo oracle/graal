@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertNotSameLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertSameLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertSameUnderlyingLocation;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertShape;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.assertShapeFields;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.getLocationType;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @SuppressWarnings("deprecation")
@@ -89,7 +94,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         library.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
-        DOTestAsserts.assertNotSameLocation(location1, location2);
+        assertNotSameLocation(location1, location2);
         Assert.assertEquals(Object.class, getLocationType(location2));
 
         // The old location can still be read
@@ -103,21 +108,32 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
+        library.put(object, "a", 0);
         library.put(object, "a", 1);
+
+        assertShape(new String[]{
+                        "\"a\":int@0"},
+                        object.getShape());
+
         Location location1 = object.getShape().getProperty("a").getLocation();
         library.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
-        DOTestAsserts.assertNotSameLocation(location1, location2);
+        assertShape(new String[]{
+                        "\"a\":Object@0"},
+                        object.getShape());
+
+        assertNotSameLocation(location1, location2);
         Assert.assertEquals(Object.class, getLocationType(location2));
 
         library.put(object, "b", 3);
         Location locationB = object.getShape().getProperty("b").getLocation();
 
-        DOTestAsserts.assertShape(new String[]{
+        assertShape(new String[]{
                         "\"b\":int@1",
-                        "\"a\":Object@0"}, object.getShape());
-        DOTestAsserts.assertShapeFields(object, 2, 1);
+                        "\"a\":Object@0"},
+                        object.getShape());
+        assertShapeFields(object, 2, 1);
 
         // The old location can still be read
         Assert.assertEquals(1, location1.get(object));
@@ -136,28 +152,43 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         library.put(object, "a", 2L);
         Location locationA2 = object.getShape().getProperty("a").getLocation();
 
-        DOTestAsserts.assertSameUnderlyingLocation(locationA1, locationA2);
+        assertNotSameLocation(locationA1, locationA2);
+        assertSameUnderlyingLocation(locationA1, locationA2);
         Assert.assertEquals(long.class, getLocationType(locationA2));
-        DOTestAsserts.assertShape(new String[]{"\"a\":long@0"}, object.getShape());
-        DOTestAsserts.assertShapeFields(object, 1, 0);
+        assertShape(new String[]{
+                        "\"a\":long@0"},
+                        object.getShape());
+        assertShapeFields(object, 1, 0);
 
         // Share object
         library.markShared(object);
 
         library.put(object, "b", 3);
         Location locationB1 = object.getShape().getProperty("b").getLocation();
+
+        assertShape(new String[]{
+                        "\"b\":int@1",
+                        "\"a\":long@0"},
+                        object.getShape());
+
         library.put(object, "b", 4L);
         Location locationB2 = object.getShape().getProperty("b").getLocation();
 
+        assertShape(new String[]{
+                        "\"b\":Object@0",
+                        "\"a\":long@0"},
+                        object.getShape());
+
         library.put(object, "c", 5);
 
-        DOTestAsserts.assertNotSameLocation(locationB1, locationB2);
+        assertNotSameLocation(locationB1, locationB2);
         Assert.assertEquals(Object.class, getLocationType(locationB2));
-        DOTestAsserts.assertShape(new String[]{
+        assertShape(new String[]{
                         "\"c\":int@2",
                         "\"b\":Object@0",
-                        "\"a\":long@0"}, object.getShape());
-        DOTestAsserts.assertShapeFields(object, 3, 1);
+                        "\"a\":long@0"},
+                        object.getShape());
+        assertShapeFields(object, 3, 1);
 
         Assert.assertEquals(2L, locationA2.get(object));
         // The old location can still be read
@@ -169,12 +200,12 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
     @Test
     public void testShapeIsSharedAndIdentity() {
         DynamicObject object = newInstance();
-
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
-
         Assert.assertEquals(false, rootShape.isShared());
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
         library.markShared(object);
         Assert.assertSame(sharedShape, object.getShape());
 
@@ -201,11 +232,12 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
+        library.put(object, "a", 0);
         library.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
         library.putWithFlags(object, "a", 2, 42);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertSame(location1, location2);
+        assertSameLocation(location1, location2);
     }
 
     @Test
@@ -222,9 +254,9 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "a", 2);
         Assert.assertNotSame(aShape, object.getShape());
-        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("a").getLocation());
+        assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("a").getLocation());
         library.put(object, "b", 3);
-        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
+        assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
     }
 
     @Test
@@ -240,6 +272,22 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         Assert.assertNotSame(emptyShape, object.getShape());
 
         library.put(object, "b", 3);
-        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
+        assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
     }
+
+    @Test
+    public void testReplaceProperty() {
+        DynamicObject object = newInstance();
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
+        library.markShared(object);
+        library.put(object, "b", 2);
+        library.setPropertyFlags(object, "a", 1);
+        Assert.assertTrue(library.isShared(object));
+        Assert.assertEquals(1, library.getOrDefault(object, "a", null));
+        Assert.assertEquals(1, library.getProperty(object, "a").getFlags());
+    }
+
 }

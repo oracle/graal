@@ -38,16 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.ext.test;
+package com.oracle.truffle.api.object.test;
 
 import static org.junit.Assert.assertNotNull;
 
 import java.lang.invoke.MethodHandles;
 
-import org.junit.Test;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import org.junit.Test;
 
 public class CustomLayoutTest {
 

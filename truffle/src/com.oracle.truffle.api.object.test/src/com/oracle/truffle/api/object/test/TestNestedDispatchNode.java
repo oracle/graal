@@ -38,13 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
-abstract class TestDynamicObject extends DynamicObject {
-    protected TestDynamicObject(Shape shape) {
-        super(shape);
+@SuppressWarnings("truffle")
+public abstract class TestNestedDispatchNode extends Node {
+
+    final Object key = "testKey";
+
+    public abstract Object execute(DynamicObject obj);
+
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    // @CachedLibrary({"obj", "key"}) DynamicObjectLibrary lib,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
+
+    @Specialization(limit = "3")
+    Object cached(DynamicObject obj,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", uncached = "obj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
+    }
+
 }

@@ -38,38 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import java.lang.invoke.MethodHandles;
-
-import org.junit.Test;
-
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-public class DynamicObjectConstructorTest extends AbstractLibraryTest {
-
-    @Test
-    public void testIncompatibleShape() {
-        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-
-        assertFails(() -> new TestDynamicObjectMinimal(shape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Incompatible shape")));
+class TestDynamicObjectMinimal extends TestDynamicObject {
+    protected TestDynamicObjectMinimal(Shape shape) {
+        super(shape);
     }
-
-    @Test
-    public void testNonEmptyShape() {
-        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-        TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
-        DynamicObjectLibrary.getUncached().put(obj, "key", "value");
-        Shape nonEmptyShape = obj.getShape();
-
-        assertFails(() -> new TestDynamicObjectDefault(nonEmptyShape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Shape must not have instance properties")));
-    }
-
 }

@@ -38,24 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForValue;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.locationForValue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -98,7 +97,7 @@ public class ShapeTest {
                         "\"a\":Object@0"}, aIntBObj);
 
         Location boolLocation = locationForValue(rootShape, true);
-        Shape bool = invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
+        Shape bool = DOTestAsserts.invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"bool\":Object@0"}, bool);
 
         Location strLocation = locationForValue(rootShape, "");
