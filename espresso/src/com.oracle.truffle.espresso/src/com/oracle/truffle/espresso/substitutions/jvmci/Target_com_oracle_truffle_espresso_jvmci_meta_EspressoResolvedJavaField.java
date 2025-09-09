@@ -110,7 +110,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(self);
-            Klass klass = findType(field.getType(), field.getDeclaringKlass(), false, meta);
+            Klass klass = findType(field.getType(), field.getDeclaringKlass(), false, false, meta);
             if (klass != null) {
                 LOGGER.finer(() -> "ERJF.getType0 found " + klass);
                 return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);

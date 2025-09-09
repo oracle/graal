@@ -689,6 +689,11 @@ public abstract class ClassRegistry {
         sb.append(loaderDesc(env, meta, klass.getDefiningClassLoader()));
     }
 
+    public static String loaderDesc(ObjectKlass accessingKlass) {
+        EspressoContext context = accessingKlass.getContext();
+        return loaderDesc(context.getClassLoadingEnv(), context.getMeta(), accessingKlass.getDefiningClassLoader());
+    }
+
     private static String loaderDesc(ClassLoadingEnv env, Meta meta, StaticObject loader) {
         if (env.loaderIsBoot(loader)) {
             return "bootstrap";

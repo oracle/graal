@@ -296,7 +296,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
 
     private static Klass lookupSymbolicHolder(int cpi, RuntimeConstantPool constantPool, Meta meta) {
         int holderClassIndex = constantPool.memberClassIndex(cpi);
-        return findObjectType(holderClassIndex, constantPool, false, meta);
+        return findObjectType(holderClassIndex, constantPool, false, true, meta);
     }
 
     private static Method tryResolveMethod(int methodIndex, Klass symbolicHolder, RuntimeConstantPool constantPool, Meta meta) {
@@ -394,7 +394,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
         Klass klass;
         try {
-            klass = findObjectType(classCpi, constantPool, false, meta);
+            klass = findObjectType(classCpi, constantPool, false, true, meta);
         } catch (EspressoException e) {
             throw EspressoError.shouldNotReachHere("findObjectType with resolve=false should never throw", e);
         }
