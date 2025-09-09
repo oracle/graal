@@ -175,15 +175,19 @@ final class ObsolescenceStrategy {
 
     @TruffleBoundary
     boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
-        if (existingProperty == null && Flags.isSetExisting(putFlags)) {
-            return false;
-        }
-        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
-            existingProperty.getLocation().setSafe(object, value, false, false);
-            return true;
+        if (existingProperty == null) {
+            if (Flags.isPutIfPresent(putFlags)) {
+                return false;
+            }
         } else {
-            return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
+            if (Flags.isPutIfAbsent(putFlags)) {
+                return true;
+            } else if (!Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
+                existingProperty.getLocation().setSafe(object, value, false, false);
+                return true;
+            }
         }
+        return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
     }
 
     private boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
@@ -197,12 +201,14 @@ final class ObsolescenceStrategy {
             oldShape = object.getShape();
             final Property existingProperty = reusePropertyLookup(key, initialShape, propertyOfInitialShape, oldShape);
             if (existingProperty == null) {
-                if (Flags.isSetExisting(putFlags)) {
+                if (Flags.isPutIfPresent(putFlags)) {
                     return false;
                 } else {
                     newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
+            } else if (Flags.isPutIfAbsent(putFlags)) {
+                return true;
             } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
                 newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                 property = newShape.getProperty(key);
@@ -211,6 +217,7 @@ final class ObsolescenceStrategy {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
+                    assert !Flags.isUpdateFlags(putFlags) || newPropertyFlags == existingProperty.getFlags();
                     newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
@@ -224,6 +231,8 @@ final class ObsolescenceStrategy {
             location.setSafe(object, value, false, true);
             DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
             updateShape(object);
+        } else if (Flags.isPutIfAbsent(putFlags)) {
+            return true;
         } else {
             location.setSafe(object, value, false, false);
         }

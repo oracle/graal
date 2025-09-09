@@ -1233,7 +1233,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else if (c instanceof PutCacheData putCache && putCache.putFlags == putFlags && putCache.propertyFlags == propertyFlags) {
                     Property newProperty = putCache.property;
                     if (newProperty == null) {
-                        assert Flags.isSetExisting(putFlags);
+                        assert Flags.isPutIfPresent(putFlags);
                         return false;
                     } else {
                         Location location = newProperty.getLocation();
@@ -1271,7 +1271,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else if (c instanceof PutCacheData putCache && putCache.putFlags == putFlags && putCache.propertyFlags == propertyFlags) {
                     Property newProperty = putCache.property;
                     if (newProperty == null) {
-                        assert Flags.isSetExisting(putFlags);
+                        assert Flags.isPutIfPresent(putFlags);
                         return false;
                     } else {
                         Location location = newProperty.getLocation();
@@ -1339,7 +1339,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else if (c instanceof PutCacheData putCache && putCache.putFlags == putFlags && putCache.propertyFlags == propertyFlags) {
                     Property newProperty = putCache.property;
                     if (newProperty == null) {
-                        assert Flags.isSetExisting(putFlags);
+                        assert Flags.isPutIfPresent(putFlags);
                         return false;
                     } else {
                         Location location = newProperty.getLocation();
@@ -1388,7 +1388,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else if (c instanceof PutCacheData putCache && putCache.putFlags == putFlags && putCache.propertyFlags == propertyFlags) {
                     Property newProperty = putCache.property;
                     if (newProperty == null) {
-                        assert Flags.isSetExisting(putFlags);
+                        assert Flags.isPutIfPresent(putFlags);
                         return false;
                     } else {
                         Location location = newProperty.getLocation();
@@ -1462,7 +1462,7 @@ abstract class DynamicObjectLibraryImpl {
 
         private Shape getNewShape(DynamicObject object, Object value, int newPropertyFlags, int putFlags, Property property, Shape oldShape) {
             if (property == null) {
-                if (Flags.isSetExisting(putFlags)) {
+                if (Flags.isPutIfPresent(putFlags)) {
                     return oldShape;
                 } else {
                     return ObsolescenceStrategy.singleton().defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);

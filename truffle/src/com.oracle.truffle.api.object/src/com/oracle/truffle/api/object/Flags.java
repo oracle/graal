@@ -77,8 +77,12 @@ final class Flags {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
     }
 
-    static boolean isSetExisting(int flags) {
+    static boolean isPutIfPresent(int flags) {
         return getFlag(flags, IF_PRESENT);
+    }
+
+    static boolean isPutIfAbsent(int flags) {
+        return getFlag(flags, IF_ABSENT);
     }
 
     static boolean isUpdateFlags(int flags) {
