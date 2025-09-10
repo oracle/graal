@@ -44,7 +44,7 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
 
     @SuppressWarnings("this-escape")
     public EconomyLowTier(OptionValues options) {
-        if (Assertions.assertionsEnabled() && Graph.Options.VerifyGraalGraphs.getValue(options)) {
+        if (Graph.Options.VerifyGraalGraphs.getValue(options)) {
             appendPhase(new InitMemoryVerificationPhase());
         }
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.createSingleShot();
