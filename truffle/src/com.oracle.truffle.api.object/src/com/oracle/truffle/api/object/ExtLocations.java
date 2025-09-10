@@ -232,6 +232,16 @@ abstract class ExtLocations {
         private static boolean equalsBoundary(Object val1, Object val2) {
             return val1.equals(val2);
         }
+
+        @Override
+        public int objectFieldCount() {
+            return 0;
+        }
+
+        @Override
+        public int primitiveFieldCount() {
+            return 0;
+        }
     }
 
     static final class ConstantLocation extends ValueLocation {
@@ -584,6 +594,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        public int primitiveFieldCount() {
+            return 0;
+        }
+
+        @Override
         public String toString() {
             TypeAssumption assumed = getTypeAssumption();
             return super.toString() + ("[type=" + TypeAssumption.toString(assumed.type, assumed.nonNull) + "]");
@@ -634,6 +649,11 @@ abstract class ExtLocations {
         @Override
         public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
+        }
+
+        @Override
+        public int objectFieldCount() {
+            return 0;
         }
     }
 
@@ -756,6 +776,11 @@ abstract class ExtLocations {
 
         final long getOffset() {
             return field.offset();
+        }
+
+        @Override
+        public int objectFieldCount() {
+            return 0;
         }
     }
 
@@ -934,6 +959,16 @@ abstract class ExtLocations {
 
         protected static Object getArray(DynamicObject store, boolean condition) {
             return UnsafeAccess.unsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
+        }
+
+        @Override
+        public int objectFieldCount() {
+            return 0;
+        }
+
+        @Override
+        public int primitiveFieldCount() {
+            return 0;
         }
     }
 

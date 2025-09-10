@@ -347,18 +347,16 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     }
 
     /**
-     * Get the number of in-object {@link Object} fields this location requires.
+     * Get the number of in-object {@link Object} fields this location requires. Used reflectively
+     * by tests.
      */
-    public int objectFieldCount() {
-        return 0;
-    }
+    abstract int objectFieldCount();
 
     /**
-     * Get the number of in-object primitive fields this location requires.
+     * Get the number of in-object primitive fields this location requires. Used reflectively by
+     * tests.
      */
-    public int primitiveFieldCount() {
-        return 0;
-    }
+    abstract int primitiveFieldCount();
 
     /**
      * Get the number of primitive array elements this location requires.
