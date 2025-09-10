@@ -144,6 +144,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
             initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
         }
+        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.NAME, this::userNameValue));

@@ -49,13 +49,6 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
     }
 
     @Override
-    protected EnumSet<ConfigurationParserOption> supportedOptions() {
-        EnumSet<ConfigurationParserOption> base = super.supportedOptions();
-        base.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
-        return base;
-    }
-
-    @Override
     public void parseAndRegister(Object json, URI origin) {
         parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
     }
@@ -64,7 +57,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
     protected void parseClass(EconomicMap<String, Object> data) {
         checkAttributes(data, "reflection class descriptor object", List.of(NAME_KEY), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
 
-        Optional<TypeDescriptorWithOrigin> type = parseName(data, checkOption(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE));
+        Optional<TypeDescriptorWithOrigin> type = parseName(data, true);
         if (type.isEmpty()) {
             return;
         }
