@@ -49,6 +49,7 @@ final class BytecodeAccessor extends Accessor {
 
     static final BytecodeAccessor ACCESSOR = new BytecodeAccessor();
 
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final MemorySupport MEMORY = ACCESSOR.memorySupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();

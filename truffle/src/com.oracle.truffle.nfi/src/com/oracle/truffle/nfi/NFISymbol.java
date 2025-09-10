@@ -118,16 +118,36 @@ final class NFISymbol implements TruffleObject {
         library.toNative(nativeSymbol);
     }
 
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"deprecation", "static-method"})
+    boolean hasLanguage() {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"deprecation", "static-method"})
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return NFILanguage.class;
+    }
+
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return NFILanguage.class;
+    String getLanguageId() {
+        return NFILanguage.ID;
     }
 
     @ExportMessage

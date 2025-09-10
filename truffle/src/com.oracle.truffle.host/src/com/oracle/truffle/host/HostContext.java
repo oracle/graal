@@ -503,16 +503,36 @@ final class HostContext {
             this.context = context;
         }
 
-        @SuppressWarnings("static-method")
+        /**
+         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+         * messages.
+         */
+        @SuppressWarnings({"static-method", "deprecation"})
         @ExportMessage
         boolean hasLanguage() {
             return true;
         }
 
-        @SuppressWarnings("static-method")
+        /**
+         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+         * messages.
+         */
+        @SuppressWarnings({"static-method", "deprecation"})
         @ExportMessage
         Class<? extends TruffleLanguage<?>> getLanguage() {
             return HostLanguage.class;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasLanguageId() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        String getLanguageId() {
+            return HostLanguage.ID;
         }
 
         @SuppressWarnings("static-method")

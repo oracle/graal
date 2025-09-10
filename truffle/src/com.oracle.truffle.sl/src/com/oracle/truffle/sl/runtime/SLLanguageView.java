@@ -74,7 +74,7 @@ public final class SLLanguageView implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
@@ -83,8 +83,8 @@ public final class SLLanguageView implements TruffleObject {
      * tooling to take a primitive or foreign value and create a value of simple language of it.
      */
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return SLLanguage.class;
+    String getLanguageId() {
+        return SLLanguage.ID;
     }
 
     @ExportMessage
@@ -170,7 +170,7 @@ public final class SLLanguageView implements TruffleObject {
     private static boolean isPrimitiveOrFromOtherLanguage(Object value) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         try {
-            return !interop.hasLanguage(value) || interop.getLanguage(value) != SLLanguage.class;
+            return !interop.hasLanguageId(value) || !SLLanguage.ID.equals(interop.getLanguageId(value));
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
@@ -188,7 +188,7 @@ public final class SLLanguageView implements TruffleObject {
         }
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
         try {
-            if (lib.hasLanguage(value) && lib.getLanguage(value) == SLLanguage.class) {
+            if (lib.hasLanguageId(value) && SLLanguage.ID.equals(lib.getLanguageId(value))) {
                 return value;
             } else {
                 return create(value);

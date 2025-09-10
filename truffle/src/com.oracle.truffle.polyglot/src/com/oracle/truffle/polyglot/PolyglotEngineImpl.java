@@ -1254,6 +1254,21 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
+    @TruffleBoundary
+    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(String languageId, boolean fail) {
+        PolyglotLanguage foundLanguage = idToLanguage.get(languageId);
+        if (foundLanguage == null) {
+            if (HOST_LANGUAGE_ID.equals(languageId)) {
+                return hostLanguage;
+            }
+            if (fail) {
+                Set<String> languageNames = idToLanguage.keySet();
+                throw PolyglotEngineException.illegalArgument("Cannot find language " + languageId + " among " + languageNames);
+            }
+        }
+        return foundLanguage;
+    }
+
     boolean storeCache(Path targetPath, long cancelledWord) {
         if (!TruffleOptions.AOT) {
             throw new UnsupportedOperationException("Storing the engine cache is only supported on native-image hosts.");

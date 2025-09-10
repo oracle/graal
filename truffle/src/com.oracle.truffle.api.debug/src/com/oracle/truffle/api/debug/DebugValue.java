@@ -1871,9 +1871,26 @@ public abstract class DebugValue {
             return null;
         }
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(obj);
-        if (lib.hasLanguage(obj)) {
+        if (lib.hasLanguageId(obj)) {
             try {
-                return getSession().getDebugger().getEnv().getLanguageInfo(lib.getLanguage(obj));
+                return getSession().getDebugger().getEnv().getLanguageInfo(lib.getLanguageId(obj));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+        return getOriginalLanguageDeprecated(lib, obj);
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @SuppressWarnings("deprecation")
+    private LanguageInfo getOriginalLanguageDeprecated(InteropLibrary lib, Object obj) {
+        if (lib.hasLanguageId(obj)) {
+            try {
+                return getSession().getDebugger().getEnv().getLanguageInfo(lib.getLanguageId(obj));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);

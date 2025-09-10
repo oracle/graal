@@ -98,15 +98,35 @@ final class DefaultBytecodeScope implements TruffleObject {
         return this.bytecode == cachedBytecode && this.bci == cachedBci && this.node == cachedNode;
     }
 
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
     @ExportMessage
+    @SuppressWarnings("deprecation")
     boolean hasLanguage() {
         return true;
     }
 
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
     @ExportMessage
+    @SuppressWarnings("deprecation")
     Class<? extends TruffleLanguage<?>> getLanguage(
                     @Shared @Cached("this.node") TagTreeNode cachedNode) {
         return cachedNode.getLanguage();
+    }
+
+    @ExportMessage
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId(@Shared @Cached("this.node") TagTreeNode cachedNode) {
+        return BytecodeAccessor.ENGINE.getLanguageId(cachedNode.getLanguage());
     }
 
     @ExportMessage

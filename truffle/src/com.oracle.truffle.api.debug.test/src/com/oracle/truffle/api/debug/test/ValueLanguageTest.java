@@ -238,7 +238,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
         static final String ID = "truffle-test-values-language1";
 
         public ValuesLanguage1() {
-            super("1");
+            super(ID, "1");
         }
 
         private static final ContextReference<Context> CONTEXT_REF = ContextReference.create(ValuesLanguage1.class);
@@ -258,7 +258,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
         static final String ID = "truffle-test-values-language2";
 
         public ValuesLanguage2() {
-            super("2");
+            super(ID, "2");
         }
 
         private static final ContextReference<Context> CONTEXT_REF = ContextReference.create(ValuesLanguage2.class);
@@ -284,9 +284,11 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
     public abstract static class ValuesLanguage extends TruffleLanguage<Context> {
 
+        private final String languageId;
         private final String id;
 
-        ValuesLanguage(String id) {
+        ValuesLanguage(String languageId, String id) {
+            this.languageId = languageId;
             this.id = id;
         }
 
@@ -547,13 +549,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @ExportMessage
-            boolean hasLanguage() {
+            boolean hasLanguageId() {
                 return true;
             }
 
             @ExportMessage
-            Class<? extends TruffleLanguage<?>> getLanguage() {
-                return language.getClass();
+            String getLanguageId() {
+                return language.languageId;
             }
 
             @ExportMessage
@@ -597,13 +599,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @ExportMessage
-            boolean hasLanguage() {
+            boolean hasLanguageId() {
                 return true;
             }
 
             @ExportMessage
-            Class<? extends TruffleLanguage<?>> getLanguage() {
-                return language.getClass();
+            String getLanguageId() {
+                return language.languageId;
             }
 
             @ExportMessage
@@ -699,17 +701,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             @SuppressWarnings("static-method")
             @ExportMessage
-            boolean hasLanguage() {
+            boolean hasLanguageId() {
                 return true;
             }
 
-            String getLanguageId() {
-                return language.id;
-            }
-
             @ExportMessage
-            Class<? extends TruffleLanguage<?>> getLanguage() {
-                return language.getClass();
+            String getLanguageId() {
+                return language.languageId;
             }
 
             @ExportMessage

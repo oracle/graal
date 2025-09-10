@@ -120,12 +120,32 @@ final class PanamaLibrary implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
+    String getLanguageId() {
+        return PanamaNFILanguage.ID;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
+    boolean hasLanguage() {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
     Class<? extends TruffleLanguage<?>> getLanguage() {
         return PanamaNFILanguage.class;
     }

@@ -625,7 +625,11 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
+        public abstract LanguageInfo getLanguageInfo(Object vmObject, String languageid);
+
+        public abstract Object getDefaultLanguageView(Object polyglotLanguageContext, TruffleLanguage<?> spi, Object value);
+
+        public abstract String getLanguageId(Class<? extends TruffleLanguage<?>> languageClass);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 

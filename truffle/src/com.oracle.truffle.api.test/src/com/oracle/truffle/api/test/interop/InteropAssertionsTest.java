@@ -53,6 +53,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -197,16 +198,54 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         boolean hasLanguage;
 
         @ExportMessage
+        @SuppressWarnings("deprecation")
         boolean hasLanguage() {
             return hasLanguage;
         }
 
         @ExportMessage
+        @SuppressWarnings("deprecation")
         Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
             if (getLanguage == null) {
                 throw UnsupportedMessageException.create();
             }
             return getLanguage.get();
+        }
+
+        @ExportMessage
+        boolean hasLanguageId() {
+            return hasLanguage();
+        }
+
+        @ExportMessage
+        String getLanguageId() throws UnsupportedMessageException {
+            return TestAPIAccessor.engineAccess().getLanguageId(getLanguage());
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "";
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class GetLanguageIdTest implements TruffleObject {
+
+        Supplier<String> getLanguageId;
+        boolean hasLanguageId;
+
+        @ExportMessage
+        boolean hasLanguageId() {
+            return hasLanguageId;
+        }
+
+        @ExportMessage
+        String getLanguageId() throws UnsupportedMessageException {
+            if (getLanguageId == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getLanguageId.get();
         }
 
         @SuppressWarnings("static-method")
@@ -217,6 +256,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testGetLanguage() throws UnsupportedMessageException {
         GetLanguageTest v = new GetLanguageTest();
         InteropLibrary l = createLibrary(InteropLibrary.class, v);
@@ -249,6 +289,40 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertFails(() -> l.hasLanguage(v), AssertionError.class);
         assertFails(() -> l.getLanguage(v), AssertionError.class);
 
+    }
+
+    @Test
+    public void testGetLanguageId() throws UnsupportedMessageException {
+        GetLanguageIdTest v = new GetLanguageIdTest();
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+        String testLanguageId = ProxyLanguage.ID;
+
+        assertFails(() -> l.getSourceLocation(null), NullPointerException.class);
+
+        v.hasLanguageId = false;
+        v.getLanguageId = null;
+        assertFalse(l.hasLanguageId(v));
+        assertFails(() -> l.getLanguageId(v), UnsupportedMessageException.class);
+
+        v.hasLanguageId = true;
+        v.getLanguageId = () -> testLanguageId;
+        assertTrue(l.hasLanguageId(v));
+        assertEquals(testLanguageId, l.getLanguageId(v));
+
+        v.hasLanguageId = true;
+        v.getLanguageId = null;
+        assertFails(() -> l.hasLanguageId(v), AssertionError.class);
+        assertFails(() -> l.getLanguageId(v), AssertionError.class);
+
+        v.hasLanguageId = true;
+        v.getLanguageId = () -> null;
+        assertFails(() -> l.hasLanguageId(v), AssertionError.class);
+        assertFails(() -> l.getLanguageId(v), AssertionError.class);
+
+        v.hasLanguageId = false;
+        v.getLanguageId = () -> testLanguageId;
+        assertFails(() -> l.hasLanguageId(v), AssertionError.class);
+        assertFails(() -> l.getLanguageId(v), AssertionError.class);
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -685,14 +759,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage
@@ -760,6 +834,18 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         @SuppressWarnings("static-method")
         Class<? extends TruffleLanguage<?>> getLanguage() {
             return getLanguage.get();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguageId() {
+            return hasLanguage;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        String getLanguageId() {
+            return TestAPIAccessor.engineAccess().getLanguageId(getLanguage.get());
         }
 
         @ExportMessage
@@ -1080,14 +1166,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage
@@ -1496,14 +1582,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage
@@ -1919,14 +2005,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @TruffleBoundary
@@ -2084,14 +2170,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @TruffleBoundary

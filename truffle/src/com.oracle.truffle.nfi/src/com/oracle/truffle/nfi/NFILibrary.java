@@ -136,16 +136,36 @@ final class NFILibrary implements TruffleObject {
         return executables.execute(preBound, args);
     }
 
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"unused", "deprecation"})
+    static boolean hasLanguage(NFILibrary lib) {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"unused", "deprecation"})
+    static Class<? extends TruffleLanguage<?>> getLanguage(NFILibrary receiver) {
+        return NFILanguage.class;
+    }
+
     @ExportMessage
     @SuppressWarnings("unused")
-    static boolean hasLanguage(NFILibrary lib) {
+    static boolean hasLanguageId(NFILibrary lib) {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("unused")
-    static Class<? extends TruffleLanguage<?>> getLanguage(NFILibrary receiver) {
-        return NFILanguage.class;
+    static String getLanguageId(NFILibrary receiver) {
+        return NFILanguage.ID;
     }
 
     @ExportMessage
@@ -205,14 +225,34 @@ final class NFILibrary implements TruffleObject {
             return keys[(int) idx];
         }
 
+        /**
+         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+         * messages.
+         */
         @ExportMessage
+        @SuppressWarnings("deprecation")
         static boolean hasLanguage(@SuppressWarnings("unused") Keys receiver) {
             return true;
         }
 
+        /**
+         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+         * messages.
+         */
         @ExportMessage
+        @SuppressWarnings("deprecation")
         static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Keys receiver) {
             return NFILanguage.class;
+        }
+
+        @ExportMessage
+        static boolean hasLanguageId(@SuppressWarnings("unused") Keys receiver) {
+            return true;
+        }
+
+        @ExportMessage
+        static String getLanguageId(@SuppressWarnings("unused") Keys receiver) {
+            return NFILanguage.ID;
         }
 
         @ExportMessage

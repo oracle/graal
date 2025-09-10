@@ -694,6 +694,33 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Determines whether the given receiver provides a language identifier. For example, a stack
+     * frame object may provide a language identifier to indicate the language of the method it
+     * represents. Calling this message does not produce any observable side effects. The default
+     * implementation returns {@code false}.
+     *
+     * @see #getLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"})
+    public boolean hasLanguageId(Object receiver) {
+        return hasLanguage(receiver);
+    }
+
+    /**
+     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
+     *
+     * @see #hasLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"})
+    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+        Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
+        return InteropAccessor.ENGINE.getLanguageId(language);
+    }
+
+    /**
      * Returns an array of member name strings. The returned value must return <code>true</code> for
      * {@link #hasArrayElements(Object)} and every array element must be of type
      * {@link #isString(Object) string}. The member elements may also provide additional information
@@ -2411,8 +2438,10 @@ public abstract class InteropLibrary extends Library {
      * @see #getLanguage(Object)
      * @see #toDisplayString(Object)
      * @since 20.1
+     * @deprecated Use {@link #hasLanguageId(Object)}.
      */
-    @Abstract(ifExported = {"getLanguage", "isScope"})
+    @Deprecated
+    @Abstract(ifExported = {"getLanguage"})
     public boolean hasLanguage(Object receiver) {
         return false;
     }
@@ -2428,9 +2457,11 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #hasLanguage(Object)} returns
      *             <code>false</code> for the same receiver.
      * @since 20.1
+     * @deprecated Use {@link #getLanguageId(Object)}.
      */
     @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
+    @Deprecated
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -5010,6 +5041,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public boolean hasLanguage(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasLanguage(receiver);
@@ -5037,6 +5069,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.getLanguage(receiver);
@@ -5352,7 +5385,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isScope(receiver);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver);
-            assert !result || delegate.hasLanguage(receiver) : violationInvariant(receiver);
+            assert !result || delegate.hasLanguageId(receiver) : violationInvariant(receiver);
             assert validProtocolReturn(receiver, result);
             return result;
         }
@@ -5398,6 +5431,55 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !hadScopeParent : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasLanguageId(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasLanguage(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.hasLanguageId(receiver);
+            if (result) {
+                try {
+                    assert delegate.getLanguageId(receiver) != null : violationPost(receiver, result);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            } else {
+                assert assertHasNoLanguageId(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        private boolean assertHasNoLanguageId(Object receiver) {
+            try {
+                delegate.getLanguageId(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+            }
+            return true;
+        }
+
+        @Override
+        public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getLanguageId(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasLanguageId = delegate.hasLanguageId(receiver);
+            try {
+                String result = delegate.getLanguageId(receiver);
+                assert wasHasLanguageId : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasLanguageId : violationInvariant(receiver);
                 throw e;
             }
         }

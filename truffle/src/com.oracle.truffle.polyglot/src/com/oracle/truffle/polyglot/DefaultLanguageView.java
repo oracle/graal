@@ -55,28 +55,52 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 final class DefaultLanguageView<C> implements TruffleObject {
 
-    private final TruffleLanguage<C> language;
+    private final String languageId;
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    private final Class<? extends TruffleLanguage<?>> language;
     protected final Object delegate;
 
-    DefaultLanguageView(TruffleLanguage<C> language, Object delegate) {
+    DefaultLanguageView(String languageId, Class<? extends TruffleLanguage<?>> language, Object delegate) {
+        this.languageId = languageId;
         this.language = language;
         this.delegate = delegate;
     }
 
     @ExportMessage
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return languageId;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings("deprecation")
     boolean hasLanguage() {
         return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings("deprecation")
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return language;
     }
 
     @ExportMessage
     Object toDisplayString(boolean allowSideEffects, @CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
         return delegateLibrary.toDisplayString(delegate, allowSideEffects);
     }
-
-    @SuppressWarnings("unchecked")
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return (Class<? extends TruffleLanguage<?>>) language.getClass();
-    }
-
 }

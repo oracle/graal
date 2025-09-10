@@ -265,8 +265,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value) {
-            return new DefaultLanguageView<>(truffleLanguage, value);
+        @SuppressWarnings("unchecked")
+        public Object getDefaultLanguageView(Object polyglotLanguageContext, TruffleLanguage<?> spi, Object value) {
+            return new DefaultLanguageView<>(((PolyglotLanguageContext) polyglotLanguageContext).language.getId(), (Class<? extends TruffleLanguage<?>>) spi.getClass(), value);
+        }
+
+        @Override
+        public String getLanguageId(Class<? extends TruffleLanguage<?>> languageClass) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+            if (context == null) {
+                return null;
+            }
+            return context.engine.getLanguage(languageClass, false).getId();
         }
 
         @TruffleBoundary
@@ -281,6 +291,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass) {
             return ((VMObject) vmObject).getEngine().getLanguage(languageClass, true).info;
+        }
+
+        @Override
+        public LanguageInfo getLanguageInfo(Object vmObject, String languageId) {
+            return ((VMObject) vmObject).getEngine().getLanguage(languageId, true).info;
         }
 
         @Override
@@ -528,9 +543,22 @@ final class EngineAccessor extends Accessor {
             return LANGUAGE.getScope(requestedPolyglotLanguageContext.env);
         }
 
+        @SuppressWarnings("deprecation")
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
-            if (lib.hasLanguage(value)) {
+            if (lib.hasLanguageId(value)) {
+                try {
+                    return engine.getLanguage(lib.getLanguageId(value), false);
+                } catch (UnsupportedMessageException e) {
+                    throw shouldNotReachHere(e);
+                }
+            } else if (lib.hasLanguage(value)) {
+                /*
+                 * GR-69615: Remove deprecated InteropLibrary#hasLanguage and
+                 * InteropLibrary#getLanguage messages. We need to call hasLanguage even if
+                 * hasLanguageId provides a default implementation to support objects implementing
+                 * hasLanguage but delegating other messages using delegateTo.
+                 */
                 try {
                     return engine.getLanguage(lib.getLanguage(value), false);
                 } catch (UnsupportedMessageException e) {
@@ -541,9 +569,22 @@ final class EngineAccessor extends Accessor {
             }
         }
 
+        @SuppressWarnings("deprecation")
         static PolyglotLanguage getLanguageView(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
-            if (lib.hasLanguage(value)) {
+            if (lib.hasLanguageId(value)) {
+                try {
+                    return engine.getLanguage(lib.getLanguageId(value), false);
+                } catch (UnsupportedMessageException e) {
+                    throw shouldNotReachHere(e);
+                }
+            } else if (lib.hasLanguage(value)) {
+                /*
+                 * GR-69615: Remove deprecated InteropLibrary#hasLanguage and
+                 * InteropLibrary#getLanguage messages. We need to call hasLanguage even if
+                 * hasLanguageId provides a default implementation to support objects implementing
+                 * hasLanguage but delegating other messages using delegateTo.
+                 */
                 try {
                     return engine.getLanguage(lib.getLanguage(value), false);
                 } catch (UnsupportedMessageException e) {
