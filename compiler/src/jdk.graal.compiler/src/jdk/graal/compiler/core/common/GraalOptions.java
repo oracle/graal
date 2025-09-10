@@ -317,6 +317,9 @@ public final class GraalOptions {
     @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Debug)
     public static final OptionKey<Integer> IsolatedLoopHeaderAlignment = new OptionKey<>(32);
 
+    @Option(help = "Aligns jump table entries as if they were loop headers.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> AlignJumpTableEntry = new OptionKey<>(true);
+
     @Option(help = "Evaluates array region equality checks at compile time if the receiver is a constant and the length of the array is less than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> ArrayRegionEqualsConstantLimit = new OptionKey<>(4096);
 
