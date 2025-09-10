@@ -25,29 +25,45 @@
 package com.oracle.svm.hosted;
 
 public class ByteFormattingUtil {
-    private static final long KiB_TO_BYTES = 1024L;
-    private static final long MiB_TO_BYTES = 1024L * KiB_TO_BYTES;
-    private static final long GiB_TO_BYTES = 1024L * MiB_TO_BYTES;
+    // "123.12KiB".length() = 9, holds as long as it's not >= 1000GiB
+    private static final int MAX_WIDTH = 9;
+    public static final String RIGHT_ALIGNED_FORMAT = "%" + MAX_WIDTH + "s";
 
+    private enum Unit {
+        KiB(1024L),
+        MiB(1024L * 1024L),
+        GiB(1024L * 1024L * 1024L);
+
+        private final long value;
+
+        Unit(long value) {
+            this.value = value;
+        }
+    }
+
+    // We want to respect MAX_WIDTH and keep it concise,
+    // so we prefer to show 0.99MiB than 1010.00KiB (length 10).
     public static String bytesToHuman(long bytes) {
         assert bytes >= 0;
-        if (bytes < KiB_TO_BYTES) {
+        if (bytes < 1_000) {
             return bytes + "B";
-        } else if (bytes < MiB_TO_BYTES) {
-            return toHuman((double) bytes / KiB_TO_BYTES, "KiB");
-        } else if (bytes < GiB_TO_BYTES) {
-            return toHuman((double) bytes / MiB_TO_BYTES, "MiB");
+        } else if (bytes < 1_000 * Unit.KiB.value) {
+            return toHuman(bytes, Unit.KiB);
+        } else if (bytes < 1_000 * Unit.MiB.value) {
+            return toHuman(bytes, Unit.MiB);
         } else {
             return bytesToHumanGB(bytes);
         }
     }
 
     public static String bytesToHumanGB(long bytes) {
-        return toHuman((double) bytes / GiB_TO_BYTES, "GiB");
+        return toHuman(bytes, Unit.GiB);
     }
 
-    private static String toHuman(double value, String unit) {
-        return "%.2f%s".formatted(value, unit);
+    private static String toHuman(long value, Unit unit) {
+        String string = "%.2f%s".formatted((double) value / unit.value, unit);
+        assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value;
+        return string;
     }
 
 }

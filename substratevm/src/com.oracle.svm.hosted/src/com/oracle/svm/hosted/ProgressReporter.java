@@ -123,6 +123,8 @@ public class ProgressReporter {
     public static final String DOCS_BASE_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = TimeUtils.secondsToMillis(15);
     private static final double EXCESSIVE_GC_RATIO = 0.5;
+    // Use a leading space like in the rest of Native Image output
+    private static final String BYTES_TO_HUMAN_FORMAT = " " + ByteFormattingUtil.RIGHT_ALIGNED_FORMAT;
 
     private final NativeImageSystemIOWrappers builderIO;
 
@@ -598,7 +600,7 @@ public class ProgressReporter {
         Timer archiveTimer = getTimer(TimerCollection.Registry.ARCHIVE_LAYER);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime() + archiveTimer.getTotalTime());
         creationStageEndCompleted = true;
-        String format = "%9s (%5.2f%%) for ";
+        String format = BYTES_TO_HUMAN_FORMAT + " (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), ProgressReporterUtils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         int numResources = 0;
@@ -632,7 +634,7 @@ public class ProgressReporter {
         recordJsonMetric(ImageDetailKey.NUM_COMP_UNITS, numCompilations);
         l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), ProgressReporterUtils.toPercentage(otherBytes, imageFileSize))
                         .doclink("other data", "#glossary-other-data").println();
-        l().a("%9s in total image size", ByteFormattingUtil.bytesToHuman(imageFileSize));
+        l().a(BYTES_TO_HUMAN_FORMAT + " in total image size", ByteFormattingUtil.bytesToHuman(imageFileSize));
         if (imageDiskFileSize >= 0) {
             l().a(", %s in total file size", ByteFormattingUtil.bytesToHuman(imageDiskFileSize));
         }
@@ -723,14 +725,15 @@ public class ProgressReporter {
         int numHeapItems = heapBreakdown.getSortedBreakdownEntries().size();
         long totalCodeBytes = codeBreakdown.values().stream().mapToLong(Long::longValue).sum();
 
-        p.l().a(String.format("%9s for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
+        p.l().a(String.format(BYTES_TO_HUMAN_FORMAT + " for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
-                        .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes), numHeapItems - printedHeapItems))
+                        .a(String.format(BYTES_TO_HUMAN_FORMAT + " for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes),
+                                        numHeapItems - printedHeapItems))
                         .flushln();
     }
 
     private static String getBreakdownSizeString(long sizeInBytes) {
-        return String.format("%9s ", ByteFormattingUtil.bytesToHuman(sizeInBytes));
+        return String.format(BYTES_TO_HUMAN_FORMAT + " ", ByteFormattingUtil.bytesToHuman(sizeInBytes));
     }
 
     private void printRecommendations() {
