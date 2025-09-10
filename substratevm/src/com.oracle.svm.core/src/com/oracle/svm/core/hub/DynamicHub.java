@@ -282,7 +282,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     /**
      * Array containing this type's type check id information. During a type check, these slots are
-     * searched for a matching typeID.
+     * searched for a matching typeID. This array may be used by the garbage collector and therefore
+     * needs to live in the image heap or {@link Metaspace}.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
     private int[] openTypeWorldTypeCheckSlots;
@@ -303,7 +304,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * HashTable used for interface hashing under open type world if
      * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
-     * documentation.
+     * documentation. This array may be used by the garbage collector and therefore needs to live in
+     * the image heap or {@link Metaspace}.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
     private int[] openTypeWorldInterfaceHashTable;
@@ -477,8 +479,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     short numClassTypes,
                     short typeIDDepth,
                     short numIterableInterfaceTypes,
-                    int[] openTypeWorldTypeCheckSlots,
-                    int[] openTypeWorldInterfaceHashTable,
+                    int[] typeCheckSlotsHeapArray,
+                    int[] interfaceHashTableHeapArray,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
                     int afterFieldsOffset, boolean valueBased) {
@@ -582,16 +584,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-61330: only write if the field exists according to analysis
         // companion.metaType = null;
 
-        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
-
         // GR-57813
         companion.hubMetadata = null;
         companion.reflectionMetadata = null;
 
+        /* Allocate memory in the metaspace and copy data from the Java heap to the metaspace. */
         DynamicHub hub = Metaspace.singleton().allocateDynamicHub(vTableEntries);
+        int[] openTypeWorldTypeCheckSlots = Metaspace.singleton().copyToMetaspace(typeCheckSlotsHeapArray);
+        int[] openTypeWorldInterfaceHashTable = Metaspace.singleton().copyToMetaspace(interfaceHashTableHeapArray);
+        int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub);
 
-        DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         /* Write fields in defining order. */
+        DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         writeObject(hub, dynamicHubOffsets.getNameOffset(), name);
         writeByte(hub, dynamicHubOffsets.getHubTypeOffset(), hubType);
         writeByte(hub, dynamicHubOffsets.getReferenceTypeOffset(), referenceType.getValue());

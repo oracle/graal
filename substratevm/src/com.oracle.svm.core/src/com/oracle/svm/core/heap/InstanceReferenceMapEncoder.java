@@ -35,6 +35,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -56,6 +57,7 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
  * </ul>
  */
 public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
+    @DuplicatedInNativeCode //
     public static final int REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT = 2;
 
     public static final int MAP_HEADER_SIZE = 4;
