@@ -199,7 +199,7 @@ abstract class ExtLocations {
 
         @Override
         public String toString() {
-            return "=" + String.valueOf(value);
+            return "=" + value;
         }
 
         @Override
@@ -369,12 +369,7 @@ abstract class ExtLocations {
 
         @Override
         public String toString() {
-            return super.toString() + ("[final=" + isAssumedFinal() + "]");
-        }
-
-        @Override
-        public String getWhereString() {
-            return this instanceof ArrayLocation ? ("[" + index + "]") : ("@" + index);
+            return super.toString() + (this instanceof ArrayLocation ? ("[" + index + "]") : ("@" + index)) + ("[final=" + isAssumedFinal() + "]");
         }
 
         @Override
@@ -935,6 +930,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), allowInt);
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return super.equals(obj) && this.allowInt == ((DoubleFieldLocation) obj).allowInt;
         }
@@ -1105,6 +1105,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), allowInt);
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return super.equals(obj) && this.allowInt == ((DoubleArrayLocation) obj).allowInt;
         }
@@ -1199,6 +1204,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), allowInt);
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return super.equals(obj) && this.allowInt == ((LongFieldLocation) obj).allowInt;
         }
@@ -1281,6 +1291,11 @@ abstract class ExtLocations {
         @Override
         public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitPrimitiveArray(index, LONG_ARRAY_SLOT_SIZE);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), allowInt);
         }
 
         @Override
