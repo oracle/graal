@@ -114,6 +114,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L232-L309",
               sha1 = "4ed44f985dfdca39bf93c6d306a378be4bf88fe7")
     // @formatter:on
+    @SuppressWarnings("try")
     public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction op, Register thread, Register result, Register object,
                     AArch64Address loadAddress, ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean notNull) {
         /*
