@@ -195,11 +195,10 @@ meth protected static com.oracle.truffle.api.object.FinalLocationException final
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth protected static com.oracle.truffle.api.object.IncompatibleLocationException incompatibleLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract boolean equals(java.lang.Object)
-meth public abstract int hashCode()
 meth public boolean canSet(java.lang.Object)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public boolean canStore(java.lang.Object)
+meth public boolean equals(java.lang.Object)
 meth public boolean isAssumedFinal()
 meth public boolean isConstant()
 meth public boolean isDeclared()
@@ -213,14 +212,17 @@ meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObje
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
+meth public int hashCode()
 meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public java.lang.Object getConstantValue()
+meth public java.lang.String toString()
 meth public void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 supr java.lang.Object
+hcls LocationVisitor,UncheckedIncompatibleLocationException
 
 CLSS public abstract interface com.oracle.truffle.api.object.LongLocation
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
@@ -246,20 +248,22 @@ meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObjec
 supr java.lang.Object
 hfds DEFAULT
 
-CLSS public abstract com.oracle.truffle.api.object.Property
-cons protected init()
+CLSS public final com.oracle.truffle.api.object.Property
+meth public boolean equals(java.lang.Object)
+meth public boolean isHidden()
+meth public com.oracle.truffle.api.object.Location getLocation()
+meth public int getFlags()
+meth public int hashCode()
+meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract boolean isHidden()
-meth public abstract com.oracle.truffle.api.object.Location getLocation()
-meth public abstract int getFlags()
-meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
+meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract java.lang.Object getKey()
+meth public java.lang.Object getKey()
+meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.object.Property create(java.lang.Object,com.oracle.truffle.api.object.Location,int)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 supr java.lang.Object
+hfds flags,key,location
 
 CLSS public final com.oracle.truffle.api.object.PropertyGetter
 meth public boolean accepts(com.oracle.truffle.api.object.DynamicObject)
