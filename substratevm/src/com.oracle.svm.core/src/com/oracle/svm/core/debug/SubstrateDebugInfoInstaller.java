@@ -28,7 +28,7 @@ package com.oracle.svm.core.debug;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -89,19 +89,19 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         SubstrateDebugInfoProvider debugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(), codeAddress, codeSize);
 
         // Produce a full debug info object file if needed.
-        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoObjectFileSupport()) {
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
             debugInfoData = getDebugInfoData(debugInfoProvider);
         } else {
             debugInfoData = Word.nullPointer();
         }
 
         // Create a perf map for the current pid if it does not exist and append a new entry.
-        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoPerfMapSupport()) {
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_PERFMAP_NAME)) {
             writePerfMap(debugInfoProvider);
         }
 
         // Append new records to the jitdump file.
-        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoJitdumpSupport()) {
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_JITDUMP_NAME)) {
             writeJitdump(debugInfoProvider);
         }
     }
@@ -138,7 +138,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     }
 
     @SuppressWarnings({"unsused", "try"})
-    private void writePerfMap(SubstrateDebugInfoProvider debugInfoProvider) {
+    private synchronized void writePerfMap(SubstrateDebugInfoProvider debugInfoProvider) {
         String methodName = debugInfoProvider.getMethod().format("%R %H.%n(%P)");
         String perfMapFilename = "perf-" + ProcessProperties.getProcessID() + ".map";
         Path perfMapPath = Paths.get("/tmp", perfMapFilename);
@@ -146,11 +146,10 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         /*
          * Create one line for the perf map write to the perf map file.
          */
-        ByteBuffer perfMapEntry = ByteBuffer.wrap(String.format("%x %x %s%n", debugInfoProvider.getCodeAddress(), debugInfoProvider.getCodeSize(), methodName).getBytes());
-        try (FileChannel channel = FileChannel.open(perfMapPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                        FileLock lock = channel.lock()) {
-            int written = channel.write(perfMapEntry);
-            assert written == perfMapEntry.limit();
+        byte[] perfMapEntry = String.format("%x %x %s%n", debugInfoProvider.getCodeAddress(), debugInfoProvider.getCodeSize(), methodName).getBytes();
+
+        try {
+            Files.write(perfMapPath, perfMapEntry, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             debug.log("Failed to write perf map entry for %s.", methodName);
         }
@@ -169,9 +168,18 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         JitdumpProvider.writeRecords(debugInfoProvider, compiledMethodEntry);
     }
 
+    /**
+     * Create a code observer handle if needed.
+     * <p>
+     * Only run-time debug info in an in-memory object file needs to be tracked by a handle. For
+     * other formats, the debug info generator only neds to append to a file and not clean up
+     * anything for deoptimization.
+     * 
+     * @return a code observer handle or a null pointer if it is not needed
+     */
     @Override
     public InstalledCodeObserverHandle install() {
-        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoObjectFileSupport()) {
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
             assert debugInfoData.isNonNull() : "Run-time debug info file is emtpy!";
             return GdbJitAccessor.createHandle(debug, debugInfoData);
         } else {

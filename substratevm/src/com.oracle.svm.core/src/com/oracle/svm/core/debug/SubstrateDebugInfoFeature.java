@@ -43,6 +43,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -51,9 +52,9 @@ import jdk.graal.compiler.options.Option;
 @AutomaticallyRegisteredFeature
 public class SubstrateDebugInfoFeature implements InternalFeature {
 
-    private static final String DEBUG_INFO_OBJFILE_NAME = "objfile";
-    private static final String DEBUG_INFO_PERFMAP_NAME = "perf-map";
-    private static final String DEBUG_INFO_JITDUMP_NAME = "jitdump";
+    public static final String DEBUG_INFO_OBJFILE_NAME = "objfile";
+    public static final String DEBUG_INFO_PERFMAP_NAME = "perf-map";
+    public static final String DEBUG_INFO_JITDUMP_NAME = "jitdump";
 
     public static class Options {
 
@@ -76,6 +77,10 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
         }
 
         private static void validateRuntimeDebugInfoFormat(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionKey) {
+            UserError.guarantee(!optionKey.hasBeenSet() || SubstrateOptions.RuntimeDebugInfo.getValue(),
+                            "Selecting a runtime debug info format is only possible if runtime debug info generation is enabled ('%s').",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.RuntimeDebugInfo, "+"));
+
             List<String> selectedFormats = optionKey.getValue().values();
             selectedFormats.removeAll(DEBUG_INFO_ALL_FORMATS);
             if (!selectedFormats.isEmpty()) {
@@ -85,18 +90,8 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
         }
 
         @Fold
-        public static boolean hasRuntimeDebugInfoObjectFileSupport() {
-            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_OBJFILE_NAME);
-        }
-
-        @Fold
-        public static boolean hasRuntimeDebugInfoPerfMapSupport() {
-            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_PERFMAP_NAME);
-        }
-
-        @Fold
-        public static boolean hasRuntimeDebugInfoJitdumpSupport() {
-            return getEnabledRuntimeDebugInfoFormats().contains(DEBUG_INFO_JITDUMP_NAME);
+        public static boolean hasRuntimeDebugInfoFormatSupport(String debugInfoFormat) {
+            return getEnabledRuntimeDebugInfoFormats().contains(debugInfoFormat);
         }
     }
 
@@ -115,14 +110,14 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
         InstalledCodeObserverSupport installedCodeObserverSupport = ImageSingletons.lookup(InstalledCodeObserverSupport.class);
 
         installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig));
-        if (Options.hasRuntimeDebugInfoObjectFileSupport()) {
+        if (Options.hasRuntimeDebugInfoFormatSupport(DEBUG_INFO_OBJFILE_NAME)) {
             ImageSingletons.add(GdbJitAccessor.class, new GdbJitAccessor());
         }
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (Options.hasRuntimeDebugInfoJitdumpSupport()) {
+        if (Options.hasRuntimeDebugInfoFormatSupport(DEBUG_INFO_JITDUMP_NAME)) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(JitdumpProvider.startupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(JitdumpProvider.shutdownHook());
         }
