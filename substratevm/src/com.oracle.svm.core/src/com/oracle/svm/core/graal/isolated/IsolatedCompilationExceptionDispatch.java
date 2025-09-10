@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.svm.core.graal.isolated;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -37,8 +37,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
-import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
 
 import jdk.graal.compiler.core.common.GraalBailoutException;
 
@@ -83,13 +81,13 @@ public abstract class IsolatedCompilationExceptionDispatch {
      * entry point.
      * <p>
      * Note that the caller isolate cannot have called from uninterruptible code because
-     * {@link CEntryPointJavaCallStubMethod} does thread state transitions that require a safepoint
+     * {@code CEntryPointJavaCallStubMethod} does thread state transitions that require a safepoint
      * check, so this method calling it back to dispatch the exception in interruptible code is
      * considered acceptable.
      * <p>
      * Our (callee) entry point might intend to execute only uninterruptible code save for this
      * exception handler, but as of writing this, isolated compilation nowhere requires relying on
-     * that and {@link CEntryPointCallStubMethod} also does state transitions and safepoint checks.
+     * that and {@code CEntryPointCallStubMethod} also does state transitions and safepoint checks.
      * <p>
      * Also note that an exception's stack trace contains all its isolate's frames up until the last
      * entry frame, but not another isolate's frames in between. When an exception is propagated

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.svm.core.graal.isolated;
 
-import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.ObjectHandle;
 
 /**
- * The {@link IsolateThread} of the client that requested a compilation to be performed in a
- * {@linkplain CompilerIsolateThread different isolate}.
+ * An object handle for isolated compilation with added static type information.
+ *
+ * @param <T> The type of the object referenced by the handle.
  */
-public interface ClientIsolateThread extends IsolateThread {
+public interface IsolatedHandle<T> extends ObjectHandle {
 }

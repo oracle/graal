@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.graal.compiler.code.CompilationResult;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
