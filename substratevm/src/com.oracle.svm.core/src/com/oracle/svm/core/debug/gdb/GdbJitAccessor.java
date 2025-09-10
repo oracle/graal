@@ -41,8 +41,20 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.DebugContext;
 
+/**
+ * The accessor for a {@link GdbJitHandle}.
+ */
 public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserverHandleAccessor {
 
+    /**
+     * Creates and allocates a {@link GdbJitHandle} and a {@link GdbJitInterface.JITCodeEntry} in
+     * native memory. The handle wraps the {@code GDB JITCodeEntry}, the corresponding runtime debug
+     * info, and its state is set as {@link GdbJitHandle#INITIALIZED}.
+     *
+     * @param debug the {@link DebugContext} used for logging
+     * @param debugInfoData the runtime debug info for a runtime compilation
+     * @return the {@code GdbJitHandle} for the runtime debug info
+     */
     @SuppressWarnings("try")
     public static GdbJitHandle createHandle(DebugContext debug, NonmovableArray<Byte> debugInfoData) {
         GdbJitHandle handle = NativeMemory.malloc(SizeOf.get(GdbJitHandle.class), NmtCategory.Code);
@@ -64,6 +76,14 @@ public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserv
         return ImageSingletons.lookup(GdbJitAccessor.class);
     }
 
+    /**
+     * Transfers a {@link GdbJitHandle} to the state {@link GdbJitHandle#ACTIVATED}.
+     * <p>
+     * GDB is notified about new runtime debug info through {@link GdbJitInterface#registerJITCode}.
+     *
+     * @param installedCodeObserverHandle the handle holding a {@code GDB JITCodeEntry} and the
+     *            corresponding debug info
+     */
     @Override
     public void activate(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {
         GdbJitHandle handle = (GdbJitHandle) installedCodeObserverHandle;
@@ -78,6 +98,18 @@ public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserv
         handle.setState(GdbJitHandle.ACTIVATED);
     }
 
+    /**
+     * Transfers a {@link GdbJitHandle} to the state {@link GdbJitHandle#RELEASED}.
+     * <p>
+     * If the handle was already activated, GDB is notified about the invalid runtime debug info
+     * through {@link GdbJitInterface#unregisterJITCode}.
+     * <p>
+     * Also cleans up all native memory used by the handle, {@code JITCodeEntry} and runtime debug
+     * info.
+     *
+     * @param installedCodeObserverHandle the handle holding a {@code GDB JITCodeEntry} and the
+     *            corresponding debug info
+     */
     @Override
     @Uninterruptible(reason = "Called during GC or teardown.")
     public void release(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {

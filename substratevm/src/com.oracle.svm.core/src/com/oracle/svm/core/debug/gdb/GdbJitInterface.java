@@ -161,6 +161,22 @@ public class GdbJitInterface {
 
     private static final CGlobalData<JITDescriptor> jitDebugDescriptor = CGlobalDataFactory.forSymbol("__jit_debug_descriptor");
 
+    /**
+     * Set up the {@link #jitDebugDescriptor} for registering a new run-time debug info object file
+     * and call {@link #jitDebugRegisterCode}.
+     * <p>
+     * Setting up the {@code jitDebugDescriptor} involves the following steps:
+     * <ul>
+     * <li>Fill the given {@link JITCodeEntry}
+     * <li>Prepend the {@code JITCodeEntry} to the linked list of entries
+     * <li>Set {@link JITDescriptor#setActionFlag action_flag} to {@link JITActions#JIT_REGISTER}
+     * <li>Set the {@code JITCodeEntry} as {@link JITDescriptor#setRelevantEntry relevant_entry}
+     * </ul>
+     * 
+     * @param addr the address of the in-memory run-time debug info object file
+     * @param size the size of the in-memory run-time debug info object file
+     * @param entry the {@code JITCodeEntry} to fill and pass to {@code GDB}.
+     */
     public static void registerJITCode(CCharPointer addr, @CUnsigned long size, JITCodeEntry entry) {
         /* Create new jit_code_entry */
         entry.setSymfileAddr(addr);
@@ -182,6 +198,19 @@ public class GdbJitInterface {
         jitDebugRegisterCode(CurrentIsolate.getCurrentThread());
     }
 
+    /**
+     * Set up the {@link #jitDebugDescriptor} for unregistering a run-time debug info object file
+     * and call {@link #jitDebugRegisterCode}.
+     * <p>
+     * Setting up the {@code jitDebugDescriptor} involves the following steps:
+     * <ul>
+     * <li>Remove the {@code JITCodeEntry} from the linked list of entries
+     * <li>Set {@link JITDescriptor#setActionFlag action_flag} to {@link JITActions#JIT_UNREGISTER}
+     * <li>Set the {@code JITCodeEntry} as {@link JITDescriptor#setRelevantEntry relevant_entry}
+     * </ul>
+     *
+     * @param entry the {@code JITCodeEntry} to pass to {@code GDB}.
+     */
     @Uninterruptible(reason = "Called with raw object pointer.", calleeMustBe = false)
     public static void unregisterJITCode(JITCodeEntry entry) {
         JITCodeEntry prevEntry = entry.getPrevEntry();

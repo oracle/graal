@@ -31,8 +31,14 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 
+/**
+ * A code observer handle for wrapping a {@link GdbJitInterface.JITCodeEntry} and the corresponding
+ * run-time debug info object file.
+ * <p>
+ * This should only be accessed via {@link GdbJitAccessor}.
+ */
 @RawStructure
-public interface GdbJitHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
+interface GdbJitHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
     int INITIALIZED = 0;
     int ACTIVATED = 1;
     int RELEASED = 2;

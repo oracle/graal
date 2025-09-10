@@ -59,10 +59,36 @@ import com.oracle.objectfile.elf.ELFMachine;
  */
 public record JitdumpHeader(ELFMachine elfMach, int pid, long timestamp) {
 
-    public static final int MAGIC = 0x4A695444;  // = "JiTD"
+    /**
+     * A value representing the string "JiTD", which serves as a magic number for tagging jitdump
+     * files.
+     */
+    public static final int MAGIC = 0x4A695444;
+    /**
+     * The jitdump version. The implementation is based on the
+     * {@code JITDUMP specification version 2}, which specifies the version number to be set to 1.
+     */
     public static final int VERSION = 1;
+    /**
+     * The size of the jitdump header. Consists of the following fixed size fields:
+     * <ul>
+     * <li>unint32_t magic => 4 bytes
+     * <li>unint32_t version => 4 bytes
+     * <li>unint32_t total_size => 4 bytes
+     * <li>unint32_t elf_mach => 4 bytes
+     * <li>unint32_t pad1 => 4 bytes
+     * <li>unint32_t pid => 4 bytes
+     * <li>unint64_t timestamp => 8 bytes
+     * <li>unint64_t flags => 8 bytes
+     * </ul>
+     * SIZE = 6*4 + 2*8 = 40
+     */
     public static final int SIZE = 40;
 
+    /**
+     * Create a new jitdump header tagged with the current {@link System#nanoTime() timestamp}. Also
+     * fetches the system's ELF machine encoding and the native image process id.
+     */
     public JitdumpHeader() {
         this(ELFMachine.from(ImageSingletons.lookup(Platform.class).getArchitecture()), (int) ProcessProperties.getProcessID(), System.nanoTime());
     }

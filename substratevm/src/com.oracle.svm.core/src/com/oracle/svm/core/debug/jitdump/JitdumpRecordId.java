@@ -48,8 +48,8 @@ public enum JitdumpRecordId {
 
     private final int value;
 
-    JitdumpRecordId(int s) {
-        value = s;
+    JitdumpRecordId(int v) {
+        value = v;
     }
 
     public int value() {

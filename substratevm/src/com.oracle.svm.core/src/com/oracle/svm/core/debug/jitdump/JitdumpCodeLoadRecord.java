@@ -72,10 +72,37 @@ import jdk.graal.compiler.code.CompilationResult;
  */
 public record JitdumpCodeLoadRecord(JitdumpRecordHeader header, int pid, int tid, long address, long size, String name, byte[] code) {
 
+    /**
+     * The base size of a code load record. Contains the size of all fields except bytes of the file
+     * name string and compiled code. The fixed size fields are as follows:
+     * <ul>
+     * <li>{@link JitdumpRecordHeader#SIZE sizeof(header)} = 16 bytes
+     * <li>unint32_t pid => 4 bytes
+     * <li>unint32_t tid => 4 bytes
+     * <li>unint64_t vma => 8 bytes
+     * <li>unint64_t code_addr => 8 bytes
+     * <li>unint64_t code_size => 8 bytes
+     * <li>unint64_t code_index => 8 bytes
+     * </ul>
+     * BASE_SIZE = sizeof(header) + 2*4 + 4*8 = sizeof(header) + 40
+     */
     private static final int BASE_SIZE = JitdumpRecordHeader.SIZE + 40;
 
+    /**
+     * Create a jitdump code load record based on a {@code CompilationResult}.
+     * 
+     * @param method the {@code MethodEntry} of the compiled method
+     * @param compilation the {@code CompilationResult}
+     * @param codeSize the size of the compiled code
+     * @param address the address of the compiled code
+     * @return a jitdump code load record
+     */
     public static JitdumpCodeLoadRecord create(MethodEntry method, CompilationResult compilation, int codeSize, long address) {
         String name = method.getSymbolName();
+        /*
+         * The record size contains all fixed size fields (including header), the number of bytes of
+         * the symbol name string +1 for 0 termination and the number of bytes of the compiled code.
+         */
         int recordSize = BASE_SIZE + name.getBytes().length + 1 + codeSize;
         JitdumpRecordHeader header = new JitdumpRecordHeader(JitdumpRecordId.JIT_CODE_LOAD, recordSize);
         int pid = (int) ProcessProperties.getProcessID();

@@ -47,8 +47,24 @@ package com.oracle.svm.core.debug.jitdump;
  */
 public record JitdumpRecordHeader(JitdumpRecordId id, int recordSize, long timestamp) {
 
+    /**
+     * The size of the jitdump record header. Consists of the following fixed size fields:
+     * <ul>
+     * <li>unint32_t id => 4 bytes
+     * <li>unint32_t total_size => 4 bytes
+     * <li>unint64_t timestamp => 8 bytes
+     * </ul>
+     * SIZE = 2*4 + 8 = 16
+     */
     public static final int SIZE = 16;
 
+    /**
+     * Create a new jitdump record header tagged with the current {@link System#nanoTime()
+     * timestamp}.
+     * 
+     * @param id the {@link JitdumpRecordId} of the header
+     * @param recordSize the total size of the jitdump record, including the header
+     */
     public JitdumpRecordHeader(JitdumpRecordId id, int recordSize) {
         this(id, recordSize, System.nanoTime());
     }

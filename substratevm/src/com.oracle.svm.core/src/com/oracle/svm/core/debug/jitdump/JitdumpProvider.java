@@ -55,16 +55,25 @@ import jdk.graal.compiler.word.Word;
 
 public class JitdumpProvider {
     public static class Options {
-        @Option(help = "Directory where jitdump related files will be placed for perf")//
+        @Option(help = "Directory where jitdump related files will be placed for perf. Defaults to './jitdump'.")//
         public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
     }
 
-    /*
-     * A pointer to the file descriptor of the jitdump file. This needs to be a CGlobalData to be
-     * accessible for run-time compilations.
+    /**
+     * A pointer to the file descriptor of the jitdump file. This needs to be a {@code CGlobalData}
+     * to be accessible from any isolate in {@link #writeRecords}.
      */
     private static final CGlobalData<WordPointer> fdPointer = CGlobalDataFactory.createWord(Word.zero(), null, true);
+    /**
+     * The address of the memory mapped jitdump file.
+     */
     private static final CGlobalData<WordPointer> jitdumpMappedAddress = CGlobalDataFactory.createWord(Word.nullPointer(), null, true);
+    /**
+     * A unique index for a {@link JitdumpCodeLoadRecord code load record}. This is used by perf to
+     * generate one .so file per {@code code load record}
+     * ('jitted-&lt;pid&gt;-&lt;code_index&gt;.so') containing the run-time compiled code and debug
+     * info from the corresponding {@link JitdumpDebugInfoRecord debug info record}.
+     */
     private static final GlobalAtomicLong codeIndex = new GlobalAtomicLong("JITDUMP_CODE_INDEX", 0L);
 
     @Fold
@@ -72,27 +81,56 @@ public class JitdumpProvider {
         return RawFileOperationSupport.nativeByteOrder();
     }
 
+    /**
+     * The file name of a jitdump file is defined as jit-&lt;pid&gt;.dump. The file will be placed
+     * in the directory as specified by {@link Options#RuntimeJitdumpDir} which defaults to
+     * './jitdump'.
+     * 
+     * @return the full path of the jitdump file
+     */
     public static Path getJitdumpPath() {
         return Paths.get(Options.RuntimeJitdumpDir.getValue(), "jit-" + ProcessProperties.getProcessID() + ".dump");
     }
 
+    /**
+     * Create a jitdump file, write the jitdump header, and set up the {@link JitdumpProvider} for
+     * processing run-time debug info of a native image.
+     * <p>
+     * First, the jitdump file as specified in {@link #getJitdumpPath()} is created. Then an
+     * {@code mmap} call is produced through {@link VirtualMemoryProvider#mapFile}. The {@code mmap}
+     * call is a perf event, that allows perf to find the jitdump file for a perf profiling run.
+     * With {@code perf inject}, perf creates one .so file per run-time compilation and injects them
+     * into the perf profiling data.
+     * <p>
+     * Writing to the jitdump files is handled by a {@link RawFileOperationSupport} from
+     * {@link #getFileSupport()} via a {@link RawFileOperationSupport.RawFileDescriptor raw file
+     * descriptor}.
+     * <p>
+     * After the file is created and memory mapped, the {@link JitdumpHeader} is written to the
+     * jitdump file.
+     *
+     * @return the startup hook that only runs for the first isolate
+     */
     public static RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             if (!isFirstIsolate) {
                 return;
             }
 
+            /* Fetch the jitdump path and create parent directories. */
+            Path jitdumpPath = getJitdumpPath();
             try {
-                Files.createDirectories(getJitdumpPath().getParent());
+                Files.createDirectories(jitdumpPath.getParent());
             } catch (IOException e) {
-                LogUtils.warning("Failed to create directory for the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
+                LogUtils.warning("Failed to create directory for the jitdump file " + jitdumpPath.toFile().getAbsolutePath());
                 return;
             }
 
-            RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(getJitdumpPath().toFile(), RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE,
+            /* Create the jitdump file and get a raw file descriptor. */
+            RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(jitdumpPath.toFile(), RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE,
                             RawFileOperationSupport.FileAccessMode.READ_WRITE);
             if (!getFileSupport().isValid(fd)) {
-                LogUtils.warning("Failed to create the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
+                LogUtils.warning("Failed to create the jitdump file " + jitdumpPath.toFile().getAbsolutePath());
                 return;
             }
 
@@ -104,7 +142,7 @@ public class JitdumpProvider {
                             VirtualMemoryProvider.Access.EXECUTE | VirtualMemoryProvider.Access.READ);
             if (mappedAddress.isNull()) {
                 getFileSupport().close(fd);
-                LogUtils.warning("Failed to prepare the jitdump file " + getJitdumpPath().toFile().getAbsolutePath());
+                LogUtils.warning("Failed to prepare the jitdump file " + jitdumpPath.toFile().getAbsolutePath());
                 return;
             }
 
@@ -117,6 +155,20 @@ public class JitdumpProvider {
         };
     }
 
+    /**
+     * Close the jitdump file and clean up the {@link JitdumpProvider}.
+     * <p>
+     * If the {@link #startupHook()} ran at startup, the {@code JitdumpProvider} holds the
+     * {@link RawFileOperationSupport.RawFileDescriptor raw file descriptor} of the jitdump file and
+     * its memory mapped address from {@code mmap}. First, a {@link #writeCloseRecord jitdump close
+     * record} is written to the jitdump file. Then, the file is closed and the mapped memory is
+     * cleared with {@code munmap} through {@link VirtualMemoryProvider#free}.
+     * <p>
+     * If the startup hook did not run or failed to create the jitdump file, the shutdown hook does
+     * nothing.
+     *
+     * @return the shutdown hook that only runs for the first isolate
+     */
     public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
             if (!isFirstIsolate) {
@@ -152,7 +204,9 @@ public class JitdumpProvider {
     }
 
     /**
-     * Write the jitdump header.
+     * Create a {@link JitdumpHeader jitdump header} and writes it to the jitdump file.
+     * 
+     * @param fd the file descriptor to write to.
      */
     public static void writeHeader(RawFileOperationSupport.RawFileDescriptor fd) {
         ByteBuffer content = ByteBuffer.allocate(JitdumpHeader.SIZE);
@@ -173,7 +227,12 @@ public class JitdumpProvider {
     }
 
     /**
-     * Write the jitdump close record.
+     * Create a code close record and append it to the jitdump file.
+     * <p>
+     * A code close record only consists of a {@link JitdumpRecordHeader} with the record id
+     * {@link JitdumpRecordId#JIT_CODE_CLOSE} and no record body.
+     * 
+     * @param fd the file descriptor to write to.
      */
     public static void writeCloseRecord(RawFileOperationSupport.RawFileDescriptor fd) {
         ByteBuffer content = ByteBuffer.allocate(JitdumpRecordHeader.SIZE);
@@ -187,7 +246,13 @@ public class JitdumpProvider {
     }
 
     /**
-     * Create the byte array for the jitdump records of a run-time compilation.
+     * Create a {@link JitdumpCodeLoadRecord code load record} and a {@link JitdumpDebugInfoRecord
+     * debug info record} for a run-time compilation and append them to the jitdump file.
+     * <p>
+     * As perf processes the records one after another and there are no links between jitdump
+     * records, a debug info record must come before the corresponding code load record. If e.g. two
+     * debug info records follow another, the first one is dropped and the second one is used as
+     * debug info record of the next code load record.
      *
      * @param debugInfoProvider the debug info provider that generated the compiled method entry
      * @param compiledMethodEntry the {@code CompiledMethodEntry} of the run-time compiled method
@@ -237,6 +302,7 @@ public class JitdumpProvider {
     }
 
     private static ByteBuffer putRecordHeader(JitdumpRecordHeader header, ByteBuffer content) {
+        // Append the jitdump header to the given ByteBuffer.
         return content.putInt(header.id().value())
                         .putInt(header.recordSize())
                         .putLong(header.timestamp());
