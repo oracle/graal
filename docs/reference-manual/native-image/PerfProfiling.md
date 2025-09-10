@@ -75,6 +75,86 @@ native-image -g <entry_class>
 The `-g` option instructs Native Image to produce debug information for the generated binary.
 `perf` can use this debug information, for example, to provide proper names for types and methods in traces.
 
+### Profiling of Runtime-Compiled Methods
+
+Native Image can integrate runtime compilation information with perf enabling profiling of runtime compiled methods. 
+Two formats are supported:
+ - [perf-map](https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jit-interface.txt) – lightweight symbol mapping
+ - [jitdump](https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jitdump-specification.txt) – detailed runtime compilation metadata
+
+Both formats can be enabled independently or together.
+
+#### perf-map
+
+The perf-map format provides a simple mapping from code addresses to symbol names for each runtime compilation.
+The mapping file is generated at:
+
+```bash
+/tmp/perf-<pid>.map
+```
+
+Perf automatically uses this file to resolve symbols.
+
+The perf-map format supports basic symbol resolution only and does not provide detailed runtime compilation metadata like jitdump.
+If the same code address is reused, perf-map cannot distinguish between different symbols.
+
+1. Building with perf-map support
+
+   ```bash
+   native-image -g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=perf-map ...
+   ```
+   
+   At image-runtime, the perf-map file `/tmp/perf-<pid>.map` is created and filled with mappings from code address to symbol name.
+
+2. Record and inspect with perf
+
+   Record and inspect profiling data as described [here](#basic-operations).
+   Code addresses for runtime compilations found in the perf-map file are automatically replaced by their corresponding symbol name.
+
+
+#### jitdump
+
+The jitdump format stores detailed metadata for runtime compiled code. 
+This requires post-processing of the perf data to inject the runtime compilation information.
+
+1. Building with jitdump support
+
+   ```bash
+   native-image -g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump ...
+   ```
+   
+   At image-runtime, the jitdump file `<jitdump_dir>/jit-<pid>.dump` is created, and runtime compilation metadata is written to it.
+   The output directory can be configured with `-R:RuntimeJitdumpDir=<jitdump_dir>` (defaults to `./jitdump`).
+
+2. Record with perf
+
+   When recording profiling data, use the `-k 1` option to ensure time-based events are ordered correctly for injection:
+   
+   ```bash
+   perf record -k 1 -o perf.data <your-application>
+   ```
+   
+   If the perf data was not recorded with `-k 1`, injecting runtime compilation information from a jitdump file will fail.
+
+3. Inject jitdump into perf data
+
+   ```bash
+   perf inject -j -i perf.data -o perf.jit.data
+   ```
+   
+   This step:
+    - Locates the jitdump file. 
+    - Generates a .so file for each runtime compilation entry in the jitdump file. 
+    - Injects runtime compilation information into the profiling data and saves ist to `perf.jit.data`.
+
+4. Inspect profiling data
+
+   ```bash
+   perf report -i perf.jit.data
+   ```
+   
+   Symbols from the jitdump file appear as coming from `jitted-<pid>-<code_id>.so`, where code_id is the index of a compilation entry in the jitdump file.
+
 ## Basic Operations
 
 ### CPU Profiling
