@@ -27,7 +27,6 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.SubstrateSegfaultHandler;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
@@ -40,9 +39,15 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.IsolateSupportImpl;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
+import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.core.graal.isolated.CompilerIsolateThread;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.log.Log;
