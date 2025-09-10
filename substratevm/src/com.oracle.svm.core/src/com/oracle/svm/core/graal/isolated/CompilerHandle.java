@@ -22,13 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
-
-import org.graalvm.nativeimage.IsolateThread;
+package com.oracle.svm.core.graal.isolated;
 
 /**
- * The {@link IsolateThread} of the compiler performing a compilation requested by a
- * {@linkplain ClientIsolateThread client}.
+ * A handle to an object of type T that exists in the {@linkplain CompilerIsolateThread compilation
+ * isolate}.
  */
-public interface CompilerIsolateThread extends IsolateThread {
+public interface CompilerHandle<T> extends IsolatedHandle<T> {
 }
