@@ -471,6 +471,11 @@ public final class Interval {
     Interval next;
 
     /**
+     * Link to next spill interval in a list of intervals that ends with {@code null}.
+     */
+    Interval spillNext;
+
+    /**
      * The linear-scan state of this interval.
      */
     State state;

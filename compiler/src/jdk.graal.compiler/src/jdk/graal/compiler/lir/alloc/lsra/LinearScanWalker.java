@@ -31,12 +31,9 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.util.Util;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -89,21 +86,13 @@ class LinearScanWalker extends IntervalWalker {
     protected final int[] usePos;
     protected final int[] blockPos;
 
-    protected List<Interval>[] spillIntervals;
+    protected Interval[] spillIntervals;
 
     private MoveResolver moveResolver; // for ordering spill moves
 
     private int minReg;
 
     private int maxReg;
-
-    /**
-     * Only 10% of the lists in {@link #spillIntervals} are actually used. But when they are used,
-     * they can grow quite long. The maximum length observed was 45 (all numbers taken from a
-     * bootstrap run of Graal). Therefore, we initialize {@link #spillIntervals} with this marker
-     * value, and allocate a "real" list only on demand in {@link #setUsePos}.
-     */
-    private static final List<Interval> EMPTY_LIST = Collections.emptyList();
 
     // accessors mapped to same functions in class LinearScan
     int blockCount() {
@@ -118,23 +107,16 @@ class LinearScanWalker extends IntervalWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        spillIntervals = Util.uncheckedCast(new List<?>[allocator.getRegisters().size()]);
-        for (int i = 0; i < allocator.getRegisters().size(); i++) {
-            spillIntervals[i] = EMPTY_LIST;
-        }
+        spillIntervals = new Interval[allocator.getRegisters().size()];
         usePos = new int[allocator.getRegisters().size()];
         blockPos = new int[allocator.getRegisters().size()];
     }
 
     void initUseLists(boolean onlyProcessUsePos) {
-        for (Register register : availableRegs) {
-            int i = register.number;
-            usePos[i] = Integer.MAX_VALUE;
-
-            if (!onlyProcessUsePos) {
-                blockPos[i] = Integer.MAX_VALUE;
-                spillIntervals[i].clear();
-            }
+        Arrays.fill(usePos, Integer.MAX_VALUE);
+        if (!onlyProcessUsePos) {
+            Arrays.fill(blockPos, Integer.MAX_VALUE);
+            Arrays.fill(spillIntervals, null);
         }
     }
 
@@ -172,12 +154,8 @@ class LinearScanWalker extends IntervalWalker {
                     usePos[i] = intersects;
                 }
                 if (!onlyProcessUsePos) {
-                    List<Interval> list = spillIntervals[i];
-                    if (list == EMPTY_LIST) {
-                        list = new ArrayList<>(2);
-                        spillIntervals[i] = list;
-                    }
-                    list.add(interval);
+                    interval.spillNext = spillIntervals[i];
+                    spillIntervals[i] = interval;
                 }
             }
         }
@@ -917,8 +895,7 @@ class LinearScanWalker extends IntervalWalker {
     void splitAndSpillIntersectingIntervals(Register reg) {
         try (DebugCloseable t = allocator.start(splitAndSpillIntersectingIntervals)) {
             assert reg != null : "no register assigned";
-            for (int i = 0; i < spillIntervals[reg.number].size(); i++) {
-                Interval interval = spillIntervals[reg.number].get(i);
+            for (Interval interval = spillIntervals[reg.number]; interval != null; interval = interval.spillNext) {
                 removeFromList(interval);
                 splitAndSpillInterval(interval, null, -1/* unconditionally split and spill */);
             }
@@ -1047,8 +1024,8 @@ class LinearScanWalker extends IntervalWalker {
             for (Register reg : availableRegs) {
                 int i = reg.number;
                 try (Indent indent3 = debug.logAndIndent("reg %d: usePos: %d, blockPos: %d, intervals: ", i, usePos[i], blockPos[i])) {
-                    for (int j = 0; j < spillIntervals[i].size(); j++) {
-                        debug.log("%s ", spillIntervals[i].get(j));
+                    for (Interval interval = spillIntervals[reg.number]; interval != null; interval = interval.spillNext) {
+                        debug.log("%s ", interval);
                     }
                 }
             }
