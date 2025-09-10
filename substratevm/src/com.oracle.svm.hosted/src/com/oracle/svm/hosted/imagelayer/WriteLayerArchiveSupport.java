@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+import static com.oracle.svm.hosted.NativeImageClassLoaderSupport.PathDigestEntry;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.jar.JarOutputStream;
 
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +46,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 
 /* Builds an image layer, either initial or intermediate. */
 public class WriteLayerArchiveSupport extends LayerArchiveSupport {
+    private final List<String> builderArguments;
+    private final List<PathDigestEntry> buildPathDigests;
 
     public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport) {
         super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport);
@@ -52,8 +56,8 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, layerName) +
                             "' needs to start with '" + SHARED_LIB_NAME_PREFIX + "'");
         }
-        builderArguments.addAll(classLoaderSupport.getHostedOptionParser().getArguments());
-        buildPathDigests.addAll(PathDigestEntry.getPathDigestEntries(classLoaderSupport));
+        builderArguments = new ArrayList<>(classLoaderSupport.getHostedOptionParser().getArguments());
+        buildPathDigests = new ArrayList<>(classLoaderSupport.computePathEntryDigests());
     }
 
     @Override
@@ -73,27 +77,11 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    private void writeBuilderArgumentsFile() {
+    private <T> void writeBuildEntries(Path path, List<T> buildEntries, String buildEntryTypeDescription) {
         try {
-            Files.write(getBuilderArgumentsFilePath(), builderArguments);
+            Files.write(path, buildEntries.stream().map(T::toString).toList());
         } catch (IOException e) {
-            throw UserError.abort("Unable to write builder arguments to file " + getBuilderArgumentsFilePath());
-        }
-    }
-
-    private void writeEnvVariablesFile() {
-        try {
-            Files.write(getEnvVariablesFilePath(), parseEnvVariables().stream().map(EnvironmentVariable::toString).toList());
-        } catch (IOException e) {
-            throw UserError.abort("Unable to write environment variables to file " + getEnvVariablesFilePath());
-        }
-    }
-
-    private void writeBuildPathDigestsFile() {
-        try {
-            Files.write(getBuildPathDigestsFilePath(), buildPathDigests.stream().map(PathDigestEntry::toString).toList());
-        } catch (IOException e) {
-            throw UserError.abort("Unable to write build path digests to file " + getBuildPathDigestsFilePath());
+            throw UserError.abort("Unable to write " + buildEntryTypeDescription + " to file " + path);
         }
     }
 
@@ -102,14 +90,17 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             // disable compression for significant (un)archiving speedup at the cost of file size
             jarOutStream.setLevel(0);
             // write builder arguments file and add to jar
-            writeBuilderArgumentsFile();
-            archiveSupport.addFileToJar(layerDir, getBuilderArgumentsFilePath(), layerFile, jarOutStream);
+            Path builderArgumentsFilePath = getBuilderArgumentsFilePath();
+            writeBuildEntries(builderArgumentsFilePath, builderArguments, "builder arguments");
+            archiveSupport.addFileToJar(layerDir, builderArgumentsFilePath, layerFile, jarOutStream);
             // write environment variables file and add to jar
-            writeEnvVariablesFile();
-            archiveSupport.addFileToJar(layerDir, getEnvVariablesFilePath(), layerFile, jarOutStream);
-            // write image class and module paths file and add to jar
-            writeBuildPathDigestsFile();
-            archiveSupport.addFileToJar(layerDir, getBuildPathDigestsFilePath(), layerFile, jarOutStream);
+            Path envVariablesFilePath = getEnvVariablesFilePath();
+            writeBuildEntries(envVariablesFilePath, parseEnvVariables(), "environment variables");
+            archiveSupport.addFileToJar(layerDir, envVariablesFilePath, layerFile, jarOutStream);
+            // write image class and module paths digests file and add to jar
+            Path buildPathDigestsFilePath = getBuildPathDigestsFilePath();
+            writeBuildEntries(buildPathDigestsFilePath, buildPathDigests, "build path digests");
+            archiveSupport.addFileToJar(layerDir, buildPathDigestsFilePath, layerFile, jarOutStream);
             // copy the layer snapshot file and its graphs file to the jar
             archiveSupport.addFileToJar(layerDir, getSnapshotPath(), layerFile, jarOutStream);
             archiveSupport.addFileToJar(layerDir, getSnapshotGraphsPath(), layerFile, jarOutStream);

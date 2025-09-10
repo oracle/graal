@@ -74,6 +74,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collector;
@@ -81,6 +82,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipFile;
 
+import jdk.internal.module.Resources;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -126,7 +128,9 @@ public final class NativeImageClassLoaderSupport {
     private final List<Path> buildmp;
 
     private final Set<Path> imageProvidedJars;
+    /** Cleared by {@link #computePathEntryDigests()} on first call. */
     private PathDigests pathDigests;
+    private final Class<?> explodedModuleReaderClass;
 
     private final EconomicMap<URI, EconomicSet<String>> classes;
     private final EconomicMap<URI, EconomicSet<String>> packages;
@@ -289,6 +293,8 @@ public final class NativeImageClassLoaderSupport {
         annotationExtractor = new SubstrateAnnotationExtractor();
 
         includeConfigSealed = false;
+
+        explodedModuleReaderClass = ReflectionUtil.lookupClass(false, "jdk.internal.module.ModuleReferences$ExplodedModuleReader");
     }
 
     private static Stream<Path> toRealPath(Path p) {
@@ -311,11 +317,14 @@ public final class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    public Optional<PathDigests> getPathDigests(boolean free) {
-        Optional<PathDigests> res = Optional.ofNullable(pathDigests);
-        if (free) {
-            pathDigests = null;
-        }
+    /**
+     * The temporary {@link PathDigestEntry} object is used to create the list of
+     * {@link PathDigestEntry} tuples. Note that the {@code pathDigests} field is cleared after the
+     * first time this method is called.
+     */
+    public List<PathDigestEntry> computePathEntryDigests() {
+        List<PathDigestEntry> res = PathDigestEntry.aggregatePathDigests(pathDigests);
+        pathDigests = null;
         return res;
     }
 
@@ -986,21 +995,47 @@ public final class NativeImageClassLoaderSupport {
                 }
                 final boolean isInImageModulePathOfLayeredBuild = pathDigests != null && pathDigests.mpDigests.containsKey(container);
                 final boolean isJar = ClasspathUtils.isJar(Path.of(container));
-                moduleReader.list().forEach(moduleResource -> {
-                    char fileSystemSeparatorChar = '/';
-                    String className = extractClassName(moduleResource, fileSystemSeparatorChar);
-                    if (className != null) {
-                        currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, moduleRequiresInit, preserveModule));
-                    }
-                    if (isInImageModulePathOfLayeredBuild) {
-                        executor.execute(() -> PathDigests.storePathFileDigest(container, moduleResource, isJar, pathDigests.mpDigests));
-                    }
-                    entriesProcessed.increment();
-                });
+                try (Stream<String> moduleResources = moduleReaderListFollowSymlinks(moduleReader, container)) {
+                    moduleResources.forEach(moduleResource -> {
+                        char fileSystemSeparatorChar = '/';
+                        String className = extractClassName(moduleResource, fileSystemSeparatorChar);
+                        if (className != null) {
+                            currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
+                            executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, moduleRequiresInit, preserveModule));
+                        }
+                        if (isInImageModulePathOfLayeredBuild) {
+                            executor.execute(() -> PathDigests.storePathFileDigest(container, moduleResource, isJar, pathDigests.mpDigests));
+                        }
+                        entriesProcessed.increment();
+                    });
+                }
             } catch (IOException e) {
                 throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
             }
+        }
+
+        /**
+         * This method extends {@link ModuleReader#list} with the ability to follow symlinks when
+         * the given {@link ModuleReader} corresponds to a
+         * {@code jdk.internal.module.ModuleReferences$ExplodedModuleReader} (i.e.,
+         * {@code container} is a directory which contains the contents of the module).
+         *
+         * Classloaders (e.g., {@link NativeImageClassLoader#findResource(String, String)}) can load
+         * resources pointed to by a symlink present on the modulepath, meaning the extension below
+         * is necessary if we want to keep track of such resources (e.g., for digest computation in
+         * layered builds).
+         */
+        @SuppressWarnings("resource")
+        private Stream<String> moduleReaderListFollowSymlinks(ModuleReader reader, URI container) throws IOException {
+            if (explodedModuleReaderClass == null || !reader.getClass().isAssignableFrom(explodedModuleReaderClass)) {
+                return reader.list();
+            }
+
+            Path dir = Path.of(container);
+            // See {@code jdk.internal.module.ModuleReferences$ExplodedModuleReader#list}.
+            return Files.walk(dir, Integer.MAX_VALUE, FileVisitOption.FOLLOW_LINKS)
+                            .map(f -> Resources.toResourceName(dir, f))
+                            .filter(Predicate.not(String::isEmpty));
         }
 
         private void loadClassesFromPath(Path path) {
@@ -1434,7 +1469,16 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    public static final class PathDigests {
+    /**
+     * Stores a temporary collection of individual class/resource file digests that is updated
+     * during class loading. In particular, {@code PathDigests} objects store and update two
+     * {@link EconomicMap}s, one for classpath entries and the other for modulepath entries. Each
+     * {@link EconomicMap} maps a path entry (i.e., directory/jar) with the list of individual
+     * digests for the files it contains. The order of the individual digests is non-deterministic.
+     * After class loading, the {@code PathDigests} should be aggregated into a list of
+     * {@link PathDigestEntry}.
+     */
+    private static final class PathDigests {
         private final EconomicMap<URI, List<String>> cpDigests = EconomicMap.create();
         private final EconomicMap<URI, List<String>> mpDigests = EconomicMap.create();
 
@@ -1475,12 +1519,73 @@ public final class NativeImageClassLoaderSupport {
             }
         }
 
-        public EconomicMap<URI, List<String>> getCpDigests() {
+        private EconomicMap<URI, List<String>> getCpDigests() {
             return cpDigests;
         }
 
-        public EconomicMap<URI, List<String>> getMpDigests() {
+        private EconomicMap<URI, List<String>> getMpDigests() {
             return mpDigests;
+        }
+    }
+
+    /**
+     * The record type {@link PathDigestEntry} encodes tuples of the form (type, digest, path),
+     * where: - type: is either {@code PathType.cp} or {@code PathType.mp} - digest: is a checksum
+     * which encodes information about every class/resource file part of that path (or reachable
+     * from a symlink part of that path) - path: is the absolute path ponting to the directory/jar
+     * included on the class/module-path. To obtain a list of all {@code PathDigestEntry} objects
+     * corresponding to a particular Native Image build, use the method
+     * {@link NativeImageClassLoaderSupport#computePathEntryDigests()}.
+     */
+    public record PathDigestEntry(PathType type, String digest, String path) {
+
+        /**
+         * Aggregate the contents of {@link PathDigests} to create a list of
+         * {@link PathDigestEntry}. The individual file digests of a path entry are aggregated into
+         * a final digest that encodes information about all the contents of that path entry.
+         */
+        private static List<PathDigestEntry> aggregatePathDigests(PathDigests pathDigests) {
+            Objects.requireNonNull(pathDigests, "NativeImageClassLoaderSupport#pathDigests should not be empty for a layered build.");
+
+            List<PathDigestEntry> aggregatedDigests = new ArrayList<>();
+            aggregatedDigests.addAll(aggregatePathDigests(pathDigests.getCpDigests(), PathType.cp));
+            aggregatedDigests.addAll(aggregatePathDigests(pathDigests.getMpDigests(), PathType.mp));
+            return aggregatedDigests;
+        }
+
+        private static List<PathDigestEntry> aggregatePathDigests(EconomicMap<URI, List<String>> pathDigests, PathType type) {
+            List<PathDigestEntry> aggregatedDigests = new ArrayList<>();
+            var cursor = pathDigests.getEntries();
+            while (cursor.advance()) {
+                aggregatedDigests.add(PathDigestEntry.of(type, cursor.getKey().getPath(), cursor.getValue()));
+            }
+            return aggregatedDigests;
+        }
+
+        private static PathDigestEntry of(PathType type, String path, List<String> digests) {
+            DigestBuilder db = new DigestBuilder();
+            digests.stream()
+                            .sorted()
+                            .map(d -> d.getBytes(StandardCharsets.UTF_8))
+                            .forEach(db::update);
+
+            String aggregatedDigest = new String(db.digest(), StandardCharsets.UTF_8);
+            return new PathDigestEntry(type, aggregatedDigest, path);
+        }
+
+        public static PathDigestEntry of(String digestEntry) {
+            String[] envVarArr = digestEntry.split(":", 3);
+            return new PathDigestEntry(PathType.valueOf(envVarArr[0]), envVarArr[1], envVarArr[2]);
+        }
+
+        @Override
+        public String toString() {
+            return type + ":" + digest + ":" + path;
+        }
+
+        public enum PathType {
+            cp,
+            mp
         }
     }
 }
