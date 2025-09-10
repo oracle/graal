@@ -308,7 +308,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     }
 
     /**
-     * Abstract to force overriding.
+     * Must be overridden in subclasses.
      *
      * @since 0.8 or earlier
      */
@@ -318,7 +318,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     }
 
     /**
-     * Abstract to force overriding.
+     * Must be overridden in subclasses.
      *
      * @since 0.8 or earlier
      */
@@ -330,20 +330,15 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         if (obj == null) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        return true;
+        return getClass() == obj.getClass();
     }
 
+    /**
+     * @since 0.8 or earlier
+     */
     @Override
     public String toString() {
-        String typeString = Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
-        return typeString + getWhereString();
-    }
-
-    protected String getWhereString() {
-        return "";
+        return Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
     }
 
     /**
