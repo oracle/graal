@@ -30,7 +30,6 @@ import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,13 +52,20 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -67,7 +73,8 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredImageSingleton
-public final class ClassForNameSupport implements MultiLayeredImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = ClassForNameSupport.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public final class ClassForNameSupport {
 
     public static final String CLASSES_REGISTERED = "classes registered";
     public static final String CLASSES_REGISTERED_STATES = "classes registered states";
@@ -523,63 +530,74 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         return false;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    ClassForNameSupport support = (ClassForNameSupport) singleton;
+                    List<String> classNames = new ArrayList<>();
+                    List<Boolean> classStates = new ArrayList<>();
+                    Set<String> unsafeNames = new HashSet<>(support.previousLayerUnsafe);
+
+                    var cursor = support.knownClasses.getEntries();
+                    while (cursor.advance()) {
+                        classNames.add(cursor.getKey());
+                        boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY;
+                        classStates.add(!isNegativeQuery);
+                    }
+
+                    for (var entry : support.previousLayerClasses.entrySet()) {
+                        /*
+                         * If a complete entry overwrites a negative query from a previous layer,
+                         * the previousLayerClasses map entry needs to be skipped to register the
+                         * new entry for extension layers.
+                         */
+                        if (!classNames.contains(entry.getKey())) {
+                            classNames.add(entry.getKey());
+                            classStates.add(entry.getValue());
+                        }
+                    }
+
+                    support.unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
+
+                    writer.writeStringList(CLASSES_REGISTERED, classNames);
+                    writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
+                    writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.stream().toList());
+                    /*
+                     * The option is not accessible when the singleton is loaded, so the boolean
+                     * needs to be persisted.
+                     */
+                    writer.writeInt(RESPECTS_CLASS_LOADER, respectClassLoader() ? 1 : 0);
+
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
     }
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        List<String> classNames = new ArrayList<>();
-        List<Boolean> classStates = new ArrayList<>();
-        Set<String> unsafeNames = new HashSet<>(previousLayerUnsafe);
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+        @Override
+        public Object createFromLoader(ImageSingletonLoader loader) {
+            List<String> previousLayerClassKeys = loader.readStringList(CLASSES_REGISTERED);
+            List<Boolean> previousLayerClassStates = loader.readBoolList(CLASSES_REGISTERED_STATES);
 
-        var cursor = knownClasses.getEntries();
-        while (cursor.advance()) {
-            classNames.add(cursor.getKey());
-            boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY;
-            classStates.add(!isNegativeQuery);
-        }
-
-        for (var entry : previousLayerClasses.entrySet()) {
-            /*
-             * If a complete entry overwrites a negative query from a previous layer, the
-             * previousLayerClasses map entry needs to be skipped to register the new entry for
-             * extension layers.
-             */
-            if (!classNames.contains(entry.getKey())) {
-                classNames.add(entry.getKey());
-                classStates.add(entry.getValue());
+            Map<String, Boolean> previousLayerClasses = new HashMap<>();
+            for (int i = 0; i < previousLayerClassKeys.size(); ++i) {
+                previousLayerClasses.put(previousLayerClassKeys.get(i), previousLayerClassStates.get(i));
             }
+
+            Set<String> previousLayerUnsafe = Set.copyOf(loader.readStringList(UNSAFE_REGISTERED));
+            boolean respectsClassLoader = loader.readInt(RESPECTS_CLASS_LOADER) == 1;
+
+            return new ClassForNameSupport(Collections.unmodifiableMap(previousLayerClasses), previousLayerUnsafe, respectsClassLoader);
         }
-
-        unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
-
-        writer.writeStringList(CLASSES_REGISTERED, classNames);
-        writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
-        writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.stream().toList());
-        /*
-         * The option is not accessible when the singleton is loaded, so the boolean needs to be
-         * persisted.
-         */
-        writer.writeInt(RESPECTS_CLASS_LOADER, respectClassLoader() ? 1 : 0);
-
-        return PersistFlags.CREATE;
-    }
-
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        List<String> previousLayerClassKeys = loader.readStringList(CLASSES_REGISTERED);
-        List<Boolean> previousLayerClassStates = loader.readBoolList(CLASSES_REGISTERED_STATES);
-
-        Map<String, Boolean> previousLayerClasses = new HashMap<>();
-        for (int i = 0; i < previousLayerClassKeys.size(); ++i) {
-            previousLayerClasses.put(previousLayerClassKeys.get(i), previousLayerClassStates.get(i));
-        }
-
-        Set<String> previousLayerUnsafe = Set.copyOf(loader.readStringList(UNSAFE_REGISTERED));
-        boolean respectsClassLoader = loader.readInt(RESPECTS_CLASS_LOADER) == 1;
-
-        return new ClassForNameSupport(Collections.unmodifiableMap(previousLayerClasses), previousLayerUnsafe, respectsClassLoader);
     }
 }

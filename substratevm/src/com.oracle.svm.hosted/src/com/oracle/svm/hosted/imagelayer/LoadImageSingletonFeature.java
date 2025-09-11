@@ -196,7 +196,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
-        layeredImageSingletonSupport.freezeLayeredImageSingletonMetadata();
+        layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER);
 
         Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
             var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
@@ -211,7 +211,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
              * accessed via a multi-layer lookup in a subsequent layer, so they must be installed in
              * the heap.
              */
-            Object[] multiLayeredSingletons = layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys().stream().map(key -> layeredImageSingletonSupport.lookup(key, true, true)).toArray();
+            Object[] multiLayeredSingletons = layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER).toArray();
             if (multiLayeredSingletons.length != 0) {
                 multiLayerEmbeddedRootsRegistration.accept(multiLayeredSingletons);
             }
@@ -386,7 +386,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
          */
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         Collection<Class<?>> candidatesClasses = buildingApplicationLayer ? getCrossLayerSingletonMappingInfo().getCurrentKeyToSlotInfoMap().keySet()
-                        : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys();
+                        : layeredImageSingletonSupport.getKeysWithTrait(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER);
         for (var keyClass : candidatesClasses) {
             var singleton = layeredImageSingletonSupport.lookup(keyClass, true, true);
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(singleton);
@@ -645,7 +645,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
          */
 
         Map<Class<?>, List<Integer>> currentKeyToSingletonObjectIDsMap = new HashMap<>(priorKeyToSingletonObjectIDsMap);
-        for (var keyClass : LayeredImageSingletonSupport.singleton().getMultiLayeredImageSingletonKeys()) {
+        for (var keyClass : LayeredImageSingletonSupport.singleton().getKeysWithTrait(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER)) {
             Integer id = layerKeyToObjectIDMap.get(keyClass);
             assert id != null : "Missing multiLayerKey " + keyClass;
             currentKeyToSingletonObjectIDsMap.compute(keyClass, (_, v) -> {

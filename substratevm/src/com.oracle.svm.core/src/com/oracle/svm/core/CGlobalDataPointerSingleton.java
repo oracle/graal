@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * This singleton contains the {@link CGlobalDataBasePointer} of the current layer. In layered
@@ -44,7 +44,8 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
  * used.
  */
 @AutomaticallyRegisteredImageSingleton
-public class CGlobalDataPointerSingleton implements MultiLayeredImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public class CGlobalDataPointerSingleton {
 
     /**
      * Image heap object storing the base address of CGlobalData memory using a relocation. Before
@@ -63,15 +64,5 @@ public class CGlobalDataPointerSingleton implements MultiLayeredImageSingleton {
 
     public BoxedRelocatedPointer getRuntimeBaseAddress() {
         return cGlobalDataRuntimeBaseAddress;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        return PersistFlags.NOTHING;
     }
 }
