@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +26,8 @@
  */
 package com.oracle.svm.core.jfr.logging;
 
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import java.util.Locale;
 import java.util.Set;
 
@@ -34,11 +37,14 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
+    private final IllegalArgumentException verifyLogLevelException;
+    private final IllegalArgumentException verifyLogTagSetIdException;
     private final String[] logLevels;
     private final String[] logTagSets;
     private int levelDecorationFill = 0;
@@ -46,6 +52,8 @@ public class JfrLogging {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrLogging() {
+        verifyLogLevelException = new IllegalArgumentException("LogLevel passed is outside valid range");
+        verifyLogTagSetIdException = new IllegalArgumentException("LogTagSet id is outside valid range");
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
     }
@@ -54,11 +62,13 @@ public class JfrLogging {
         JfrLogConfiguration.parse(config);
     }
 
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void warnInternal(String message) {
         int tagSetId = SubstrateUtil.cast(LogTag.JFR_SYSTEM, Target_jdk_jfr_internal_LogTag.class).id;
         log(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
     }
 
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void log(int tagSetId, int level, String message) {
         if (message == null) {
             return;
@@ -85,6 +95,7 @@ public class JfrLogging {
         log.string(message).newline();
     }
 
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logEvent(int level, String[] lines, boolean system) {
         if (lines == null) {
             return;
@@ -100,13 +111,13 @@ public class JfrLogging {
 
     private void verifyLogLevel(int level) {
         if (level < 0 || level >= logLevels.length || logLevels[level] == null) {
-            throw new IllegalArgumentException("LogLevel passed is outside valid range");
+            throw verifyLogLevelException;
         }
     }
 
     private void verifyLogTagSetId(int tagSetId) {
         if (tagSetId < 0 || tagSetId >= logTagSets.length) {
-            throw new IllegalArgumentException("LogTagSet id is outside valid range");
+            throw verifyLogTagSetIdException;
         }
     }
 
