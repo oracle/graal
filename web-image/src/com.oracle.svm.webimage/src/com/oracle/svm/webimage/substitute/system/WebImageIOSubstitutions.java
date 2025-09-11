@@ -94,25 +94,6 @@ final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath {
     }
 }
 
-/*
-// TODO: remove after discussing where to put change
-@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.JimfsFileChannel")
-final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsFileChannel {
-
-
-   // Note: This needs to be a subclass IOException so that BasicImageReader in Espresso fails gracefully.
-   // In jimfs this would be an UnsupportedOperationException, which is not caught in Espresso.
-   // The operation is not supported because MappedByteBuffer is an abstract class inheriting from the sealed class Buffer,
-   // and thus cannot be implemented.
-
-
-    @Substitute
-    public MappedByteBuffer map(FileChannel.MapMode mode, long position, long size) throws IOException {
-        throw new IOException("cannot map jimfs file");
-    }
-}
-*/
-
 @TargetClass(java.io.FileInputStream.class)
 final class Target_java_io_FileInputStream_Web {
 
@@ -297,15 +278,6 @@ final class Target_java_nio_file_FileSystems_DefaultFileSystemHolder_Web {
 
 }
 
-@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider")
-final class Target_sun_nio_fs_DefaultFileSystemProvider {
-    @Substitute
-    public static FileSystem theFileSystem() {
-        return WebImageNIOFileSystemProvider.INSTANCE.getFileSystem(null);
-    }
-}
-
-
 @TargetClass(className = "sun.nio.fs.AbstractFileSystemProvider")
 @SuppressWarnings("all")
 final class Target_sun_nio_fs_AbstractFileSystemProvider_Web {
@@ -375,34 +347,42 @@ final class Target_java_nio_file_Files_Web {
 @TargetClass(java.io.RandomAccessFile.class)
 @SuppressWarnings("all")
 final class Target_java_io_RandomAccessFile_Web {
-    @Alias private String path;
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
-    FileChannel fileChannel;
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
-    ByteBuffer buffer = ByteBuffer.allocate(1);
+    @Alias static int O_RDWR;
+    @Alias FileChannel channel;
 
     @Substitute
     private void open0(String name, int mode) throws FileNotFoundException {
+        Path path = Path.of(name);
+        if (Files.notExists(path)) {
+            throw new FileNotFoundException(name + " does not exist.");
+        }
+        if (Files.isDirectory(path)) {
+            throw new FileNotFoundException(name + " is a directory.");
+        }
+        if ((mode & O_RDWR) != 0) {
+            throw new UnsupportedOperationException("open RandomAccessFile with mode other than readonly.");
+        }
+
         try {
-            Set<StandardOpenOption> options = Set.of(StandardOpenOption.READ, StandardOpenOption.WRITE);
-            fileChannel = FileChannel.open(Path.of(path), options);
-        } catch(IOException e) {
+            Set<StandardOpenOption> options = Set.of(StandardOpenOption.READ);
+            channel = FileChannel.open(Path.of(name), options);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Substitute
     private int read0() throws IOException {
-        fileChannel.read(buffer);
-        return buffer.get(0); // TODO? rewind buffer?
+        ByteBuffer buffer = ByteBuffer.allocate(1);
+        int result = channel.read(buffer);
+        return buffer.get(0);
     }
 
     @Substitute
-    private int readBytes(byte[] b, int off, int len) throws IOException {
-        // TODO: map exception handling
+    private int readBytes0(byte[] b, int off, int len) throws IOException {
         ByteBuffer buf = ByteBuffer.allocate(len);
-        int read = fileChannel.read(buf);
-        buf.rewind();
+        int read = channel.read(buf);
+        buf.flip();
         buf.get(b, off, Math.min(read, len));
         return read;
     }
@@ -419,17 +399,17 @@ final class Target_java_io_RandomAccessFile_Web {
 
     @Substitute
     public long getFilePointer() throws IOException {
-        throw new UnsupportedOperationException("RandomAccessFile.getFilePointer");
+        return channel.position();
     }
 
     @Substitute
     private void seek0(long pos) throws IOException {
-        fileChannel.position(pos);
+        channel.position(pos);
     }
 
     @Substitute
     public long length() throws IOException {
-        return fileChannel.size();
+        return channel.size();
     }
 
     @Substitute
@@ -439,6 +419,7 @@ final class Target_java_io_RandomAccessFile_Web {
 
     @Substitute
     private static void initIDs() {
+        // do nothing
     }
 }
 
@@ -465,6 +446,14 @@ final class Target_sun_nio_ch_FileChannelImpl_Web {
         throw new UnsupportedOperationException("FileChannelImpl.size");
     }
 
+}
+
+@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider")
+final class Target_sun_nio_fs_DefaultFileSystemProvider {
+    @Substitute
+    public static FileSystem theFileSystem() {
+        return WebImageNIOFileSystemProvider.INSTANCE.getFileSystem(null);
+    }
 }
 
 @TargetClass(className = "java.nio.file.TempFileHelper")
