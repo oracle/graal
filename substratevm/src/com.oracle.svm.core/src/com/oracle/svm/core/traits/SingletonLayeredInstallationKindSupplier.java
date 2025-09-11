@@ -30,7 +30,7 @@ package com.oracle.svm.core.traits;
  * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more information.
  */
 // Checkstyle: stop
-public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.Disallowed, SingletonLayeredInstallationKind.Independent, SingletonLayeredInstallationKind.InitialLayerOnly, SingletonLayeredInstallationKind.ApplicationLayerOnly {
+public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.Disallowed, SingletonLayeredInstallationKind.Independent, SingletonLayeredInstallationKind.InitialLayerOnly, SingletonLayeredInstallationKind.ApplicationLayerOnly, SingletonLayeredInstallationKind.MultiLayer {
 // Checkstyle: resume
     public abstract SingletonTrait getLayeredInstallationKindTrait();
 }

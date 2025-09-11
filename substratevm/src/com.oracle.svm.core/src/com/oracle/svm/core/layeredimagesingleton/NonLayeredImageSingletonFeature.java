@@ -37,7 +37,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -66,14 +65,20 @@ public class NonLayeredImageSingletonFeature implements InternalFeature, Feature
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        var layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         Function<Class<?>, Object> lookupMultiLayeredImageSingleton = (key) -> {
-            Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
-            boolean conditions = singleton.getClass().equals(key) &&
-                            singleton instanceof MultiLayeredImageSingleton multiLayerSingleton &&
-                            multiLayerSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS);
-            VMError.guarantee(conditions, "Illegal singleton %s", singleton);
-
-            return singleton;
+            /*
+             * Note in a non-layered build
+             *
+             * 1) SingletonTraitKind.LAYERED_INSTALLATION_KIND traits are not installed.
+             *
+             * 2) There is no difference between layered and non-layered singletons - all exist only
+             * in a single layer.
+             *
+             * Hence, we do not perform any validation around whether the key would be a MultiLayer
+             * image singleton in a layered build.
+             */
+            return layeredImageSingletonSupport.lookup(key, true, false);
         };
 
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), MultiLayeredImageSingleton.class);

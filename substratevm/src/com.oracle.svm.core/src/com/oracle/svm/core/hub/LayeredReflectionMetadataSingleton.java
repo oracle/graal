@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,19 +35,27 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * This singleton stores the {@link ReflectionMetadata} of each {@link DynamicHub} across layers to
  * allow registering elements for reflection in extension layers too.
  */
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingInitialLayerPredicate.class)
-public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSingleton {
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = LayeredReflectionMetadataSingleton.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.MultiLayer.class)
+public class LayeredReflectionMetadataSingleton {
     private static final String LAYERED_REFLECTION_METADATA_HUBS = "layered reflection metadata hubs";
     private static final String LAYERED_REFLECTION_METADATA_CLASS_FLAGS = "layered reflection metadata classFlags";
 
@@ -109,50 +116,62 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
         return reflectionMetadataMap.get(hub.getTypeID());
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    LayeredReflectionMetadataSingleton metadata = (LayeredReflectionMetadataSingleton) singleton;
+                    List<Integer> hubs = new ArrayList<>();
+                    List<Integer> classFlagsList = new ArrayList<>();
+
+                    var cursor = metadata.reflectionMetadataMap.getEntries();
+                    while (cursor.advance()) {
+                        int hub = cursor.getKey();
+                        hubs.add(hub);
+                        classFlagsList.add(getCombinedClassFlags(cursor.getValue(), metadata.previousLayerClassFlags.getOrDefault(hub, 0)));
+                    }
+
+                    for (var entry : metadata.previousLayerClassFlags.entrySet()) {
+                        if (!hubs.contains(entry.getKey())) {
+                            /*
+                             * If new class flags were written in this layer, the class flags from
+                             * previous layers need to be skipped.
+                             */
+                            hubs.add(entry.getKey());
+                            classFlagsList.add(entry.getValue());
+                        }
+                    }
+
+                    writer.writeIntList(LAYERED_REFLECTION_METADATA_HUBS, hubs);
+                    writer.writeIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS, classFlagsList);
+
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
     }
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        List<Integer> hubs = new ArrayList<>();
-        List<Integer> classFlagsList = new ArrayList<>();
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+        @Override
+        public Object createFromLoader(ImageSingletonLoader loader) {
+            List<Integer> hubs = loader.readIntList(LAYERED_REFLECTION_METADATA_HUBS);
+            List<Integer> previousLayerClassFlags = loader.readIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS);
 
-        var cursor = reflectionMetadataMap.getEntries();
-        while (cursor.advance()) {
-            int hub = cursor.getKey();
-            hubs.add(hub);
-            classFlagsList.add(getCombinedClassFlags(cursor.getValue(), previousLayerClassFlags.getOrDefault(hub, 0)));
-        }
-
-        for (var entry : previousLayerClassFlags.entrySet()) {
-            if (!hubs.contains(entry.getKey())) {
-                /*
-                 * If new class flags were written in this layer, the class flags from previous
-                 * layers need to be skipped.
-                 */
-                hubs.add(entry.getKey());
-                classFlagsList.add(entry.getValue());
+            Map<Integer, Integer> classDatas = new HashMap<>();
+            for (int i = 0; i < hubs.size(); ++i) {
+                classDatas.put(hubs.get(i), previousLayerClassFlags.get(i));
             }
+
+            return new LayeredReflectionMetadataSingleton(Collections.unmodifiableMap(classDatas));
         }
-
-        writer.writeIntList(LAYERED_REFLECTION_METADATA_HUBS, hubs);
-        writer.writeIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS, classFlagsList);
-
-        return PersistFlags.CREATE;
-    }
-
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        List<Integer> hubs = loader.readIntList(LAYERED_REFLECTION_METADATA_HUBS);
-        List<Integer> previousLayerClassFlags = loader.readIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS);
-
-        Map<Integer, Integer> classDatas = new HashMap<>();
-        for (int i = 0; i < hubs.size(); ++i) {
-            classDatas.put(hubs.get(i), previousLayerClassFlags.get(i));
-        }
-
-        return new LayeredReflectionMetadataSingleton(Collections.unmodifiableMap(classDatas));
     }
 }
