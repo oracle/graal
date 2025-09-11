@@ -55,7 +55,10 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
     private static final boolean JDK21 = Runtime.version().feature() == 21;
     private static final int UNUSED_OFFSET = 0;
 
-    /** Field offset. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! */
+    /**
+     * Field offset. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! On JDK21 this is
+     * 0, so always use {@link #offset()} instead of this field directly.
+     */
     private final long offset;
     /** Declaring class. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! */
     private final Class<? extends DynamicObject> tclass;
@@ -116,19 +119,19 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
 
     @Override
     public String toString() {
-        return name + ":" + offset;
+        return name + ":" + offset();
     }
 
     @Override
     public int compareTo(FieldInfo other) {
-        return Long.compare(this.offset, other.offset);
+        return Long.compare(this.offset(), other.offset());
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + Long.hashCode(offset);
+        result = prime * result + Long.hashCode(offset());
         result = prime * result + tclass.hashCode();
         return result;
     }
@@ -141,7 +144,7 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
         if (!(obj instanceof FieldInfo other)) {
             return false;
         }
-        return this.offset == other.offset && this.tclass == other.tclass;
+        return this.offset() == other.offset() && this.tclass == other.tclass;
     }
 
     void receiverCheck(DynamicObject store) {
