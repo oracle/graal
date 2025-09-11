@@ -471,7 +471,10 @@ public final class Interval {
     Interval next;
 
     /**
-     * Link to next spill interval in a list of intervals that ends with {@code null}.
+     * Link to the next spill interval in a list of intervals that ends with {@code null}. This
+     * field is only valid when iterating intervals starting from
+     * {@link LinearScanWalker#spillIntervals}. Only the head of the list of cleared so this field
+     * can contain stale values.
      */
     Interval spillNext;
 
@@ -655,8 +658,14 @@ public final class Interval {
     private int rangePairLength;
 
     /**
-     * The list [{@code from}, {@code to}) pairs representing a range of integers from a start
+     * The list of [{@code from}, {@code to}) pairs representing a range of integers from a start
      * (inclusive) to an end (exclusive).
+     * <p>
+     * All values are positive and the ranges are always sorted such that {@code from} is less than
+     * {@code to} and {@code to} is less than the next {@code from}. This means that the integers in
+     * the array are sorted and disjoint. The {@code to} of a range will never equal the
+     * {@code from} of the next range as during interval construction such ranges are merged into a
+     * single range. {@link #rangePairLength} is portion of this array that is valid.
      */
     private int[] rangePairs;
 
@@ -683,6 +692,11 @@ public final class Interval {
     private void ensureCapacity(int minCapacity) {
         if (minCapacity > rangePairs.length) {
             int oldCapacity = rangePairs.length;
+            /*
+             * This is basically the ArrayList expansion policy but in practice these arrays are
+             * relatively short so the policy isn't critical. Roughly 30% of intervals have a single
+             * element and 90% have less than 10.
+             */
             rangePairs = Arrays.copyOf(rangePairs, oldCapacity + Math.max(minCapacity - oldCapacity, oldCapacity >> 1));
         }
     }
@@ -741,34 +755,36 @@ public final class Interval {
     }
 
     /**
-     * Copy the content of {@code other} into this list starting after splitPos.
+     * Splits this interval at a specified position, creating a new child interval and updating the
+     * range information for both this interval and the new child.
      */
-    void split(Interval other, int splitPos) {
+    Interval createSplit(int splitPos, LinearScan allocator) {
+        Interval newInterval = newSplitChild(allocator);
         // split the ranges
         int curRangeIndex = 0;
-        while (curRangeIndex != other.rangePairLength && other.to(curRangeIndex) <= splitPos) {
+        while (curRangeIndex != rangePairLength && to(curRangeIndex) <= splitPos) {
             curRangeIndex += 2;
         }
-        assert !(curRangeIndex == other.rangePairLength) : "split interval after end of last range";
+        assert !(curRangeIndex == rangePairLength) : "split interval after end of last range";
 
-        if (other.from(curRangeIndex) < splitPos) {
+        if (from(curRangeIndex) < splitPos) {
             // Splitting a pair
-            rangePairs = Arrays.copyOfRange(other.rangePairs, curRangeIndex, other.rangePairLength);
-            rangePairLength = rangePairs.length;
-            if (rangePairLength > 0) {
-                rangePairs[0] = splitPos;
+            newInterval.rangePairs = Arrays.copyOfRange(rangePairs, curRangeIndex, rangePairLength);
+            newInterval.rangePairLength = newInterval.rangePairs.length;
+            if (newInterval.rangePairLength > 0) {
+                newInterval.rangePairs[0] = splitPos;
             }
-            other.rangePairLength = curRangeIndex + 2;
-            other.rangePairs[other.rangePairLength - 1] = splitPos;
+            rangePairLength = curRangeIndex + 2;
+            rangePairs[rangePairLength - 1] = splitPos;
         } else {
             // Splitting between two ranges
-            rangePairs = Arrays.copyOfRange(other.rangePairs, curRangeIndex, other.rangePairLength);
-            rangePairLength = rangePairs.length;
-            other.rangePairLength = curRangeIndex;
+            newInterval.rangePairs = Arrays.copyOfRange(rangePairs, curRangeIndex, rangePairLength);
+            newInterval.rangePairLength = newInterval.rangePairs.length;
+            rangePairLength = curRangeIndex;
         }
+        return newInterval;
     }
 
-    // range iteration
     /**
      * Resets the range iteration to the beginning of the interval's ranges.
      */
@@ -848,14 +864,15 @@ public final class Interval {
         }
     }
 
-    private boolean rangeIntersects(int rangeIndex, Interval other, int otherRangeIndex) {
-        int start = Math.max(from(rangeIndex), other.from(otherRangeIndex));
-        int end = Math.min(to(rangeIndex), other.to(otherRangeIndex));
-        return start < end;
-    }
-
     /**
-     * Checks if this interval intersects with a given interval using a binary search algorithm.
+     * Checks if this interval intersects with a given interval using a binary search algorithm. The
+     * method iterates through the ranges of the shorter interval and performs a binary search in
+     * the ranges of the longer interval to check for intersections.
+     * <p>
+     * The method proceeds by directly iterating over the shorter interval and uses
+     * {@link Arrays#binarySearch(int[], int)} to look for the current {@code from} in the longer
+     * interval. If binarySearch finds the value in the long interval then there are two cases. If
+     * the position of the value is even, then this is the from value which means
      */
     public boolean binarySearchInterval(Interval currentInterval) {
         Interval longInterval;
@@ -876,40 +893,66 @@ public final class Interval {
             int shortTo = shortInterval.to(shortCurrentRangeIndex);
             int searchResult = Arrays.binarySearch(longArray, longCurrentRangeIndex, longInterval.rangePairLength, shortFrom);
             if (searchResult >= 0) {
-                /*
-                 * The search found the other value. If it's even then the range was found because
-                 * short.from == long.from.
-                 */
                 if ((searchResult & 1) == 0) {
-                    assert shortInterval.rangeIntersects(shortCurrentRangeIndex, longInterval, searchResult);
+                    /*
+                     * The search found the other value. This means long contains either [shortFrom,
+                     * x) or [x, shortFrom). If it's even then the range was found because short
+                     * contains [shortFrom, x) and long contains [shortFrom, y).
+                     */
                     return true;
                 }
-                /*
-                 * short.from == long.to so short range doesn't intersect with current range in
-                 * long. Check the next range for overlap.
-                 */
+                // An odd searchResult means that shortFrom is the to of a range in long. In this
+                // case the ranges are [shortFrom, shortTo) in short and [x, shortFrom) in long so
+                // since the ranges are half open they don't intersect. Move to the next range in
+                // long and fall through to check for overlap. This will check if the next range in
+                // long begins before shortTo, which is the only way this short range could overlap.
+                //
+                // @formatter:off
+                // short                                   [shortFrom, shortTo)
+                // long intersects            [x, shortFrom)              [nextLongFrom, y)
+                // long doesn't intersect     [x, shortFrom)                    [nextLongFrom, y)
+                // @formatter:on
                 longCurrentRangeIndex = searchResult + 1;
             } else {
+                /*
+                 * If an element isn't found, binarySearch returns the proper insertion location as
+                 * (-(insertion point) - 1 so reverse this computation;
+                 */
                 int insertPoint = -(searchResult + 1);
                 if ((insertPoint & 1) != 0) {
-                    /*
-                     * The insertion point is odd which means long.from is between short.from and
-                     * short.to so they directly intersect.
-                     */
-                    assert shortInterval.rangeIntersects(shortCurrentRangeIndex, longInterval, insertPoint & ~1);
+                    // The insertion point is odd which means shortFrom > longFrom and shortFrom <
+                    // longTo which means they definitely intersect.
+                    //
+                    // @formatter:off
+                    // short               [shortFrom, shortTo]
+                    // long intersects    [x, y)
+                    // long intersects    [x,                      y)
+                    // @formatter:on
                     return true;
                 }
+                // The insertion point is even which means shortFrom is less than the longFrom, so
+                // fall through and check if the current range in long begins before shortTo, which
+                // is the only way this short range could overlap.
+                //
+                // @formatter:off
+                // short                                   [shortFrom, shortTo)
+                // long intersects                                        [nextLongFrom, y]
+                // long doesn't intersect                                     [nextLongFrom, y]
+                // @formatter:on
                 longCurrentRangeIndex = insertPoint;
             }
             if (longCurrentRangeIndex == longInterval.rangePairLength) {
                 return false;
             }
-            // Check if the next long range begins before the end of the short range.
+            // Check if the long range begins before the end of the short range.
             int longFrom = longInterval.from(longCurrentRangeIndex);
             if (longFrom < shortTo) {
-                assert shortInterval.rangeIntersects(shortCurrentRangeIndex, longInterval, longCurrentRangeIndex);
                 return true;
             }
+            /*
+             * The current short range doesn't intersect with any range in long so move on to the
+             * next.
+             */
             shortCurrentRangeIndex += 2;
         }
         return false;
@@ -920,7 +963,7 @@ public final class Interval {
     /**
      * Retrieves an element from an integer array using {@link Unsafe} for direct memory access. The
      * ranges checks add too much overhead and range check optimizations are unabled to eliminate
-     * them so we rely on the correct properly checking iteration ranges.
+     * them so we rely on the iteration logic to properly respect the bounds.
      */
     private static int elementGet(int[] array, int index) {
         return UNSAFE.getInt(array, Unsafe.ARRAY_INT_BASE_OFFSET + (long) index * Unsafe.ARRAY_INT_INDEX_SCALE);
@@ -937,14 +980,14 @@ public final class Interval {
             return -1;
         }
 
-        return intersectsAt(this.currentRangeIndex, other, other.currentRangeIndex);
+        return intersectsAt(this.currentRangeIndex, other, other.currentRangeIndex, Integer.MAX_VALUE);
     }
 
     /**
      * Checks if this interval intersects with a given interval, starting from the first range.
      */
     boolean intersects(Interval i) {
-        return intersectsAt(0, i, 0) != -1;
+        return intersectsAt(0, i, 0, Integer.MAX_VALUE) != -1;
     }
 
     /**
@@ -952,50 +995,57 @@ public final class Interval {
      * position. If an intersection is found, it returns the position of the intersection. If no
      * intersection is found, it returns -1.
      */
-    private int intersectsAt(int thisCurrentRangeIndex, Interval other, int otherCurrentRangeIndex) {
+    private int intersectsAt(int thisCurrentRangeIndex, Interval other, int otherCurrentRangeIndex, int limit) {
         int thisRangeIndex = thisCurrentRangeIndex;
         int otherRangeIndex = otherCurrentRangeIndex;
         int[] thisRangePairs = this.rangePairs;
         int[] otherRangePairs = other.rangePairs;
+        int thisFrom = elementGet(thisRangePairs, thisRangeIndex);
+        int otherFrom = elementGet(otherRangePairs, otherRangeIndex);
         do {
-            int r1from = elementGet(thisRangePairs, thisRangeIndex);
-            int r2from = elementGet(otherRangePairs, otherRangeIndex);
-            int r1to = elementGet(thisRangePairs, thisRangeIndex + 1);
-            if (r1from < r2from) {
-                if (r1to <= r2from) {
+            assert thisFrom == elementGet(thisRangePairs, thisRangeIndex) : "mismatch";
+            assert otherFrom == elementGet(otherRangePairs, otherRangeIndex) : "mismatch";
+
+            if (thisFrom > limit && otherFrom > limit) {
+                return -1;
+            }
+            int thisTo = elementGet(thisRangePairs, thisRangeIndex + 1);
+            if (thisFrom < otherFrom) {
+                if (thisTo <= otherFrom) {
                     thisRangeIndex += 2;
                     if (thisRangeIndex == rangePairLength) {
                         return -1;
                     }
+                    thisFrom = elementGet(thisRangePairs, thisRangeIndex);
                 } else {
-                    return r2from;
+                    return otherFrom;
                 }
+            } else if (thisFrom > otherFrom) {
+                if (elementGet(otherRangePairs, otherRangeIndex + 1) <= thisFrom) {
+                    otherRangeIndex += 2;
+                    if (otherRangeIndex == other.rangePairLength) {
+                        return -1;
+                    }
+                    otherFrom = elementGet(otherRangePairs, otherRangeIndex);
+                } else {
+                    return thisFrom;
+                }
+            } else if (thisFrom == thisTo) {
+                // thisFrom == otherFrom
+                thisRangeIndex += 2;
+                if (thisRangeIndex == rangePairLength) {
+                    return -1;
+                }
+                thisFrom = elementGet(thisRangePairs, thisRangeIndex);
             } else {
-                if (r2from < r1from) {
-                    if (elementGet(otherRangePairs, otherRangeIndex + 1) <= r1from) {
-                        otherRangeIndex += 2;
-                        if (otherRangeIndex == other.rangePairLength) {
-                            return -1;
-                        }
-                    } else {
-                        return r1from;
+                if (otherFrom == elementGet(otherRangePairs, otherRangeIndex + 1)) {
+                    otherRangeIndex += 2;
+                    if (otherRangeIndex == other.rangePairLength) {
+                        return -1;
                     }
-                } else { // r1.from()() == r2.from()()
-                    if (r1from == r1to) {
-                        thisRangeIndex += 2;
-                        if (thisRangeIndex == rangePairLength) {
-                            return -1;
-                        }
-                    } else {
-                        if (r2from == elementGet(otherRangePairs, otherRangeIndex + 1)) {
-                            otherRangeIndex += 2;
-                            if (otherRangeIndex == other.rangePairLength) {
-                                return -1;
-                            }
-                        } else {
-                            return r1from;
-                        }
-                    }
+                    otherFrom = elementGet(otherRangePairs, otherRangeIndex);
+                } else {
+                    return thisFrom;
                 }
             }
         } while (true); // TERMINATION ARGUMENT: guarded by the number of ranges reachable from this
@@ -1019,57 +1069,7 @@ public final class Interval {
             return -1;
         }
 
-        int r1current = this.currentRangeIndex;
-        int r2current = other.currentRangeIndex;
-        int[] thisArray = this.rangePairs;
-        int[] otherArray = other.rangePairs;
-        do {
-            int r1from = elementGet(thisArray, r1current);
-            int r2from = elementGet(otherArray, r2current);
-            if (r1from > limit && r2from > limit) {
-                return -1;
-            }
-
-            int r1to = elementGet(thisArray, r1current + 1);
-            if (r1from < r2from) {
-                if (r1to <= r2from) {
-                    r1current += 2;
-                    if (r1current == rangePairLength) {
-                        return -1;
-                    }
-                } else {
-                    return r2from;
-                }
-            } else {
-                if (r2from < r1from) {
-                    if (elementGet(otherArray, r2current + 1) <= r1from) {
-                        r2current += 2;
-                        if (r2current == other.rangePairLength) {
-                            return -1;
-                        }
-                    } else {
-                        return r1from;
-                    }
-                } else { // r1.from()() == r2.from()()
-                    if (r1from == r1to) {
-                        r1current += 2;
-                        if (r1current == rangePairLength) {
-                            return -1;
-                        }
-                    } else {
-                        if (r2from == elementGet(otherArray, r2current + 1)) {
-                            r2current += 2;
-                            if (r2current == other.rangePairLength) {
-                                return -1;
-                            }
-                        } else {
-                            return r1from;
-                        }
-                    }
-                }
-            }
-        } while (true); // TERMINATION ARGUMENT: guarded by the number of ranges reachable from this
-                        // and other
+        return intersectsAt(currentRangeIndex, other, other.currentRangeIndex, limit);
     }
 
     Interval(AllocatableValue operand, int operandNumber, Interval intervalEndMarker) {
@@ -1439,8 +1439,7 @@ public final class Interval {
         assert LIRValueUtil.isVariable(operand) : "cannot split fixed intervals";
 
         // allocate new interval
-        Interval result = newSplitChild(allocator);
-        result.split(this, splitPos);
+        Interval result = createSplit(splitPos, allocator);
 
         // split list of use positions
         result.usePosList = usePosList.splitAt(splitPos);
