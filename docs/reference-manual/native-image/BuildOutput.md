@@ -19,15 +19,27 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:
 
+
+<!--
+To update the output below:
+$ cd substratevm-enterprise
+Ensure to set JAVA_HOME to a labsjdk-ee
+$ mx build
+$ (stty cols 80 && mx helloworld -g)
+Remove the `experimental option(s)` section
+Remove the `# Printing compilation-target` and `# Printing native-library` lines
+Replace the absolute paths at the end to start with `/home/janedoe/helloworld`
+-->
+
 ```
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (2.0s @ 0.19GB)
+[1/8] Initializing...                                           (4.4s @ 0.29GiB)
  Builder configuration:
- - Java version: 26+12, vendor version: GraalVM CE 26-dev+12.1
- - Graal compiler: optimization level: 2, target machine: x86-64-v3
- - C compiler: gcc (linux, x86_64, 15.2.1)
+ - Java version: 26+13, vendor version: Oracle GraalVM 26-dev+13.1
+ - Graal compiler: optimization level: 2, target machine: x86-64-v3, PGO: ML-inferred
+ - C compiler: gcc (linux, x86_64, 13.3.0)
  - Assertions: enabled, system assertions: enabled
  - 1 user-specific feature(s):
    - com.oracle.svm.thirdparty.gson.GsonFeature
@@ -36,45 +48,53 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  - Assertions: disabled (class-specific config may apply), system assertions: disabled
 --------------------------------------------------------------------------------
 Build resources:
- - 14.69GiB of memory (47.0% of system memory, using all available memory)
- - 20 thread(s) (100.0% of 20 available processor(s), determined at start)
-[2/8] Performing analysis...  [******]                           (3.4s @ 0.40GB)
-    3,297 types,   3,733 fields, and  15,247 methods found reachable
-    1,066 types,      36 fields, and     415 methods registered for reflection
-       58 types,      59 fields, and      52 methods registered for JNI access
-        0 downcalls and 0 upcalls registered for foreign access
+ - 31.00GiB of memory (49.6% of system memory, capped at 31GiB)
+ - 32 thread(s) (88.9% of 36 available processor(s), determined at start)
+[2/8] Performing analysis...  [*******]                         (3.7s @ 0.58GiB)
+    2,140 types,   1,939 fields, and   8,997 methods found reachable
+      775 types,      35 fields, and     244 methods registered for reflection
+       49 types,      35 fields, and      48 methods registered for JNI access
+       52 resource accesses registered with 107B total size
         4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (1.0s @ 0.60GB)
-[4/8] Parsing methods...      [*]                                (0.4s @ 0.62GB)
-[5/8] Inlining methods...     [****]                             (0.2s @ 0.59GB)
-[6/8] Compiling methods...    [**]                               (3.7s @ 0.66GB)
-[7/8] Laying out methods...   [*]                                (0.7s @ 0.60GB)
-[8/8] Creating image...       [**]                               (2.3s @ 0.65GB)
-   5.24MB (21.86%) for code area:     8,788 compilation units
-   7.67MB (32.01%) for image heap:   90,323 objects and 55 resources
-   9.43MB (39.34%) for debug info generated in 0.3s
-  11.05MB (46.13%) for other data
-  23.96MB in total image size, 13.31MB in total file size
+[3/8] Building universe...                                      (0.9s @ 0.74GiB)
+[4/8] Parsing methods...      [*]                               (1.6s @ 0.72GiB)
+[5/8] Inlining methods...     [***]                             (0.5s @ 0.66GiB)
+[6/8] Compiling methods...    [***]                             (9.9s @ 0.81GiB)
+[7/8] Laying out methods...   [*]                               (1.1s @ 0.67GiB)
+[8/8] Creating image...       [**]                              (2.5s @ 0.90GiB)
+   2.86MiB (21.13%) for code area:     4,078 compilation units
+   3.56MiB (26.33%) for image heap:   63,478 objects and 1 resource
+   6.01MiB (44.40%) for debug info generated in 0.4s
+   7.11MiB (52.55%) for other data
+  13.53MiB in total image size, 6.88MiB in total file size
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
- 791.32kB java.base/java.util              1.41MB byte[] for code metadata
- 363.66kB java.base/java.lang              1.21MB byte[] for string data
- 323.39kB java.base/java.text            838.53kB java.base/java.lang.String
- 241.87kB java.base/java.util.stream     633.02kB o.g.n.~e/c.o.s.c.h.Dyna~anion
- 229.23kB java.base/java.util.regex      431.58kB heap alignment
- 214.23kB java.base/java.util.concurrent 428.26kB java.base/java.lang.Class
- 166.60kB o.g.n.~e/c.o.svm.core.code     323.23kB java.base/j.util.HashMap$Node
- 153.78kB java.base/java.time.format     284.47kB byte[] for general heap data
- 152.90kB java.base/java.math            232.06kB java.base/java.lang.Object[]
- 142.02kB o.g.n.~e/c.o.s.c.genscavenge   183.10kB java.base/j.u.HashMap$Node[]
-   2.32MB for 146 more packages            1.70MB for 966 more object types
+ 342.94KiB java.base/java.util           820.99KiB byte[] for string data
+ 289.94KiB java.base/java.lang           750.97KiB byte[] for code metadata
+ 270.50KiB o.g.n.~e/c.o.svm.core.code    347.48KiB java.base/java.lang.String
+ 189.67KiB o.g.n.~e/c.o.s.c.genscavenge  217.34KiB o.g.n.~e/c.o.s.c.h.Dyna~anion
+ 129.09KiB java.base/j.util.concurrent   209.51KiB java.base/java.lang.Class
+  83.00KiB o.g.n.~e/c.o.s.c.j.functions  184.75KiB java.base/j.u.HashMap$Node
+  81.76KiB java.base/java.util.stream    115.53KiB java.base/char[]
+  76.73KiB o.g.n.~e/com.oracle.svm.core  107.66KiB java.base/j.i.u.SoftR~nceKey
+  60.32KiB o.g.n.~e/c.o.svm.core.thread  105.09KiB java.base/java.lang.Object[]
+  58.18KiB o.g.n.~e/c.o.svm.graal.stubs   88.63KiB java.base/j.u.c.Concu~p$Node
+   1.25MiB for 119 more packages         700.05KiB for 585 more object types
+        Use '--emit build-report' to create a report with more details.
+--------------------------------------------------------------------------------
+Security report:
+ - Binary includes Java deserialization.
+ - CycloneDX SBOM with 5 component(s) is embedded in binary (406B). 6 type(s) could not be associated to a component.
+ - Advanced obfuscation not enabled; enable with '-H:AdvancedObfuscation=""' (experimental support).
 --------------------------------------------------------------------------------
 Recommendations:
+ G1GC: Use the G1 GC ('--gc=G1') for improved latency and throughput.
+ PGO:  Use Profile-Guided Optimizations ('--pgo') for improved throughput.
  FUTR: Use '--future-defaults=all' to prepare for future releases.
  HEAP: Set max heap for improved and more predictable memory usage.
  CPU:  Enable more CPU features with '-march=native' for improved performance.
 --------------------------------------------------------------------------------
-    0.9s (6.1% of total time) in 54 GCs | Peak RSS: 1.82GB | CPU load: 13.25
+   1.3s (4.8% of total time) in 88 GCs | Peak RSS: 2.14GiB | CPU load: 18.03
 --------------------------------------------------------------------------------
 Build artifacts:
  /home/janedoe/helloworld/gdb-debughelpers.py (debug_info)
@@ -82,7 +102,7 @@ Build artifacts:
  /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
 ================================================================================
-Finished generating 'helloworld' in 14.2s.
+Finished generating 'helloworld' in 25.5s.
 ```
 
 ## Build Stages
@@ -160,9 +180,9 @@ The memory limit and number of threads used by the build process.
 More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
 The actual memory consumption can also be lower than the limit set, as the GC only commits memory that it needs.
-By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
+By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 31GiB of memory.
 Otherwise, it uses shared mode, which uses the available memory to avoid memory pressure on developer machines.
-If less than 8GB of memory are available, the build process falls back to the dedicated mode.
+If less than 8GiB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
 It is possible to override the default behavior and set relative or absolute memory limits, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
 `Xms` (for example, `-J-Xms9g`) can also be used to ensure a minimum for the limit, if you know the image needs at least that much memory to build.
