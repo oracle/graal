@@ -300,6 +300,7 @@ class LinearScanWalker extends IntervalWalker {
                     if (intervalBinarySearchLimit != -1 &&
                                     (interval.rangePairCount() > intervalBinarySearchLimit || current.rangePairCount() > intervalBinarySearchLimit)) {
                         intersects = interval.binarySearchInterval(current);
+                        assert intersects == (interval.currentIntersectsAt(current) != -1) : intersects;
                     } else {
                         intersects = interval.currentIntersectsAt(current) != -1;
                     }

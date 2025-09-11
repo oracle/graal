@@ -117,7 +117,7 @@ public class LinearScan {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
-        @Option(help = "Use binary search interval longer than this limit", type = OptionType.Debug)
+        @Option(help = "Use binary search if interval is longer than this limit", type = OptionType.Debug)
         public static final OptionKey<Integer> IntervalBinarySearchLimit = new OptionKey<>(100);
         // @formatter:on
     }
