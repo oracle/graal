@@ -5,7 +5,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 ## GraalVM for JDK 26 (Internal Version 26.0.0)
 * (GR-69280): Allow use of the `graal.` prefix for options without issuing a warning.
 
-## GraalVM for JDK 25
+## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
 * (GR-58668) Enabled [Whole-Program Sparse Conditional Constant Propagation (WP-SCCP)](https://github.com/oracle/graal/pull/9821) by default, improving the precision of points-to analysis in Native Image. This optimization enhances static analysis accuracy and scalability, potentially reducing the size of the final native binary.
 * (GR-59313) Deprecated class-level metadata extraction using `native-image-inspect` and removed option `DumpMethodsData`. Use class-level SBOMs instead by passing `--enable-sbom=class-level,export` to the `native-image` builder. The default value of option `IncludeMethodData` was changed to `false`.
@@ -45,7 +45,7 @@ Run-time initialization of security providers helps reduce image heap size by av
 * (GR-55708) (Alibaba contribution) Support for running premain methods of Java agents at runtime as an experimental feature. At build time, `-H:PremainClasses` is used to set the premain classes.
 At runtime, premain runtime options are set along with main class' arguments in the format of `-XXpremain:[class]:[options]`.
 * (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 in [Compiler changelog](../compiler/CHANGELOG.md)).
-  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+  The warning is planned to be replaced by an error in GraalVM 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
 * (GR-52576) Optimize FFM API upcalls for specifiable static upcall target methods.
