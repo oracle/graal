@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
@@ -45,6 +46,7 @@ public final class DynamicHubTypeCheckUtil {
      * The offset of the {@code shift} inside the {@code hashParam}.
      * {@code shift = hashParam >>> offset}. See {@link #hashParam(int[])} for details.
      */
+    @DuplicatedInNativeCode //
     public static final int HASHING_SHIFT_OFFSET = 24;
 
     /**
@@ -65,6 +67,7 @@ public final class DynamicHubTypeCheckUtil {
      * {@code hashTable[hash(interfaceID)] = (iTableOffset << shift | interfaceID}. See the
      * documentation on TypeCheckBuilder for details.
      */
+    @DuplicatedInNativeCode //
     public static final int HASHING_INTERFACE_MASK = NumUtil.getNbitNumberInt(HASHING_ITABLE_SHIFT);
 
     public record TypeCheckData(int[] openTypeWorldTypeCheckSlots, int[] openTypeWorldInterfaceHashTable, int openTypeWorldInterfaceHashParam, short numIterableInterfaces) {
