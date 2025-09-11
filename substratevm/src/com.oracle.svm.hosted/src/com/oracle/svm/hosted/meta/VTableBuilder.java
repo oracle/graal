@@ -42,7 +42,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -186,22 +185,6 @@ public final class VTableBuilder {
         return generateDispatchTable(type, List.of());
     }
 
-    /**
-     * Tries to find an existing parent slot with an identical signature. If successful, this
-     * method's index can be assigned to the same slot and no new dispatch slot is needed.
-     */
-    private static boolean findAndLinkToParentSlot(HostedMethod hMethod, List<HostedMethod> parentSlots) {
-        for (int i = 0; i < parentSlots.size(); i++) {
-            HostedMethod candidate = parentSlots.get(i);
-            if (OpenTypeWorldFeature.matchingSignature(hMethod, candidate)) {
-                assert candidate.computedVTableIndex == i : candidate.computedVTableIndex;
-                installVTableIndex(hMethod, candidate.computedVTableIndex);
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static void installVTableIndex(HostedMethod hMethod, int index) {
         assert hMethod.computedVTableIndex == HostedMethod.MISSING_VTABLE_IDX : hMethod.computedVTableIndex;
         hMethod.computedVTableIndex = index;
@@ -213,10 +196,6 @@ public final class VTableBuilder {
             // include only methods which will be indirect calls
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                if (findAndLinkToParentSlot(m, parentClassTable)) {
-                    // a prior slot has been found
-                    return false;
-                }
                 if (m.implementations.length > 1) {
                     return true;
                 } else {
@@ -230,10 +209,6 @@ public final class VTableBuilder {
         } else {
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                if (findAndLinkToParentSlot(m, parentClassTable)) {
-                    // a prior slot has been found
-                    return false;
-                }
                 /*
                  * We have to use the analysis method's canBeStaticallyBound implementation because
                  * within HostedMethod we sometimes do additional pruning when operating under the
@@ -293,7 +268,6 @@ public final class VTableBuilder {
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
 
             boolean[] validTarget = new boolean[aggregatedTable.size()];
-            Set<HostedMethod> seenResolvedMethods = SubstrateUtil.assertionsEnabled() ? new HashSet<>() : null;
             for (int i = 0; i < aggregatedTable.size(); i++) {
                 HostedMethod method = aggregatedTable.get(i);
                 /*
@@ -306,13 +280,6 @@ public final class VTableBuilder {
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
                         validTarget[i] = true;
-                        if (seenResolvedMethods != null && i < classTableMethods.size()) {
-                            /*
-                             * Check that each resolved method within the class table is unique
-                             */
-                            var added = seenResolvedMethods.add(resolvedMethod);
-                            assert added : Assertions.errorMessage("Multiple slots with same resolution method", resolvedMethod);
-                        }
                     }
                 }
 
