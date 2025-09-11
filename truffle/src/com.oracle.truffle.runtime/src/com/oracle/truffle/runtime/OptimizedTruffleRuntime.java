@@ -852,12 +852,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected final void doCompile(OptimizedCallTarget callTarget, AbstractCompilationTask task) {
         Objects.requireNonNull(callTarget, "Cannot compile null call target.");
         Objects.requireNonNull(task, "Compilation task required.");
-
-        boolean readyForCompilation = callTarget.prepareForCompilation(true, task.tier(), !task.hasNextTier());
-        if (!readyForCompilation) {
-            return;
-        }
-
         List<OptimizedCallTarget> oldBlockCompilations = callTarget.blockCompilations;
         if (oldBlockCompilations != null) {
             for (OptimizedCallTarget blockTarget : oldBlockCompilations) {
