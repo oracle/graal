@@ -43,7 +43,7 @@ public final class Target_java_lang_SecurityManager {
     @SuppressWarnings("deprecated")
     @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21.class)
     public static @JavaType(Class[].class) StaticObject getClassContext(@JavaType(SecurityManager.class) StaticObject self, @Inject VM vm, @Inject LibsMeta libsMeta, @Inject EspressoContext context) {
-        if (libsMeta.java_lang_SecurityManager_initialized != null && !libsMeta.java_lang_SecurityManager_initialized.getBoolean(self)) { // TODO: How to deal with java version stuff?
+        if (!libsMeta.java_lang_SecurityManager_initialized.getBoolean(self)) {
             throw Throw.throwSecurityException("security manager not initialized", context);
         }
         return vm.JVM_GetClassContext();
