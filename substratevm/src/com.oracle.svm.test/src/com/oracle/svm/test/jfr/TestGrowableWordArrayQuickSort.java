@@ -65,13 +65,7 @@ public class TestGrowableWordArrayQuickSort {
     }
 
     static int compare(Word a, Word b) {
-        if (a.rawValue() < b.rawValue()) {
-            return -1;
-        } else if (a.rawValue() == b.rawValue()) {
-            return 0;
-        } else {
-            return 1;
-        }
+        return Long.compare(a.rawValue(), b.rawValue());
     }
 
 }
