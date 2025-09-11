@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
+import java.security.CodeSource;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -35,6 +36,8 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
@@ -301,6 +304,31 @@ public class JDKInitializationFeature implements InternalFeature {
         var enableNativeAccessClass = ReflectionUtil.lookupClass("java.lang.Module$EnableNativeAccess");
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), enableNativeAccessClass);
         r.register(new ModuleEnableNativeAccessPlugin());
+    }
+
+    /**
+     * For modules in the image heap, {@code Module#enableNativeAccess} is fixed at build time. We
+     * want to fold native access checks for build time modules to avoid run-time overheads as well
+     * as pulling in the error handling code unnecessarily. For example: not folding this would
+     * increase the size of hello worlds by 2x.
+     * <p>
+     * Why does this field impact the number of reachable methods so much?
+     * {@link ProtectionDomainSupport} and related {@code ProtectionDomainFeature} have a
+     * reachability handler for {@link CodeSource#getLocation}, which is not reachable by default in
+     * helloworld, but becomes reachable if {@code Module#enableNativeAccess} is not folded. The
+     * difference comes from {@code PosixNativeLibrarySupport#initializeBuiltinLibraries}, which
+     * transitively calls into {@code Module#ensureNativeAccess} and if {@code enableNativeAccess}
+     * is folded, the call to {@link CodeSource#getLocation} inside
+     * {@code Module#ensureNativeAccess} can be removed as dead code during inlining before
+     * analysis.
+     * <p>
+     * The modules for which this folding matters are {@code java.base} and
+     * {@code org.graalvm.nativeimage.builder}), both of which have {@code enableNativeAccess}
+     * already set by the time the builder starts running.
+     */
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ((FeatureImpl.BeforeAnalysisAccessImpl) access).allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
     }
 
     /**
