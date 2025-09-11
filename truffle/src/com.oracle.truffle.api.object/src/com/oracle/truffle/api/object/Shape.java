@@ -132,7 +132,7 @@ public final class Shape {
     private final int propertyCount;
 
     private final AbstractAssumption validAssumption;
-    @CompilationFinal private volatile Assumption leafAssumption;
+    @CompilationFinal private volatile AbstractAssumption leafAssumption;
 
     /**
      * Shape transition map; lazily initialized. One of:
@@ -165,7 +165,8 @@ public final class Shape {
     private volatile Object predecessorShape;
 
     private static final AtomicReferenceFieldUpdater<Shape, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Object.class, "transitionMap");
-    private static final AtomicReferenceFieldUpdater<Shape, Assumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Assumption.class, "leafAssumption");
+    private static final AtomicReferenceFieldUpdater<Shape, AbstractAssumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, AbstractAssumption.class,
+                    "leafAssumption");
     private static final AtomicReferenceFieldUpdater<Shape, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(Shape.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
 
@@ -866,20 +867,20 @@ public final class Shape {
      */
     @NonIdempotent
     public Assumption getLeafAssumption() {
-        Assumption assumption = leafAssumption;
+        AbstractAssumption assumption = leafAssumption;
         if (assumption != null) {
             return assumption;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Assumption prev;
-            Assumption next;
+            AbstractAssumption prev;
+            AbstractAssumption next;
             do {
                 prev = LEAF_ASSUMPTION_UPDATER.get(this);
                 if (prev != null) {
                     return prev;
                 } else {
                     boolean isLeafShape = transitionMap == null;
-                    next = isLeafShape ? createLeafAssumption() : Assumption.NEVER_VALID;
+                    next = isLeafShape ? createLeafAssumption() : (AbstractAssumption) Assumption.NEVER_VALID;
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
@@ -894,7 +895,7 @@ public final class Shape {
     @NonIdempotent
     @TruffleBoundary
     public boolean isLeaf() {
-        Assumption assumption = leafAssumption;
+        AbstractAssumption assumption = leafAssumption;
         return assumption == null || assumption.isValid();
     }
 
@@ -1596,13 +1597,13 @@ public final class Shape {
         validAssumption.invalidate();
     }
 
-    private static Assumption createLeafAssumption() {
-        return Truffle.getRuntime().createAssumption("leaf shape");
+    private static AbstractAssumption createLeafAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("leaf shape");
     }
 
     @TruffleBoundary
     void invalidateLeafAssumption() {
-        Assumption prev;
+        AbstractAssumption prev;
         do {
             prev = LEAF_ASSUMPTION_UPDATER.get(this);
             if (prev == Assumption.NEVER_VALID) {
@@ -1611,7 +1612,7 @@ public final class Shape {
             if (prev != null) {
                 prev.invalidate();
             }
-        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, Assumption.NEVER_VALID));
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, (AbstractAssumption) Assumption.NEVER_VALID));
     }
 
     /**
