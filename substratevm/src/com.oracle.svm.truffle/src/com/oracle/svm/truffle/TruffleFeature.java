@@ -1062,7 +1062,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

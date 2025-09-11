@@ -66,7 +66,7 @@ public final class StackOverflowCheckFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
         /*
          * There is no need to have the stack overflow check in the graph throughout most of the
          * compilation pipeline. Inserting it before the mid-tier lowering is done for pragmatic

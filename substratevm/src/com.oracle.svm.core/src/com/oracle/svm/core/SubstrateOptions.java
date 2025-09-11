@@ -1696,4 +1696,19 @@ public class SubstrateOptions {
             }
         }
     };
+
+    @Option(help = "Fallback to economy mode in case a compilation during native image generation fails.")//
+    public static final HostedOptionKey<Boolean> EnableFallbackCompilation = new HostedOptionKey<>(false, SubstrateOptions::validateEnableFallbackCompilation);
+
+    private static void validateEnableFallbackCompilation(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && SubstrateOptions.useEconomyCompilerConfig()) {
+            throw UserError.invalidOptionValue(optionKey, true,
+                            String.format("Combining the option %s with %s is not supported", SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableFallbackCompilation, "+"),
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.Optimize, "b")));
+        }
+    }
+
+    public static boolean canEnableFallbackCompilation() {
+        return !EnableFallbackCompilation.getValue() && !useEconomyCompilerConfig();
+    }
 }

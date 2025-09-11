@@ -95,8 +95,9 @@ public interface InternalFeature extends Feature {
      * @param suites The Graal compilation suites to add to.
      * @param hosted True if registering for ahead-of-time compilation, false if registering for
      *            runtime compilation.
+     * @param fallback True if registering for fallback compilation, false otherwise.
      */
-    default void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
+    default void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
     }
 
     /**

@@ -66,6 +66,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -81,6 +82,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Assembler;
@@ -175,8 +177,12 @@ public class CompileQueue {
     protected final MetaAccessProvider metaAccess;
     private Suites regularSuites = null;
     private Suites deoptTargetSuites = null;
+    private Suites fallbackSuites = null;
+    private Suites fallbackDeoptTargetSuites = null;
     private LIRSuites regularLIRSuites = null;
     private LIRSuites deoptTargetLIRSuites = null;
+    private LIRSuites fallbackLIRSuites = null;
+    private LIRSuites fallbackDeoptTargetLIRSuites = null;
 
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
@@ -188,6 +194,9 @@ public class CompileQueue {
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
     private final boolean allowFoldMethods = NativeImageOptions.AllowFoldMethods.getValue();
+
+    private final boolean fallbackCompilation = SubstrateOptions.EnableFallbackCompilation.getValue();
+    private final boolean canEnableFallbackCompilation = SubstrateOptions.canEnableFallbackCompilation();
 
     private final ResolvedJavaType generatedFoldInvocationPluginType;
 
@@ -478,7 +487,8 @@ public class CompileQueue {
     }
 
     private boolean suitesNotCreated() {
-        return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
+        return regularSuites == null && deoptTargetLIRSuites == null && fallbackSuites == null && fallbackDeoptTargetSuites == null && regularLIRSuites == null && deoptTargetSuites == null &&
+                        fallbackLIRSuites == null && fallbackDeoptTargetLIRSuites == null;
     }
 
     protected void createSuites() {
@@ -486,9 +496,15 @@ public class CompileQueue {
         modifyRegularSuites(regularSuites);
         deoptTargetSuites = createDeoptTargetSuites();
         removeDeoptTargetOptimizations(deoptTargetSuites);
+        fallbackSuites = createFallbackSuites();
+        fallbackDeoptTargetSuites = createFallbackDeoptTargetSuites();
+        removeDeoptTargetFallbackOptimizations(fallbackDeoptTargetSuites);
         regularLIRSuites = createLIRSuites();
         deoptTargetLIRSuites = createDeoptTargetLIRSuites();
         removeDeoptTargetOptimizations(deoptTargetLIRSuites);
+        fallbackLIRSuites = createFallbackLIRSuites();
+        fallbackDeoptTargetLIRSuites = createFallbackDeoptTargetLIRSuites();
+        removeDeoptTargetFallbackOptimizations(fallbackDeoptTargetLIRSuites);
     }
 
     protected Suites createRegularSuites() {
@@ -499,12 +515,28 @@ public class CompileQueue {
         return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
     }
 
+    protected Suites createFallbackSuites() {
+        return NativeImageGenerator.createFallbackSuites(featureHandler, runtimeConfig, true);
+    }
+
+    protected Suites createFallbackDeoptTargetSuites() {
+        return NativeImageGenerator.createFallbackSuites(featureHandler, runtimeConfig, true);
+    }
+
     protected LIRSuites createLIRSuites() {
         return NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
     }
 
     protected LIRSuites createDeoptTargetLIRSuites() {
         return NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
+    }
+
+    protected LIRSuites createFallbackLIRSuites() {
+        return NativeImageGenerator.createFallbackLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
+    }
+
+    protected LIRSuites createFallbackDeoptTargetLIRSuites() {
+        return NativeImageGenerator.createFallbackLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
     }
 
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
@@ -1296,15 +1328,37 @@ public class CompileQueue {
     }
 
     protected final CompilationResult doCompile(DebugContext debug, final HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason) {
-        CompileFunction fun = method.compilationInfo.getCustomCompileFunction();
-        if (fun == null) {
-            fun = this::defaultCompileFunction;
+        CompileFunction customFunction = method.compilationInfo.getCustomCompileFunction();
+        if (customFunction != null) {
+            return customFunction.compile(debug, method, compilationIdentifier, reason, runtimeConfig);
         }
-        return fun.compile(debug, method, compilationIdentifier, reason, runtimeConfig);
+        try {
+            return defaultCompileFunction(debug, method, compilationIdentifier, reason, runtimeConfig, false);
+        } catch (RuntimeException | Error t) {
+            if (fallbackCompilation) {
+                // print a warning and fall back
+                LogUtils.warning("Failed to compile %s, retrying in fallback mode due to '%s'. To report the issue please consider disabling the fallback.",
+                                method.format("%r %H.%n(%p)"), SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableFallbackCompilation, "+"));
+                return defaultCompileFunction(debug, method, compilationIdentifier, reason, runtimeConfig, true);
+            } else {
+                // ensure error is fatal
+                if (canEnableFallbackCompilation) {
+                    // fallback option can be enabled so include a hint
+                    throw VMError.shouldNotReachHere(String.format(
+                                    "The native image process failed due to a compilation problem. As a workaround, try using the '%s' option to retry problematic compilations with fewer optimizations.",
+                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableFallbackCompilation, "+")),
+                                    t);
+                } else {
+                    throw t;
+                }
+
+            }
+        }
     }
 
     @SuppressWarnings("try")
-    private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config) {
+    private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config,
+                    boolean fallback) {
 
         if (NativeImageOptions.PrintAOTCompilation.getValue()) {
             TTY.println(String.format("[CompileQueue] Compiling [idHash=%10d] %s Reason: %s", System.identityHashCode(method), method.format("%r %H.%n(%p)"), reason));
@@ -1347,8 +1401,25 @@ public class CompileQueue {
                 method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream().map(MethodCallTargetNode::invoke).filter(
                                 invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), FrameState.StackState.AfterPop)).count();
 
-                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : createSuitesForRegularCompile(graph, regularSuites);
-                LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
+                Suites suites;
+                LIRSuites lirSuites;
+                if (method.isDeoptTarget()) {
+                    if (fallback) {
+                        suites = fallbackDeoptTargetSuites;
+                        lirSuites = fallbackDeoptTargetLIRSuites;
+                    } else {
+                        suites = deoptTargetSuites;
+                        lirSuites = deoptTargetLIRSuites;
+                    }
+                } else {
+                    if (fallback) {
+                        suites = fallbackSuites;
+                        lirSuites = fallbackLIRSuites;
+                    } else {
+                        suites = createSuitesForRegularCompile(graph, regularSuites);
+                        lirSuites = regularLIRSuites;
+                    }
+                }
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
@@ -1438,6 +1509,14 @@ public class CompileQueue {
 
     protected void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
         DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
+    }
+
+    protected void removeDeoptTargetFallbackOptimizations(Suites suites) {
+        DeoptimizationUtils.removeDeoptTargetFallbackOptimizations(suites);
+    }
+
+    protected void removeDeoptTargetFallbackOptimizations(LIRSuites lirSuites) {
+        DeoptimizationUtils.removeDeoptTargetFallbackOptimizations(lirSuites);
     }
 
     protected final void ensureCompiledForMethodRefConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
