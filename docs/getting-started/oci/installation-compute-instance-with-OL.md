@@ -16,7 +16,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 ## Install Oracle GraalVM
 
-For convenience, the RPM package for Oracle GraalVM for JDK 25 is available in the Oracle YUM repository with the package name `graalvm-25-native-image`.
+For convenience, the RPM package for Oracle GraalVM 25 is available in the Oracle YUM repository with the package name `graalvm-25-native-image`.
 This distribution includes a JDK and Native Image.
 It is self-contained and all the required dependencies will be automatically resolved during the installation.
 
