@@ -1711,4 +1711,19 @@ public class SubstrateOptions {
     public static boolean canEnableFallbackCompilation() {
         return !EnableFallbackCompilation.getValue() && !useEconomyCompilerConfig();
     }
+
+    @Option(help = "Passes the numbers of warnings that occurred in the driver phase to the builder.", type = OptionType.Debug, stability = OptionStability.STABLE) //
+    public static final HostedOptionKey<Integer> DriverWarningsCount = new HostedOptionKey<>(0);
+
+    @APIOption(name = "-Werror", defaultValue = "all")//
+    @Option(help = "Treat warnings as errors and terminate build.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TreatWarningsAsError = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build(), key -> {
+        key.getValue().getValuesWithOrigins().forEach(option -> {
+            if (!option.origin().commandLineLike()) {
+                throw UserError.abort("Option '%s' provided by %s can only be used on the command line.",
+                                SubstrateOptionsParser.commandArgument(key, option.value()), option.origin());
+            }
+        });
+    });
+
 }
