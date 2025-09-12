@@ -39,5 +39,5 @@ public interface PreservableJNIElement {
     boolean isPreserved();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void reportReregistered(boolean updatedPreserved);
+    void setNotPreserved();
 }

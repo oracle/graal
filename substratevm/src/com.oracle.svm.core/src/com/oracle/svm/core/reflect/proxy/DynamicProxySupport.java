@@ -119,8 +119,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         if (conditionalValue == null) {
             conditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), createProxyClass(intfs, preserved));
             proxyCache.put(key, conditionalValue);
-        } else {
-            conditionalValue.getConditions().reportReregistered(preserved);
+        } else if (!preserved) {
+            conditionalValue.getConditions().setNotPreserved();
         }
         conditionalValue.getConditions().addCondition(condition);
     }
@@ -233,7 +233,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
     public boolean isProxyPreserved(Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         if (proxyCache.get(key) instanceof ConditionalRuntimeValue<Object> entry) {
-            return entry.getConditions().preserved();
+            return entry.getConditions().isPreserved();
         }
         return false;
     }

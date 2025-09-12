@@ -82,8 +82,8 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
         JNIAccessibleField existing = fields.get(name);
         if (existing == null) {
             fields.put(name, mappingFunction.apply(name));
-        } else {
-            existing.reportReregistered(updatedPreserved);
+        } else if (!updatedPreserved) {
+            existing.setNotPreserved();
         }
     }
 
@@ -95,8 +95,8 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
         JNIAccessibleMethod existing = methods.get(descriptor);
         if (existing == null) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
-        } else {
-            existing.reportReregistered(updatedPreserved);
+        } else if (!updatedPreserved) {
+            existing.setNotPreserved();
         }
     }
 
@@ -134,10 +134,7 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
     }
 
     @Override
-    public void reportReregistered(boolean updatedPreserved) {
-        // State can only ever go from "preserved" to "not preserved".
-        if (!updatedPreserved) {
-            this.preserved = false;
-        }
+    public void setNotPreserved() {
+        preserved = false;
     }
 }

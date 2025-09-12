@@ -164,7 +164,9 @@ public final class JNIReflectionDictionary {
             classesByName.put(name, instance);
             return instance;
         } else {
-            existing.reportReregistered(updatedPreserved);
+            if (!updatedPreserved) {
+                existing.setNotPreserved();
+            }
             return existing;
         }
     }

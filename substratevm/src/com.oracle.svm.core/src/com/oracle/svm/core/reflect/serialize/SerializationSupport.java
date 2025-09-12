@@ -224,7 +224,9 @@ public class SerializationSupport implements SerializationRegistry {
             var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd, preserved));
             if (previous != null) {
                 previous.addCondition(cnd);
-                previous.reportReregistered(preserved);
+                if (!preserved) {
+                    previous.setNotPreserved();
+                }
             }
         }
     }
@@ -319,7 +321,7 @@ public class SerializationSupport implements SerializationRegistry {
         for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
             var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
             if (conditionSet != null) {
-                return conditionSet.preserved();
+                return conditionSet.isPreserved();
             }
         }
         return false;

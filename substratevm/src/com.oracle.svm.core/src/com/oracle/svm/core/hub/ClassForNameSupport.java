@@ -247,8 +247,10 @@ public final class ClassForNameSupport {
             return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition, preserved), newValue);
         } else {
             existingConditionalValue.getConditions().addCondition(additionalCondition);
-            existingConditionalValue.getConditions().reportReregistered(preserved);
             existingConditionalValue.updateValue(newValue);
+            if (!preserved) {
+                existingConditionalValue.getConditions().setNotPreserved();
+            }
             return existingConditionalValue;
         }
     }
@@ -290,7 +292,9 @@ public final class ClassForNameSupport {
                 knownClassNames.put(className, RuntimeConditionSet.createHosted(condition, preserved));
             } else {
                 existingConditions.addCondition(condition);
-                existingConditions.reportReregistered(preserved);
+                if (!preserved) {
+                    existingConditions.setNotPreserved();
+                }
             }
         }
     }
@@ -303,7 +307,9 @@ public final class ClassForNameSupport {
                 var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition, preserved));
                 if (conditionSet != null) {
                     conditionSet.addCondition(condition);
-                    conditionSet.reportReregistered(preserved);
+                    if (!preserved) {
+                        conditionSet.setNotPreserved();
+                    }
                 }
             }
         }
@@ -453,12 +459,12 @@ public final class ClassForNameSupport {
             if (conditionSet == null) {
                 return false;
             }
-            return conditionSet.preserved();
+            return conditionSet.isPreserved();
         }
         for (var singleton : layeredSingletons()) {
             ConditionalRuntimeValue<Object> conditionalClass = singleton.knownClasses.get(jClassName);
             if (conditionalClass != null) {
-                return conditionalClass.getConditions().preserved();
+                return conditionalClass.getConditions().isPreserved();
             }
         }
         return false;
@@ -469,7 +475,7 @@ public final class ClassForNameSupport {
         for (var singleton : layeredSingletons()) {
             RuntimeConditionSet conditionSet = singleton.unsafeInstantiatedClasses.get(jClass);
             if (conditionSet != null) {
-                return conditionSet.preserved();
+                return conditionSet.isPreserved();
             }
         }
         return false;

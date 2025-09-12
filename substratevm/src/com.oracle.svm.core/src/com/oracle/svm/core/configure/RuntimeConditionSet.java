@@ -145,19 +145,13 @@ public class RuntimeConditionSet {
         return result;
     }
 
-    public boolean preserved() {
+    public boolean isPreserved() {
         return preserved;
     }
 
-    /**
-     * Updates the "preserved" state when the value is re-registered.
-     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void reportReregistered(boolean reregisterPreserved) {
-        // State can only ever go from "preserved" to "not preserved".
-        if (!reregisterPreserved) {
-            this.preserved = false;
-        }
+    public void setNotPreserved() {
+        this.preserved = false;
     }
 
     @Override

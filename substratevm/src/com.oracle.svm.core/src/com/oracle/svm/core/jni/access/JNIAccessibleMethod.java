@@ -180,10 +180,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     }
 
     @Override
-    public void reportReregistered(boolean updatedPreserved) {
-        // State can only ever go from "preserved" to "not preserved".
-        if (!updatedPreserved) {
-            modifiers = modifiers & (~RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK);
-        }
+    public void setNotPreserved() {
+        modifiers = modifiers & (~RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK);
     }
 }

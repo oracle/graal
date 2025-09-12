@@ -967,7 +967,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= field.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= field.hiding ? HIDING_FLAG_MASK : 0;
         modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
-        modifiers |= field.conditions.preserved() ? PRESERVED_FLAG_MASK : 0;
+        modifiers |= field.conditions.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
         encodeConditions(buf, field.conditions);
 
@@ -1003,7 +1003,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= executable.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= isHiding ? HIDING_FLAG_MASK : 0;
         modifiers |= executable.negative ? NEGATIVE_FLAG_MASK : 0;
-        modifiers |= executable.conditions.preserved() ? PRESERVED_FLAG_MASK : 0;
+        modifiers |= executable.conditions.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
 
         encodeConditions(buf, executable.conditions);

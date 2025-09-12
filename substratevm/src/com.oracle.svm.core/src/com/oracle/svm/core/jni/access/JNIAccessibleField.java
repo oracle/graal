@@ -169,12 +169,8 @@ public final class JNIAccessibleField extends JNIAccessibleMember implements Pre
         return id.and(ID_PRESERVED_FLAG).notEqual(0);
     }
 
-    @Platforms(HOSTED_ONLY.class)
     @Override
-    public void reportReregistered(boolean updatedPreserved) {
-        // State can only ever go from "preserved" to "not preserved".
-        if (!updatedPreserved) {
-            flags = flags.and(ID_PRESERVED_FLAG.not());
-        }
+    public void setNotPreserved() {
+        flags = flags.and(ID_PRESERVED_FLAG.not());
     }
 }

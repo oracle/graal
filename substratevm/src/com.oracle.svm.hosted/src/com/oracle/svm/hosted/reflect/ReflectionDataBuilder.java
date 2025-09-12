@@ -485,8 +485,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 conditionalValue = newConditionalValue;
                 registered = true;
             }
-        } else {
-            conditionalValue.getConditions().reportReregistered(preserved);
+        } else if (!preserved) {
+            conditionalValue.getConditions().setNotPreserved();
         }
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
@@ -655,7 +655,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
         var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectField));
         if (exists) {
-            cndValue.getConditions().reportReregistered(preserved);
+            if (!preserved) {
+                cndValue.getConditions().setNotPreserved();
+            }
         } else {
             registerTypesForField(analysisField, reflectField, queriedOnly);
 
