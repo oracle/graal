@@ -48,7 +48,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  - Assertions: disabled (class-specific config may apply), system assertions: disabled
 --------------------------------------------------------------------------------
 Build resources:
- - 31.00GiB of memory (49.6% of system memory, capped at 31GiB)
+ - 30.00GiB of memory (48.0% of system memory, capped at 30GiB)
  - 32 thread(s) (88.9% of 36 available processor(s), determined at start)
 [2/8] Performing analysis...  [*******]                         (3.7s @ 0.58GiB)
     2,140 types,   1,939 fields, and   8,997 methods found reachable
@@ -180,7 +180,7 @@ The memory limit and number of threads used by the build process.
 More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
 The actual memory consumption can also be lower than the limit set, as the GC only commits memory that it needs.
-By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 31GiB of memory.
+By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 30GiB of memory.
 Otherwise, it uses shared mode, which uses the available memory to avoid memory pressure on developer machines.
 If less than 8GiB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
