@@ -95,7 +95,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     "vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
 
     "vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
-    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
+    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:30:00"),
   } + g.as_dailies(tier2) + g.as_dailies(tier3),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
