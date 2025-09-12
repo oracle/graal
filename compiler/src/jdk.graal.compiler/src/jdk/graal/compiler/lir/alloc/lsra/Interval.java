@@ -650,8 +650,6 @@ public final class Interval {
         usePosList.removeLowestUsePos();
     }
 
-    private static final int[] EMPTY_INT_ARRAY = new int[0];
-
     /**
      * The length of the valid portion of {@link #rangePairs}.
      */
@@ -1082,8 +1080,11 @@ public final class Interval {
             assert isIllegal(operand) || LIRValueUtil.isVariable(operand);
         }
         this.kind = LIRKind.Illegal;
-        this.rangePairs = EMPTY_INT_ARRAY;
-        this.usePosList = new UsePosList(4);
+        // intervals only exist to contain ranges and 30% of ranges only contain a single element so
+        // start with enough space for a single range.
+        this.rangePairs = new int[2];
+        // 50% of intervals have empty UsePosLists.
+        this.usePosList = new UsePosList(0);
         this.next = intervalEndMarker;
         this.spillState = SpillState.NoDefinitionFound;
         this.spillDefinitionPos = -1;
