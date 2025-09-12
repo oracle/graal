@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -141,8 +141,8 @@ public class CremaSupportImpl implements CremaSupport {
         } catch (DeletedElementException e) {
             /* deleted via substitution */
             return;
-        } catch (UnsupportedFeatureException e) {
-            /* GR-69550: Method has hosted type in signature */
+        } catch (UnsupportedPlatformException e) {
+            /* Method has hosted type in signature */
             return;
         }
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);

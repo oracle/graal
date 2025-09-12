@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.ImageLayerWriter;
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
@@ -230,7 +231,7 @@ public class AnalysisUniverse implements Universe {
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
         if (!hostVM.platformSupported(type)) {
-            throw new UnsupportedFeatureException("Type is not available in this platform: " + type.toJavaName(true));
+            throw new UnsupportedPlatformException("Type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
             /*
@@ -379,7 +380,7 @@ public class AnalysisUniverse implements Universe {
 
     private AnalysisField createField(ResolvedJavaField field) {
         if (!hostVM.platformSupported(field)) {
-            throw new UnsupportedFeatureException("Field is not available in this platform: " + field.format("%H.%n"));
+            throw new UnsupportedPlatformException("Field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
             return null;
@@ -434,7 +435,7 @@ public class AnalysisUniverse implements Universe {
 
     private AnalysisMethod createMethod(ResolvedJavaMethod method) {
         if (!hostVM.platformSupported(method)) {
-            throw new UnsupportedFeatureException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
+            throw new UnsupportedPlatformException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
         }
         if (sealed) {
             return null;
