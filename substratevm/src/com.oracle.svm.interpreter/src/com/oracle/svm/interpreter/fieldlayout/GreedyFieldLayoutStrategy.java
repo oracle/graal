@@ -85,6 +85,8 @@ final class GreedyFieldLayoutStrategy {
 
         private static final int COUNT_LEN = SIZES_IN_BYTES.length;
 
+        private static final int NO_FIELDS = -1;
+
         private static final int LD_INDEX = 0;
         private static final int OBJECT_INDEX = 1;
         private static final int IF_INDEX = 2;
@@ -127,8 +129,16 @@ final class GreedyFieldLayoutStrategy {
                     counts[idx]++;
                 }
             }
-            offsets[0] = align(startOffset, SIZES_IN_BYTES[0]);
-            for (int i = 1; i < COUNT_LEN; i++) {
+
+            // Find the largest existing field, and align the starting offset to it.
+            int firstCount = findLargestFieldIndex();
+            if (firstCount == NO_FIELDS) {
+                return startOffset;
+            }
+            offsets[firstCount] = align(startOffset, SIZES_IN_BYTES[firstCount]);
+
+            // Compute first offset for remaining sizes
+            for (int i = firstCount + 1; i < COUNT_LEN; i++) {
                 long kindStartOffset = offsetAfterKind(i - 1);
                 assert kindStartOffset == align(kindStartOffset, SIZES_IN_BYTES[i]) : "By construction, the ith kind is aligned to the (i-1)th.";
                 offsets[i] = kindStartOffset;
@@ -138,6 +148,15 @@ final class GreedyFieldLayoutStrategy {
 
         private long offsetAfterKind(int kind) {
             return offsets[kind] + (counts[kind] * (long) SIZES_IN_BYTES[kind]);
+        }
+
+        private int findLargestFieldIndex() {
+            for (int i = 0; i < COUNT_LEN; i++) {
+                if (counts[i] > 0) {
+                    return i;
+                }
+            }
+            return NO_FIELDS;
         }
 
         private static int indexOf(JavaKind kind) {
