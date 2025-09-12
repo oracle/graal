@@ -100,6 +100,7 @@ suite = {
                 "java.base": [
                     "sun.nio.ch",
                     "sun.security.provider",
+                    "sun.util.calendar",
                     "jdk.internal.misc",
                     "jdk.internal.util",
                 ],

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+
+package com.oracle.svm.webimage.substitute;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -43,7 +44,7 @@ import sun.util.calendar.CalendarSystem;
  */
 
 @TargetClass(java.util.Calendar.class)
-final class Target_java_util_Calendar {
+final class Target_java_util_Calendar_Web {
 
     @Substitute
     private static Calendar createCalendar(TimeZone zone, Locale aLocale) {
@@ -51,25 +52,24 @@ final class Target_java_util_Calendar {
     }
 }
 
-@TargetClass(sun.util.calendar.CalendarSystem.class)
-final class Target_sun_util_calendar_CalendarSystem {
+@TargetClass(CalendarSystem.class)
+final class Target_sun_util_calendar_CalendarSystem_Web {
 
     @Substitute
     private static CalendarSystem forName(String calendarName) {
         if ("gregorian".equals(calendarName)) {
-            return Util_sun_util_calendar_CalendarSystem.GREGORIAN;
+            return Util_sun_util_calendar_CalendarSystem_Web.GREGORIAN;
         } else if ("japanese".equals(calendarName)) {
-            return Util_sun_util_calendar_CalendarSystem.JAPANESE;
+            return Util_sun_util_calendar_CalendarSystem_Web.JAPANESE;
         } else if ("julian".equals(calendarName)) {
-            return Util_sun_util_calendar_CalendarSystem.JULIAN;
+            return Util_sun_util_calendar_CalendarSystem_Web.JULIAN;
         } else {
             throw VMError.unsupportedFeature("CalendarSystem.forName " + calendarName);
         }
     }
 }
 
-final class Util_sun_util_calendar_CalendarSystem {
-
+final class Util_sun_util_calendar_CalendarSystem_Web {
     // The static fields are initialized during native image generation.
     static final CalendarSystem GREGORIAN = CalendarSystem.forName("gregorian");
     static final CalendarSystem JAPANESE = CalendarSystem.forName("japanese");
@@ -77,5 +77,5 @@ final class Util_sun_util_calendar_CalendarSystem {
 }
 
 /** Dummy class to have a class with the file's name. */
-public final class CalendarSubstitutions {
+public final class WebImageCalendarSubstitutions {
 }
