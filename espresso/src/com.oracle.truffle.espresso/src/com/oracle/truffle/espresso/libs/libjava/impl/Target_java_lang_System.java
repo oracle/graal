@@ -96,9 +96,6 @@ public final class Target_java_lang_System {
             }
             known[props.stdoutEncodingNdx] = java.lang.System.getProperty("stdout.encoding");
             known[props.stderrEncodingNdx] = java.lang.System.getProperty("stderr.encoding");
-            if(ctx.getJavaVersion().java25OrLater()) {
-                known[props.stdinEncodingNdx] = java.lang.System.getProperty("stdin.encoding");
-            }
 
             known[props.osNameNdx] = java.lang.System.getProperty("os.name");
             known[props.osArchNdx] = java.lang.System.getProperty("os.arch");
@@ -179,7 +176,6 @@ public final class Target_java_lang_System {
             private final int socksProxyHostNdx;
             private final int socksProxyPortNdx;
             private final int stderrEncodingNdx;
-            private final int stdinEncodingNdx;
             private final int stdoutEncodingNdx;
             private final int sunArchAbiNdx;
             private final int sunArchDataModelNdx;
@@ -232,13 +228,6 @@ public final class Target_java_lang_System {
                 socksProxyHostNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyHost_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 socksProxyPortNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyPort_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 stderrEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stderr_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
-
-                if(ctx.getJavaVersion().java25OrLater()) { // https://github.com/openjdk/valhalla/commit/15f42e348d4068bd90dd75b270a372353fe0ed07#diff-0b761d753142789aae9ff9bb970787ee6ece0df8f85852df461edc5b2e13f875
-                    stdinEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdin_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
-                } else {
-                    stdinEncodingNdx = -1;
-                }
-
                 stdoutEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdout_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchAbiNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_abi_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchDataModelNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_data_model_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());

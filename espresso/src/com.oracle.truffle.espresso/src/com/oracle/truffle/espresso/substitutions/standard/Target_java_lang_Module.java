@@ -42,6 +42,7 @@ public final class Target_java_lang_Module {
      * As of JDK 15+, The native signature for these VM methods changed. These substitutions bypass
      * the native linking of these methods to their 'JVM_*' counterparts.
      */
+
     @Substitution
     @TruffleBoundary
     public static void addExports0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,

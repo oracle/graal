@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
@@ -63,12 +62,12 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
         ByteBuffer map;
         try {
             map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
-        } catch(UnsupportedOperationException e) {
-            long read = 0;
+        } catch (UnsupportedOperationException e) {
+            long lastRead;
             map = ByteBuffer.allocateDirect(Math.toIntExact(channel.size()));
-            while(read < channel.size()) {
-                read += channel.read(map);
-            }
+            do {
+                lastRead = channel.read(map);
+            } while (lastRead >= 0 && map.hasRemaining());
         }
 
         int headerSize = ImageHeader.getHeaderSize();
