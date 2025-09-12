@@ -67,19 +67,15 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
     @Snippet
     private static void ensureClassIsInitializedSnippet(@Snippet.NonNullParameter DynamicHub hub) {
         ClassInitializationInfo info = hub.getClassInitializationInfo();
-        /*
-         * The ClassInitializationInfo field is always initialized by the image generator. We can
-         * save the explicit null check.
-         */
+        /* The ClassInitializationInfo field is always non-null. */
         ClassInitializationInfo infoNonNull = (ClassInitializationInfo) PiNode.piCastNonNull(info, SnippetAnchorNode.anchor());
-
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, infoNonNull.requiresSlowPath())) {
-            callSlowPath(SLOW_PATH, infoNonNull, DynamicHub.toClass(hub));
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, infoNonNull.isSlowPathRequired())) {
+            callSlowPath(SLOW_PATH, DynamicHub.toClass(hub));
         }
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
-    private static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, ClassInitializationInfo info, Class<?> clazz);
+    private static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
     @SuppressWarnings("unused")
     public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

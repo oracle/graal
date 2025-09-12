@@ -861,67 +861,46 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final Reader asReader() {
         return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
       }
-      public final boolean getIsNoInitializerNoTracking() {
+      public final boolean getIsInitialized() {
         return _getBooleanField(0);
       }
-      public final void setIsNoInitializerNoTracking(boolean value) {
+      public final void setIsInitialized(boolean value) {
         _setBooleanField(0, value);
       }
 
-      public final boolean getIsInitializedNoTracking() {
+      public final boolean getIsInErrorState() {
         return _getBooleanField(1);
       }
-      public final void setIsInitializedNoTracking(boolean value) {
+      public final void setIsInErrorState(boolean value) {
         _setBooleanField(1, value);
       }
 
-      public final boolean getIsFailedNoTracking() {
+      public final boolean getIsLinked() {
         return _getBooleanField(2);
       }
-      public final void setIsFailedNoTracking(boolean value) {
+      public final void setIsLinked(boolean value) {
         _setBooleanField(2, value);
       }
 
-      public final boolean getIsInitialized() {
+      public final boolean getHasInitializer() {
         return _getBooleanField(3);
       }
-      public final void setIsInitialized(boolean value) {
+      public final void setHasInitializer(boolean value) {
         _setBooleanField(3, value);
       }
 
-      public final boolean getIsInErrorState() {
+      public final boolean getIsBuildTimeInitialized() {
         return _getBooleanField(4);
       }
-      public final void setIsInErrorState(boolean value) {
+      public final void setIsBuildTimeInitialized(boolean value) {
         _setBooleanField(4, value);
       }
 
-      public final boolean getIsLinked() {
+      public final boolean getIsTracked() {
         return _getBooleanField(5);
       }
-      public final void setIsLinked(boolean value) {
-        _setBooleanField(5, value);
-      }
-
-      public final boolean getHasInitializer() {
-        return _getBooleanField(6);
-      }
-      public final void setHasInitializer(boolean value) {
-        _setBooleanField(6, value);
-      }
-
-      public final boolean getIsBuildTimeInitialized() {
-        return _getBooleanField(7);
-      }
-      public final void setIsBuildTimeInitialized(boolean value) {
-        _setBooleanField(7, value);
-      }
-
-      public final boolean getIsTracked() {
-        return _getBooleanField(8);
-      }
       public final void setIsTracked(boolean value) {
-        _setBooleanField(8, value);
+        _setBooleanField(5, value);
       }
 
       public final int getInitializerMethodId() {
@@ -938,40 +917,28 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
 
-      public final boolean getIsNoInitializerNoTracking() {
+      public final boolean getIsInitialized() {
         return _getBooleanField(0);
       }
 
-      public final boolean getIsInitializedNoTracking() {
+      public final boolean getIsInErrorState() {
         return _getBooleanField(1);
       }
 
-      public final boolean getIsFailedNoTracking() {
+      public final boolean getIsLinked() {
         return _getBooleanField(2);
       }
 
-      public final boolean getIsInitialized() {
+      public final boolean getHasInitializer() {
         return _getBooleanField(3);
       }
 
-      public final boolean getIsInErrorState() {
+      public final boolean getIsBuildTimeInitialized() {
         return _getBooleanField(4);
       }
 
-      public final boolean getIsLinked() {
-        return _getBooleanField(5);
-      }
-
-      public final boolean getHasInitializer() {
-        return _getBooleanField(6);
-      }
-
-      public final boolean getIsBuildTimeInitialized() {
-        return _getBooleanField(7);
-      }
-
       public final boolean getIsTracked() {
-        return _getBooleanField(8);
+        return _getBooleanField(5);
       }
 
       public final int getInitializerMethodId() {

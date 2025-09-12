@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.FullyInitialized;
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.InitializationError;
+
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Map;
@@ -245,17 +248,18 @@ public class DynamicHubInitializer {
 
     private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub, boolean rescan) {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
-        boolean initializedOrSimulated = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
         if (type.getWrapped() instanceof BaseLayerType) {
             info = layerLoader.getClassInitializationInfo(type);
         } else {
+            boolean hasInitializer = type.getClassInitializer() != null;
             boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+            boolean initializedOrSimulated = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
+
             if (initializedOrSimulated) {
-                info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
-                                : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
+                info = ClassInitializationInfo.forBuildTimeInitializedClass(FullyInitialized, hasInitializer, typeReachedTracked);
             } else {
-                info = buildRuntimeInitializationInfo(type, typeReachedTracked);
+                info = buildRuntimeInitializationInfo(type, hasInitializer, typeReachedTracked);
             }
             VMError.guarantee(!type.isInBaseLayer() || layerLoader.isInitializationInfoStable(type, info));
         }
@@ -265,7 +269,7 @@ public class DynamicHubInitializer {
         }
     }
 
-    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type, boolean typeReachedTracked) {
+    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type, boolean hasInitializer, boolean typeReachedTracked) {
         assert !type.isInitialized();
         try {
             /*
@@ -273,18 +277,17 @@ public class DynamicHubInitializer {
              * already failed in a previous attempt.
              */
             type.link();
-
         } catch (VerifyError e) {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
-            return new ClassInitializationInfo(new MethodPointer(throwVerifyError), typeReachedTracked);
+            return ClassInitializationInfo.forRuntimeTimeInitializedClass(new MethodPointer(throwVerifyError), typeReachedTracked);
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
              * is attempted at run time.
              */
-            return ClassInitializationInfo.forFailedInfo(typeReachedTracked);
+            return ClassInitializationInfo.forBuildTimeInitializedClass(InitializationError, hasInitializer, typeReachedTracked);
         }
 
         /*
@@ -299,7 +302,7 @@ public class DynamicHubInitializer {
             bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(classInitializerFunction, typeReachedTracked);
+        return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializerFunction, typeReachedTracked);
     }
 
     class InterfacesEncodingKey {
