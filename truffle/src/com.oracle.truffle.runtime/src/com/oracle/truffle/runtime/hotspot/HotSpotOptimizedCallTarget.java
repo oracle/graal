@@ -218,7 +218,10 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     protected void notifyDeoptimized(VirtualFrame frame) {
         String reason = null;
         try {
-            if (getInvalidationReasonDescriptionMethodRef != null) {
+            // This method may be called with {@code installedCode ==
+            // INVALID_CODE} when the call target is not a root compilation and
+            // the parent compilation was deoptimized.
+            if (this.installedCode != INVALID_CODE && getInvalidationReasonDescriptionMethodRef != null) {
                 reason = (String) getInvalidationReasonDescriptionMethodRef.invoke(this.installedCode);
             }
         } catch (Exception e) {
@@ -231,6 +234,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private int getInvalidationReason() {
         try {
             if (getInvalidationReasonMethodRef != null) {
+                assert installedCode != INVALID_CODE : "Cannot get invalidation reason of INVALID_CODE";
                 return (int) getInvalidationReasonMethodRef.invoke(this.installedCode);
             }
         } catch (Exception e) {
