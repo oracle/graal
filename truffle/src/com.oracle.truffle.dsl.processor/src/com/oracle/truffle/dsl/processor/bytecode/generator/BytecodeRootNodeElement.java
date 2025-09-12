@@ -17938,7 +17938,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCompilation", new String[]{"rootCompilation", "compilationTier", "lastTier"});
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().startCall("root.prepareForCompilation").string("rootCompilation").string("compilationTier").string("lastTier").end(2);
+            b.startReturn();
+            b.startCall("root.prepareForCompilation").string("rootCompilation").string("compilationTier").string("lastTier").end();
+            b.string(" && ");
+            // Even if the root is ready, the continuation location may not have updated yet.
+            b.string("location.getBytecodeNode().getTier() != ").staticReference(types.BytecodeTier, "UNCACHED");
+            b.end();
             return ex;
         }
 

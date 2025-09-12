@@ -126,7 +126,17 @@ public class RootNodeOverridesTest {
         cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
 
-        // When the interpreter is cached, the parent impl should be delegated to.
+        // The continuation root does not transition to cached until its next execution.
+        // Until then, it should not be ready for compilation.
+        assertEquals(BytecodeTier.UNCACHED, cont.getBytecodeLocation().getBytecodeNode().getTier());
+        root.readyForCompilation = false;
+        assertEquals(false, invokePrepareForCompilation(cont.getContinuationRootNode()));
+        root.readyForCompilation = true;
+        assertEquals(false, invokePrepareForCompilation(cont.getContinuationRootNode()));
+
+        // After the continuation root transitions to cached, delegate to the root node.
+        cont.continueWith(123L);
+        assertEquals(BytecodeTier.CACHED, cont.getBytecodeLocation().getBytecodeNode().getTier());
         root.readyForCompilation = false;
         assertEquals(false, invokePrepareForCompilation(cont.getContinuationRootNode()));
         root.readyForCompilation = true;
