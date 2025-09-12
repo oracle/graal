@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -108,8 +110,7 @@ public class MVNDownloader {
         boolean mvnCentralFallback = !repoUrl.startsWith(DEFAULT_MAVEN_REPO);
         byte[] bytes = downloadMavenFile(repoUrl, artifactName, mvnCentralFallback);
 
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
+        var builder = createSecurePOMParser();
         var document = builder.parse(new ByteArrayInputStream(bytes));
 
         // We care only about a very small subset of the POM, and accept even malformed POMs if the
@@ -185,6 +186,36 @@ public class MVNDownloader {
                 downloadDependencies(repoUrl, gid, aid, ver);
             }
         }
+    }
+
+    /**
+     * Creates a {@link DocumentBuilder} that is crafted to be safe while still not disallowing
+     * valid Maven POM files.
+     */
+    private static DocumentBuilder createSecurePOMParser() throws ParserConfigurationException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+        /*
+         * Disallow potentially dangerous external entity resolutions. Compatible with Maven because
+         * POM files do not need external entities.
+         */
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+
+        /*
+         * Injecting external XMLs is not allowed by the Maven POM schema, but we can still include
+         * the rule to err on the side of safety.
+         */
+        factory.setXIncludeAware(false);
+
+        /*
+         * We don't expect legitimate POMs to be huge, so use recommended defaults for max
+         * processing limits.
+         */
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+
+        return factory.newDocumentBuilder();
     }
 
     private static byte[] downloadMavenFile(String repoUrl, String artefactName, boolean fallback) throws IOException, URISyntaxException {
