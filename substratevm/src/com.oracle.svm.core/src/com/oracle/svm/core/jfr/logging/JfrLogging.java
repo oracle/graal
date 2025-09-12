@@ -35,16 +35,17 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
-    private final IllegalArgumentException verifyLogLevelException;
-    private final IllegalArgumentException verifyLogTagSetIdException;
+    private static final IllegalArgumentException verifyLogLevelException = new IllegalArgumentException("LogLevel passed is outside valid range");
+    private static final IllegalArgumentException verifyLogTagSetIdException = new IllegalArgumentException("LogTagSet id is outside valid range");
+
     private final String[] logLevels;
     private final String[] logTagSets;
     private int levelDecorationFill = 0;
@@ -52,8 +53,6 @@ public class JfrLogging {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrLogging() {
-        verifyLogLevelException = new IllegalArgumentException("LogLevel passed is outside valid range");
-        verifyLogTagSetIdException = new IllegalArgumentException("LogTagSet id is outside valid range");
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
     }
@@ -149,7 +148,7 @@ public class JfrLogging {
             Set<JfrLogTag> set = JfrLogConfiguration.LOG_TAG_SETS.get(logTagSet);
             if (set != null) {
                 for (JfrLogTag logTag : set) {
-                    if (builder.length() > 0) {
+                    if (!builder.isEmpty()) {
                         builder.append(",");
                     }
                     builder.append(logTag.toString().toLowerCase(Locale.ROOT));
