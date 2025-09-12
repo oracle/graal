@@ -63,13 +63,13 @@ public final class MemoryUtil {
     private static final int MIN_AVAILABLE_MEMORY_THRESHOLD_GB = 8;
 
     /*
-     * Builder uses at most 31GiB to avoid disabling compressed oops (UseCompressedOops).
+     * Builder uses at most 30GiB to avoid disabling compressed oops (UseCompressedOops).
      * UseCompressedOops seems currently disabled on my machine at values > (32 GiB - 32 MiB), so we
-     * use 31 GiB to have some margin. The actual logic at
+     * use 30 GiB to have some margin. The actual logic at
      * https://github.com/openjdk/jdk/blob/jdk-26+10/src/hotspot/share/runtime/arguments.cpp#L1429
      * depends on various factors so it seems unwise to hardcode that exact limit.
      */
-    public static final long MAX_HEAP_BYTES = 31 * GiB_TO_BYTES;
+    public static final long MAX_HEAP_BYTES = 30 * GiB_TO_BYTES;
 
     public static List<String> heuristicMemoryFlags(HostFlags hostFlags, List<String> memoryFlags) {
         /*
@@ -149,7 +149,7 @@ public final class MemoryUtil {
         // Ensure max memory size does not exceed upper limit
         if (maxMemory > MAX_HEAP_BYTES) {
             maxMemory = MAX_HEAP_BYTES;
-            reason = percentageOfSystemMemoryText(maxMemory, totalMemorySize) + ", capped at 31GiB";
+            reason = percentageOfSystemMemoryText(maxMemory, totalMemorySize) + ", capped at 30GiB";
         }
 
         // Handle memory flags
