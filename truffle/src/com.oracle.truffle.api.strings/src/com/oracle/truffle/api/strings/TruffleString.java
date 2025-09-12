@@ -2592,6 +2592,103 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * Extended version of {@link MaterializeNode} that also materializes substrings/string views
+     * created via e.g. {@link SubstringNode} with the {@code lazy} parameter set to {@code true} or
+     * via {@link FromByteArrayNode} with the {@code copy} parameter set to {@code false}. Note that
+     * this node returns a potentially new {@link TruffleString}, because these substrings cannot be
+     * materialized internally. {@link #isNative() Native-backed} strings are kept as-is, since this
+     * node cannot decide whether a native-backed string is a substring/string view.
+     * <p>
+     * Lazy substrings keep a reference to the potentially larger byte array they were created from,
+     * which may keep more memory alive than necessary (see the caveats mentioned at
+     * {@link SubstringNode#execute}). With this node, unnecessarily held memory is reclaimed by
+     * copying the referenced subregions. This is especially useful if a string is added to a data
+     * structure known to be long-lived, e.g. during string interning.
+     *
+     * @see SubstringNode#execute
+     * @since 26.0
+     */
+    public abstract static class MaterializeSubstringNode extends AbstractPublicNode {
+
+        MaterializeSubstringNode() {
+        }
+
+        /**
+         * Extended version of {@link MaterializeNode} that also materializes substrings/string
+         * views created via e.g. {@link SubstringNode} with the {@code lazy} parameter set to
+         * {@code true} or via {@link FromByteArrayNode} with the {@code copy} parameter set to
+         * {@code false}. Note that this node returns a potentially new {@link TruffleString},
+         * because these substrings cannot be materialized internally. {@link #isNative()
+         * Native-backed} strings are kept as-is, since this node cannot decide whether a
+         * native-backed string is a substring/string view.
+         * <p>
+         * Lazy substrings keep a reference to the potentially larger byte array they were created
+         * from, which may keep more memory alive than necessary (see the caveats mentioned at
+         * {@link SubstringNode#execute}). With this node, unnecessarily held memory is reclaimed by
+         * copying the referenced subregions. This is especially useful if a string is added to a
+         * data structure known to be long-lived, e.g. during string interning.
+         *
+         * @see SubstringNode#execute
+         * @since 26.0
+         */
+        public abstract TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding);
+
+        @Specialization
+        final TruffleString doTruffleString(TruffleString a, Encoding expectedEncoding,
+                        @Cached InlinedConditionProfile managedProfileA,
+                        @Cached InlinedConditionProfile nativeProfileA,
+                        @Cached InlinedConditionProfile stringViewProfile) {
+            a.checkEncoding(expectedEncoding);
+            Object dataA = a.data();
+            try {
+                if (managedProfileA.profile(this, dataA instanceof byte[])) {
+                    final byte[] arrayA = (byte[]) dataA;
+                    int byteLength = a.length() << a.stride();
+                    if (stringViewProfile.profile(this, byteLength < arrayA.length)) {
+                        byte[] copy = new byte[byteLength];
+                        System.arraycopy(arrayA, a.offset(), copy, 0, byteLength);
+                        return TruffleString.createFromByteArray(copy, 0, a.length(), a.stride(), expectedEncoding, a.codePointLength(), a.codeRange(), a.hashCode, true);
+                    } else {
+                        return a;
+                    }
+                } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
+                    return a;
+                } else {
+                    a.materializeLazy(this, dataA);
+                    return a;
+                }
+            } finally {
+                Reference.reachabilityFence(dataA);
+            }
+        }
+
+        @Specialization
+        final TruffleString doMutableTruffleString(MutableTruffleString a, Encoding expectedEncoding,
+                        @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode fromBufferWithStringCompactionNode) {
+            return fromBufferWithStringCompactionNode.execute(this, a, expectedEncoding);
+        }
+
+        /**
+         * Create a new {@link MaterializeSubstringNode}.
+         *
+         * @since 26.0
+         */
+        @NeverDefault
+        public static MaterializeSubstringNode create() {
+            return TruffleStringFactory.MaterializeSubstringNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link MaterializeSubstringNode}.
+         *
+         * @since 26.0
+         */
+        public static MaterializeSubstringNode getUncached() {
+            return TruffleStringFactory.MaterializeSubstringNodeGen.getUncached();
+        }
+    }
+
+    /**
      * Node to get a string's precise {@link CodeRange}.
      *
      * @see CodeRange
