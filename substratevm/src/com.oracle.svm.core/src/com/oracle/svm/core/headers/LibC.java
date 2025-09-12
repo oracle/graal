@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.headers;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -101,6 +103,11 @@ public class LibC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int strcmp(CCharPointer s1, CCharPointer s2) {
         return libc().strcmp(s1, s2);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
+        return libc().strncmp(s1, s2, n);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
