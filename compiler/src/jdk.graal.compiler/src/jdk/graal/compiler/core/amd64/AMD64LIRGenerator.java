@@ -1161,10 +1161,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
-                    boolean inputMayBeOutOfRange) {
+                    boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
         AllocatableValue scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new NewScratchRegisterOp(scratch));
-        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, scratch, inputMayBeOutOfRange));
+        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, scratch, inputMayBeOutOfRange, mayEmitThreadedCode));
     }
 
     @Override

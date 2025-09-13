@@ -29,6 +29,8 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
@@ -340,4 +342,90 @@ public abstract class Assembler<T extends Enum<T>> {
             }
         }
     }
+
+    private CodeSnippetRecord currentCodeSnippet = null;
+    private EconomicMap<Integer, CodeSnippetRecord> recordedCodeSnippets = null;
+
+    /**
+     * Marks the start of a {@link CodeSnippetRecord}. If invoked again without a corresponding call
+     * to {@link #stopRecordingCodeSnippet}, the current {@link CodeSnippetRecord} will be
+     * discarded.
+     *
+     * See also {@link #stopRecordingCodeSnippet} and {@link #replayCodeSnippetAt}
+     */
+    public void startRecordingCodeSnippet(CompilationResultBuilder crb) {
+        // not-yet-finished code snippet will be discarded
+        currentCodeSnippet = new CodeSnippetRecord(position(), crb.getSitesWatermark());
+    }
+
+    /**
+     * Marks the end of a {@link CodeSnippetRecord}. This call is effective only if preceded by
+     * {@link #startRecordingCodeSnippet}; otherwise, it performs no action.
+     *
+     * See also {@link #startRecordingCodeSnippet} and {@link #replayCodeSnippetAt}
+     */
+    public void stopRecordingCodeSnippet(CompilationResultBuilder crb) {
+        if (currentCodeSnippet != null) {
+            currentCodeSnippet.stopRecording(position(), crb.getSitesWatermark());
+            if (recordedCodeSnippets == null) {
+                recordedCodeSnippets = EconomicMap.create();
+            }
+            recordedCodeSnippets.put(currentCodeSnippet.codeStart, currentCodeSnippet);
+            currentCodeSnippet = null;
+        }
+    }
+
+    /**
+     * Replays a {@link CodeSnippetRecord} starting at the specified {@code pos}. Label-based
+     * instructions in a replay are automatically patched: if the label is bound, the instruction is
+     * adjusted relative to its insertion position; if the label is unbound, it is added to the
+     * label's patch list for future resolution. Other PC-relative instructions are not patched and
+     * may cause errors if unresolved.
+     */
+    public boolean replayCodeSnippetAt(CompilationResultBuilder crb, int pos) {
+        if (recordedCodeSnippets != null) {
+            CodeSnippetRecord codeSnippet = recordedCodeSnippets.get(pos);
+            if (codeSnippet != null) {
+                codeSnippet.replayRecording(crb, this);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected boolean isRecordingCodeSnippet() {
+        return currentCodeSnippet != null && currentCodeSnippet.isRecording();
+    }
+
+    protected void abortRecordingCodeSnippet() {
+        currentCodeSnippet = null;
+    }
+
+    /**
+     * Registers a label-based instruction and its patching position.
+     *
+     * See also {@link #replayCodeSnippetAt}
+     */
+    protected void registerPatchInCodeSnippetRecord(int patchPosition, Label label) {
+        if (currentCodeSnippet != null) {
+            currentCodeSnippet.addPatch(patchPosition, label);
+        }
+    }
+
+    /**
+     * On AMD64, unbound labels use the start of an instruction as the patching positions. When
+     * these labels are bound, we need to adjust their patching positions.
+     */
+    protected void updatePatchInCodeSnippet(int patchPosition, int offset) {
+        if (currentCodeSnippet != null) {
+            currentCodeSnippet.updatePatch(patchPosition, offset);
+        }
+        if (recordedCodeSnippets != null) {
+            for (var codeSnippet : recordedCodeSnippets.getValues()) {
+                codeSnippet.updatePatch(patchPosition, offset);
+            }
+        }
+    }
+
+    protected abstract void patchRelativeJumpTarget(int pos, int jumpTargetOffset);
 }

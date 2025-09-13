@@ -108,6 +108,7 @@ public abstract class AArch64MacroAssembler extends AArch64Assembler {
      */
     public int getPCRelativeOffset(Label label) {
         assert label.isBound();
+        registerPatchInCodeSnippetRecord(position(), label);
         int offset = label.position() - position();
         assert (offset & 0b11) == 0 : "unexpected alignment";
         return offset;
@@ -2000,6 +2001,89 @@ public abstract class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void halt() {
         illegal();
+    }
+
+    /**
+     * In IP-related instructions, the offset relative to the current IP is embedded within specific
+     * bits of the instruction. This helper method updates the embedded offset located at
+     * {@code instruction[high:low]} by adding an additional offset.
+     *
+     * For example:
+     *
+     * <pre>
+     * XXXX XXX0 0000 0000 0000 0000 001X XXXX
+     *         |                       |
+     *       High                     Low
+     * </pre>
+     *
+     * The above instruction points to the immediate next instruction. Adding an additional offset
+     * of {@code 0b10} results in:
+     *
+     * <pre>
+     * XXXX XXX0 0000 0000 0000 0000 011X XXXX
+     *         |                       |
+     *       High                     Low
+     * </pre>
+     *
+     * Note that both the original embedded offset and {@code additionalOffset} are right-shifted by
+     * two, as specified by the encoding.
+     */
+    private static int addOffset(int instruction, int high, int low, int additionalOffset) {
+        int mask = NumUtil.getNbitNumberInt(high) - NumUtil.getNbitNumberInt(low);
+        int value = instruction & mask;
+        int offsetSign = value >>> (high - 1) & 1;
+        // sign extend
+        if (offsetSign == 1) {
+            value = value | (-1 << high);
+        }
+
+        int embeddedOffset = value >> low;
+        int newOffset = embeddedOffset + additionalOffset;
+        int newOffsetInPlace = (newOffset << low) & mask;
+        return (instruction & ~mask) | newOffsetInPlace;
+    }
+
+    private static final int BCOND_OPCODE_MASK = 0xFF000000;
+    private static final int BCOND_OFFSET_HIGH = 24;
+    private static final int BCOND_OFFSET_LOW = 5;
+    private static final int B_OPCODE_MASK = 0xFC000000;
+    private static final int B_OFFSET_HIGH = 26;
+    private static final int B_OFFSET_LOW = 0;
+    private static final int CBZ_OPCODE_MASK = 0x7E000000;
+    private static final int CBZ_OFFSET_HIGH = 24;
+    private static final int CBZ_OFFSET_LOW = 5;
+    private static final int TBZ_OPCODE_MASK = 0x7E000000;
+    private static final int TBZ_OFFSET_HIGH = 19;
+    private static final int TBZ_OFFSET_LOW = 5;
+    private static final int ADR_OPCODE_MASK = 0x1F000000;
+    private static final int ADR_OFFSET_HIGH = 24;
+    private static final int ADR_OFFSET_LOW = 5;
+
+    @Override
+    protected void patchRelativeJumpTarget(int patchPos, int jumpTargetOffset) {
+        final int instruction = getInt(patchPos);
+        GraalError.guarantee((jumpTargetOffset & 0b11) == 0, "jumpTargetOffset %d has to be a multiple of 4", jumpTargetOffset);
+        int weightedOffset = jumpTargetOffset >> 2;
+
+        // Decode the instruction, apply the additional offset to the encoded imm
+        if ((instruction & BCOND_OPCODE_MASK) == Instruction.BCOND.encoding) {
+            // b.cond instruction
+            emitInt(addOffset(instruction, BCOND_OFFSET_HIGH, BCOND_OFFSET_LOW, weightedOffset), patchPos);
+        } else if ((instruction & B_OPCODE_MASK) == UnconditionalBranchImmOp) {
+            // b instruction
+            emitInt(addOffset(instruction, B_OFFSET_HIGH, B_OFFSET_LOW, weightedOffset), patchPos);
+        } else if ((instruction & CBZ_OPCODE_MASK) == CompareBranchOp) {
+            // cbz, cbnz instructions
+            emitInt(addOffset(instruction, CBZ_OFFSET_HIGH, CBZ_OFFSET_LOW, weightedOffset), patchPos);
+        } else if ((instruction & TBZ_OPCODE_MASK) == Instruction.TBZ.encoding) {
+            // tbz, tbnz instructions
+            emitInt(addOffset(instruction, TBZ_OFFSET_HIGH, TBZ_OFFSET_LOW, weightedOffset), patchPos);
+        } else if ((instruction & ADR_OPCODE_MASK) == PcRelImmOp) {
+            // adr instruction. Here we assume the lower two bits are always 0
+            emitInt(addOffset(instruction, ADR_OFFSET_HIGH, ADR_OFFSET_LOW, weightedOffset), patchPos);
+        } else {
+            throw GraalError.shouldNotReachHereUnexpectedValue(instruction); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     /**
