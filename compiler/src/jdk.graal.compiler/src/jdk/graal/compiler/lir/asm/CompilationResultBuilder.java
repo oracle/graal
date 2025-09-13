@@ -48,6 +48,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -497,6 +498,16 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     }
 
     /**
+     * Speculate whether {@code block} represents a switch case. When
+     * {@link GraalOptions#AlignJumpTableEntry} is enabled, align each switch-case block but skip
+     * further alignment governed by {@link GraalOptions#IsolatedLoopHeaderAlignment} to avoid
+     * excessive paddings.
+     */
+    private static boolean maybeAlignedSwitchCase(BasicBlock<?> block) {
+        return block.getPredecessorCount() == 1 && block.getPredecessorAt(0).getSuccessorCount() > 2;
+    }
+
+    /**
      * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
     public void emitLIR() {
@@ -513,7 +524,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
                             lir.codeEmittingOrder()[currentBlockIndex] == blockId : Assertions.errorMessageContext("b", b, "lir.codeOrder", lir.codeEmittingOrder(), "currentBlockIndex",
                                             currentBlockIndex, "blockId", blockId);
             if (b != null) {
-                if (b.isAligned() && previousBlock != null) {
+                if (b.isAligned() && !maybeAlignedSwitchCase(b) && previousBlock != null) {
                     boolean hasSuccessorB = false;
                     for (int i = 0; i < previousBlock.getSuccessorCount(); i++) {
                         BasicBlock<?> succ = previousBlock.getSuccessorAt(i);

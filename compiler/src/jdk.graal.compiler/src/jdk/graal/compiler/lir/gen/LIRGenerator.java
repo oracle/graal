@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.gen;
 
+import static jdk.graal.compiler.core.common.GraalOptions.AlignJumpTableEntry;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
@@ -529,7 +530,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
      * <li>Else we fall back to a series of compare and branches.</li>
      * </ol>
      */
-    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value) {
+    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value,
+                    boolean inputMayBeOutOfRange) {
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
 
         if (strategy.getAverageEffort() < JUMP_TABLE_THRESHOLD) {
@@ -559,7 +561,7 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
                 }
             }
 
-            emitDirectJumpTableHelper(keyConstants, keyProbabilities, keyTargets, defaultTarget, value, minValue, loIdx, subrangeForDirectJump.hiIdx);
+            emitDirectJumpTableHelper(keyConstants, keyProbabilities, keyTargets, defaultTarget, value, minValue, loIdx, subrangeForDirectJump.hiIdx, inputMayBeOutOfRange);
             return;
         }
 
@@ -638,7 +640,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
         return null;
     }
 
-    private void emitDirectJumpTableHelper(JavaConstant[] keyConstants, double[] keyProbs, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value, int minValue, int loIdx, int hiIdx) {
+    private void emitDirectJumpTableHelper(JavaConstant[] keyConstants, double[] keyProbs, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value, int minValue, int loIdx, int hiIdx,
+                    boolean inputMayBeOutOfRange) {
         int maxValue = keyConstants[hiIdx].asInt();
         // This cannot overflow because we have ensured that above
         int subrangeValueRange = maxValue - minValue + 1;
@@ -673,7 +676,12 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
             remainingStrategy = SwitchStrategy.getBestStrategy(remainingKeyProbabilities, remainingKeyConstants, remainingKeyTargets);
         }
 
-        emitRangeTableSwitch(minValue, defaultTarget, targets, remainingStrategy, remainingKeyTargets, value);
+        if (AlignJumpTableEntry.getValue(getResult().getLIR().getOptions())) {
+            for (LabelRef jumpTableEntry : targets) {
+                jumpTableEntry.getTargetBlock().setAlign(true);
+            }
+        }
+        emitRangeTableSwitch(minValue, defaultTarget, targets, remainingStrategy, remainingKeyTargets, value, inputMayBeOutOfRange);
     }
 
     private void emitHashedJumpTableHelper(JavaConstant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value, IntHasher h) {
@@ -722,7 +730,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
      * remainingStrategy} will decide the jump destination among {@code remainingTargets} and {@code
      * defaultTarget} when the value of {@code key} is not in the jump table.
      */
-    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key);
+    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                    boolean inputMayBeOutOfRange);
 
     protected abstract void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash);
 

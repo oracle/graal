@@ -744,8 +744,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 LIRKind kind = gen.getLIRKind(x.value().stamp(NodeView.DEFAULT));
                 Value key = gen.emitConstant(kind, x.keyAt(0));
                 gen.emitCompareBranch(kind.getPlatformKind(), value, key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
-            } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
-                IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
+            } else if (x instanceof IntegerSwitchNode intSwitch && x.isSorted()) {
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
@@ -756,7 +755,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                     keyProbabilities[i] = intSwitch.keyProbability(i);
                     assert keyConstants[i].getJavaKind() == keyKind : Assertions.errorMessage(keyConstants, keyKind);
                 }
-                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
+                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value, intSwitch.inputMayBeOutOfRange());
             } else {
                 // keyKind != JavaKind.Int || !x.isSorted()
                 LabelRef[] keyTargets = new LabelRef[keyCount];

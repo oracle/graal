@@ -16,8 +16,6 @@
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.barista + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
-    c.on_demand                + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
-    c.on_demand                + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
     c.monthly                  + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + PR_bench_libgraal,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
@@ -29,9 +27,9 @@
 
   local profiling_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52 + jdk + cc.libgraal + suite + cc.enable_profiling     + { job_prefix:: "bench-compiler-profiling" },
-    c.monthly + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking   + { job_prefix:: "bench-compiler-footprint" },
-    c.monthly + hw.x52_root + jdk + cc.libgraal + suite + cc.energy_tracking + { job_prefix:: "bench-compiler-energy" }
+    c.on_demand + hw.x52 + jdk + cc.libgraal + suite + cc.enable_profiling     + { job_prefix:: "bench-compiler-profiling" },
+    c.on_demand + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking   + { job_prefix:: "bench-compiler-footprint" },
+    c.monthly + hw.x52_root + jdk + cc.libgraal + suite + cc.energy_tracking   + { job_prefix:: "bench-compiler-energy" }
     ]
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites

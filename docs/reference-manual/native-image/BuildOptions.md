@@ -136,7 +136,7 @@ For example:
 
 ### Preserving Packages, Modules, or Classes
 
-GraalVM for JDK 25 introduces the `-H:Preserve` option. This lets you instruct the `native-image` tool to keep entire packages, modules, or all classes on the classpath in the native executable, even when static analysis cannot discover them.
+GraalVM 25 introduces the `-H:Preserve` option. This lets you instruct the `native-image` tool to keep entire packages, modules, or all classes on the classpath in the native executable, even when static analysis cannot discover them.
 
 You can use `-H:Preserve` in the following ways:
 

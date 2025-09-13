@@ -73,8 +73,11 @@ public final class DynamicHubCompanion {
      */
     final int classFileAccessFlags;
 
-    /** The class that serves as the host for the nest. All nestmates have the same host. */
-    final Class<?> nestHost;
+    /**
+     * The class that serves as the host for the nest. All nestmates have the same host. Always
+     * encoded with null for Dynamic hubs allocated at runtime.
+     */
+    @Stable Class<?> nestHost;
 
     /** The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}. */
     final String simpleBinaryName;
@@ -126,11 +129,11 @@ public final class DynamicHubCompanion {
      * Metadata for querying the reflection data. When using layered images this field is always
      * null and should not be queried. Instead, use {@link LayeredReflectionMetadataSingleton}.
      */
-    @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
-    @Stable DynamicHub.ReflectionMetadata reflectionMetadata;
+    @UnknownObjectField(canBeNull = true, types = ImageReflectionMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @Stable ReflectionMetadata reflectionMetadata;
 
-    @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
-    @Stable DynamicHub.DynamicHubMetadata hubMetadata;
+    @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @Stable DynamicHubMetadata hubMetadata;
 
     /**
      * Classloader used for loading this class. Most classes have the correct class loader set
@@ -159,9 +162,9 @@ public final class DynamicHubCompanion {
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
-                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+                    ClassLoader classLoader, String simpleBinaryName, Object declaringClass, String signature) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, null, simpleBinaryName, declaringClass, signature);
     }
 
     private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
@@ -177,5 +180,13 @@ public final class DynamicHubCompanion {
         this.signature = signature;
 
         this.classLoader = classLoader;
+    }
+
+    public void setHubMetadata(RuntimeDynamicHubMetadata hubMetadata) {
+        this.hubMetadata = hubMetadata;
+    }
+
+    public void setReflectionMetadata(RuntimeReflectionMetadata reflectionMetadata) {
+        this.reflectionMetadata = reflectionMetadata;
     }
 }

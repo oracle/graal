@@ -106,6 +106,7 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
             boolean isBytecodeInterpreterSwitch = false;
             boolean isBytecodeInterpreterSwitchBoundary = false;
             boolean isInliningCutoff = false;
+            boolean isInliningRoot = false;
             for (AnnotationData annotationData : annotationDataList) {
                 String annotationTypeFqn = annotationData.getAnnotationType().getName();
                 if (hostTypes.TruffleBoundary.getName().equals(annotationTypeFqn)) {
@@ -116,9 +117,11 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
                     isBytecodeInterpreterSwitchBoundary = true;
                 } else if (hostTypes.InliningCutoff.getName().equals(annotationTypeFqn)) {
                     isInliningCutoff = true;
+                } else if (hostTypes.InliningRoot != null && hostTypes.InliningRoot.getName().equals(annotationTypeFqn)) {
+                    isInliningRoot = true;
                 }
             }
-            return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff);
+            return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
         }
 
     }

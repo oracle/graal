@@ -127,6 +127,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.util.**", ConfigurationFilter.Inclusion.Exclude);
         // Bundles calls Bundles.of
         internalCallerFilter.addOrGetChildren("sun.util.resources.Bundles", ConfigurationFilter.Inclusion.Include);
+        // Class.forName calls in CalendarSystem.forName
+        internalCallerFilter.addOrGetChildren("sun.util.calendar.CalendarSystem", ConfigurationFilter.Inclusion.Include);
 
         excludeInaccessiblePackages(internalCallerFilter);
 

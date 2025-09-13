@@ -17,7 +17,7 @@ These are: **native-image-community**, **jdk-community**, **truffleruby-communit
 The container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8, 9, and 10.
 
 GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, and so on.
-For instance, GraalVM for JDK 25 is installed in _/usr/lib64/graalvm/graalvm-community-java25/_.
+For instance, GraalVM 25 is installed in _/usr/lib64/graalvm/graalvm-community-java25/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 > Note: For GraalVM non-RPM based images (**graalvm-community**, **python-community**, **truffleruby-community**), the installation location is under _/opt/_ (_/opt/graalvm-community-java&lt;$FeatureVersion&gt;/_, _/opt/truffleruby-&lt;$GRAALVM_VERSION&gt;/_, and _/opt/graalpy-&lt;$GRAALVM_VERSION&gt;/_ respectively).

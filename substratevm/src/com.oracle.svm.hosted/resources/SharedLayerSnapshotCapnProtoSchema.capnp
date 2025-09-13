@@ -66,16 +66,13 @@ struct PersistedAnalysisType {
 }
 
 struct ClassInitializationInfo {
-  isNoInitializerNoTracking @0 :Bool;
-  isInitializedNoTracking @1 :Bool;
-  isFailedNoTracking @2 :Bool;
-  isInitialized @3 :Bool;
-  isInErrorState @4 :Bool;
-  isLinked @5 :Bool;
-  hasInitializer @6 :Bool;
-  isBuildTimeInitialized @7 :Bool;
-  isTracked @8 :Bool;
-  initializerMethodId @9 :MethodId;
+  isInitialized @0 :Bool;
+  isInErrorState @1 :Bool;
+  isLinked @2 :Bool;
+  hasInitializer @3 :Bool;
+  isBuildTimeInitialized @4 :Bool;
+  isTracked @5 :Bool;
+  initializerMethodId @6 :MethodId;
 }
 
 struct PersistedAnalysisMethod {

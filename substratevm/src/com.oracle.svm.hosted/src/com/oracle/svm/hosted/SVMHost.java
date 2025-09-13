@@ -120,6 +120,8 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
+import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingPhase;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
@@ -165,6 +167,7 @@ import jdk.internal.loader.NativeLibraries;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -204,6 +207,15 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
+    /**
+     * We do not allow the folding of arbitrary {@link Stable} fields if the analysis has not
+     * finished yet as it leads to non-deterministic results, because the initialization code often
+     * runs in parallel with the analysis, creating race conditions. However, we need to allow the
+     * folding of {@link Stable} fields in some cases to improve analysis precision. If we know that
+     * such fields are initialized before parsing any method that reads their values, the analysis
+     * results should still be deterministic.
+     */
+    private final Set<AnalysisField> stableFieldsToFoldBeforeAnalysis = ConcurrentHashMap.newKeySet();
     private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
     private final SVMParsingSupport parsingSupport;
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
@@ -228,6 +240,8 @@ public class SVMHost extends HostVM {
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
     private final MetaAccessProvider originalMetaAccess;
+
+    private final ConstantExpressionRegistry constantExpressionRegistry;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -268,6 +282,8 @@ public class SVMHost extends HostVM {
         featureType = lookupOriginalType(Feature.class);
 
         verifyNamingConventions = SubstrateOptions.VerifyNamingConventions.getValue();
+
+        constantExpressionRegistry = StrictDynamicAccessInferenceFeature.isActive() ? ConstantExpressionRegistry.singleton() : null;
     }
 
     /**
@@ -1292,9 +1308,63 @@ public class SVMHost extends HostVM {
         }
     }
 
+    /**
+     * Check the set of well-known {@link Stable} fields and if any of them is already initialized
+     * (has a non-default value), allow its constant folding. This method should be called <b>before
+     * analysis</b> but after all {@link Feature#beforeAnalysis} callbacks finished to give features
+     * a chance to initialize the {@link Stable} fields.
+     * 
+     * @see #stableFieldsToFoldBeforeAnalysis
+     * 
+     * @implNote The "set" is currently only a single field {@code Unsafe.memoryAccessWarned}, but
+     *           we may extend that in the future.
+     */
+    public void checkWellKnownStableFieldsBeforeAnalysis(BigBang bb) {
+        assert !BuildPhaseProvider.isAnalysisStarted() : "This method should be called before the analysis is started.";
+        /*
+         * Folding of Unsafe.memoryAccessWarned is important to remove the code that prints the
+         * warning when unsafe is used for the first time (see Unsafe.beforeMemoryAccess), which
+         * would otherwise be marked as reachable. Unsafe.memoryAccessWarned is not initialized
+         * early enough in every build, but if it is already initialized by this point, it is
+         * beneficial to fold it.
+         */
+        var field = ReflectionUtil.lookupField(loader.findClassOrFail("sun.misc.Unsafe"), "memoryAccessWarned");
+        try {
+            var memoryAccessWarned = (boolean) field.get(null);
+            if (memoryAccessWarned) {
+                allowStableFieldFoldingBeforeAnalysis(bb.getMetaAccess().lookupJavaField(field));
+            }
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * @see #stableFieldsToFoldBeforeAnalysis
+     */
     public boolean allowConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
+        if (!BuildPhaseProvider.isAnalysisFinished() && !aField.isFinal() && aField.isAnnotationPresent(Stable.class)) {
+            return stableFieldsToFoldBeforeAnalysis.contains(aField);
+        }
         return !finalFieldsInitializedOutsideOfConstructor.contains(aField);
+    }
+
+    /**
+     * Allows the given {@link Stable} field to be folded before analysis. Use with caution and only
+     * when you know that the given field is initialized before any method that reads its value is
+     * parsed, because trying to fold such a {@link Stable} field which still has a default value by
+     * the time the analysis is started results in a <b>build failure</b>, because if the
+     * initialization occurs later, the folding might result in <i>non-deterministic behavior</i>,
+     * as the field will get folded before/during analysis only in some builds when the
+     * initialization happened fast enough, resulting in unstable number of reachable methods and
+     * unstable decisions of the simulation of class initializers.
+     *
+     * @see #stableFieldsToFoldBeforeAnalysis
+     * @see SimulateClassInitializerSupport
+     */
+    public void allowStableFieldFoldingBeforeAnalysis(AnalysisField field) {
+        stableFieldsToFoldBeforeAnalysis.add(field);
     }
 
     @Override
@@ -1386,5 +1456,9 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
+    }
+
+    public ConstantExpressionRegistry getConstantExpressionRegistry() {
+        return constantExpressionRegistry;
     }
 }

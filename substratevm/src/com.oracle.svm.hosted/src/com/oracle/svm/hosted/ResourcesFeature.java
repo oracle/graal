@@ -91,6 +91,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
@@ -174,6 +176,8 @@ public class ResourcesFeature implements InternalFeature {
 
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
+
+    private DynamicAccessInferenceLog inferenceLog;
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<ConfigurationCondition> {
         private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
@@ -491,6 +495,8 @@ public class ResourcesFeature implements InternalFeature {
         globWorkSet = Set.of();
 
         resourceRegistryImpl().setAnalysisAccess(access);
+
+        inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
     }
 
     private static final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {
@@ -692,7 +698,7 @@ public class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
+        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation || StrictDynamicAccessInferenceFeature.isEnforced()) {
             return;
         }
 
@@ -732,6 +738,9 @@ public class ResourcesFeature implements InternalFeature {
                         throw VMError.shouldNotReachHere(e);
                     }
                     b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
+                    if (inferenceLog != null) {
+                        inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
+                    }
                     return true;
                 }
                 return false;

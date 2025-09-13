@@ -1170,64 +1170,93 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     private volatile ResolvedJavaField[] instanceFieldsWithSuper;
     private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
+    private volatile ResolvedJavaField[] staticFields;
+
+    /**
+     * Note that although this returns a {@code ResolvedJavaField[]}, all instance fields are of
+     * type {@link AnalysisField} and can be cast to AnalysisField without problem.
+     */
+    @Override
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return includeSuperclasses ? getInstanceFieldsWithSuper() : getInstanceFieldsWithoutSuper();
+    }
+
+    private ResolvedJavaField[] getInstanceFieldsWithoutSuper() {
+        if (instanceFieldsWithoutSuper == null) {
+            if (isArray() || isInterface() || isPrimitive()) {
+                instanceFieldsWithoutSuper = AnalysisField.EMPTY_ARRAY;
+            } else {
+                instanceFieldsWithoutSuper = convertFields(wrapped.getInstanceFields(false), false);
+            }
+        }
+        return instanceFieldsWithoutSuper;
+    }
+
+    private ResolvedJavaField[] getInstanceFieldsWithSuper() {
+        if (instanceFieldsWithSuper == null) {
+            if (isArray() || isInterface() || isPrimitive()) {
+                instanceFieldsWithSuper = AnalysisField.EMPTY_ARRAY;
+            } else {
+                ResolvedJavaField[] instanceFields = getInstanceFieldsWithoutSuper();
+                if (getSuperclass() == null) {
+                    instanceFieldsWithSuper = instanceFields;
+                } else {
+                    ResolvedJavaField[] superInstanceFields = getSuperclass().getInstanceFields(true);
+                    ResolvedJavaField[] result = Arrays.copyOf(superInstanceFields, superInstanceFields.length + instanceFields.length);
+                    System.arraycopy(instanceFields, 0, result, superInstanceFields.length, instanceFields.length);
+                    for (int index = 0; index < instanceFields.length; ++index) {
+                        ((AnalysisField) instanceFields[index]).setPosition(superInstanceFields.length + index);
+                    }
+                    instanceFieldsWithSuper = result;
+                }
+            }
+        }
+        return instanceFieldsWithSuper;
+    }
 
     /**
      * Note that although this returns a ResolvedJavaField[], all instance fields are of type
      * AnalysisField and can be cast to AnalysisField without problem.
      */
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        ResolvedJavaField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
-        if (result != null) {
-            return result;
-        } else {
-            return initializeInstanceFields(includeSuperclasses);
+    public ResolvedJavaField[] getStaticFields() {
+        if (staticFields == null) {
+            if (isArray() || isPrimitive()) {
+                staticFields = AnalysisField.EMPTY_ARRAY;
+            } else {
+                staticFields = convertFields(wrapped.getStaticFields(), true);
+            }
         }
+        return staticFields;
     }
 
-    private ResolvedJavaField[] initializeInstanceFields(boolean includeSuperclasses) {
-        List<ResolvedJavaField> list = new ArrayList<>();
-        if (includeSuperclasses && getSuperclass() != null) {
-            list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
-        }
-        ResolvedJavaField[] result = convertFields(wrapped.getInstanceFields(false), list, includeSuperclasses);
-        if (includeSuperclasses) {
-            instanceFieldsWithSuper = result;
-        } else {
-            instanceFieldsWithoutSuper = result;
-        }
-        return result;
-    }
-
-    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
+    /**
+     * Converts the given array of hosted {@link ResolvedJavaField}s into an array of
+     * {@link AnalysisField}s. The resulting array is compact and contains only convertible fields,
+     * i.e., if looking up the field in the {@link AnalysisUniverse} is not supported then the field
+     * is skipped.
+     */
+    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, boolean setPosition) {
+        ResolvedJavaField[] result = new ResolvedJavaField[originals.length];
+        int index = 0;
         for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
-                    AnalysisField aField = universe.lookup(original);
-                    if (aField != null) {
-                        if (listIncludesSuperClassesFields || aField.isStatic()) {
-                            /*
-                             * If the list includes the super classes fields, register the position.
-                             */
-                            aField.setPosition(list.size());
+                    AnalysisField field = universe.lookup(original);
+                    if (field != null) {
+                        if (setPosition) {
+                            field.setPosition(index);
                         }
-                        list.add(aField);
+                        result[index++] = field;
                     }
                 } catch (UnsupportedFeatureException ex) {
                     // Ignore deleted fields and fields of deleted types.
                 }
             }
         }
-        return list.toArray(new ResolvedJavaField[list.size()]);
-    }
 
-    /**
-     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
-     * AnalysisField and can be casted to AnalysisField without problem.
-     */
-    @Override
-    public ResolvedJavaField[] getStaticFields() {
-        return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
+        // Trim array if some fields could not be converted.
+        return index == result.length ? result : Arrays.copyOf(result, index);
     }
 
     @Override

@@ -321,7 +321,7 @@ public final class ClassRegistries implements ParsingContext {
         return SubstrateUtil.cast(loader, Target_java_lang_ClassLoader.class).nameAndId();
     }
 
-    private AbstractClassRegistry getRegistry(ClassLoader loader) {
+    public AbstractClassRegistry getRegistry(ClassLoader loader) {
         if (loader == null) {
             return bootRegistry;
         }

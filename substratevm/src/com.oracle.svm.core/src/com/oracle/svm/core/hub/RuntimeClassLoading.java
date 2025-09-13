@@ -31,6 +31,7 @@ import java.security.ProtectionDomain;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;

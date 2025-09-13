@@ -233,4 +233,8 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
             return lookupConstant(wrapped.lookup());
         }
     }
+
+    public ConstantPool getWrapped() {
+        return wrapped;
+    }
 }

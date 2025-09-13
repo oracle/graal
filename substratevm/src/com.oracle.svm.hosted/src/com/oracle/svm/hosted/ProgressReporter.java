@@ -54,6 +54,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -265,7 +267,8 @@ public class ProgressReporter {
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
 
-        l().a(" - ").a("Assertions: ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", system assertions: ").a(getSystemAssertionStatus() ? "enabled" : "disabled")
+        l().a(" - ").doclink("Assertions", "#glossary-builder-assertions").a(": ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", system assertions: ")
+                        .a(getSystemAssertionStatus() ? "enabled" : "disabled")
                         .println();
 
         printFeatures(features);
@@ -273,7 +276,8 @@ public class ProgressReporter {
         // Image Configuration section
         l().a(" ").a("Image configuration:").println();
         l().a(" - ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
-        l().a(" - ").a("Assertions: ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled").a(" (class-specific config may apply), system assertions: ")
+        l().a(" - ").doclink("Assertions", "#glossary-image-assertions").a(": ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled")
+                        .a(" (class-specific config may apply), system assertions: ")
                         .a(RuntimeAssertionsSupport.singleton().getDefaultSystemAssertionStatus() ? "enabled" : "disabled").println();
 
         printExperimentalOptions(classLoader);
@@ -793,7 +797,9 @@ public class ProgressReporter {
         l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
+        printWarningsCount();
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+        checkTreatWarningsAsError();
     }
 
     private static String outcomePrefix(NativeImageGeneratorRunner.BuildOutcome buildOutcome) {
@@ -802,6 +808,46 @@ public class ProgressReporter {
             case FAILED -> "Failed";
             case STOPPED -> "Stopped";
         };
+    }
+
+    private void printWarningsCount() {
+        int warningsCount = LogUtils.getWarningsCount() + SubstrateOptions.DriverWarningsCount.getValue();
+        if (warningsCount == 0) {
+            return;
+        }
+
+        l().println();
+        l().yellowBold().a("The build process encountered ").a(warningsCount).a(warningsCount == 1 ? " warning." : " warnings.").reset().println();
+        l().println();
+    }
+
+    private void checkTreatWarningsAsError() {
+        if (SubstrateOptions.TreatWarningsAsError.getValue().contains("all")) {
+            deleteBuiltArtifacts();
+            throw UserError.abort("Build failed: Warnings are treated as errors because the -Werror flag is set.");
+        }
+    }
+
+    /**
+     * Delete built artifacts. This is done e.g. in the -Werror case to ensure we don't "fail on
+     * error" but still have built - but potentially broken - artifacts created.
+     */
+    private void deleteBuiltArtifacts() {
+        BuildArtifacts.singleton().forEach((artifactType, paths) -> {
+            if (artifactType != ArtifactType.BUILD_INFO) {
+                for (Path path : paths) {
+                    try {
+                        if (path.startsWith(SubstrateOptions.getImagePath())) {
+                            java.nio.file.Files.delete(path);
+                        } else {
+                            LogUtils.warning("Cleaning up due to -Werror failed: Cannot delete artifacts not in " + SubstrateOptions.getImagePath() + ". Invalid: " + path);
+                        }
+                    } catch (IOException ex) {
+                        LogUtils.warning("Cleaning up due to -Werror failed: cannot delete " + path + ": " + ex.getMessage());
+                    }
+                }
+            }
+        });
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {

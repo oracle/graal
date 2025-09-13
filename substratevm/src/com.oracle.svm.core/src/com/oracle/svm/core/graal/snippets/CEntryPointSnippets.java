@@ -716,7 +716,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             VMThreads.singleton().freeCurrentIsolateThread();
             return CEntryPointErrors.NO_ERROR;
         } catch (Throwable t) {
-            return reportException(t);
+            return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
     }
 

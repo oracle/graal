@@ -3787,6 +3787,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         int op = getByte(branch);
         // @formatter:off
         assert op == 0xE8 // call
+                || op == 0xFF // jump table
                 || op == 0x00 // jump table entry
                 || op == 0xE9 // jmp
                 || op == 0xEB // short jmp
@@ -3795,7 +3796,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
                 : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
         // @formatter:on
 
-        if (op == 0x00) {
+        if (op == 0xFF) {
+            int imm32 = branchTarget - (branch + 4);
+            emitInt(imm32, branch);
+        } else if (op == 0x00) {
             int offsetToJumpTableBase = getShort(branch + 1);
             int jumpTableBase = branch - offsetToJumpTableBase;
             int imm32 = branchTarget - jumpTableBase;

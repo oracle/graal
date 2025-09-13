@@ -814,6 +814,7 @@ public class NativeImageGenerator {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                bb.getHostVM().checkWellKnownStableFieldsBeforeAnalysis(bb);
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().sealConfiguration();
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
@@ -1578,7 +1579,7 @@ public class NativeImageGenerator {
         } else {
             suites = GraalConfiguration.runtimeInstance().createSuites(optionsToUse == null ? RuntimeOptionValues.singleton() : optionsToUse, hosted, ConfigurationValues.getTarget().arch);
         }
-        return modifySuites(backend, suites, featureHandler, hosted, false);
+        return modifySuites(backend, suites, featureHandler, hosted, false, false);
     }
 
     public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
@@ -1593,18 +1594,34 @@ public class NativeImageGenerator {
         } else {
             suites = GraalConfiguration.runtimeInstance().createFirstTierSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         }
-        return modifySuites(backend, suites, featureHandler, hosted, true);
+        return modifySuites(backend, suites, featureHandler, hosted, true, false);
+    }
+
+    /**
+     * Creates a fallback set of {@link Suites} for the given environment and configuration. These
+     * suites contain fewer optimizations and can be used as a fallback for problematic
+     * compilations.
+     */
+    public static Suites createFallbackSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
+        SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
+        Suites suites;
+        if (hosted) {
+            suites = GraalConfiguration.hostedInstance().createFallbackSuites(HostedOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
+        } else {
+            suites = GraalConfiguration.runtimeInstance().createFallbackSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
+        }
+        return modifySuites(backend, suites, featureHandler, hosted, false, true);
     }
 
     private static Suites modifySuites(SubstrateBackend backend, Suites suites, FeatureHandler featureHandler,
-                    boolean hosted, boolean firstTier) {
+                    boolean hosted, boolean firstTier, boolean fallback) {
         Providers runtimeCallProviders = backend.getProviders();
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
 
-        final boolean economy = firstTier || SubstrateOptions.useEconomyCompilerConfig();
+        final boolean economy = firstTier || fallback || SubstrateOptions.useEconomyCompilerConfig();
 
         ListIterator<BasePhase<? super HighTierContext>> position;
         if (hosted) {
@@ -1665,7 +1682,7 @@ public class NativeImageGenerator {
             }
         }
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(runtimeCallProviders, suites, hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(runtimeCallProviders, suites, hosted, fallback));
 
         if (hosted && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(HostedOptionValues.singleton())) {
             highTier.prependPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.BEFORE_HIGH_TIER));
@@ -1728,6 +1745,21 @@ public class NativeImageGenerator {
             lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
         } else {
             lirSuites = GraalConfiguration.runtimeInstance().createFirstTierLIRSuites(RuntimeOptionValues.singleton());
+        }
+
+        /* Add phases that just perform assertion checking. */
+        assert addAssertionLIRPhases(lirSuites, hosted);
+        return lirSuites;
+    }
+
+    @SuppressWarnings("unused")
+    public static LIRSuites createFallbackLIRSuites(FeatureHandler featureHandler, Providers providers, boolean hosted) {
+        LIRSuites lirSuites;
+        if (hosted) {
+            lirSuites = GraalConfiguration.hostedInstance().createFallbackLIRSuites(HostedOptionValues.singleton());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+        } else {
+            lirSuites = GraalConfiguration.runtimeInstance().createFallbackLIRSuites(RuntimeOptionValues.singleton());
         }
 
         /* Add phases that just perform assertion checking. */
