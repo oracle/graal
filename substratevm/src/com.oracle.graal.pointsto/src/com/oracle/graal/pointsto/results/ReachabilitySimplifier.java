@@ -326,29 +326,26 @@ class ReachabilitySimplifier implements CustomSimplification {
             return null;
         }
 
-        Stamp newStamp;
         if (strengthenType == null) {
             /* The type and its subtypes are not instantiated. */
             if (stamp.nonNull()) {
                 /* We must be in dead code. */
-                newStamp = StampFactory.empty(JavaKind.Object);
+                return StampFactory.empty(JavaKind.Object);
             } else {
-                newStamp = StampFactory.alwaysNull();
+                return StampFactory.alwaysNull();
             }
-
         } else {
             if (stamp.isExactType()) {
                 /* We must be in dead code. */
-                newStamp = StampFactory.empty(JavaKind.Object);
+                return StampFactory.empty(JavaKind.Object);
             } else {
                 ResolvedJavaType targetType = toTargetFunction.apply(strengthenType);
                 if (targetType == null) {
                     return null;
                 }
                 TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(targetType);
-                newStamp = StampFactory.object(typeRef, stamp.nonNull());
+                return StampFactory.object(typeRef, stamp.nonNull());
             }
         }
-        return newStamp;
     }
 }
