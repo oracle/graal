@@ -25,33 +25,45 @@
 package com.oracle.svm.hosted;
 
 public class ByteFormattingUtil {
-    private static final double BYTES_TO_KB = 1000d;
-    private static final double BYTES_TO_MB = 1000d * 1000d;
-    private static final double BYTES_TO_GB = 1000d * 1000d * 1000d;
+    // "123.12KiB".length() = 9, holds as long as it's not >= 1000GiB
+    private static final int MAX_WIDTH = 9;
+    public static final String RIGHT_ALIGNED_FORMAT = "%" + MAX_WIDTH + "s";
 
+    private enum Unit {
+        KiB(1024L),
+        MiB(1024L * 1024L),
+        GiB(1024L * 1024L * 1024L);
+
+        private final long value;
+
+        Unit(long value) {
+            this.value = value;
+        }
+    }
+
+    // We want to respect MAX_WIDTH and keep it concise,
+    // so we prefer to show 0.99MiB than 1010.00KiB (length 10).
     public static String bytesToHuman(long bytes) {
         assert bytes >= 0;
-        if (bytes < BYTES_TO_KB) {
-            return plainBytes(bytes, "B");
-        } else if (bytes < BYTES_TO_MB) {
-            return toHuman(bytes / BYTES_TO_KB, "kB");
-        } else if (bytes < BYTES_TO_GB) {
-            return toHuman(bytes / BYTES_TO_MB, "MB");
+        if (bytes < 1_000) {
+            return bytes + "B";
+        } else if (bytes < 1_000 * Unit.KiB.value) {
+            return toHuman(bytes, Unit.KiB);
+        } else if (bytes < 1_000 * Unit.MiB.value) {
+            return toHuman(bytes, Unit.MiB);
         } else {
             return bytesToHumanGB(bytes);
         }
     }
 
     public static String bytesToHumanGB(long bytes) {
-        return toHuman(bytes / BYTES_TO_GB, "GB");
+        return toHuman(bytes, Unit.GiB);
     }
 
-    private static String toHuman(double value, String unit) {
-        return "%.2f%s".formatted(value, unit);
+    private static String toHuman(long value, Unit unit) {
+        String string = "%.2f%s".formatted((double) value / unit.value, unit);
+        assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value;
+        return string;
     }
 
-    private static String plainBytes(long value, String unit) {
-        assert 0 <= value && value < BYTES_TO_KB;
-        return "%d%s".formatted(value, unit);
-    }
 }
