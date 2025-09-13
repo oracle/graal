@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -186,10 +185,6 @@ public abstract class StrengthenGraphs {
 
     @SuppressWarnings("try")
     public final void applyResults(AnalysisMethod method) {
-        var nodeReferences = method instanceof PointsToAnalysisMethod ptaMethod && ptaMethod.getTypeFlow().flowsGraphCreated()
-                        ? ptaMethod.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys()
-                        : null;
-        var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
 
         if (method.analyzedInPriorLayer()) {
             /*
@@ -203,10 +198,14 @@ public abstract class StrengthenGraphs {
             return;
         }
 
-        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
-        if (graph == null) {
+        if (method.getAnalyzedGraph() == null) {
+            /* Method was not analyzed, so there is nothing to strengthen. */
             return;
         }
+
+        var nodeReferences = method.getEncodedNodeReferences();
+        var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
+        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
 
         preStrengthenGraphs(graph, method);
 
@@ -225,6 +224,7 @@ public abstract class StrengthenGraphs {
 
         postStrengthenGraphs(graph, method);
 
+        /* Preserve the strengthened graph in an encoded format. */
         method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
         persistStrengthenGraph(method);
@@ -279,7 +279,7 @@ public abstract class StrengthenGraphs {
 
         AnalysisStrengthenGraphsPhase(AnalysisMethod method, StructuredGraph graph) {
             ReachabilitySimplifier simplifier;
-            if (method instanceof PointsToAnalysisMethod ptaMethod && ptaMethod.getTypeFlow().flowsGraphCreated()) {
+            if (bb.isPointsToAnalysis()) {
                 simplifier = new TypeFlowSimplifier(StrengthenGraphs.this, method, graph);
             } else {
                 simplifier = new ReachabilitySimplifier(StrengthenGraphs.this, method, graph);
