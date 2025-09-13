@@ -577,6 +577,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
     public abstract List<BytecodePosition> getInvokeLocations();
 
+    /** Get the node markers used to store per-node mappings to metadata for encoded nodes. */
+    public abstract Iterable<EncodedGraph.EncodedNodeReference> getEncodedNodeReferences();
+
     /**
      * Returns true if this method is a native entrypoint, i.e. it may be called from the host
      * environment.

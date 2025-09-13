@@ -62,6 +62,8 @@ public interface BigBang extends ReachabilityAnalysis {
 
     UnsupportedFeatures getUnsupportedFeatures();
 
+    boolean isPointsToAnalysis();
+
     /**
      * Checks if all user defined limitations such as the number of types are satisfied.
      */
