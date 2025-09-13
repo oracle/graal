@@ -283,18 +283,26 @@ class ReachabilitySimplifier implements CustomSimplification {
         return "method " + StrengthenGraphs.getQualifiedName(graph) + ", node " + node;
     }
 
+    /**
+     * Tries to improve the stamp based on reachability information. It only handles
+     * {@link AbstractObjectStamp object stamps} as all primitives types are considered implicitly
+     * reachable and the analysis (reachability or points-to) doesn't track primitive ranges.
+     * <p>
+     * Returns a new {@link Stamp} if the input stamp can be improved, or {@code  null} otherwise.
+     */
     private Stamp strengthenStamp(Stamp s) {
         if (!(s instanceof AbstractObjectStamp stamp)) {
+            /* We can only strengthen object types. */
             return null;
         }
         AnalysisType originalType = (AnalysisType) stamp.type();
         if (originalType == null) {
+            /* The stamp is either empty or a non-exact java.lang.Object; nothing to strengthen. */
             return null;
         }
 
         /* In open world the type may become reachable later. */
         if (strengthenGraphs.isClosedTypeWorld && !originalType.isReachable()) {
-            /* We must be in dead code. */
             if (stamp.nonNull()) {
                 /* We must be in dead code. */
                 return StampFactory.empty(JavaKind.Object);
