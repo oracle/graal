@@ -39,11 +39,12 @@ import java.util.Objects;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.Call;
@@ -876,6 +877,80 @@ public class CompilationResult {
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new GraalError(e);
+        }
+    }
+
+    public record CompilationResultWatermark(int infopointsSize,
+                    int dataPatchesSize,
+                    int exceptionHandlersSize,
+                    int pendingExceptionInfoListSize,
+                    int pendingImplicitExceptionListSize) {
+    }
+
+    /**
+     * @return the sizes of recorded and pending {@link Site}s that either need further patching,
+     *         e.g., {@link DataPatch}, or introduce new control flow, e.g.,
+     *         {@link ExceptionHandler} or {@link ImplicitExceptionDispatch}.
+     */
+    public CompilationResultWatermark getSitesWatermark(int pendingExceptionInfoListSize, int pendingImplicitExceptionListSize) {
+        return new CompilationResultWatermark(infopoints.size(), dataPatches.size(), exceptionHandlers.size(), pendingExceptionInfoListSize,
+                        pendingImplicitExceptionListSize);
+    }
+
+    /**
+     * We assume the order of Site lists will not change.
+     */
+    private boolean verifySites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd) {
+        for (int i = 0; i < infopoints.size(); i++) {
+            int codeOffset = infopoints.get(i).pcOffset;
+            if (watermarkAtCodeStart.infopointsSize() <= i && i < watermarkAtCodeEnd.infopointsSize()) {
+                assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, infopoints);
+            } else {
+                assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, infopoints);
+            }
+        }
+        for (int i = 0; i < dataPatches.size(); i++) {
+            int codeOffset = dataPatches.get(i).pcOffset;
+            if (watermarkAtCodeStart.dataPatchesSize() <= i && i < watermarkAtCodeEnd.dataPatchesSize()) {
+                assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, dataPatches);
+            } else {
+                assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, dataPatches);
+            }
+        }
+        for (int i = 0; i < exceptionHandlers.size(); i++) {
+            int codeOffset = exceptionHandlers.get(i).pcOffset;
+            if (watermarkAtCodeStart.exceptionHandlersSize() <= i && i < watermarkAtCodeEnd.exceptionHandlersSize()) {
+                assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, exceptionHandlers);
+            } else {
+                assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, exceptionHandlers);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Duplicates the sites between {@code codeStart} and {@code codeEnd} with an offset.
+     */
+    public void duplicateSites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd, int offset) {
+        assert verifySites(codeStart, watermarkAtCodeStart, codeEnd, watermarkAtCodeEnd) : Assertions.errorMessage(codeStart, codeEnd);
+        for (int i = watermarkAtCodeStart.infopointsSize; i < watermarkAtCodeEnd.infopointsSize; i++) {
+            Infopoint infoPoint = infopoints.get(i);
+            if (infoPoint instanceof Call call) {
+                infopoints.add(new Call(call.target, call.pcOffset + offset, call.size, call.direct, call.debugInfo));
+            } else if (infoPoint instanceof ImplicitExceptionDispatch dispatch) {
+                infopoints.add(new ImplicitExceptionDispatch(dispatch.pcOffset + offset, dispatch.dispatchOffset, dispatch.debugInfo));
+            } else {
+                GraalError.guarantee(infoPoint.getClass() == Infopoint.class, "Unsupported Infopoint type %s", infoPoint.getClass());
+                infopoints.add(new Infopoint(infoPoint.pcOffset, infoPoint.debugInfo, infoPoint.reason));
+            }
+        }
+        for (int i = watermarkAtCodeStart.dataPatchesSize; i < watermarkAtCodeEnd.dataPatchesSize; i++) {
+            DataPatch dataPatch = dataPatches.get(i);
+            dataPatches.add(new DataPatch(dataPatch.pcOffset + offset, dataPatch.reference));
+        }
+        for (int i = watermarkAtCodeStart.exceptionHandlersSize; i < watermarkAtCodeEnd.exceptionHandlersSize; i++) {
+            ExceptionHandler handler = exceptionHandlers.get(i);
+            exceptionHandlers.add(new ExceptionHandler(handler.pcOffset + offset, handler.handlerPos));
         }
     }
 }

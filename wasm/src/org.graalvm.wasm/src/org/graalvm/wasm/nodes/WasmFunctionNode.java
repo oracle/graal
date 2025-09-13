@@ -97,6 +97,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
@@ -270,13 +271,15 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
         check(bytecode.length, (1 << 31) - 1);
 
+        final int end = bytecodeEndOffset;
+
         int opcode = Bytecode.UNREACHABLE;
-        loop: while (offset < bytecodeEndOffset) {
+        loop: while (offset < end) {
             try {
                 opcode = rawPeekU8(bytecode, offset);
                 offset++;
                 CompilerAsserts.partialEvaluationConstant(offset);
-                switch (opcode) {
+                switch (HostCompilerDirectives.markThreadedSwitch(opcode)) {
                     case Bytecode.UNREACHABLE:
                         enterErrorBranch();
                         throw WasmException.create(Failure.UNREACHABLE, this);

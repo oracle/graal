@@ -542,27 +542,27 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         // Store deoptimization reason and action into thread local storage.
                         int dwordSizeInBits = AArch64Kind.DWORD.getSizeInBytes() * Byte.SIZE;
                         AArch64Address pendingDeoptimization = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingDeoptimizationOffset);
-                        masm.mov(scratch, pendingImplicitException.state.deoptReasonAndAction.asInt());
+                        masm.mov(scratch, pendingImplicitException.state().deoptReasonAndAction.asInt());
                         masm.str(dwordSizeInBits, scratch, pendingDeoptimization);
 
                         // Store speculation into thread local storage
-                        JavaConstant deoptSpeculation = pendingImplicitException.state.deoptSpeculation;
+                        JavaConstant deoptSpeculation = pendingImplicitException.state().deoptSpeculation;
                         if (deoptSpeculation.getJavaKind() == JavaKind.Long) {
                             int qwordSizeInBits = AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE;
                             AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(qwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
-                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
+                            masm.mov(scratch, pendingImplicitException.state().deoptSpeculation.asLong());
                             masm.str(qwordSizeInBits, scratch, pendingSpeculation);
                         } else {
                             assert deoptSpeculation.getJavaKind() == JavaKind.Int : deoptSpeculation;
                             AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
-                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asInt());
+                            masm.mov(scratch, pendingImplicitException.state().deoptSpeculation.asInt());
                             masm.str(dwordSizeInBits, scratch, pendingSpeculation);
                         }
 
                         ForeignCallLinkage uncommonTrapBlob = foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP);
                         Register helper = AArch64Call.isNearCall(uncommonTrapBlob) ? null : scratch;
-                        AArch64Call.directCall(crb, masm, uncommonTrapBlob, helper, pendingImplicitException.state);
-                        crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
+                        AArch64Call.directCall(crb, masm, uncommonTrapBlob, helper, pendingImplicitException.state());
+                        crb.recordImplicitException(pendingImplicitException.codeOffset(), pos, pendingImplicitException.state());
                     }
                 }
             }

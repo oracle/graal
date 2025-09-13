@@ -2597,7 +2597,7 @@ class LoopDetector implements Runnable {
         switchKeyProbabilities[idx] = 0;
         switchKeySuccessors[idx] = idx;
 
-        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeys, switchKeySuccessors, ProfileData.SwitchProbabilityData.unknown(switchKeyProbabilities));
+        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeys, switchKeySuccessors, ProfileData.SwitchProbabilityData.unknown(switchKeyProbabilities), false);
     }
 
     /**

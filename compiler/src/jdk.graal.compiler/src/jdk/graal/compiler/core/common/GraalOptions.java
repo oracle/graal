@@ -356,4 +356,7 @@ public final class GraalOptions {
 
     @Option(help = "Enables caching of data structures like control flow graph or schedule across compiler phases.", type = OptionType.Debug)
     public static final OptionKey<Boolean> CacheCompilerDataStructures = new OptionKey<>(true);
+
+    @Option(help = "Enables tracing of threaded switch optimization decisions.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceThreadedSwitchOptimization = new OptionKey<>(false);
 }

@@ -567,8 +567,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
-                    boolean inputMayBeOutOfRange) {
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, inputMayBeOutOfRange));
+                    boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, inputMayBeOutOfRange, mayEmitThreadedCode));
     }
 
     @Override

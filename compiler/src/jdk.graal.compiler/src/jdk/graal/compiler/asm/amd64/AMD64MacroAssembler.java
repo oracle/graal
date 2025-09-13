@@ -499,6 +499,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         annotatePatchingImmediate(1, 4);
         emitByte(0xE9);
         emitInt(0);
+        if (isRecordingCodeSnippet()) {
+            abortRecordingCodeSnippet();
+        }
     }
 
     @SuppressWarnings("unused")

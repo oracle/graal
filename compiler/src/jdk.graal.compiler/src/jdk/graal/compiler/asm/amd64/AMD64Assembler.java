@@ -3488,7 +3488,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     protected boolean ensureWithinBoundary(int opStart) {
-        if (useBranchesWithin32ByteBoundary) {
+        if (useBranchesWithin32ByteBoundary && !isRecordingCodeSnippet()) {
             int nextOpStart = position();
             int opEnd = nextOpStart - 1;
             if (mayCrossBoundary(opStart, opEnd)) {
@@ -3517,7 +3517,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      * @return the number of nop bytes emitted
      */
     protected final int mitigateJCCErratum(int position, int bytesToEmit) {
-        if (useBranchesWithin32ByteBoundary) {
+        if (useBranchesWithin32ByteBoundary && !isRecordingCodeSnippet()) {
             int bytesUntilBoundary = bytesUntilBoundary(position);
             if (bytesUntilBoundary < bytesToEmit) {
                 nop(bytesUntilBoundary);
@@ -3527,7 +3527,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         return 0;
     }
 
-    public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
+    protected void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         final int shortSize = JumpType.JCCB.instrSize;
         final int longSize = JumpType.JCC.instrSize;
 
@@ -3568,12 +3568,16 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         emitByte(0x80 | cc.getValue());
         emitInt(0);
         trackJump(JumpType.JCC, pos);
+        if (isRecordingCodeSnippet()) {
+            abortRecordingCodeSnippet();
+        }
     }
 
     public final void jcc(ConditionFlag cc, Label l) {
         assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {
-            jcc(cc, l.position(), false);
+            jcc(cc, l.position(), isRecordingCodeSnippet());
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else if (canUseShortJump(nextJumpIdx)) {
             jccb(cc, l);
         } else {
@@ -3592,7 +3596,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void jccb(ConditionFlag cc, Label l) {
-        if (force4ByteNonZeroDisplacements) {
+        if (force4ByteNonZeroDisplacements || isRecordingCodeSnippet()) {
             jcc(cc, l);
             return;
         }
@@ -3613,13 +3617,14 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
             emitByte(0);
             trackJump(JumpType.JCCB, pos);
         }
+        GraalError.guarantee(!isRecordingCodeSnippet(), "Short jump is unlikely applicable when replaying code snippet");
     }
 
     public final void jcc(ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         if (branchTarget == null) {
             // jump to placeholder
             jcc(cc, 0, true);
-        } else if (isShortJmp) {
+        } else if (isShortJmp && !isRecordingCodeSnippet()) {
             jccb(cc, branchTarget);
         } else {
             jcc(cc, branchTarget);
@@ -3664,6 +3669,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else if (canUseShortJump(nextJumpIdx)) {
             jmpb(l);
         } else {
@@ -3781,6 +3787,12 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     @Override
+    protected final void patchRelativeJumpTarget(int branch, int offset) {
+        int currentOffset = getInt(branch);
+        emitInt(currentOffset + offset, branch);
+    }
+
+    @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
         // @formatter:off
@@ -3814,9 +3826,8 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
                 throw new BranchTargetOutOfBoundsException(true, "Displacement too large to be encoded as a byte: %d", imm8);
             }
             emitByte(imm8, branch + 1);
-
+            updatePatchInCodeSnippet(branch, 1);
         } else {
-
             int off = 1;
             if (op == 0x0F) {
                 off = 2;
@@ -3824,6 +3835,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
             int imm32 = branchTarget - (branch + 4 + off);
             emitInt(imm32, branch + off);
+            updatePatchInCodeSnippet(branch, off);
         }
     }
 
@@ -3975,7 +3987,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      * a previous code emit has found that this jump will have a sufficiently small displacement.
      */
     private boolean canUseShortJump(int jumpIdx) {
-        return !force4ByteNonZeroDisplacements && optimizeLongJumps && longToShortJumps != null && longToShortJumps.contains(jumpIdx);
+        return !force4ByteNonZeroDisplacements && optimizeLongJumps && longToShortJumps != null && longToShortJumps.contains(jumpIdx) && !isRecordingCodeSnippet();
     }
 
     /**
@@ -4231,6 +4243,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         if (l.isBound()) {
             emitByte(0xE8);
             emitInt(l.position());
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else {
             l.addPatchAt(position(), this);
             emitByte(0xE8);

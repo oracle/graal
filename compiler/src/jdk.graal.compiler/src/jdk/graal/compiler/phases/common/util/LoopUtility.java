@@ -75,8 +75,15 @@ public class LoopUtility {
          * is mere a means to achieve something else. The optimizer should not have to spend any
          * time optimizing it since it is visited infrequently and only there to enable a more
          * optimal inner loop.
+         *
+         * Threaded switch recognition relies on special flags in the LoopBeginNode and its
+         * following IntegerSwitchNode. Duplicating the loop body can create multiple such pairs,
+         * all of which must be tracked by the backend for threaded switch optimization. In general,
+         * threaded switch optimization should only be applied to switches with a large number of
+         * cases. Loop optimizations in these scenarios will significantly increase code size
+         * regardless.
          */
-        return loop.loopBegin().isAnyStripMinedOuter();
+        return loop.loopBegin().isAnyStripMinedOuter() || loop.loopBegin().mayEmitThreadedCode();
     }
 
     public static long tripCountSignedExact(CountedLoopInfo loop) {

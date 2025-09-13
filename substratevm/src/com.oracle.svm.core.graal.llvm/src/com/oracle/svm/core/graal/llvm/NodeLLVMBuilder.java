@@ -827,4 +827,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     public ValueNode valueForOperand(Value value) {
         throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
+
+    @Override
+    public void emitStartRecordingThreadedSwitch() {
+    }
 }
