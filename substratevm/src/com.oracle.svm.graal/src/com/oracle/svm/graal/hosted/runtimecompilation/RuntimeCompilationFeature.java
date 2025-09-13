@@ -825,15 +825,15 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key) {
+        public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key) {
             if (key == RUNTIME_COMPILED_METHOD) {
                 /*
                  * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are
                  * not created during the AnalysisStrengthenGraphsPhase. If the type does not
                  * already exist at this point (which is after the analysis phase), then we must
-                 * return null.
+                 * return false.
                  */
-                return (t) -> objectReplacer.typeCreated(t) ? t : null;
+                return (t) -> objectReplacer.typeCreated(t);
             }
             return null;
         }
