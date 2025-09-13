@@ -43,7 +43,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1432,14 +1431,14 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key) {
+    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
-            var result = parsingSupport.getStrengthenGraphsToTargetFunction(key);
+            var result = parsingSupport.getStrengthenGraphsTypePredicate(key);
             if (result != null) {
                 return result;
             }
         }
-        return super.getStrengthenGraphsToTargetFunction(key);
+        return super.getStrengthenGraphsTypePredicate(key);
     }
 
     @Override
