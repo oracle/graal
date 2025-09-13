@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -152,14 +152,14 @@ abstract class HostExecuteNode extends Node {
                     @Exclusive @Cached InlinedExactClassProfile receiverProfile,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
                     @Shared("seenScope") @Cached InlinedBranchProfile seenDynamicScope,
-                    @Shared @Cached InlinedBranchProfile seenVargArgs,
+                    @Shared @Cached InlinedBranchProfile seenVarArgs,
                     @Exclusive @Cached HostTargetMappingNode varArgsMappingNode,
                     @Exclusive @CachedLibrary(limit = "3") InteropLibrary varArgsMappingInterop,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         boolean asVarArgs;
         int parameterCount = cachedMethod.getParameterCount();
         if (args.length == parameterCount) {
-            seenVargArgs.enter(node);
+            seenVarArgs.enter(node);
             Class<?> varArgParamType = cachedMethod.getParameterTypes()[parameterCount - 1];
             asVarArgs = !HostToTypeNode.canConvert(node, args[parameterCount - 1], varArgParamType,
                             cachedMethod.getGenericParameterTypes()[parameterCount - 1],
@@ -256,33 +256,37 @@ abstract class HostExecuteNode extends Node {
     }
 
     // Note: checkArgTypes must be evaluated after selectOverload.
-    @SuppressWarnings({"unused", "static-method", "truffle-static-method"})
     @ExplodeLoop
-    @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, interop, hostContext)"}, limit = "LIMIT")
+    @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, interop, hostContext, overload)"}, limit = "LIMIT")
     static final Object doOverloadedCached(Node node, OverloadedMethod method, Object obj, Object[] args, HostContext hostContext,
-                    @Cached("method") OverloadedMethod cachedMethod,
+                    @Cached("method") @SuppressWarnings("unused") OverloadedMethod cachedMethod,
                     @Exclusive @Cached HostToTypeNode toJavaNode,
                     @Exclusive @Cached ToGuestValueNode toGuest,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedLibrary(limit = "LIMIT") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached("createArgTypesArray(args)") TypeCheckNode[] cachedArgTypes,
                     @Cached("selectOverload(node, method, args, hostContext, cachedArgTypes)") SingleMethod overload,
                     @Exclusive @Cached InlinedExactClassProfile receiverProfile,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
                     @Shared("seenScope") @Cached InlinedBranchProfile seenVariableScope,
-                    @Shared @Cached InlinedBranchProfile seenVargArgs,
+                    @Shared @Cached InlinedBranchProfile seenVarArgs,
                     @Exclusive @Cached HostTargetMappingNode varArgsMappingNode,
                     @Exclusive @CachedLibrary(limit = "3") InteropLibrary varArgsMappingInterop,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
+        assert args.length == cachedArgTypes.length;
 
         boolean asVarArgs;
-        int parameterCount = cachedArgTypes.length;
+        int parameterCount = overload.getParameterCount();
         if (overload.isVarArgs()) {
-            seenVargArgs.enter(node);
-            Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
-            asVarArgs = !HostToTypeNode.canConvert(node, args[parameterCount - 1], varArgParamType,
-                            overload.getGenericParameterTypes()[parameterCount - 1],
-                            null, hostContext, HostToTypeNode.COERCE,
-                            varArgsMappingInterop, varArgsMappingNode);
+            seenVarArgs.enter(node);
+            if (cachedArgTypes.length == parameterCount) {
+                Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
+                asVarArgs = !HostToTypeNode.canConvert(node, args[parameterCount - 1], varArgParamType,
+                                overload.getGenericParameterTypes()[parameterCount - 1],
+                                null, hostContext, HostToTypeNode.COERCE,
+                                varArgsMappingInterop, varArgsMappingNode);
+            } else {
+                asVarArgs = true;
+            }
         } else {
             asVarArgs = false;
         }
@@ -323,7 +327,6 @@ abstract class HostExecuteNode extends Node {
         }
     }
 
-    @SuppressWarnings("static-method")
     @Specialization(replaces = "doOverloadedCached")
     static final Object doOverloadedUncached(Node node, OverloadedMethod method, Object obj, Object[] args, HostContext hostContext,
                     @Shared("toHost") @Cached HostToTypeNode toJavaNode,
@@ -446,7 +449,7 @@ abstract class HostExecuteNode extends Node {
             cachedArgTypes[i] = node.insert(argType);
         }
 
-        assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getFactory().getUncached(), context) : Arrays.toString(cachedArgTypes);
+        assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getFactory().getUncached(), context, selected) : Arrays.toString(cachedArgTypes);
     }
 
     private static TypeCheckNode createPrimitiveTargetCheck(List<SingleMethod> applicable, SingleMethod selected, Object arg, Class<?> targetType, int parameterIndex, int priority, boolean varArgs,
@@ -482,8 +485,13 @@ abstract class HostExecuteNode extends Node {
         return new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY), priority);
     }
 
+    /**
+     * @param overload dummy argument used to ensure this guard is not evaluated until
+     *            {@link #fillArgTypesArray} has been called by {@link #selectOverload}.
+     * @see #doOverloadedCached
+     */
     @ExplodeLoop
-    static boolean checkArgTypes(Object[] args, TypeCheckNode[] argTypes, InteropLibrary interop, HostContext context) {
+    static boolean checkArgTypes(Object[] args, TypeCheckNode[] argTypes, InteropLibrary interop, HostContext context, SingleMethod overload) {
         if (args.length != argTypes.length) {
             return false;
         }
