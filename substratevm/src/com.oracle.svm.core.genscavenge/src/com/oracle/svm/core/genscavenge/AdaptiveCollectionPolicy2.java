@@ -39,8 +39,13 @@ import com.oracle.svm.core.util.UnsignedUtils;
 /** Constants for policy tunables. */
 interface AdaptiveCollectionPolicy2Tunables {
 
+    /**
+     * Start out with the same sizes for young and old generation. This leads to less frequent minor
+     * collections and tenuring at startup especially with {@link #YOUNG_GENERATION_SIZE_SUPPLEMENT}
+     * disabled. (The HotSpot NewRatio default is 2, so 1:2 for young:old)
+     */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gc_globals.hpp#L489-L493") //
-    int INITIAL_NEW_RATIO = 2; // HotSpot: NewRatio
+    int INITIAL_NEW_RATIO = 1;
 
     /*
      *
@@ -57,11 +62,23 @@ interface AdaptiveCollectionPolicy2Tunables {
     int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
     int PROMOTED_PADDING = 3;
     int THRESHOLD_TOLERANCE = 10;
-    int YOUNG_GENERATION_SIZE_INCREMENT = 20;
-    int YOUNG_GENERATION_SIZE_SUPPLEMENT = 80;
+    /**
+     * Maximum size increment step percentage. We reduce it from HotSpot's default to avoid growing
+     * the heap too eagerly and overshooting.
+     */
+    int YOUNG_GENERATION_SIZE_INCREMENT = 10; // HotSpot default: 20
+    /*
+     * Supplement to accelerate heap expansion at startup. We do not use it to avoid growing the
+     * heap too eagerly and overshooting.
+     */
+    int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
     int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
     double MAX_GC_PAUSE_MILLIS = UnsignedUtils.toDouble(UnsignedUtils.MAX_VALUE.subtract(1));
-    int GC_TIME_RATIO = 99;
+    /**
+     * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
+     * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
+     */
+    int GC_TIME_RATIO = 19;
     int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
     /**
      * The tenuring threshold at startup (HotSpot default: 7). The policy intentionally never
