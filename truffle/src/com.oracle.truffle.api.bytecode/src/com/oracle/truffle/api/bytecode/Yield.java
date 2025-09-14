@@ -128,4 +128,6 @@ public @interface Yield {
      * @since 26.0
      */
     String javadoc() default "";
+
+    // no storeBytecodeIndex() attribute. Unconditionally enabled as we yield from the method.
 }

@@ -386,7 +386,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @Operation(storeBytecodeIndex = true)
         @ConstantOperand(type = CallTarget.class)
         static final class Call {
             @Specialization
@@ -395,7 +395,8 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @SuppressWarnings("truffle-interpreted-performance")
+        @Operation(storeBytecodeIndex = true)
         @ConstantOperand(type = CallTarget.class)
         static final class CallNoLocation {
             @Specialization
@@ -404,7 +405,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @Operation(storeBytecodeIndex = true)
         static final class ThrowErrorBehindInterop {
 
             @Specialization(limit = "1")
@@ -417,7 +418,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @Operation(storeBytecodeIndex = true)
         static final class ThrowError {
 
             @Specialization
@@ -426,7 +427,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @Operation(storeBytecodeIndex = false)
         static final class ThrowErrorNoLocation {
 
             @Specialization
@@ -435,7 +436,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             }
         }
 
-        @Operation
+        @Operation(storeBytecodeIndex = true)
         static final class CaptureStack {
 
             @Specialization

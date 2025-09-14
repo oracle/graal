@@ -209,6 +209,8 @@ public class FlatNodeGenFactory {
     private final GeneratorMode generatorMode;
     private final NodeStateResult state;
 
+    private boolean forceFrameInExecuteAndSpecialize;
+
     public enum GeneratorMode {
         DEFAULT,
         EXPORTED_MESSAGE
@@ -252,6 +254,10 @@ public class FlatNodeGenFactory {
         this.substitutions.put(ElementUtils.findExecutableElement(types.TruffleLanguage_LanguageReference, "create"),
                         (binary) -> substituteLanguageReference(binary));
 
+    }
+
+    public void setForceFrameInExecuteAndSpecialize(boolean forceFrameInExecuteAndSpecialize) {
+        this.forceFrameInExecuteAndSpecialize = forceFrameInExecuteAndSpecialize;
     }
 
     private static final class NodeStateResult {
@@ -862,7 +868,10 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static boolean needsFrameToExecute(List<SpecializationData> specializations) {
+    private boolean needsFrameToExecute(List<SpecializationData> specializations) {
+        if (forceFrameInExecuteAndSpecialize) {
+            return true;
+        }
         for (SpecializationData specialization : specializations) {
             if (specialization.getFrame() != null) {
                 return true;
@@ -4477,7 +4486,7 @@ public class FlatNodeGenFactory {
             }
             CodeTree specializationCall = callMethod(frameState, null, targetMethod, bindings);
             TypeMirror specializationReturnType = specialization.lookupBoxingOverloadReturnType(forType);
-
+            plugs.beforeCallSpecialization(this, builder, frameState, specialization);
             if (isVoid(specializationReturnType)) {
                 builder.statement(specializationCall);
                 if (isVoid(forType.getReturnType())) {

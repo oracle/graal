@@ -147,8 +147,6 @@ public class InheritanceTest {
             super(language, frameDescriptor);
         }
 
-        @ExpectError("All super types of operation classes must be declared as static nested classes of the operation root node. " +
-                        "Modify the super class 'BaseBaseClass' to be an inner class of type 'InheritanceError1Node' to resolve this or use @OperationProxy instead.")
         static class BaseClass extends BaseBaseClass {
             @Specialization(guards = "guard1(v)")
             public static Object s0(int v) {
@@ -160,6 +158,8 @@ public class InheritanceTest {
             }
         }
 
+        @ExpectError("All super types of operation classes must be declared as static nested classes of the operation root node. " +
+                        "Modify the super class 'BaseBaseClass' to be an inner class of type 'InheritanceError1Node' to resolve this or use @OperationProxy instead.")
         @Operation
         public static final class SubClass extends BaseClass {
             @Specialization(guards = "v >= 3")
