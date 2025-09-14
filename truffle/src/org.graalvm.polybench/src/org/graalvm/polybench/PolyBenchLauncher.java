@@ -260,21 +260,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     @Override
     protected void launch(Context.Builder contextBuilder) {
         if (config.isSingleEngine()) {
-            setEnv(contextBuilder);
             runHarness(contextBuilder, config.evalSourceOnlyDefault, 0);
         } else {
             multiEngineLaunch(contextBuilder);
-        }
-    }
-
-    private void setEnv(Context.Builder contextBuilder) {
-        if ("python".equals(getLanguageId(config.path))) {
-            String pythonpath = System.getenv("POLYBENCH_PYTHONPATH");
-            if (pythonpath != null) {
-                contextBuilder.option("python.PythonPath", pythonpath);
-            } else {
-                log("WARNING: running Python benchmark but Python path was not set. Consider setting the POLYBENCH_PYTHONPATH environment variable.");
-            }
         }
     }
 
