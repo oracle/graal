@@ -415,6 +415,7 @@ public class TruffleTypes {
     public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.TagTree";
     public static final String TagTreeNode_Name = "com.oracle.truffle.api.bytecode.TagTreeNode";
     public static final String TagTreeNodeExports_Name = "com.oracle.truffle.api.bytecode.TagTreeNodeExports";
+    public static final String StoreBytecodeIndex_Name = "com.oracle.truffle.api.bytecode.StoreBytecodeIndex";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
@@ -480,6 +481,7 @@ public class TruffleTypes {
     public final DeclaredType TagTree = c.getDeclaredTypeOptional(TagTree_Name);
     public final DeclaredType TagTreeNode = c.getDeclaredTypeOptional(TagTreeNode_Name);
     public final DeclaredType TagTreeNodeExports = c.getDeclaredTypeOptional(TagTreeNodeExports_Name);
+    public final DeclaredType StoreBytecodeIndex = c.getDeclaredTypeOptional(StoreBytecodeIndex_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);

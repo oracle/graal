@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,49 +45,51 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 
 /**
- * Defines a prolog operation that executes before the body of a Root operation.
+ * Can be applied to {@link Specialization}- or {@link Fallback}-annotated methods to specify
+ * whether they require a bytecode index update in the frame. This allows the DSL to update the
+ * bytecode index only for a given specialization instead of the entire operation. In practice, this
+ * means that the bytecode index is updated just before the specialization is executed.
  * <p>
- * A prolog operation is defined the same way as an {@link Operation}. It has the additional
- * restriction that it must have no dynamic operands and must declare a {@code void} return type. It
- * can declare {@link ConstantOperand constant operands}.
+ * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is set
+ * to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter() uncached
+ * interpreter tier} is enabled and the parent operation has {@link Operation#storeBytecodeIndex()}
+ * set to <code>false</code>.
  * <p>
- * The prolog is guarded by exception intercept methods (e.g.,
- * {@link BytecodeRootNode#interceptInternalException(Throwable, VirtualFrame, BytecodeNode, int)})
- * as well as the {@link EpilogExceptional exceptional epilog}, if present.
- * <p>
- * When {@link Tag} instrumentation is enabled, the prolog will execute after {@link RootTag root}
- * probes and before {@link RootBodyTag root body} probes.
+ * Usage example:
  *
- * @since 24.2
- * @see EpilogReturn
- * @see EpilogExceptional
+ * <pre>
+ * // Disable bytecode index updates at the operation level
+ * &#64;Operation(storeBytecodeIndex = false)
+ * static final class Abs {
+ *
+ *     &#64;Specialization(guards = "v &gt;= 0")
+ *     public static long doGreaterZero(long v) {
+ *         return v;
+ *     }
+ *
+ *     &#64;Specialization(guards = "v &lt; 0")
+ *     public static long doLessThanZero(long v) {
+ *         return -v;
+ *     }
+ *
+ *     // Update the bytecode index only for this specialization
+ *     &#64;Specialization
+ *     &#64;StoreBytecodeIndex
+ *     public static long doCallAbs(DynamicObject v) {
+ *         // ... guest language call ...
+ *     }
+ * }
+ * </pre>
+ *
+ * @see Operation#storeBytecodeIndex()
+ * @since 26.0
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.TYPE})
-public @interface Prolog {
-    /**
-     * Indicates whether this operation requires the bytecode index to be updated. By default, the
-     * DSL assumes that all operations with caches require the bytecode index to be updated. The DSL
-     * will emit a warning if specifying this attribute is necessary.
-     * <p>
-     * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
-     * annotation can be used to enable this property for individual {@link Specialization} or
-     * {@link Fallback}-annotated methods.
-     * <p>
-     * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is
-     * set to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter()
-     * uncached interpreter tier} is enabled.
-     *
-     * @see StoreBytecodeIndex
-     * @since 26.0
-     */
-    boolean storeBytecodeIndex() default true;
+@Target({ElementType.METHOD})
+public @interface StoreBytecodeIndex {
+
 }

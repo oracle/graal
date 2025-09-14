@@ -440,6 +440,15 @@ public final class SpecializationData extends TemplateMethod {
         return reachesFallback;
     }
 
+    public boolean isAnyGuardBoundWithCache() {
+        for (GuardExpression guard : guards) {
+            if (isGuardBoundWithCache(guard)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
         for (CacheExpression cache : getBoundCaches(guardExpression.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {

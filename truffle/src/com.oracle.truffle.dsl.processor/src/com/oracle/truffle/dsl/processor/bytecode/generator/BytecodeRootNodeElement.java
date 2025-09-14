@@ -594,6 +594,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(BytecodeRootNodeElement.this, instr);
         FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
+        boolean forceFrame = false;
+        if (isStoreBciEnabled(model, InterpreterTier.CACHED)) {
+            for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
+                if (isStoreBciBeforeSpecialization(model, InterpreterTier.CACHED, instr, s)) {
+                    forceFrame = true;
+                }
+            }
+        }
+        factory.setForceFrameInExecuteAndSpecialize(forceFrame);
+
         String className = cachedDataClassName(instr);
         CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, className);
         el.setSuperClass(types.Node);
@@ -2564,6 +2574,98 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private static String childString(int numChildren) {
         return numChildren + ((numChildren == 1) ? " child" : " children");
+    }
+
+    /**
+     * Whether we store the bci at the beginning of an instruction execute, e.g. if all
+     * specializations require it or some other condition requires it.
+     */
+    public static boolean isStoreBciBeforeExecute(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr) {
+        if (!isStoreBciEnabled(model, tier)) {
+            return false;
+        }
+        if (instr.operation == null) {
+            return false;
+        }
+        switch (instr.operation.kind) {
+            case RETURN:
+            case YIELD:
+            case TAG:
+            case CUSTOM_YIELD: // custom yield always needs to set the bci
+                return true;
+            case CUSTOM:
+            case CUSTOM_INSTRUMENTATION:
+            case CUSTOM_SHORT_CIRCUIT:
+                if (instr.operation.kind == OperationKind.CUSTOM_YIELD) {
+                    return true;
+                }
+                CustomOperationModel custom = instr.operation.customModel;
+                if (!custom.shouldStoreBytecodeIndex()) {
+                    return false;
+                }
+
+                for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
+                    // if we use cached values in guards we need to store before execute regardless
+                    // otherwise the bytecode index is not up-to-date in the guard
+                    if (custom.shouldStoreBytecodeIndex(s) && s.isAnyGuardBoundWithCache()) {
+                        return true;
+                    }
+                }
+                for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
+                    if (!custom.shouldStoreBytecodeIndex(s)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            default:
+                return false;
+        }
+
+    }
+
+    /**
+     * Returns <code>true</code> if we should set the bytecode index just before the specialization.
+     */
+    public static boolean isStoreBciBeforeSpecialization(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr, SpecializationData specialization) {
+        if (!isStoreBciEnabled(model, tier)) {
+            return false;
+        }
+        switch (instr.kind) {
+            case CUSTOM:
+            case CUSTOM_SHORT_CIRCUIT:
+                CustomOperationModel custom = instr.operation.customModel;
+                if (!custom.shouldStoreBytecodeIndex(specialization)) {
+                    // does never perform any calls
+                    return false;
+                }
+                if (isStoreBciBeforeExecute(model, tier, instr)) {
+                    // already stored in execute
+                    return false;
+                }
+                return true;
+            default:
+                return false;
+
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if bytecode index storing in the frame is enabled, else
+     * <code>false</code>.
+     */
+    public static boolean isStoreBciEnabled(BytecodeDSLModel model, InterpreterTier tier) {
+        return model.storeBciInFrame || tier == InterpreterTier.UNCACHED;
+    }
+
+    /**
+     * When in the uncached interpreter or an interpreter with storeBciInFrame set to true, we need
+     * to store the bci in the frame before escaping operations (e.g., returning, yielding,
+     * throwing) or potentially-escaping operations (e.g., a custom operation that could invoke
+     * another root node).
+     */
+    public static void storeBciInFrame(CodeTreeBuilder b, String frame, String bci) {
+        b.statement("FRAMES.setInt(" + frame + ", " + BCI_INDEX + ", ", bci, ")");
     }
 
     enum InterpreterTier {
@@ -14405,7 +14507,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // try
 
             b.startCatchBlock(type(Throwable.class), "throwable");
-            storeBciInFrameIfNecessary(b);
+            if (BytecodeRootNodeElement.isStoreBciEnabled(model, tier)) {
+                storeBciInFrame(b);
+            }
 
             if (model.overridesBytecodeDebugListenerMethod("afterInstructionExecute")) {
                 b.startStatement();
@@ -14687,6 +14791,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private void buildInstructionCaseBlock(CodeTreeBuilder b, InstructionModel instr) {
             buildInstructionCases(b, instr);
             b.startBlock();
+
+            // instru.kind == CUSTOM is handled in buildCustomInstructionExecute
+            if (instr.kind != InstructionKind.CUSTOM && isStoreBciBeforeExecute(model, tier, instr)) {
+                storeBciInFrame(b);
+            }
 
             switch (instr.kind) {
                 case BRANCH:
@@ -15015,7 +15124,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("sp += 1");
                     break;
                 case RETURN:
-                    storeBciInFrameIfNecessary(b);
                     emitBeforeReturnProfiling(b);
                     if (model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
                         b.startStatement();
@@ -15159,7 +15267,29 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("throw sneakyThrow((Throwable) " + uncheckedGetFrameObject("frame", "sp - 1") + ")");
                     break;
                 case YIELD:
-                    buildYieldInstructionExecute(b, instr);
+                    emitBeforeReturnProfiling(b);
+
+                    if (model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
+                        b.startStatement();
+                        b.startCall("$root.afterRootExecute");
+                        emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("(sp - 1)");
+                        b.end();
+                        b.string("null");
+                        b.end();
+                        b.end();
+                    }
+                    b.startStatement();
+                    b.startCall(lookupYield(instr).getSimpleName().toString());
+                    b.string("frame");
+                    if (model.enableYield) {
+                        b.string("localFrame");
+                    }
+                    b.string("bc").string("bci").string("sp").string("$root");
+                    b.end();
+                    b.end();
+
+                    emitReturnTopOfStack(b);
                     break;
                 case CLEAR_LOCAL:
                     String index = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)).toString();
@@ -15248,7 +15378,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildYieldInstructionExecute(CodeTreeBuilder b, InstructionModel instr) {
-            storeBciInFrameIfNecessary(b);
             emitBeforeReturnProfiling(b);
 
             if (instr.kind == InstructionKind.YIELD) {
@@ -17490,8 +17619,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // Since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = getStackEffect(instr);
 
-            if (customInstructionMayReadBci(instr)) {
-                storeBciInFrameIfNecessary(b);
+            if (isStoreBciBeforeExecute(model, tier, instr)) {
+                storeBciInFrame(b);
             }
 
             TypeMirror cachedType = getCachedDataClassType(instr);
@@ -17602,6 +17731,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             continueAtBuilder.end(2);
         }
 
+        private void storeBciInFrame(CodeTreeBuilder b) {
+            if (isStoreBciEnabled(model, tier)) {
+                BytecodeRootNodeElement.storeBciInFrame(b, localFrame(), "bci");
+            }
+        }
+
         private boolean isBoxingOverloadReturnTypeQuickening(InstructionModel instr) {
             if (!instr.isReturnTypeQuickening()) {
                 return false;
@@ -17690,18 +17825,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // statement
         }
 
-        /**
-         * When in the uncached interpreter or an interpreter with storeBciInFrame set to true, we
-         * need to store the bci in the frame before escaping operations (e.g., returning, yielding,
-         * throwing) or potentially-escaping operations (e.g., a custom operation that could invoke
-         * another root node).
-         */
-        private void storeBciInFrameIfNecessary(CodeTreeBuilder b) {
-            if (tier.isUncached() || model.storeBciInFrame) {
-                b.statement("FRAMES.setInt(" + localFrame() + ", " + BCI_INDEX + ", bci)");
-            }
-        }
-
         private static void emitReturnTopOfStack(CodeTreeBuilder b) {
             b.startReturn().string(encodeReturnState("(sp - 1)")).end();
         }
@@ -17722,22 +17845,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.end(); // if hasNextTier
             }
-        }
-
-        /**
-         * To avoid storing the bci in cases when the operation is simple, we use the heuristic that
-         * an operation will not escape/read its own bci unless it has a cached value.
-         *
-         * Note: the caches list includes bind values, so @Bind("$rootNode") is included in the
-         * check.
-         */
-        private boolean customInstructionMayReadBci(InstructionModel instr) {
-            for (SpecializationData spec : instr.nodeData.getSpecializations()) {
-                if (!spec.getCaches().isEmpty()) {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private String instructionMethodName(InstructionModel instr) {
