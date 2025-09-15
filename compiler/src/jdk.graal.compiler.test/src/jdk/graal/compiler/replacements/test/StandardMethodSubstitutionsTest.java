@@ -60,9 +60,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSqrt");
         testGraph("mathTan");
         testGraph("mathAll");
-        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "sinh"), getInitialOptions())) {
-            testGraph("mathSinh");
-        }
         if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
             testGraph("mathTanh");
         }
@@ -75,7 +72,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathLog", value);
         test("mathLog10", value);
         test("mathSin", value);
-        test("mathSinh", value);
         test("mathSqrt", value);
         test("mathTan", value);
         test("mathTanh", value);
@@ -135,10 +131,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     public static double mathSin(double value) {
         return Math.sin(value);
-    }
-
-    public static double mathSinh(double value) {
-        return Math.sinh(value);
     }
 
     public static double mathCos(double value) {

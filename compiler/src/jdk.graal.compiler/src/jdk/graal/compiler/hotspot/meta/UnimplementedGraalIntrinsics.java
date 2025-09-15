@@ -87,6 +87,8 @@ public final class UnimplementedGraalIntrinsics {
 
     public UnimplementedGraalIntrinsics(Architecture arch) {
         add(toBeInvestigated, // @formatter:off
+                        // JDK-8360559: Optimize Math.sinh for x86 64 bit platforms
+                        "java/lang/Math.sinh(D)D",
                         // JDK-8342103: C2 compiler support for Float16 type and associated
                         // scalar operations
                         "jdk/internal/vm/vector/Float16Math.fma(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/Float16Math$TernaryOperator;)Ljava/lang/Object;",
@@ -153,8 +155,6 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore,
                             // JDK-8355644
                             "java/lang/Math.cbrt(D)D",
-                            // JDK-8360559
-                            "java/lang/Math.sinh(D)D",
                             // JDK-8338694
                             "java/lang/Math.tanh(D)D",
                             // JDK-8309130

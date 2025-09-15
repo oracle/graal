@@ -939,7 +939,6 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
             case LOG -> WasmImports.F64Log;
             case LOG10 -> WasmImports.F64Log10;
             case SIN -> WasmImports.F64Sin;
-            case SINH -> WasmImports.F64Sinh;
             case COS -> WasmImports.F64Cos;
             case TAN -> WasmImports.F64Tan;
             case TANH -> WasmImports.F64Tanh;
