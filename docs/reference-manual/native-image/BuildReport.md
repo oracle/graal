@@ -194,6 +194,27 @@ All of this information is also available as JSON in the [CycloneDX](https://git
 The PGO Sampling Profile is a section that is only present in reports generated when building [PGO-optimized binaries](guides/optimize-native-executable-with-pgo.md).
 This section is described in detail in its dedicated PGO guide - [Inspecting a Profile in a Build Report](PGO-Build-Report.md).
 
+## Dynamic Access
+
+Dynamic access refers to all method calls and operations that require reachability metadata to function correctly in a native image. This includes reflection, resource access, serialization, and native calls. GraalVM 25 introduces an experimental reporting feature to help you identify dynamic access (such as reflection) before it causes runtime issues. When you build with both `-H:+ReportDynamicAccess` and `--emit=build-report`, the Native Image build report includes a **Dynamic Access** tab that highlights reflective usage present in the image.
+
+After building your application, open the generated report (for example, _target/[x]-build-report.html_) and navigate to the **Dynamic Access** tab to review dynamic access usage.
+
+This section of the report highlights code that may require review to ensure your application runs successfully as a native executable. For example, classes loaded via `Class.forName(...)` must be included in the executable.
+
+**Understanding the Dynamic Access tab:**
+
+- If no dynamic calls are detected for a class or module path entry, no further action is needed.
+- If the entry includes `native-image.properties` or `reachability-metadata.json`, or these files are provided externally, no further investigation is required.
+- If integrated configuration or external metadata (such as `reflect-config.json`) exists for each detected call type, no further investigation is required.
+- If none of the above apply, the entry may require further investigation.
+
+For each entry with detected dynamic calls, you can expand the entry in the report to see the specific methods and their call locations. The report also provides links to configuration files, whether they are packaged in JARs or available in directories.
+
+> Only dynamic calls found in reachable code are reported. Some entries may have existing metadata but no reported dynamic calls.
+
+For a practical demonstration of running and using the `-H:+ReportDynamicAccess` option, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
+
 ## Related Documentation
 
 - [Native Image Build Output](BuildOutput.md)
