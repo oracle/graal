@@ -191,6 +191,13 @@
     }
   },
 
+  shenandoah_mode:: {
+    platform+:: "-shenandoah",
+    environment+: {
+      "JVM_CONFIG"+: "-shenandoah",
+    }
+  },
+
   serialgc_mode:: {
     platform+:: "-serialgc",
     environment+: {
