@@ -89,8 +89,9 @@ public class GraphDecoder {
 
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
-        /** The loop that contains the call. Only non-null during method inlining. */
-        public final LoopScope callerLoopScope;
+        /** The method that contains the call. Only non-null during method inlining. */
+        public final MethodScope caller;
+
         /**
          * Mark for nodes that were present before the decoding of this method started. Note that
          * nodes that were decoded after the mark can still be part of an outer method, since
@@ -110,6 +111,12 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionPlugin.LoopExplosionKind loopExplosion;
+
+        /**
+         * The loop iteration currently being processed in this method. Prevents stack overflows by
+         * avoiding recursion.
+         */
+        public LoopScope currentLoopScope;
 
         /** All return nodes encountered during decoding. */
         public final List<ControlSinkNode> returnAndUnwindNodes;
@@ -146,8 +153,8 @@ public class GraphDecoder {
         public InliningLogCodec.InliningLogDecoder inliningLogDecoder;
 
         @SuppressWarnings("unchecked")
-        protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionPlugin.LoopExplosionKind loopExplosion) {
-            this.callerLoopScope = callerLoopScope;
+        protected MethodScope(MethodScope caller, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionPlugin.LoopExplosionKind loopExplosion) {
+            this.caller = caller;
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
@@ -158,7 +165,7 @@ public class GraphDecoder {
                 maxFixedNodeOrderId = reader.getUVInt();
                 GraphState.GuardsStage guardsStage = (GraphState.GuardsStage) readObject(this);
                 EnumSet<GraphState.StageFlag> stageFlags = (EnumSet<GraphState.StageFlag>) readObject(this);
-                if (callerLoopScope == null) {
+                if (caller == null) {
                     /**
                      * Only propagate stage flags in non-inlining scenarios. If the caller scope has
                      * not been guard lowered yet (or is a runtime compilation) while we inline
@@ -205,8 +212,8 @@ public class GraphDecoder {
             }
         }
 
-        public boolean isInlinedMethod() {
-            return false;
+        public final boolean isInlinedMethod() {
+            return caller != null;
         }
 
         public NodeSourcePosition getCallerNodeSourcePosition() {
@@ -215,19 +222,6 @@ public class GraphDecoder {
 
         public NodeSourcePosition getNodeSourcePosition(NodeSourcePosition position) {
             return position;
-        }
-
-        /**
-         * Sets the {@link #inliningLog} and {@link #optimizationLog} as the logs of the
-         * {@link #graph} if they are non-null.
-         */
-        public final void replaceLogsForDecodedGraph() {
-            if (inliningLog != null) {
-                graph.setInliningLog(inliningLog);
-            }
-            if (optimizationLog != null) {
-                graph.setOptimizationLog(optimizationLog);
-            }
         }
     }
 
@@ -307,7 +301,7 @@ public class GraphDecoder {
          * explosion. Only used when {@link MethodScope#loopExplosion} is
          * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
          */
-        public final EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates;
+        public final EconomicMap<LoopExplosionKey, LoopExplosionState> iterationStates;
         public final int loopBeginOrderId;
         /**
          * The worklist of fixed nodes to process. Since we already the correct processing order
@@ -334,6 +328,8 @@ public class GraphDecoder {
          */
         public final BitSet writtenNodes;
 
+        public LoopExplosionMergeKeyFilter loopExplosionMergeKeyFilter;
+
         protected LoopScope(MethodScope methodScope) {
             this.methodScope = methodScope;
             this.outer = null;
@@ -350,6 +346,7 @@ public class GraphDecoder {
             this.createdNodes = new Node[nodeCount];
             this.initialCreatedNodes = null;
             this.writtenNodes = null;
+            this.loopExplosionMergeKeyFilter = null;
         }
 
         /**
@@ -363,9 +360,10 @@ public class GraphDecoder {
                         Deque<LoopScope> nextIterationFromLoopExitDuplication,
                         Deque<LoopScope> nextIterationFromLoopEndDuplication,
                         Deque<LoopScope> nextIterationsFromUnrolling,
-                        EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates) {
+                        EconomicMap<LoopExplosionKey, LoopExplosionState> iterationStates,
+                        LoopExplosionMergeKeyFilter loopExplosionMergeKeyFilter) {
             this(methodScope, outer, loopDepth, loopIteration, loopBeginOrderId, trigger, initialCreatedNodes, createdNodes, nextIterationFromLoopExitDuplication, nextIterationFromLoopEndDuplication,
-                            nextIterationsFromUnrolling, iterationStates, true);
+                            nextIterationsFromUnrolling, iterationStates, loopExplosionMergeKeyFilter, true);
         }
 
         /**
@@ -381,7 +379,8 @@ public class GraphDecoder {
                         Deque<LoopScope> nextIterationFromLoopExitDuplication,
                         Deque<LoopScope> nextIterationFromLoopEndDuplication,
                         Deque<LoopScope> nextIterationsFromUnrolling,
-                        EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates,
+                        EconomicMap<LoopExplosionKey, LoopExplosionState> iterationStates,
+                        LoopExplosionMergeKeyFilter loopExplosionMergeKeyFilter,
                         boolean reuseInitialNodes) {
             this.methodScope = methodScope;
             this.outer = outer;
@@ -401,6 +400,7 @@ public class GraphDecoder {
             } else {
                 this.writtenNodes = null;
             }
+            this.loopExplosionMergeKeyFilter = loopExplosionMergeKeyFilter;
         }
 
         /**
@@ -530,84 +530,320 @@ public class GraphDecoder {
         }
     }
 
-    protected static class LoopExplosionState {
-        public final FrameState state;
-        public final MergeNode merge;
-        public final int hashCode;
-        private final boolean considerVirtualStateAfterPEA;
+    /**
+     * Stores paths to all values that should be considered for explicit merge keys.
+     */
+    protected static final class LoopExplosionMergeKeyFilter {
+        /**
+         * Each entry is a path to a value that should be considered for explicit merge keys. The
+         * first entry in the path is the index of a value in the frame state values. Each
+         * subsequent entry is the index of a value in the virtual object state of the previous
+         * entry.
+         */
+        private final List<int[]> slotPaths;
 
-        protected LoopExplosionState(FrameState state, MergeNode merge) {
-            this.state = state;
-            this.merge = merge;
+        private LoopExplosionMergeKeyFilter(List<int[]> slotPaths) {
+            this.slotPaths = slotPaths;
+        }
 
-            boolean effectiveConsiderVirtualStateAfterPEA = false;
-            int h = 0;
-            for (ValueNode value : state.values()) {
-                if (value == null) {
-                    h = h * 31 + 1234;
-                } else {
-                    if (value instanceof VirtualObjectNode) {
-                        // ignore virtual object node parts of the hash - they are treated specially
-                        // in the equals logic
-                        effectiveConsiderVirtualStateAfterPEA = true;
-                        continue;
+        static LoopExplosionMergeKeyFilter create(LoopScope loopScope, FrameState frameState) {
+            List<int[]> slotPaths = new ArrayList<>();
+            NodeInputList<ValueNode> values = frameState.values();
+            for (int i = 0; i < values.size(); i++) {
+                ArrayList<Integer> currentPath = new ArrayList<>(4);
+                currentPath.add(i);
+                collectSlotPaths(slotPaths, loopScope, frameState, values.get(i), currentPath, new ArrayList<>(2));
+            }
+            if (slotPaths.isEmpty()) {
+                return null;
+            }
+            return new LoopExplosionMergeKeyFilter(slotPaths);
+        }
+
+        /**
+         * Traverses the virtual-object portion of a {@link FrameState} to collect index paths
+         * to any {@link LoopExplosionKeyNode} reachable from the given {@code value}.
+         * <p>
+         * Each discovered path represents the sequence of slot indexes that leads from the
+         * starting value through nested {@link VirtualObjectState} entries to a key marker.
+         * When such a marker is found, the current path is recorded in {@code slotPaths},
+         * the marker is replaced in the loop scope's created-node maps, and the node itself
+         * is rewritten to its inner value and deleted.
+         * <p>
+         * The traversal is recursive and only follows {@link VirtualObjectNode}s that have
+         * a corresponding {@link VirtualObjectState}. The {@code activeObjects} list is used
+         * as a recursion stack to detect cycles and prevent infinite descent through cyclic
+         * virtual-object graphs.
+         *
+         * @param slotPaths collects the discovered slot-index paths to loop explosion key markers
+         * @param loopScope provides the node maps that must be updated when a key marker is found
+         * @param frameState the frame state from which virtual object state is resolved
+         * @param value the current value being inspected
+         * @param currentPath the path accumulated so far while descending through nested slots
+         * @param activeObjects the set/stack of virtual objects currently being visited to avoid cycles
+         */
+        private static void collectSlotPaths(List<int[]> slotPaths, LoopScope loopScope, FrameState frameState, ValueNode value, ArrayList<Integer> currentPath,
+                        ArrayList<VirtualObjectNode> activeObjects) {
+            if (value instanceof LoopExplosionKeyNode keyNode) {
+                // we found a key marker, record the index path
+                slotPaths.add(toIntArray(currentPath));
+                replaceKeyMarkerWithInner(loopScope.createdNodes, keyNode);
+                if (loopScope.initialCreatedNodes != null) {
+                    replaceKeyMarkerWithInner(loopScope.initialCreatedNodes, keyNode);
+                }
+                keyNode.replaceAndDelete(keyNode.value);
+                return;
+            }
+            if (!(value instanceof VirtualObjectNode virtualObject) || activeObjects.contains(virtualObject)) {
+                return; // prevent infinite recursion on cycles in the virtual object state graph
+            }
+            EscapeObjectState escapeState = findEscapeObjectState(frameState, virtualObject);
+            if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
+                return; // we only care about virtual objects here
+            }
+            activeObjects.add(virtualObject);
+            NodeInputList<ValueNode> nestedValues = virtualObjectState.values();
+            for (int i = 0; i < nestedValues.size(); i++) {
+                currentPath.add(i);
+                collectSlotPaths(slotPaths, loopScope, frameState, nestedValues.get(i), currentPath, activeObjects);
+                currentPath.remove(currentPath.size() - 1);
+            }
+            activeObjects.remove(activeObjects.size() - 1);
+        }
+
+        int size() {
+            return slotPaths.size();
+        }
+
+        List<ValueNode> resolveMarkedValues(FrameState frameState) {
+            List<ValueNode> values = new ArrayList<>(slotPaths.size());
+            for (int[] slotPath : slotPaths) {
+                ValueNode value = frameState.values().get(slotPath[0]);
+                for (int i = 1; i < slotPath.length; i++) {
+                    if (!(value instanceof VirtualObjectNode virtualObject)) {
+                        throw nestedMergeKeyRequiresVirtualObject();
                     }
+                    EscapeObjectState escapeState = findEscapeObjectState(frameState, virtualObject);
+                    if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
+                        throw nestedMergeKeyRequiresVirtualObject();
+                    }
+                    value = virtualObjectState.values().get(slotPath[i]);
+                }
+                values.add(value);
+            }
+            return values;
+        }
 
+        boolean sameNonKeyState(FrameState thisState, FrameState otherState) {
+            return topLevelValuesEqual(thisState.values(), otherState.values()) && virtualObjectMappingsEqual(thisState, otherState);
+        }
+
+        private boolean topLevelValuesEqual(NodeInputList<ValueNode> thisValues, NodeInputList<ValueNode> otherValues) {
+            int size = thisValues.size();
+            if (size != otherValues.size()) {
+                return false;
+            }
+            for (int i = 0; i < size; i++) {
+                if (isTerminalAtDepth(i, 0)) {
+                    continue;
+                }
+                if (!compareStateValues(thisValues.get(i), otherValues.get(i), true)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean virtualObjectMappingsEqual(FrameState thisState, FrameState otherState) {
+            if (thisState.virtualObjectMappingCount() != otherState.virtualObjectMappingCount()) {
+                return false;
+            }
+            for (int i = 0; i < thisState.virtualObjectMappingCount(); i++) {
+                EscapeObjectState thisEscapeState = thisState.virtualObjectMappings().get(i);
+                EscapeObjectState otherEscapeState = otherState.virtualObjectMappings().get(i);
+                if (!compareStateValues(thisEscapeState.object(), otherEscapeState.object(), true)) {
+                    return false;
+                }
+                if (!thisEscapeState.getClass().equals(otherEscapeState.getClass())) {
+                    return false;
+                }
+                List<int[]> objectPaths = findPathsForObject(thisState, thisEscapeState.object());
+                if (thisEscapeState instanceof MaterializedObjectState) {
+                    if (objectPaths != null) {
+                        throw nestedMergeKeyRequiresVirtualObject();
+                    }
+                    MaterializedObjectState thisMaterializedObjectState = (MaterializedObjectState) thisEscapeState;
+                    MaterializedObjectState otherMaterializedObjectState = (MaterializedObjectState) otherEscapeState;
+                    if (!compareStateValues(thisMaterializedObjectState.materializedValue(), otherMaterializedObjectState.materializedValue(), true)) {
+                        return false;
+                    }
+                } else {
+                    VirtualObjectState thisVirtualObjectState = (VirtualObjectState) thisEscapeState;
+                    VirtualObjectState otherVirtualObjectState = (VirtualObjectState) otherEscapeState;
+                    if (!virtualObjectValuesEqual(thisVirtualObjectState.values(), otherVirtualObjectState.values(), objectPaths)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private static boolean virtualObjectValuesEqual(NodeInputList<ValueNode> thisValues, NodeInputList<ValueNode> otherValues, List<int[]> objectPaths) {
+            int size = thisValues.size();
+            if (size != otherValues.size()) {
+                return false;
+            }
+            for (int i = 0; i < size; i++) {
+                if (isTerminalEntry(objectPaths, i)) {
+                    continue;
+                }
+                if (!compareStateValues(thisValues.get(i), otherValues.get(i), true)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private List<int[]> findPathsForObject(FrameState frameState, VirtualObjectNode targetObject) {
+            List<int[]> objectPaths = null;
+            for (int[] slotPath : slotPaths) {
+                if (slotPath.length < 2) {
+                    continue;
+                }
+                ValueNode value = frameState.values().get(slotPath[0]);
+                if (!(value instanceof VirtualObjectNode currentObject)) {
+                    continue;
+                }
+                for (int depth = 1; depth < slotPath.length; depth++) {
+                    if (currentObject == targetObject) {
+                        if (objectPaths == null) {
+                            objectPaths = new ArrayList<>();
+                        }
+                        objectPaths.add(Arrays.copyOfRange(slotPath, depth, slotPath.length));
+                    }
+                    if (depth == slotPath.length - 1) {
+                        break;
+                    }
+                    EscapeObjectState escapeState = findEscapeObjectState(frameState, currentObject);
+                    if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
+                        break;
+                    }
+                    ValueNode nestedValue = virtualObjectState.values().get(slotPath[depth]);
+                    if (!(nestedValue instanceof VirtualObjectNode nextObject)) {
+                        break;
+                    }
+                    currentObject = nextObject;
+                }
+            }
+            return objectPaths;
+        }
+
+        private boolean isTerminalAtDepth(int index, int depth) {
+            for (int[] slotPath : slotPaths) {
+                if (slotPath.length == depth + 1 && slotPath[depth] == index) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static boolean isTerminalEntry(List<int[]> objectPaths, int entryIndex) {
+            if (objectPaths == null) {
+                return false;
+            }
+            for (int[] objectPath : objectPaths) {
+                if (objectPath.length == 1 && objectPath[0] == entryIndex) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static int[] toIntArray(ArrayList<Integer> currentPath) {
+            int[] path = new int[currentPath.size()];
+            for (int i = 0; i < currentPath.size(); i++) {
+                path[i] = currentPath.get(i);
+            }
+            return path;
+        }
+    }
+
+    /** Key for matching previous loop iterations to the current one for merging. */
+    protected static final class LoopExplosionKey {
+        /**
+         * The frame state at this merge point.
+         */
+        public final FrameState state;
+        public final LoopExplosionMergeKeyFilter filter;
+        /**
+         * A subset of values that should be matched. If this is not null, the frame state values
+         * will be ignored for equality. However if the value lists match and the frame state
+         * doesn't, an exception is thrown.
+         */
+        public final List<ValueNode> values;
+        /** Cached hash code. */
+        private final int hashCode;
+        /**
+         * Determines if matching of virtual object mappings should take place. False by default if
+         * `CompilerDirectives.EarlyEscapeAnalysis` is not used.
+         */
+        private final boolean hasVirtualObjects;
+
+        @SuppressWarnings("hiding")
+        protected LoopExplosionKey(FrameState state, List<ValueNode> values, LoopExplosionMergeKeyFilter filter) {
+            this.state = state;
+            this.values = values;
+            this.filter = filter;
+
+            boolean hasVirtualObjects = false;
+            int h = state.bci;
+            if (values == null) {
+                for (ValueNode value : state.values()) {
+                    if (value == null) {
+                        h = h * 31 + 1234;
+                    } else {
+                        if (value instanceof VirtualObjectNode) {
+                            // ignore virtual object node parts of the hash - they are treated specially
+                            // in the equals logic
+                            hasVirtualObjects = true;
+                            continue;
+                        }
+                        h = h * 31 + value.hashCode();
+                    }
+                }
+            } else {
+                for (ValueNode value : values) {
                     h = h * 31 + value.hashCode();
                 }
             }
+            this.hasVirtualObjects = hasVirtualObjects;
             this.hashCode = h;
-            this.considerVirtualStateAfterPEA = effectiveConsiderVirtualStateAfterPEA;
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof LoopExplosionState other)) {
+            if (!(obj instanceof LoopExplosionKey other)) {
                 return false;
             }
             // Check the hash code first to avoid iterating the frame states.
             if (hashCode != other.hashCode) {
                 return false;
             }
-            final FrameState thisState = state;
-            final FrameState otherState = other.state;
-            assert thisState.outerFrameState() == otherState.outerFrameState() : Assertions.errorMessage(thisState, thisState.outerFrameState(), otherState, otherState.outerFrameState());
-            final NodeInputList<ValueNode> thisValues = thisState.values();
-            final NodeInputList<ValueNode> otherValues = otherState.values();
-            if (!peNodeInputListEquals(thisValues, otherValues, considerVirtualStateAfterPEA)) {
+            if (this.state.bci != other.state.bci) {
                 return false;
             }
-            if (thisState.virtualObjectMappingCount() != otherState.virtualObjectMappingCount()) {
+            if ((this.values == null) != (other.values == null)) {
                 return false;
             }
-            for (int i = 0; i < thisState.virtualObjectMappingCount(); i++) {
-                final EscapeObjectState thisEscapeState = thisState.virtualObjectMappings().get(i);
-                final EscapeObjectState otherEscapeState = otherState.virtualObjectMappings().get(i);
-                if (!compareStateValues(thisEscapeState.object(), otherEscapeState.object(), considerVirtualStateAfterPEA)) {
-                    return false;
-                }
-                if (!thisEscapeState.getClass().equals(otherEscapeState.getClass())) {
-                    return false;
-                }
-                if (thisEscapeState instanceof MaterializedObjectState) {
-                    MaterializedObjectState thisMaterializedObjectState = (MaterializedObjectState) thisEscapeState;
-                    MaterializedObjectState otherMaterializedObjectState = (MaterializedObjectState) otherEscapeState;
-                    if (!thisMaterializedObjectState.materializedValue().equals(otherMaterializedObjectState.materializedValue())) {
-                        return false;
-                    }
-                } else if (thisEscapeState instanceof VirtualObjectState) {
-                    VirtualObjectState thisVirtualObjectState = (VirtualObjectState) thisEscapeState;
-                    VirtualObjectState otherVirtualObjectState = (VirtualObjectState) otherEscapeState;
-                    final NodeInputList<ValueNode> thisVirtualValues = thisVirtualObjectState.values();
-                    final NodeInputList<ValueNode> otherVirtualValues = otherVirtualObjectState.values();
-                    if (!peNodeInputListEquals(thisVirtualValues, otherVirtualValues, considerVirtualStateAfterPEA)) {
-                        return false;
-                    }
-                } else {
-                    throw GraalError.shouldNotReachHere("Unknown subclass of virtual object state " + thisEscapeState);
-                }
+            if (this.filter != other.filter) {
+                return false;
             }
-            return true;
+
+            assert this.state.outerFrameState() == other.state.outerFrameState() : Assertions.errorMessage(this.state, this.state.outerFrameState(), other.state, other.state.outerFrameState());
+
+            return this.values == null
+                            ? checkKeyEqualityUnspecified(this.state, other.state, hasVirtualObjects)
+                            : checkKeyEqualitySpecified(this.state, other.state, this.values, other.values, filter);
         }
 
         @Override
@@ -616,7 +852,41 @@ public class GraphDecoder {
         }
     }
 
-    private static boolean peNodeInputListEquals(NodeInputList<ValueNode> thisValues, NodeInputList<ValueNode> otherValues, boolean considerVirtualStateAfterPEA) {
+    /** Data required for merging the start of two equivalent loop iterations. */
+    protected static final class LoopExplosionState {
+        /** The state at the merge point. */
+        public final FrameState state;
+        /** The corresponding {@link MergeNode} for this loop iteration. */
+        public final MergeNode merge;
+
+        protected LoopExplosionState(FrameState state, MergeNode merge) {
+            this.state = state;
+            this.merge = merge;
+        }
+    }
+
+    private static boolean checkKeyEqualityUnspecified(FrameState thisState, FrameState otherState, boolean hasVirtualObjects) {
+        if (!nodeListEquals(thisState.values(), otherState.values(), hasVirtualObjects)) {
+            return false;
+        }
+        if (!virtualObjectMappingsEqual(thisState, otherState, hasVirtualObjects)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean checkKeyEqualitySpecified(FrameState thisState, FrameState otherState, List<ValueNode> thisValues, List<ValueNode> otherValues, LoopExplosionMergeKeyFilter filter) {
+        if (!nodeListEquals(thisValues, otherValues, false)) {
+            return false;
+        }
+        if (!filter.sameNonKeyState(thisState, otherState)) {
+            throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion has differing values in non-key locals",
+                            LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
+        }
+        return true;
+    }
+
+    private static boolean nodeListEquals(List<ValueNode> thisValues, List<ValueNode> otherValues, boolean hasVirtualObjects) {
         final int size = thisValues.size();
         if (size != otherValues.size()) {
             return false;
@@ -625,15 +895,49 @@ public class GraphDecoder {
         for (int i = 0; i < size; i++) {
             final ValueNode thisValue = thisValues.get(i);
             final ValueNode otherValue = otherValues.get(i);
-            if (!compareStateValues(thisValue, otherValue, considerVirtualStateAfterPEA)) {
+            if (!compareStateValues(thisValue, otherValue, hasVirtualObjects)) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean compareStateValues(ValueNode thisValue, ValueNode otherValue, boolean considerPEA) {
-        if (considerPEA) {
+    private static boolean virtualObjectMappingsEqual(FrameState thisState, FrameState otherState, boolean hasVirtualObjects) {
+        if (thisState.virtualObjectMappingCount() != otherState.virtualObjectMappingCount()) {
+            return false;
+        }
+        for (int i = 0; i < thisState.virtualObjectMappingCount(); i++) {
+            final EscapeObjectState thisEscapeState = thisState.virtualObjectMappings().get(i);
+            final EscapeObjectState otherEscapeState = otherState.virtualObjectMappings().get(i);
+            if (!compareStateValues(thisEscapeState.object(), otherEscapeState.object(), hasVirtualObjects)) {
+                return false;
+            }
+            if (!thisEscapeState.getClass().equals(otherEscapeState.getClass())) {
+                return false;
+            }
+            if (thisEscapeState instanceof MaterializedObjectState) {
+                MaterializedObjectState thisMaterializedObjectState = (MaterializedObjectState) thisEscapeState;
+                MaterializedObjectState otherMaterializedObjectState = (MaterializedObjectState) otherEscapeState;
+                if (!compareStateValues(thisMaterializedObjectState.materializedValue(), otherMaterializedObjectState.materializedValue(), hasVirtualObjects)) {
+                    return false;
+                }
+            } else if (thisEscapeState instanceof VirtualObjectState) {
+                VirtualObjectState thisVirtualObjectState = (VirtualObjectState) thisEscapeState;
+                VirtualObjectState otherVirtualObjectState = (VirtualObjectState) otherEscapeState;
+                final NodeInputList<ValueNode> thisVirtualValues = thisVirtualObjectState.values();
+                final NodeInputList<ValueNode> otherVirtualValues = otherVirtualObjectState.values();
+                if (!nodeListEquals(thisVirtualValues, otherVirtualValues, hasVirtualObjects)) {
+                    return false;
+                }
+            } else {
+                throw GraalError.shouldNotReachHere("Unknown subclass of virtual object state " + thisEscapeState);
+            }
+        }
+        return true;
+    }
+
+    private static boolean compareStateValues(ValueNode thisValue, ValueNode otherValue, boolean hasVirtualObjects) {
+        if (hasVirtualObjects) {
             // we cannot compare virtual object nodes by ID - they are always created
             // freshly but we can compare by data fields
             if (thisValue instanceof VirtualObjectNode && otherValue instanceof VirtualObjectNode) {
@@ -644,11 +948,7 @@ public class GraphDecoder {
                 }
             }
         }
-
-        if (thisValue != otherValue) {
-            return false;
-        }
-        return true;
+        return thisValue == otherValue;
     }
 
     protected static class InvokableData<T extends Invokable> {
@@ -728,26 +1028,25 @@ public class GraphDecoder {
     public final void decode(EncodedGraph encodedGraph, Iterable<EncodedGraph.EncodedNodeReference> nodeReferences) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
             recordGraphElements(encodedGraph);
-            MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionPlugin.LoopExplosionKind.NONE);
-            LoopScope loopScope = createInitialLoopScope(methodScope, null);
-            decode(loopScope);
-            cleanupGraph(methodScope);
-            assert graph.verify();
+            MethodScope rootMethodScope = createRootMethodScope(encodedGraph);
+            LoopScope initialLoopScope = createInitialLoopScope(rootMethodScope, null);
+            rootMethodScope.currentLoopScope = initialLoopScope;
+            doDecode(rootMethodScope);
+            cleanupGraph(rootMethodScope);
 
+            assert graph.verify();
             if (nodeReferences != null) {
                 for (var nodeReference : nodeReferences) {
                     if (nodeReference.orderId < 0) {
                         throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state"); // ExcludeFromJacocoGeneratedReport
                     }
-                    nodeReference.node = loopScope.getNode(nodeReference.orderId);
+                    nodeReference.node = initialLoopScope.getNode(nodeReference.orderId);
                     if (nodeReference.node == null || !nodeReference.node.isAlive()) {
                         throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference"); // ExcludeFromJacocoGeneratedReport
                     }
                     nodeReference.orderId = EncodedGraph.EncodedNodeReference.DECODED;
                 }
             }
-
-            graph.maybeMarkUnsafeAccess(encodedGraph);
         } catch (Throwable ex) {
             debug.handle(ex);
         }
@@ -770,6 +1069,10 @@ public class GraphDecoder {
             assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
         }
         graph.maybeMarkUnsafeAccess(encodedGraph);
+    }
+
+    private MethodScope createRootMethodScope(EncodedGraph encodedGraph) {
+        return new MethodScope(null, graph, encodedGraph, LoopExplosionPlugin.LoopExplosionKind.NONE);
     }
 
     protected final LoopScope createInitialLoopScope(MethodScope methodScope, FixedWithNextNode startNode) {
@@ -795,54 +1098,72 @@ public class GraphDecoder {
     }
 
     @SuppressWarnings("try")
-    protected final void decode(LoopScope initialLoopScope) {
-        initialLoopScope.methodScope.replaceLogsForDecodedGraph();
+    protected final void doDecode(MethodScope rootMethodScope) {
+        if (rootMethodScope.inliningLog != null) {
+            graph.setInliningLog(rootMethodScope.inliningLog);
+        }
+        if (rootMethodScope.optimizationLog != null) {
+            graph.setOptimizationLog(rootMethodScope.optimizationLog);
+        }
         try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(graph.getInliningLog())) {
-            LoopScope loopScope = initialLoopScope;
+            MethodScope methodScope = rootMethodScope;
             /* Process (inlined) methods. */
-            while (loopScope != null) {
-                MethodScope methodScope = loopScope.methodScope;
-
-                /* Process loops of method. */
-                while (loopScope != null) {
-                    /* Process nodes of loop. */
-                    while (!loopScope.nodesToProcess.isEmpty()) {
-                        loopScope = processNextNode(methodScope, loopScope);
-                        methodScope = loopScope.methodScope;
-                        /*
-                         * We can have entered a new loop, and we can have entered a new inlined
-                         * method.
-                         */
-                    }
-
-                    /* Finished with a loop. */
-                    if (loopScope.hasIterationsToProcess()) {
-                        loopScope = loopScope.getNextIterationToProcess(true);
-                    } else {
-                        propagateCreatedNodes(loopScope);
-                        loopScope = loopScope.outer;
-
-                        if (loopScope == null) {
-                            // finished all loops of a method
-                            afterMethodScope(methodScope);
-                        }
-                    }
-                }
-
+            while (methodScope != null) {
+                MethodScope newMethodScope = processMethodScope(methodScope);
                 /*
-                 * Finished with an inlined method. Perform end-of-method cleanup tasks.
+                 * We can have entered a new inlined method, or finished inlining.
                  */
-                if (methodScope.loopExplosion.mergeLoops()) {
-                    LoopDetector loopDetector = new LoopDetector(graph, methodScope);
-                    loopDetector.run();
-                }
-                if (methodScope.isInlinedMethod()) {
-                    finishInlining(methodScope);
-                }
+                if (newMethodScope == null) {
+                    /*
+                     * Finished with an inlined method. Perform end-of-method cleanup tasks.
+                     */
+                    finishMethod(methodScope);
 
-                /* continue with the caller */
-                loopScope = methodScope.callerLoopScope;
+                    /* continue with the caller */
+                    methodScope = methodScope.caller;
+                } else {
+                    methodScope = newMethodScope;
+                }
             }
+        }
+    }
+
+    private MethodScope processMethodScope(MethodScope methodScope) {
+        while (methodScope.currentLoopScope != null) {
+            /* Process nodes of loop. */
+            while (!methodScope.currentLoopScope.nodesToProcess.isEmpty()) {
+                // TODO(GR-71752): use MethodScope instead of LoopScope here
+                LoopScope newLoopScope = processNextNode(methodScope, methodScope.currentLoopScope);
+                /*
+                 * We can have entered a new loop, and we can have entered a new inlined method.
+                 */
+                if (newLoopScope.methodScope != methodScope) {
+                    newLoopScope.methodScope.currentLoopScope = newLoopScope;
+                    return newLoopScope.methodScope;
+                } else {
+                    methodScope.currentLoopScope = newLoopScope;
+                }
+            }
+
+            /* Finished with a loop. */
+            if (methodScope.currentLoopScope.hasIterationsToProcess()) {
+                methodScope.currentLoopScope = methodScope.currentLoopScope.getNextIterationToProcess(true);
+            } else {
+                propagateCreatedNodes(methodScope.currentLoopScope);
+                methodScope.currentLoopScope = methodScope.currentLoopScope.outer;
+            }
+        }
+        return null;
+    }
+
+    private void finishMethod(MethodScope methodScope) {
+        afterMethodScope(methodScope);
+        if (methodScope.loopExplosion.mergeLoops()) {
+            LoopDetector loopDetector = new LoopDetector(graph, methodScope);
+            loopDetector.run();
+        }
+        if (methodScope.isInlinedMethod()) {
+            finishInlining(methodScope);
         }
     }
 
@@ -940,6 +1261,7 @@ public class GraphDecoder {
                                     outerScope.nextIterationFromLoopEndDuplication,
                                     outerScope.nextIterationsFromUnrolling,
                                     outerScope.iterationStates,
+                                    outerScope.loopExplosionMergeKeyFilter,
                                     false);
                     checkLoopExplosionIteration(methodScope, successorAddScope);
 
@@ -1020,7 +1342,8 @@ public class GraphDecoder {
                                         loopScope.nextIterationFromLoopExitDuplication,
                                         loopScope.nextIterationFromLoopEndDuplication,
                                         loopScope.nextIterationsFromUnrolling,
-                                        loopScope.iterationStates);
+                                        loopScope.iterationStates,
+                                        loopScope.loopExplosionMergeKeyFilter);
                         checkLoopExplosionIteration(methodScope, outerLoopMergeScope);
                         loopScope.nextIterationsFromUnrolling.addLast(outerLoopMergeScope);
                         registerNode(outerLoopMergeScope, loopScope.loopBeginOrderId, null, true, true);
@@ -1078,7 +1401,8 @@ public class GraphDecoder {
                                         methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null,
                                         methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null,
                                         methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null, //
-                                        methodScope.loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null);
+                                        methodScope.loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null,
+                                        null);
                         phiInputScope = resultScope;
                         phiNodeScope = resultScope;
 
@@ -1199,8 +1523,11 @@ public class GraphDecoder {
         FrameState frameState = loopBegin.stateAfter();
 
         if (methodScope.loopExplosion.mergeLoops()) {
-            LoopExplosionState queryState = new LoopExplosionState(frameState, null);
-            LoopExplosionState existingState = loopScope.iterationStates.get(queryState);
+            if (loopScope.trigger == LoopScopeTrigger.START) {
+                loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, frameState);
+            }
+            LoopExplosionKey key = createLoopExplosionKey(loopScope, frameState);
+            LoopExplosionState existingState = loopScope.iterationStates.get(key);
             if (existingState != null) {
                 loopBegin.replaceAtUsagesAndDelete(existingState.merge);
                 successor.safeDelete();
@@ -1237,9 +1564,70 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion.mergeLoops()) {
+            LoopExplosionKey explosionKey = createLoopExplosionKey(loopScope, frameState);
             LoopExplosionState explosionState = new LoopExplosionState(frameState, merge);
-            loopScope.iterationStates.put(explosionState, explosionState);
+            loopScope.iterationStates.put(explosionKey, explosionState);
         }
+    }
+
+    protected LoopExplosionMergeKeyFilter computeMergeKeyFilter(LoopScope loopScope, FrameState frameState) {
+        LoopExplosionMergeKeyFilter mergeKeyFilter = LoopExplosionMergeKeyFilter.create(loopScope, frameState);
+        if (mergeKeyFilter != null && mergeKeyFilter.size() > 1) {
+            throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion has more than one specified merge key local",
+                            LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
+        }
+        return mergeKeyFilter;
+    }
+
+    protected LoopExplosionKey createLoopExplosionKey(LoopScope loopScope, FrameState frameState) {
+        List<ValueNode> values = null;
+        if (loopScope.loopExplosionMergeKeyFilter != null) {
+            values = loopScope.loopExplosionMergeKeyFilter.resolveMarkedValues(frameState);
+            for (ValueNode node : values) {
+                if (!node.isConstant() || node.asJavaConstant().getJavaKind() != JavaKind.Int) {
+                    throw new PermanentBailoutException("Graal implementation restriction: merge keys must partial evaluate to int constants at the loop header. %s",
+                                    node);
+                }
+            }
+        }
+        /**
+         * In case there are no marked variables, we fall back to using the entire frame state as
+         * the key. This ensures compatibility with old code that doesn't use explicit keys yet.
+         */
+        return new LoopExplosionKey(frameState, values, loopScope.loopExplosionMergeKeyFilter);
+    }
+
+    /**
+     * Replaces the loop explosion key nodes with their corresponding inner values in the created
+     * node list, so it doesn't interfere with constant folding and further optimizations.
+     * @param nodes The node array to search in.
+     * @param keyNode The key node that should be replaced.
+     */
+    private static void replaceKeyMarkerWithInner(Node[] nodes, LoopExplosionKeyNode keyNode) {
+        for (int j = 0; j < nodes.length; j++) {
+            if (nodes[j] == keyNode) {
+                nodes[j] = keyNode.value;
+            }
+        }
+    }
+
+    private static EscapeObjectState findEscapeObjectState(FrameState frameState, VirtualObjectNode virtualObject) {
+        for (int i = 0; i < frameState.virtualObjectMappingCount(); i++) {
+            EscapeObjectState escapeState = frameState.virtualObjectMappings().get(i);
+            if (escapeState.object() == virtualObject) {
+                return escapeState;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * This error occurs whenever a local variable that is turned into a virtual object gets
+     * overwritten by a different value which is not a virtual object anymore.
+     */
+    private static PermanentBailoutException nestedMergeKeyRequiresVirtualObject() {
+        return new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion can only use nested merge keys for non-escaping EarlyEscapeAnalysis virtual objects",
+                        LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
     }
 
     /**
@@ -1320,7 +1708,8 @@ public class GraphDecoder {
                         loopScope.nextIterationFromLoopExitDuplication,
                         loopScope.nextIterationFromLoopEndDuplication,
                         loopScope.nextIterationsFromUnrolling,
-                        loopScope.iterationStates);
+                        loopScope.iterationStates,
+                        loopScope.loopExplosionMergeKeyFilter);
     }
 
     /**
