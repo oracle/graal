@@ -37,7 +37,6 @@ import jdk.graal.compiler.lir.alloc.lsra.Interval.State;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -227,8 +226,8 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 for (Register register : availableRegs) {
                     int i = register.number;
                     try (Indent indent3 = debug.logAndIndent("reg %d: usePos: %d, blockPos: %d, intervals: ", i, usePos[i], blockPos[i])) {
-                        for (int j = 0; j < spillIntervals[i].size(); j++) {
-                            debug.log("%d ", spillIntervals[i].get(j).operandNumber);
+                        for (Interval spillInterval = spillIntervals[reg.number]; spillInterval != null; spillInterval = spillInterval.spillNext) {
+                            debug.log("%d ", spillInterval.operandNumber);
                         }
                     }
                 }
