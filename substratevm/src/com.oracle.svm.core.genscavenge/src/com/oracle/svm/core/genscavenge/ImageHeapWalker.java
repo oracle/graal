@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -33,6 +35,8 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -66,6 +70,38 @@ public final class ImageHeapWalker {
         walkPartition(heapInfo.firstReadOnlyHugeObject, heapInfo.lastReadOnlyHugeObject, visitor, false);
     }
 
+    public static void walkImageHeapChunks(ImageHeapInfo heapInfo, HeapChunkVisitor visitor) {
+        /* Walk all aligned chunks (can only be at the start of the image heap). */
+        Object firstObject = heapInfo.firstObject;
+        if (ObjectHeaderImpl.isAlignedObject(firstObject)) {
+            HeapChunk.Header<?> alignedChunks = getImageHeapChunkForObject(firstObject, true);
+            walkChunks(alignedChunks, visitor, true);
+        }
+
+        /* Walk all unaligned chunks (can only be at the end of the image heap). */
+        Object firstUnalignedObject = heapInfo.firstWritableHugeObject;
+        if (firstUnalignedObject == null) {
+            firstUnalignedObject = heapInfo.firstReadOnlyHugeObject;
+        }
+        if (firstUnalignedObject != null) {
+            HeapChunk.Header<?> unalignedChunks = getImageHeapChunkForObject(firstUnalignedObject, false);
+            walkChunks(unalignedChunks, visitor, false);
+        }
+    }
+
+    @NeverInline("Not performance critical")
+    private static void walkChunks(HeapChunk.Header<?> firstChunk, HeapChunkVisitor visitor, boolean alignedChunks) {
+        HeapChunk.Header<?> currentChunk = firstChunk;
+        while (currentChunk.isNonNull()) {
+            if (alignedChunks) {
+                visitor.visitAlignedChunk((AlignedHeader) currentChunk);
+            } else {
+                visitor.visitUnalignedChunk((UnalignedHeader) currentChunk);
+            }
+            currentChunk = HeapChunk.getNext(currentChunk);
+        }
+    }
+
     @NeverInline("Not performance critical")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     static void walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
@@ -83,16 +119,9 @@ public final class ImageHeapWalker {
         Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
         Pointer current = firstPointer;
 
-        /* Compute the enclosing chunk without assuming that the image heap is aligned. */
-        Pointer base = Heap.getHeap().getImageHeapStart();
-        Pointer offset = current.subtract(base);
-        UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
-                        : offset.subtract(UnalignedHeapChunk.getOffsetForObject(current));
-        HeapChunk.Header<?> currentChunk = (HeapChunk.Header<?>) chunkOffset.add(base);
-
         // Assumption: the order of chunks in their linked list is the same order as in memory,
-        // and objects are laid out as a continuous sequence without any gaps.
-
+        // and objects in a chunk are laid out as a continuous sequence without any gaps.
+        HeapChunk.Header<?> currentChunk = getImageHeapChunkForObject(firstObject, alignedChunks);
         do {
             Pointer limit = lastPointer;
             Pointer chunkTop = HeapChunk.getTopPointer(currentChunk);
@@ -106,8 +135,8 @@ public final class ImageHeapWalker {
             }
             if (current.belowThan(lastPointer)) {
                 currentChunk = HeapChunk.getNext(currentChunk);
-                current = alignedChunks ? AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) currentChunk)
-                                : UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) currentChunk);
+                current = alignedChunks ? AlignedHeapChunk.getObjectsStart((AlignedHeader) currentChunk)
+                                : UnalignedHeapChunk.getObjectStart((UnalignedHeader) currentChunk);
                 // Note: current can be equal to lastPointer now, despite not having visited it yet
             }
         } while (current.belowOrEqual(lastPointer));
@@ -117,6 +146,17 @@ public final class ImageHeapWalker {
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static void visitObjectInline(ObjectVisitor visitor, Object currentObject) {
         visitor.visitObject(currentObject);
+    }
+
+    /** Computes the enclosing chunk without assuming that the image heap is aligned. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static HeapChunk.Header<?> getImageHeapChunkForObject(Object object, boolean alignedChunks) {
+        Pointer objPtr = Word.objectToUntrackedPointer(object);
+        Pointer base = Heap.getHeap().getImageHeapStart();
+        Pointer offset = objPtr.subtract(base);
+        UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
+                        : offset.subtract(UnalignedHeapChunk.getOffsetForObject(objPtr));
+        return (HeapChunk.Header<?>) chunkOffset.add(base);
     }
 }
 

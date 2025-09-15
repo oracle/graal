@@ -164,7 +164,7 @@ public abstract class VMThreads {
      * this field after being removed from the linked list.
      */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord("VMThreads.nextTL");
-    private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
+    public static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
     /** The highest stack address. 0 if not available on this platform. */
