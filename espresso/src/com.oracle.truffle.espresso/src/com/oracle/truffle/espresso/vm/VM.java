@@ -1378,10 +1378,6 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public int JVM_GetClassAccessFlags(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass(getMeta());
-        return getClassAccessFlags(klass);
-    }
-
-    public static int getClassAccessFlags(Klass klass) {
         if (klass.isPrimitive()) {
             final int primitiveFlags = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
             assert klass.getModifiers() == primitiveFlags;

@@ -186,7 +186,6 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    // Method no longer exists in 26.
     public static int getClassAccessFlagsRaw0(@JavaType(Class.class) StaticObject self, @Inject EspressoContext ctx) {
         return ctx.getVM().JVM_GetClassAccessFlags(self);
     }
