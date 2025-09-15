@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl.jvmci;
 
+import java.util.function.IntFunction;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -33,6 +35,7 @@ import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -101,5 +104,36 @@ public final class JVMCIUtils {
             return null;
         }
         return findObjectType(type, pool.getHolder(), resolve, checkAccess, meta);
+    }
+
+    @FunctionalInterface
+    public interface MethodArraySetter<T> {
+        void set(T o, int i, Method method);
+    }
+
+    public static <T> T getAllMethods(ObjectKlass klass, IntFunction<T> alloc, MethodArraySetter<T> setter) {
+        Method.MethodVersion[] declaredMethodVersions = klass.getDeclaredMethodVersions();
+        Method.MethodVersion[] mirandaMethods = klass.getMirandaMethods();
+        int resultSize = declaredMethodVersions.length;
+        if (mirandaMethods != null) {
+            for (Method.MethodVersion mirandaMethod : mirandaMethods) {
+                if (mirandaMethod.getMethod().hasPoisonPill()) {
+                    resultSize++;
+                }
+            }
+        }
+        T result = alloc.apply(resultSize);
+        int i = 0;
+        for (Method.MethodVersion methodVersion : declaredMethodVersions) {
+            setter.set(result, i++, methodVersion.getMethod());
+        }
+        if (resultSize != declaredMethodVersions.length) {
+            for (Method.MethodVersion mirandaMethod : mirandaMethods) {
+                if (mirandaMethod.getMethod().hasPoisonPill()) {
+                    setter.set(result, i++, mirandaMethod.getMethod());
+                }
+            }
+        }
+        return result;
     }
 }

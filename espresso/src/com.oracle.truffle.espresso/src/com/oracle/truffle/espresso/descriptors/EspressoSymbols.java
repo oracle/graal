@@ -526,13 +526,16 @@ public class EspressoSymbols {
         // @formatter:off
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/EspressoJVMCIRuntime;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedInstanceType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedInstanceType = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/AbstractEspressoResolvedInstanceType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaField;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaMethod;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedJavaMethod = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/AbstractEspressoResolvedJavaMethod;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRecordComponent = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaRecordComponent;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayType = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedArrayType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedPrimitiveType = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedPrimitiveType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaType = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoConstantPool;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoConstantPool = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/AbstractEspressoConstantPool;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoObjectConstant;");
         public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation = SYMBOLS.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;");
         // @formatter:on
@@ -1431,9 +1434,10 @@ public class EspressoSymbols {
         public static final Symbol<Signature> PrimitiveConstant_float = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._float);
         public static final Symbol<Signature> PrimitiveConstant_double = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._double);
         public static final Symbol<Signature> PrimitiveConstant_char_long = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._char, Types._long);
-        public static final Symbol<Signature> _void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool = SYMBOLS.putSignature(Types._void,
-                        Types._boolean, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant,
-                        Types.jdk_vm_ci_meta_JavaConstant_array, Types._int, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool);
+        public static final Symbol<Signature> _void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool = SYMBOLS.putSignature(
+                        Types._void,
+                        Types._boolean, Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant,
+                        Types.jdk_vm_ci_meta_JavaConstant_array, Types._int, Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoConstantPool);
         public static final Symbol<Signature> UnresolvedJavaType_String = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_UnresolvedJavaType, Types.java_lang_String);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = SYMBOLS.putSignature(Types._void, Types.sun_misc_Signal);

@@ -618,7 +618,8 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             bindingsLoader = createBindingsLoader(systemClassLoader);
             topBindings = new EspressoBindings(
                             getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
-                            bindingsLoader != systemClassLoader);
+                            bindingsLoader != systemClassLoader,
+                            getLanguage().isExternalJVMCIEnabled());
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;

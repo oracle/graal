@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.interop.ArityException;
@@ -35,8 +36,10 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.impl.KeysArray;
+import com.oracle.truffle.espresso.impl.jvmci.external.JVMCIInteropHelper;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -65,23 +68,29 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
+    public static final String JVMCI_HELPER = "<JVMCI_HELPER>";
     public static final String ADD_PATH = "addPath";
 
     final boolean useBindingsLoader;
 
     boolean withNativeJavaVM;
+    boolean withJVMCIHelper;
 
-    public EspressoBindings(boolean withNativeJavaVM, boolean useBindingsLoader) {
+    public EspressoBindings(boolean withNativeJavaVM, boolean useBindingsLoader, boolean withJVMCIHelper) {
         this.withNativeJavaVM = withNativeJavaVM;
         this.useBindingsLoader = useBindingsLoader;
+        this.withJVMCIHelper = withJVMCIHelper;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        List<String> members = new ArrayList<>(2);
+        List<String> members = new ArrayList<>(3);
         if (withNativeJavaVM) {
             members.add(JAVA_VM);
+        }
+        if (withJVMCIHelper) {
+            members.add(JVMCI_HELPER);
         }
         if (useBindingsLoader) {
             members.add(ADD_PATH);
@@ -102,6 +111,9 @@ public final class EspressoBindings implements TruffleObject {
         if (JAVA_VM.equals(member)) {
             return withNativeJavaVM;
         }
+        if (JVMCI_HELPER.equals(member)) {
+            return withJVMCIHelper;
+        }
         if (ADD_PATH.equals(member)) {
             return useBindingsLoader;
         }
@@ -118,18 +130,23 @@ public final class EspressoBindings implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String member,
+    static Object readMember(EspressoBindings receiver, String member,
+                    @Bind Node node,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
-        if (!isMemberReadable(member)) {
-            error.enter();
+                    @Exclusive @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
+        if (!receiver.isMemberReadable(member)) {
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
         EspressoContext context = EspressoContext.get(self);
-        if (withNativeJavaVM && JAVA_VM.equals(member)) {
+        if (receiver.withNativeJavaVM && JAVA_VM.equals(member)) {
             return context.getVM().getJavaVM();
         }
-        if (useBindingsLoader && ADD_PATH.equals(member)) {
+        if (receiver.withJVMCIHelper && JVMCI_HELPER.equals(member)) {
+            assert context.getLanguage().isExternalJVMCIEnabled();
+            return new JVMCIInteropHelper(context);
+        }
+        if (receiver.useBindingsLoader && ADD_PATH.equals(member)) {
             return new AddPathToBindingsNode.InvocableAddToBindings();
         }
         Meta meta = context.getMeta();
@@ -137,7 +154,7 @@ public final class EspressoBindings implements TruffleObject {
             StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirectStatic(meta.toGuestString(member), false, context.getBindingsLoader());
             return clazz.getMirrorKlass(meta);
         } catch (EspressoException e) {
-            error.enter();
+            error.enter(node);
             if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {
                 throw UnknownIdentifierException.create(member, e);
             }
@@ -146,18 +163,19 @@ public final class EspressoBindings implements TruffleObject {
     }
 
     @ExportMessage
-    Object invokeMember(String member, Object[] arguments,
+    static Object invokeMember(EspressoBindings receiver, String member, Object[] arguments,
+                    @Bind Node node,
                     @Cached AddPathToBindingsNode addPathToBindingsNode,
-                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
-        if (!isMemberInvocable(member)) {
-            error.enter();
+                    @Exclusive @Cached InlinedBranchProfile error) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
+        if (!receiver.isMemberInvocable(member)) {
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
-        if (useBindingsLoader && ADD_PATH.equals(member)) {
+        if (receiver.useBindingsLoader && ADD_PATH.equals(member)) {
             addPathToBindingsNode.execute(arguments);
             return StaticObject.NULL;
         }
-        error.enter();
+        error.enter(node);
         throw UnknownIdentifierException.create(member);
     }
 
@@ -166,18 +184,25 @@ public final class EspressoBindings implements TruffleObject {
         if (withNativeJavaVM && JAVA_VM.equals(member)) {
             return true;
         }
+        if (withJVMCIHelper && JVMCI_HELPER.equals(member)) {
+            return true;
+        }
         return false;
     }
 
     @ExportMessage
-    void removeMember(String member,
-                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
-        if (!isMemberRemovable(member)) {
-            error.enter();
+    static void removeMember(EspressoBindings receiver, String member,
+                    @Bind Node node,
+                    @Exclusive @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
+        if (!receiver.isMemberRemovable(member)) {
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
-        if (withNativeJavaVM && JAVA_VM.equals(member)) {
-            withNativeJavaVM = false;
+        if (receiver.withNativeJavaVM && JAVA_VM.equals(member)) {
+            receiver.withNativeJavaVM = false;
+        }
+        if (receiver.withJVMCIHelper && JVMCI_HELPER.equals(member)) {
+            receiver.withJVMCIHelper = false;
         }
     }
 

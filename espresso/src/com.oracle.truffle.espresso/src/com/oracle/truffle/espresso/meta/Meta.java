@@ -2283,10 +2283,10 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedInstanceType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
             EspressoResolvedInstanceType_init = EspressoResolvedInstanceType.requireDeclaredMethod(Names._init_, Signatures._void);
             HIDDEN_OBJECTKLASS_MIRROR = EspressoResolvedInstanceType.requireHiddenField(Names.HIDDEN_OBJECTKLASS_MIRROR);
-            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.DECLARED_ANNOTATIONS);
-            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.PARAMETER_ANNOTATIONS);
-            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.TYPE_ANNOTATIONS);
-            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType, Names.ANNOTATION_DEFAULT_VALUE);
+            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.DECLARED_ANNOTATIONS);
+            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.PARAMETER_ANNOTATIONS);
+            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.TYPE_ANNOTATIONS);
+            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.ANNOTATION_DEFAULT_VALUE);
 
             EspressoResolvedJavaField = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
             EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);
@@ -2295,7 +2295,8 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedJavaMethod = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod);
             EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_boolean);
             HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Names.HIDDEN_METHOD_MIRROR);
-            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Names.holder, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.getSuperKlass().requireDeclaredField(Names.holder,
+                            Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedInstanceType);
 
             EspressoResolvedJavaRecordComponent = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRecordComponent);
             EspressoResolvedJavaRecordComponent_init = EspressoResolvedJavaRecordComponent.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_int_int_int);
@@ -2315,7 +2316,7 @@ public final class Meta extends ContextAccessImpl
 
             EspressoBootstrapMethodInvocation = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
             EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Names._init_,
-                            Signatures._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool);
+                            Signatures._void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool);
 
             Services = knownKlass(Types.jdk_vm_ci_services_Services);
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);

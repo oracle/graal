@@ -1,0 +1,223 @@
+/*
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.truffle.espresso.vmaccess;
+
+import org.graalvm.polyglot.Value;
+
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
+import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
+import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
+import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
+import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedPrimitiveType;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+final class EspressoExternalConstantReflectionProvider implements ConstantReflectionProviderWithStaticsBase {
+    private final EspressoExternalVMAccess access;
+
+    EspressoExternalConstantReflectionProvider(EspressoExternalVMAccess access) {
+        this.access = access;
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public Integer readArrayLength(JavaConstant array) {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        throw JVMCIError.unimplemented();
+    }
+
+    private static Class<?> safeGetClass(Object o) {
+        if (o == null) {
+            return null;
+        }
+        return o.getClass();
+    }
+
+    @Override
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+        if (receiver != null && !(receiver instanceof EspressoExternalObjectConstant)) {
+            throw new IllegalArgumentException("expected an espresso receiver, got a " + receiver.getClass());
+        }
+        EspressoExternalObjectConstant espressoReceiver = (EspressoExternalObjectConstant) receiver;
+        if (!(field instanceof EspressoExternalResolvedJavaField espressoField)) {
+            throw new IllegalArgumentException("expected an espresso field, got a " + safeGetClass(field));
+        }
+        Value receiverValue;
+        if (field.isStatic()) {
+            EspressoExternalResolvedInstanceType declaringClass = (EspressoExternalResolvedInstanceType) espressoField.getDeclaringClass();
+            if (!declaringClass.isInitialized()) {
+                return null;
+            }
+            receiverValue = declaringClass.getMetaObject();
+        } else {
+            if (receiver == null || !espressoField.getDeclaringClass().isAssignableFrom(espressoReceiver.getType())) {
+                return null;
+            }
+            receiverValue = espressoReceiver.getValue();
+        }
+        Value value;
+        if (field.isPublic()) {
+            // use a full descriptor with the type?
+            value = receiverValue.getMember(espressoField.getName());
+        } else {
+            throw JVMCIError.unimplemented();
+        }
+        return asJavaConstant(value, espressoField.getJavaKind(), access);
+    }
+
+    static JavaConstant asJavaConstant(Value value, JavaKind kind, EspressoExternalVMAccess access) {
+        return switch (kind) {
+            case Boolean -> JavaConstant.forBoolean(value.asBoolean());
+            case Byte -> JavaConstant.forByte(value.asByte());
+            case Short -> JavaConstant.forShort(value.asShort());
+            case Char -> JavaConstant.forChar(value.as(Character.class));
+            case Int -> JavaConstant.forInt(value.asInt());
+            case Long -> JavaConstant.forLong(value.asLong());
+            case Float -> JavaConstant.forFloat(value.asFloat());
+            case Double -> JavaConstant.forDouble(value.asDouble());
+            case Object -> new EspressoExternalObjectConstant(access, value);
+            default -> throw JVMCIError.shouldNotReachHere(kind.toString());
+        };
+    }
+
+    @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        Value guestString = access.invokeJVMCIHelper("toGuestString", value);
+        return new EspressoExternalObjectConstant(access, guestString);
+    }
+
+    @Override
+    public ResolvedJavaType asJavaType(Constant constant) {
+        if (constant instanceof EspressoExternalObjectConstant espressoConstant) {
+            // j.l.Class?
+            Value value = espressoConstant.getValue();
+            if ("java.lang.Class".equals(value.getMetaObject().getMetaQualifiedName())) {
+                return classAsType(value, access);
+            }
+            return null;
+        }
+        if (constant instanceof KlassConstant klassConstant) {
+            return klassConstant.getType();
+        }
+        throw new IllegalArgumentException(constant.getClass().toString());
+    }
+
+    static EspressoResolvedJavaType classAsType(Value value, EspressoExternalVMAccess access) {
+        if (value.invokeMember("isArray").asBoolean()) {
+            Value elemental = value;
+            int dimensions = 0;
+            do {
+                dimensions++;
+                elemental = elemental.invokeMember("getComponentType");
+            } while (elemental.invokeMember("isArray").asBoolean());
+            return new EspressoExternalResolvedArrayType(getNonArrayType(elemental, access), dimensions, access);
+        }
+        return getNonArrayType(value, access);
+    }
+
+    private static EspressoResolvedJavaType getNonArrayType(Value value, EspressoExternalVMAccess access) {
+        if (value.invokeMember("isPrimitive").asBoolean()) {
+            return getPrimitiveType(value.getMember("static").getMetaQualifiedName(), access);
+        }
+        assert !value.invokeMember("isArray").asBoolean();
+        return new EspressoExternalResolvedInstanceType(access, value.getMember("static"));
+    }
+
+    private static EspressoExternalResolvedPrimitiveType getPrimitiveType(String name, EspressoExternalVMAccess access) {
+        JavaKind kind = switch (name) {
+            case "boolean" -> JavaKind.Boolean;
+            case "byte" -> JavaKind.Byte;
+            case "short" -> JavaKind.Short;
+            case "char" -> JavaKind.Char;
+            case "int" -> JavaKind.Int;
+            case "long" -> JavaKind.Long;
+            case "float" -> JavaKind.Float;
+            case "double" -> JavaKind.Double;
+            case "void" -> JavaKind.Void;
+            default -> throw JVMCIError.shouldNotReachHere(name);
+        };
+        assert kind.getJavaName().equals(name);
+        return access.forPrimitiveKind(kind);
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public MemoryAccessProvider getMemoryAccessProvider() {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public JavaConstant asJavaClass(ResolvedJavaType type) {
+        Value clazz = switch (type) {
+            case EspressoExternalResolvedInstanceType espressoType -> espressoType.getMetaObject().getMember("class");
+            case EspressoResolvedPrimitiveType primitiveType -> access.getPrimitiveClass(primitiveType.getJavaKind());
+            default -> throw new IllegalArgumentException("expected an espresso type, got a " + type.getClass());
+        };
+        return new EspressoExternalObjectConstant(access, clazz);
+    }
+
+    @Override
+    public Constant asObjectHub(ResolvedJavaType type) {
+        if (!(type instanceof EspressoResolvedObjectType espressoType)) {
+            throw new IllegalArgumentException("expected an espresso object type, got a " + type.getClass());
+        }
+        return new KlassConstant(espressoType);
+    }
+
+    @Override
+    public AbstractEspressoResolvedInstanceType getTypeForStaticBase(JavaConstant staticBase) {
+        if (!(staticBase instanceof EspressoExternalObjectConstant)) {
+            return null;
+        }
+        throw JVMCIError.unimplemented();
+    }
+}

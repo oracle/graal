@@ -267,6 +267,7 @@ suite = {
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
+                    "jdk.vm.ci.riscv64",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -1012,13 +1013,14 @@ suite = {
             "moduleInfo": {
                 "name": "jdk.internal.vm.ci.espresso",
                 "exports": [
-                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso",
-                ]
+                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso,jdk.graal.compiler.espresso.vmaccess",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.espresso.jvmci",
             ],
             "description": "JVMCI implementation for Espresso",
+            "useModulePath": True,
             "maven": False,
         },
 
