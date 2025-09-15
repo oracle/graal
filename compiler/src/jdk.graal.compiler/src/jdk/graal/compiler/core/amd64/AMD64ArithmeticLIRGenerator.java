@@ -144,7 +144,6 @@ import jdk.graal.compiler.lir.amd64.AMD64MathLogOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathPowOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathSignumOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathSinOp;
-import jdk.graal.compiler.lir.amd64.AMD64MathSinhOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathTanOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathTanhOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
@@ -1306,11 +1305,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitMathSin(Value input) {
         return new AMD64MathSinOp().emitLIRWrapper(getLIRGen(), input);
-    }
-
-    @Override
-    public Value emitMathSinh(Value input) {
-        return new AMD64MathSinhOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override

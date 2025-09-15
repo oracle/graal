@@ -703,7 +703,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
-    public final long arithmeticSinhAddress = getFieldValue("CompilerToVM::Data::dsinh", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
     public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address");
