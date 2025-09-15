@@ -166,7 +166,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     private native long objectFieldOffset0(Field f);
 
     @Delete
-    private native long knownObjectFieldOffset0(Class<?> c, String name);
+    private native long objectFieldOffset1(Class<?> c, String name);
 
     @Delete
     private native long staticFieldOffset0(Field f);
