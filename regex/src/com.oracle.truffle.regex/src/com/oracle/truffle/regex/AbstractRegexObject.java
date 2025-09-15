@@ -60,12 +60,32 @@ public abstract class AbstractRegexObject implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    public final boolean hasLanguage() {
+    public final boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
+    public String getLanguageId() {
+        return RegexLanguage.ID;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
     public final Class<? extends TruffleLanguage<?>> getLanguage() {
         return RegexLanguage.class;
     }
