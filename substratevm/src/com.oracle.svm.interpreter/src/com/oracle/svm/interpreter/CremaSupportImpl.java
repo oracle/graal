@@ -68,6 +68,7 @@ import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.interpreter.fieldlayout.FieldLayout;
+import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -232,10 +233,10 @@ public class CremaSupportImpl implements CremaSupport {
 
         // Fields
         ParserField[] fields = table.getParserKlass().getFields();
-        InterpreterResolvedJavaField[] declaredFields = fields.length == 0 ? InterpreterResolvedJavaField.EMPTY_ARRAY : new InterpreterResolvedJavaField[fields.length];
+        CremaResolvedJavaFieldImpl[] declaredFields = fields.length == 0 ? CremaResolvedJavaFieldImpl.EMPTY_ARRAY : new CremaResolvedJavaFieldImpl[fields.length];
         for (int j = 0; j < fields.length; j++) {
             ParserField f = fields[j];
-            declaredFields[j] = InterpreterResolvedJavaField.createAtRuntime(thisType, f, table.layout.getOffset(j));
+            declaredFields[j] = CremaResolvedJavaFieldImpl.createAtRuntime(thisType, f, table.layout.getOffset(j));
         }
         thisType.setAfterFieldsOffset(table.layout().afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);

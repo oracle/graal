@@ -54,7 +54,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     private final InterpreterResolvedObjectType superclass;
     private final InterpreterResolvedObjectType[] interfaces;
     private InterpreterResolvedJavaMethod[] declaredMethods;
-    private InterpreterResolvedJavaField[] declaredFields;
+    protected InterpreterResolvedJavaField[] declaredFields;
     private int afterFieldsOffset;
 
     // Populated after analysis.
@@ -275,6 +275,10 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
             link();
         }
         return declaredMethods;
+    }
+
+    public InterpreterResolvedJavaField[] getDeclaredFields() {
+        return declaredFields;
     }
 
     public final void setDeclaredMethods(InterpreterResolvedJavaMethod[] declaredMethods) {

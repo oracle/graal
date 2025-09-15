@@ -32,9 +32,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
@@ -42,10 +42,12 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public final class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess {
+public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess {
     public static final InterpreterResolvedJavaField[] EMPTY_ARRAY = new InterpreterResolvedJavaField[0];
 
     // Special offset values
@@ -77,7 +79,7 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
      */
     @Platforms(Platform.HOSTED_ONLY.class) private boolean artificiallyReachable;
 
-    private InterpreterResolvedJavaField(
+    protected InterpreterResolvedJavaField(
                     Symbol<Name> name, Symbol<Type> typeSymbol, int modifiers,
                     InterpreterResolvedJavaType resolvedType, InterpreterResolvedObjectType declaringClass,
                     int offset,
@@ -122,33 +124,24 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
         return new InterpreterResolvedJavaField(nameSymbol, type.getSymbolicType(), modifiers, type, declaringClass, offset, constant, type.isWordType());
     }
 
-    public static InterpreterResolvedJavaField createAtRuntime(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
-        return new InterpreterResolvedJavaField(f.getName(), f.getType(), f.getFlags(),
-                        /*- resolvedType */ null,
-                        declaringClass,
-                        offset,
-                        /*- constantValue */ null,
-                        /*- isWordStorage */ false);
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    public AnalysisField getOriginalField() {
+    public final AnalysisField getOriginalField() {
         return originalField;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOriginalField(AnalysisField originalField) {
+    public final void setOriginalField(AnalysisField originalField) {
         this.originalField = originalField;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setUnmaterializedConstant(JavaConstant constant) {
+    public final void setUnmaterializedConstant(JavaConstant constant) {
         assert JavaConstant.NULL_POINTER.equals(constant) || constant instanceof PrimitiveConstant || constant instanceof ReferenceConstant<?>;
         this.offset = InterpreterResolvedJavaField.FIELD_UNMATERIALIZED;
         this.constantValue = constant;
     }
 
-    public boolean isUnmaterializedConstant() {
+    public final boolean isUnmaterializedConstant() {
         return this.offset == FIELD_UNMATERIALIZED;
     }
 
@@ -157,46 +150,46 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
      * interpreter. Examples of undefined fields include: {@link jdk.graal.compiler.word.Word}
      * subtypes, {@link DynamicHub}'s vtable.
      */
-    public boolean isUndefined() {
+    public final boolean isUndefined() {
         return this.isUnmaterializedConstant() &&
                         this.getUnmaterializedConstant().getJavaKind() == JavaKind.Illegal;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOffset(int offset) {
+    public final void setOffset(int offset) {
         VMError.guarantee(this.offset == OFFSET_UNINITIALIZED || this.offset == offset, "InterpreterField offset should not be set twice.");
         this.offset = offset;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setResolvedType(InterpreterResolvedJavaType resolvedType) {
+    public final void setResolvedType(InterpreterResolvedJavaType resolvedType) {
         VMError.guarantee(this.resolvedType == null || this.resolvedType == resolvedType,
                         "InterpreterField resolvedType should not be set twice.");
         this.resolvedType = resolvedType;
     }
 
     @Override
-    public int getModifiers() {
+    public final int getModifiers() {
         return modifiers;
     }
 
     @Override
-    public int getOffset() {
+    public final int getOffset() {
         return offset;
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         return name.toString();
     }
 
     @Override
-    public Symbol<Name> getSymbolicName() {
+    public final Symbol<Name> getSymbolicName() {
         return name;
     }
 
     @Override
-    public InterpreterResolvedJavaType getType() {
+    public final JavaType getType() {
         /*
          * For fields created at build-time, the type is set if it is available. We explicitly do
          * not want to trigger field type resolution at build-time.
@@ -205,34 +198,49 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
          * a ResolvedJavaType for it, we would force it back in.
          */
         if (resolvedType == null) {
+            UnresolvedJavaType unresolvedJavaType = UnresolvedJavaType.create(typeSymbol.toString());
             /*
-             * Currently only exercised through JDWP field writes. Will need to be implemented once
-             * JIT is added to runtime loaded classes.
+             * This should not trigger actual class loading. Instead, we query the loader registry
+             * for an already loaded class.
              */
-            throw VMError.unimplemented("Runtime field type resolution.");
+            Class<?> cls = CremaSupport.singleton().findLoadedClass(unresolvedJavaType, getDeclaringClass());
+            if (cls == null) {
+                // Not loaded: return the unresolved type
+                return unresolvedJavaType;
+            }
+            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+
+        }
+        return resolvedType;
+    }
+
+    public final InterpreterResolvedJavaType getResolvedType() {
+        if (resolvedType == null) {
+            Class<?> cls = CremaSupport.singleton().resolveOrThrow(UnresolvedJavaType.create(typeSymbol.toString()), getDeclaringClass());
+            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
         }
         return resolvedType;
     }
 
     @Override
-    public JavaKind getJavaKind() {
+    public final JavaKind getJavaKind() {
         return CremaTypeAccess.symbolToJvmciKind(getSymbolicType());
     }
 
-    public boolean isWordStorage() {
+    public final boolean isWordStorage() {
         return isWordStorage;
     }
 
-    public Symbol<Type> getSymbolicType() {
+    public final Symbol<Type> getSymbolicType() {
         return typeSymbol;
     }
 
     @Override
-    public InterpreterResolvedObjectType getDeclaringClass() {
+    public final InterpreterResolvedObjectType getDeclaringClass() {
         return declaringClass;
     }
 
-    public JavaConstant getUnmaterializedConstant() {
+    public final JavaConstant getUnmaterializedConstant() {
         assert offset == FIELD_UNMATERIALIZED;
         // constantValue can be "Illegal" for some folded constants, for which the value is not
         // stored in the image heap.
@@ -243,22 +251,22 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isArtificiallyReachable() {
+    public final boolean isArtificiallyReachable() {
         return artificiallyReachable;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void markAsArtificiallyReachable() {
+    public final void markAsArtificiallyReachable() {
         this.artificiallyReachable = true;
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "InterpreterResolvedJavaField<holder=" + getDeclaringClass().getName() + " name=" + name + " descriptor=" + typeSymbol + " offset=" + offset + ">";
     }
 
     @Override
-    public boolean equals(Object other) {
+    public final boolean equals(Object other) {
         if (this == other) {
             return true;
         }
@@ -270,7 +278,7 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         int result = MetadataUtil.hashCode(name);
         result = 31 * result + MetadataUtil.hashCode(declaringClass);
         result = 31 * result + MetadataUtil.hashCode(typeSymbol);
@@ -280,42 +288,42 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField, Cr
     // region Unimplemented methods
 
     @Override
-    public boolean shouldEnforceInitializerCheck() {
+    public final boolean shouldEnforceInitializerCheck() {
         throw VMError.unimplemented("shouldEnforceInitializerCheck");
     }
 
     @Override
-    public boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
+    public final boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
         throw VMError.unimplemented("accessChecks");
     }
 
     @Override
-    public void loadingConstraints(InterpreterResolvedJavaType accessingClass, Function<String, RuntimeException> errorHandler) {
+    public final void loadingConstraints(InterpreterResolvedJavaType accessingClass, Function<String, RuntimeException> errorHandler) {
         throw VMError.unimplemented("loadingConstraints");
     }
 
     @Override
-    public boolean isInternal() {
+    public final boolean isInternal() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public boolean isSynthetic() {
+    public final boolean isSynthetic() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Annotation[] getAnnotations() {
+    public final Annotation[] getAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public final Annotation[] getDeclaredAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
