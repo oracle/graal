@@ -62,13 +62,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
 
-  polybench_vm_common(env='${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + common.deps.svm + vm.custom_vm {
-    local is_enterprise = (vm.edition == 'ee'),
-    setup+: [
-      ['mx', '--env', env, 'sforceimports'],
-      ['mx', '--env', env, 'build'],
-      ['set-export', 'POLYBENCH_JVM', ['mx', '--env', env, 'graalvm-home']],
-    ] + if is_enterprise then [['mx', '--dy', '/truffle-enterprise', 'build']] else [],
+  polybench_vm_common(os, arch, fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.pipelined_graalvm(repo_config.graalvm_edition, os, arch, environment_variable='POLYBENCH_JVM') + {
+    local is_enterprise = (repo_config.graalvm_edition == 'ee'),
+    setup+: if is_enterprise then [['mx', '--dy', '/truffle-enterprise', 'build']] else [],
 
     # Extends the provided polybench command with common arguments used in CI. We want the command at the call site
     # to be simple (i.e., a flat array of string literals) so it can be easily copied and run locally; using this
@@ -82,7 +78,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
-  polybench_vm_hpc_common: self.polybench_vm_common(skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
+  polybench_vm_hpc_common: self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
     polybench_wrap(command)::
       super.polybench_wrap(command) + [
         '--mx-benchmark-args',
@@ -91,12 +87,12 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     teardown: [self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!']],
   },
 
-  polybench_vm_gate(os, arch, language, name = null): vm_common.vm_base(os, arch, 'tier3') + self.polybench_vm_common(fail_fast=true, skip_machine=true) + vm.vm_java_Latest + {
+  polybench_vm_gate(os, arch, language, name = null): vm_common.vm_base(os, arch, 'tier3') + self.polybench_vm_common(os, arch, fail_fast=true, skip_machine=true) + vm.vm_java_Latest + {
     name: utils.hyphenize(['gate-vm', vm.vm_setup.short_name, 'polybench', language, name, utils.jdk_and_hardware(self)]),
     timelimit: '1:00:00',
   },
 
-  polybench_vm_daily(os, arch, language, name = null): vm_common.vm_base(os, arch, 'daily', bench=true) + self.polybench_vm_common() + vm.vm_java_Latest + {
+  polybench_vm_daily(os, arch, language, name = null): vm_common.vm_base(os, arch, 'daily', bench=true) + self.polybench_vm_common(os, arch) + vm.vm_java_Latest + {
     name: utils.hyphenize(['daily-bench-vm', vm.vm_setup.short_name, 'polybench', language, name, utils.jdk_and_hardware(self)]),
     teardown: [self.upload],
     timelimit: '4:00:00',
