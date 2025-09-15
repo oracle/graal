@@ -93,7 +93,13 @@ public class VectorAPIFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(VectorAPIFeature::eagerlyInitializeValueLayout);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         /*
          * We will initialize all classes in the Vector API package at build time. This is necessary
          * to avoid class initialization checks in hot paths, and generally because we need to see
@@ -152,6 +158,12 @@ public class VectorAPIFeature implements InternalFeature {
 
         Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
         UNSAFE.ensureClassInitialized(laneTypeClass);
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "asIntegral"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "asFloating"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "ENUM_VALUES"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "ENUM_FROM_SK"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "ENUM_FROM_C0"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(laneTypeClass, "ENUM_FROM_BT"));
 
         Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
         Object speciesCache = Array.newInstance(speciesClass, ReflectionUtil.readStaticField(laneTypeClass, "SK_LIMIT"), ReflectionUtil.readStaticField(vectorShapeClass, "SK_LIMIT"));
@@ -174,15 +186,11 @@ public class VectorAPIFeature implements InternalFeature {
                             (receiver, originalValue) -> makeIotaVector(maxVectorClass, laneType.elementClass(), laneCount));
         }
 
-        Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
-        Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
-
         for (LaneType laneType : laneTypes) {
             // Ensure VarHandle used by memorySegmentGet/Set is initialized.
             // Java 22+: ValueLayout valueLayout = (...); valueLayout.varHandle();
             Object valueLayout = ReflectionUtil.readStaticField(laneType.vectorClass(), "ELEMENT_LAYOUT");
-            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
-            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+            eagerlyInitializeValueLayout(valueLayout);
 
             for (Shape shape : shapes) {
                 String fieldName = "SPECIES_" + shape.shapeName().toUpperCase(Locale.ROOT);
@@ -197,17 +205,34 @@ public class VectorAPIFeature implements InternalFeature {
                 Object laneTypeObject = ReflectionUtil.readStaticField(laneTypeClass, laneType.elementName().toUpperCase(Locale.ROOT));
                 speciesStableFields.put(species, new AbstractSpeciesStableFields(laneCount, laneCountLog2P1, vectorBitSize, vectorByteSize, dummyVector, laneTypeObject));
 
+                // Initialize @Stable fields indexSpecies and swapBytesShuffle to allow folding
+                Method indexSpecies = ReflectionUtil.lookupMethod(speciesClass, "indexSpecies");
+                ReflectionUtil.invokeMethod(indexSpecies, species);
+                Method swapBytesShuffle = ReflectionUtil.lookupMethod(speciesClass, "swapBytesShuffle");
+                ReflectionUtil.invokeMethod(swapBytesShuffle, species);
+
                 Array.set(Array.get(speciesCache, laneType.switchKey()), shape.switchKey(), species);
             }
         }
+
+        Field dummyVectorField = ReflectionUtil.lookupField(speciesClass, "dummyVector");
+        Field cachesField = ReflectionUtil.lookupField(speciesClass, "CACHES");
 
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCount"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneCount));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCountLog2P1"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneCountLog2P1));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::vectorBitSize));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::vectorByteSize));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "dummyVector"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::dummyVector));
+        access.registerFieldValueTransformer(dummyVectorField, new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::dummyVector));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneType"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneType));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "CACHES"), (receiver, originalValue) -> speciesCache);
+        access.registerFieldValueTransformer(cachesField, (receiver, originalValue) -> speciesCache);
+
+        access.allowStableFieldFoldingBeforeAnalysis(dummyVectorField);
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(speciesClass, "indexSpecies"));
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(speciesClass, "swapBytesShuffle"));
+        access.allowStableFieldFoldingBeforeAnalysis(cachesField);
+
+        // We can fold AbstractValueLayout.handle because we eagerly initialize all ValueLayouts.
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("jdk.internal.foreign.layout.ValueLayouts$AbstractValueLayout"), "handle"));
 
         /*
          * Manually initialize some inner classes and mark them as reachable. Due to the way we
@@ -248,6 +273,8 @@ public class VectorAPIFeature implements InternalFeature {
             }
         }
 
+        access.allowStableFieldFoldingBeforeAnalysis(warmupData.implCacheField);
+
         /* Warm up caches for mapping between lane types, used by shuffles. */
         Method asIntegral = ReflectionUtil.lookupMethod(speciesClass, "asIntegral");
         Method asFloating = ReflectionUtil.lookupMethod(speciesClass, "asFloating");
@@ -269,6 +296,7 @@ public class VectorAPIFeature implements InternalFeature {
         Class<?> conversionImplClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorOperators$ConversionImpl");
         UNSAFE.ensureClassInitialized(conversionImplClass);
         makeConversionOperations(conversionImplClass, warmupData);
+        access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(conversionImplClass, "CACHES"));
 
         if (DeoptimizationSupport.enabled()) {
             /* Build a table of payload type descriptors for deoptimization. */
@@ -292,6 +320,17 @@ public class VectorAPIFeature implements InternalFeature {
             }
             ImageSingletons.add(VectorAPIDeoptimizationSupport.class, deoptSupport);
         }
+    }
+
+    private static final Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
+    private static final Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
+
+    private static Object eagerlyInitializeValueLayout(Object valueLayout) {
+        if (valueLayoutClass.isInstance(valueLayout)) {
+            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+        }
+        return valueLayout;
     }
 
     private static Class<?> vectorClass(LaneType laneType, Shape shape) {
