@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -505,14 +505,34 @@ abstract class CommonPointerLibraries {
 
     /**
      * @param receiver
-     * @see InteropLibrary#hasLanguage(Object)
+     * @see InteropLibrary#hasLanguageId(Object)
      */
     @ExportMessage
-    static boolean hasLanguage(LLVMPointerImpl receiver) {
+    static boolean hasLanguageId(LLVMPointerImpl receiver) {
         return true;
     }
 
     @ExportMessage
+    static String getLanguageId(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return LLVMLanguage.ID;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings("deprecation")
+    static boolean hasLanguage(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings("deprecation")
     static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
         return LLVMLanguage.class;
     }

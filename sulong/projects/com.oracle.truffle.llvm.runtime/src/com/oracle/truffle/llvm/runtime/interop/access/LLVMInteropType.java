@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -136,12 +136,32 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean hasLanguage() {
+    final boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings({"static-method"})
+    final String getLanguageId() {
+        return LLVMLanguage.ID;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
+    final boolean hasLanguage() {
+        return true;
+    }
+
+    /**
+     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+     * messages.
+     */
+    @ExportMessage
+    @SuppressWarnings({"static-method", "deprecation"})
     final Class<? extends TruffleLanguage<?>> getLanguage() {
         return LLVMLanguage.class;
     }
