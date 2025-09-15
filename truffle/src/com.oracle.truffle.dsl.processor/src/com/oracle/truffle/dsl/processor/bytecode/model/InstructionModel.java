@@ -93,6 +93,7 @@ public final class InstructionModel implements PrettyPrintable {
         TAG_LEAVE,
         TAG_LEAVE_VOID,
         TAG_YIELD,
+        TAG_YIELD_NULL,
         TAG_RESUME,
         INVALIDATE;
 
@@ -444,6 +445,7 @@ public final class InstructionModel implements PrettyPrintable {
             case TAG_LEAVE_VOID:
             case TAG_RESUME:
             case TAG_YIELD:
+            case TAG_YIELD_NULL:
                 return true;
             default:
                 return false;
@@ -471,6 +473,8 @@ public final class InstructionModel implements PrettyPrintable {
             case CUSTOM_SHORT_CIRCUIT:
             case INVALIDATE:
                 return true;
+            case CUSTOM:
+                return operation.kind == OperationKind.CUSTOM_YIELD;
             default:
                 return false;
         }

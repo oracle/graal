@@ -278,7 +278,7 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(child("result")) //
                         .setInstruction(m.returnInstruction);
         if (m.enableYield) {
-            m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(void.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
+            m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(Object.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
             m.operation(OperationKind.YIELD, "Yield", """
                             Yield executes {@code value} and suspends execution at the given location, returning a {@link com.oracle.truffle.api.bytecode.ContinuationResult} containing the result.
                             The caller can resume the continuation, which continues execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
@@ -344,13 +344,6 @@ public class BytecodeDSLBuiltins {
                                                             "the tags to associate with the enclosed operations"))//
                             .setInstruction(m.tagLeaveValueInstruction);
 
-            if (m.enableYield) {
-                m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, Object.class));
-                m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-
-                m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
-                m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            }
         }
 
         m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
@@ -385,6 +378,22 @@ public class BytecodeDSLBuiltins {
                 m.loadVariadicInstruction.addImmediate(ImmediateKind.SHORT, "merge_count");
                 m.createVariadicInstruction.addImmediate(ImmediateKind.SHORT, "merge_count");
             }
+        }
+
+        if (m.enableTagInstrumentation && m.hasYieldOperation()) {
+            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, Object.class));
+            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+
+            for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
+                if (yieldOperation.instruction.signature.dynamicOperandCount == 0) {
+                    m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
+                    m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+                    break;
+                }
+            }
+
+            m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
+            m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
 
         // invalidate instructions should be the last instructions to add as it they depend on the
