@@ -118,9 +118,23 @@ public final class SourceUtils {
         return Range.create(section.getStartLine() - 1, section.getStartColumn() - 1, section.getEndLine() - 1, endColumn);
     }
 
+    @SuppressWarnings("deprecation")
     public static SourceSection findSourceLocation(TruffleInstrument.Env env, Object object, LanguageInfo defaultLanguageInfo) {
         LanguageInfo languageInfo;
-        if (INTEROP.hasLanguage(object)) {
+        if (INTEROP.hasLanguageId(object)) {
+            try {
+                languageInfo = env.getLanguageInfo(INTEROP.getLanguageId(object));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        } else if (INTEROP.hasLanguage(object)) {
+            /*
+             * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
+             * messages. We need to call hasLanguage even if hasLanguageId provides a default
+             * implementation to support objects implementing hasLanguage but delegating other
+             * messages using delegateTo.
+             */
             try {
                 languageInfo = env.getLanguageInfo(INTEROP.getLanguage(object));
             } catch (UnsupportedMessageException e) {
