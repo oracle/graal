@@ -30,27 +30,90 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(value = java.lang.StackWalker.class)
+@SuppressWarnings({"static-method", "unused"})
 final class Target_java_lang_StackWalker_Web {
 
     @Substitute
-    @SuppressWarnings({"static-method", "unused"})
     private void forEach(Consumer<? super StackFrame> action) {
         throw new UnsupportedOperationException("StackWalker.forEach");
     }
 
     @Substitute
-    @SuppressWarnings("static-method")
     private Class<?> getCallerClass() {
         throw new UnsupportedOperationException("StackWalker.getCallerClass");
     }
 
     @Substitute
-    @SuppressWarnings({"static-method", "unused"})
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
-        throw new UnsupportedOperationException("StackWalker.walk");
+        if (SyntheticStackSupport.MAIN_STACK_FRAME == null) {
+            throw new UnsupportedOperationException("StackWalker.walk");
+        }
+        return function.apply(Stream.of(SyntheticStackSupport.MAIN_STACK_FRAME));
+    }
+}
+
+final class SyntheticStackSupport {
+    public static final StackTraceElement MAIN_STACK_TRACE_ELEMENT;
+    static final StackFrame MAIN_STACK_FRAME;
+
+    static {
+        String mainClassName = SubstrateOptions.Class.getValue();
+        String mainMethodName = SubstrateOptions.Method.getValue();
+        if (mainClassName.isEmpty() || mainMethodName.isEmpty()) {
+            MAIN_STACK_TRACE_ELEMENT = null;
+            MAIN_STACK_FRAME = null;
+        } else {
+            MAIN_STACK_TRACE_ELEMENT = new StackTraceElement(mainClassName, mainMethodName, "", 0);
+            MAIN_STACK_FRAME = new StackFrame() {
+                @Override
+                public String getClassName() {
+                    return mainClassName;
+                }
+
+                @Override
+                public String getMethodName() {
+                    return mainMethodName;
+                }
+
+                @Override
+                public Class<?> getDeclaringClass() {
+                    try {
+                        return Class.forName(mainClassName);
+                    } catch (ClassNotFoundException e) {
+                        throw new UnsupportedOperationException("getDeclaringClass in StackWalker.walk");
+                    }
+                }
+
+                @Override
+                public int getByteCodeIndex() {
+                    return 0;
+                }
+
+                @Override
+                public String getFileName() {
+                    return MAIN_STACK_TRACE_ELEMENT.getFileName();
+                }
+
+                @Override
+                public int getLineNumber() {
+                    return MAIN_STACK_TRACE_ELEMENT.getLineNumber();
+                }
+
+                @Override
+                public boolean isNativeMethod() {
+                    return false;
+                }
+
+                @Override
+                public StackTraceElement toStackTraceElement() {
+                    return MAIN_STACK_TRACE_ELEMENT;
+                }
+            };
+        }
     }
 }
