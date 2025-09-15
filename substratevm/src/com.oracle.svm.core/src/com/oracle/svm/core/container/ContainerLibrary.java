@@ -84,7 +84,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+11/src/hotspot/share/utilities/ostream.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/permitForbiddenFunctions.hpp")
 // The following annotations are for files in `src/svm`, which are completely customized for SVM
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/logging/log.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/logging/log.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/memory/allocation.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+12/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+9/src/hotspot/share/utilities/debug.cpp")
