@@ -39,6 +39,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
 public @interface NeverInline {
+    /**
+     * In some cases, we don't have proper exception edges on the compiler level at the moment (see
+     * GR-24649).
+     */
+    String CALLER_CATCHES_IMPLICIT_EXCEPTIONS = "Ensure that all exceptions can be caught, including implicit exceptions.";
 
     /**
      * Documents the reason why the annotated code must not be inlined.
