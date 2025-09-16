@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCodeBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
@@ -385,7 +386,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @NeverInline("GR-24649")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
         /* Initialize the isolate id (the id is needed for isolate teardown). */
         long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();

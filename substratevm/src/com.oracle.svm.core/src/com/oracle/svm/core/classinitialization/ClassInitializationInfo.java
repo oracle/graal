@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.classinitialization;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -419,7 +421,7 @@ public final class ClassInitializationInfo {
      * {@link #initLock}. However, we want to stick as close as possible to the specification, so we
      * explicitly don't do any optimizations in that regard.
      */
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1184-L1364")
     private void tryInitialize0(DynamicHub hub) {
         assert !Platform.includedIn(NATIVE_ONLY.class) || StackOverflowCheck.singleton().isYellowZoneAvailable();
@@ -590,7 +592,7 @@ public final class ClassInitializationInfo {
      * thread which encounters the class being initialized, it would wrongly be considered reentrant
      * initialization and enable use of the incompletely initialized class.
      */
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private void setInitThread0() {
         assert initThread.isNull();
         if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
@@ -608,7 +610,7 @@ public final class ClassInitializationInfo {
         }
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private void clearInitThread0() {
         assert initThread == CurrentIsolate.getCurrentThread();
         initThread = Word.nullPointer();
@@ -618,7 +620,7 @@ public final class ClassInitializationInfo {
     }
 
     /** Eagerly initialize superinterfaces that declare default methods. May throw exceptions. */
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1099-L1117")
     private static void initializeSuperInterfaces(DynamicHub hub) {
         assert hub.hasDefaultMethods() : "caller should have checked this";
@@ -653,7 +655,7 @@ public final class ClassInitializationInfo {
         }
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private static ExceptionInInitializerError createExceptionInInitializerObject0(Throwable exception) {
         return new ExceptionInInitializerError(exception);
     }
@@ -672,7 +674,7 @@ public final class ClassInitializationInfo {
         }
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private void setInitializationStateAndNotify0(InitState state) {
         initLock.lock();
         try {
