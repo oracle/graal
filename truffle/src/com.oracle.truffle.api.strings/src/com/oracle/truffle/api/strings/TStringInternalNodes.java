@@ -317,6 +317,7 @@ final class TStringInternalNodes {
                         @Cached InlinedConditionProfile utf32Profile,
                         @Cached InlinedConditionProfile utf32Compact0Profile,
                         @Cached InlinedConditionProfile utf32Compact1Profile,
+                        @Cached InlinedConditionProfile singleByteProfile,
                         @Cached InlinedByteValueProfile unlikelyEncodingProfile) {
             assert dataA instanceof byte[] || dataA instanceof NativePointer;
             try {
@@ -343,6 +344,9 @@ final class TStringInternalNodes {
                     codeRange = StringAttributes.getCodeRange(attrs);
                     stride = Stride.fromCodeRangeUTF16(codeRange);
                     if (copy || stride == 0) {
+                        if (singleByteProfile.profile(node, isCacheHead && length == 1 && stride == 0)) {
+                            return TStringConstants.getSingleByte(Encoding.UTF_16, TStringOps.readS1(arrayA, offsetA, 1, 0));
+                        }
                         offset = 0;
                         array = new byte[length << stride];
                         if (utf16CompactProfile.profile(node, stride == 0)) {
@@ -361,6 +365,9 @@ final class TStringInternalNodes {
                     codePointLength = length;
                     stride = Stride.fromCodeRangeUTF32(codeRange);
                     if (copy || stride < 2) {
+                        if (singleByteProfile.profile(node, isCacheHead && length == 1 && stride == 0)) {
+                            return TStringConstants.getSingleByte(Encoding.UTF_32, TStringOps.readS2(arrayA, offsetA, 1, 0));
+                        }
                         offset = 0;
                         array = new byte[length << stride];
                         if (utf32Compact0Profile.profile(node, stride == 0)) {
@@ -379,6 +386,9 @@ final class TStringInternalNodes {
                     stride = 0;
                     final long attrs;
                     if (utf8Profile.profile(node, isUTF8(encoding))) {
+                        if (singleByteProfile.profile(node, isCacheHead && length == 1)) {
+                            return TStringConstants.getSingleByte(Encoding.UTF_8, TStringOps.readS0(arrayA, offsetA, 1, 0));
+                        }
                         attrs = TStringOps.calcStringAttributesUTF8(node, arrayA, offsetA, length, false, false, utf8BrokenProfile);
                     } else {
                         attrs = unlikelyCases(node, arrayA, offsetA, byteLength, encoding, unlikelyEncodingProfile.profile(node, encoding.id));
@@ -1410,7 +1420,8 @@ final class TStringInternalNodes {
                         @SuppressWarnings("unused") boolean lazy,
                         @Shared("attributes") @Cached CalcStringAttributesNode calcAttributesNode,
                         @Exclusive @Cached InlinedConditionProfile utf16Profile,
-                        @Exclusive @Cached InlinedConditionProfile utf32Profile) {
+                        @Exclusive @Cached InlinedConditionProfile utf32Profile,
+                        @Exclusive @Cached InlinedConditionProfile singleByteProfile) {
             final long attrs;
             final int codeRange;
             final int stride;
@@ -1431,6 +1442,9 @@ final class TStringInternalNodes {
                 codeRange = StringAttributes.getCodeRange(attrs);
                 newStride = 0;
             }
+            if (singleByteProfile.profile(node, length == 1 && newStride == 0 && encoding.isSupported())) {
+                return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, a.length(), stride, fromIndex));
+            }
             byte[] newBytes = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA + (fromIndex << stride), length, stride, length, newStride);
             return TruffleString.createFromByteArray(newBytes, length, newStride, encoding, StringAttributes.getCodePointLength(attrs), codeRange);
         }
@@ -1440,11 +1454,15 @@ final class TStringInternalNodes {
                         @SuppressWarnings("unused") boolean lazy,
                         @Shared("attributes") @Cached CalcStringAttributesNode calcAttributesNode,
                         @Exclusive @Cached InlinedConditionProfile stride1MustMaterializeProfile,
-                        @Exclusive @Cached InlinedConditionProfile stride2MustMaterializeProfile) {
+                        @Exclusive @Cached InlinedConditionProfile stride2MustMaterializeProfile,
+                        @Exclusive @Cached InlinedConditionProfile singleByteProfile) {
             long lazyOffset = offsetA + (fromIndex << a.stride());
             long attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, a.stride(), encoding, fromIndex, codeRangeA);
             int codeRange = StringAttributes.getCodeRange(attrs);
             int codePointLength = StringAttributes.getCodePointLength(attrs);
+            if (singleByteProfile.profile(node, length == 1 && Stride.fromCodeRange(codeRange, encoding) == 0 && encoding.isSupported())) {
+                return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, a.length(), a.stride(), fromIndex));
+            }
             final Object data;
             final int offset;
             final int stride;
