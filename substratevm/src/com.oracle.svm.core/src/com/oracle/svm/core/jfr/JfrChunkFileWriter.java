@@ -541,7 +541,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
             int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
             writeCompressedInt(length);
-            int bufferSize = 256;
+            int bufferSize = 64;
             Pointer buffer = StackValue.get(bufferSize);
             Pointer bufferEnd = buffer.add(bufferSize);
             int charsWritten = 0;
@@ -549,8 +549,13 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             while (charsWritten < str.length()) {
                 // Fill up the buffer as much as possible
                 Pointer pos = buffer;
-                while (pos.belowOrEqual(bufferEnd) && charsWritten < str.length()) {
+                while (charsWritten < str.length()) {
                     char ch = UninterruptibleUtils.String.charAt(str, charsWritten);
+                    int nextCharSize = UninterruptibleUtils.String.modifiedUTF8Length(ch);
+                    if (pos.add(nextCharSize).aboveThan(bufferEnd)) {
+                        // buffer is too full to add the next char
+                        break;
+                    }
                     pos = UninterruptibleUtils.String.writeModifiedUTF8(pos, ch);
                     charsWritten++;
                 }
@@ -561,22 +566,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             }
             assert totalBytesWritten.equal(length);
         }
-    }
-
-    /**
-     * Use this method when the string may be too big for the buffer. Returns the number of
-     * characters written to the buffer.
-     */
-    public static int toModifiedUTF8(java.lang.String str, Pointer buffer, Pointer bufferEnd, int offset) {
-        Pointer pos = buffer;
-        int i = 0;
-        while (pos.belowOrEqual(bufferEnd)) {
-            char ch = UninterruptibleUtils.String.charAt(str, i + offset);
-            pos = UninterruptibleUtils.String.writeModifiedUTF8(pos, ch);
-            i++;
-        }
-
-        return i;
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
