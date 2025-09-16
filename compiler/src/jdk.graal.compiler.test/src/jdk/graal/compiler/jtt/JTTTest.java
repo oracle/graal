@@ -30,6 +30,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Formatter;
 import java.util.ListIterator;
 import java.util.Optional;
@@ -80,6 +81,7 @@ public class JTTTest extends GraalCompilerTest {
     public static final class DummyTestClass {
     }
 
+    protected static final Set<DeoptimizationReason> EMPTY = Collections.<DeoptimizationReason> emptySet();
     /**
      * The arguments which, if non-null, will replace the Locals in the test method's graph.
      */
@@ -190,7 +192,7 @@ public class JTTTest extends GraalCompilerTest {
      * to the usual compilation using {@link GraalCompilerTest#testAgainstExpected}.
      */
     @Override
-    protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
             testAgainstExpectedWithFuzzedCompilationPlan(options, method, expect, shouldNotDeopt, receiver, args);
         } else {

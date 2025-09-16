@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -103,7 +103,7 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         Object[] args = new Object[testParameters.length + 1];
         args[0] = array;
         System.arraycopy(testParameters, 0, args, 1, testParameters.length);
-        Result result = executeActual(getOptionsMainPath(), method, true, null, args);
+        Result result = executeActual(getOptionsMainPath(), method, null, args);
         Assert.assertNotNull(result.exception);
         Assert.assertTrue(result.exception instanceof ArrayIndexOutOfBoundsException);
         profile = method.getProfilingInfo();
