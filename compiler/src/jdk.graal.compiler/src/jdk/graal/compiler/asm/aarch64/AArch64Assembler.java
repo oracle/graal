@@ -138,7 +138,6 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REV16;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVW;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVX;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RORV;
-import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SB;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBC;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBCS;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SBFM;
@@ -1058,7 +1057,6 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         MSR(0xD5100000),
         DC(0xD5087000),
         ISB(0x000000C0),
-        SB(0x000000E0),
 
         PACIA(0b00001 << 16 | 0b000000 << 10),
         AUTIA(0b00001 << 16 | 0b000100 << 10),
@@ -4037,15 +4035,6 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.75 Data Cache operation.
-     */
-    public void dc(DataCacheOperationType type, Register src) {
-        assert verifyRegistersR(src);
-
-        emitInt(DC.encoding | type.encoding() | rt(src));
-    }
-
-    /**
      * C6.2.80 Data Memory Barrier.
      *
      * @param barrierKind barrier that is issued. May not be null.
@@ -4093,10 +4082,12 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.230 Speculation barrier.
+     * C6.2.75 Data Cache operation.
      */
-    public void sb() {
-        emitInt(SB.encoding | BarrierOp);
+    public void dc(DataCacheOperationType type, Register src) {
+        assert verifyRegistersR(src);
+
+        emitInt(DC.encoding | type.encoding() | rt(src));
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
