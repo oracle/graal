@@ -1379,7 +1379,9 @@ public class RecordedOperationPersistence {
         }
     }
 
-    private static final class RecordedCompilationUnitSerializer implements ObjectSerializer {
+    public static final class RecordedCompilationUnitSerializer implements ObjectSerializer {
+        public static final String IS_LIBGRAAL_PROPERTY = "isLibgraal";
+
         private static final String TAG = "recordedCompilationUnit";
 
         @Override
@@ -1399,7 +1401,7 @@ public class RecordedOperationPersistence {
             objectBuilder.append("osName", unit.platform.osName());
             objectBuilder.append("archName", unit.platform.archName());
             objectBuilder.append("compilerConfiguration", unit.compilerConfiguration);
-            objectBuilder.append("isLibgraal", unit.isLibgraal);
+            objectBuilder.append(IS_LIBGRAAL_PROPERTY, unit.isLibgraal);
             objectBuilder.append("entryBCI", unit.request.getEntryBCI());
             objectBuilder.append("compileId", unit.request.getId());
             try (JsonBuilder.ArrayBuilder arrayBuilder = objectBuilder.append("operations").array()) {
@@ -1419,7 +1421,7 @@ public class RecordedOperationPersistence {
             String archName = (String) json.get("archName");
             Platform platform = new Platform(osName, archName);
             String compilerConfiguration = (String) json.get("compilerConfiguration");
-            boolean isLibgraal = (boolean) json.get("isLibgraal");
+            boolean isLibgraal = (boolean) json.get(IS_LIBGRAAL_PROPERTY);
             int entryBCI = (int) json.get("entryBCI");
             int compileId = (int) json.get("compileId");
             List<Object> list = (List<Object>) json.get("operations");

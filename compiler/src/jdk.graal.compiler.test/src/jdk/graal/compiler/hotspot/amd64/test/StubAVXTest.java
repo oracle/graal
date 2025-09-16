@@ -44,11 +44,9 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -242,11 +240,8 @@ public class StubAVXTest extends LIRTest {
     public void test() {
         HotSpotProviders providers = (HotSpotProviders) getProviders();
         HotSpotForeignCallsProviderImpl foreignCalls = providers.getForeignCalls();
-        OptionValues options = GraalCompilerTest.getInitialOptions();
-        try (DebugCloseable _ = ((HotSpotReplacementsImpl) providers.getReplacements()).suppressEncodedSnippets()) {
-            HotSpotForeignCallLinkage linkage = foreignCalls.registerStubCall(TEST_STUB, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED);
-            linkage.setCompiledStub(new TestStub(options, providers, linkage));
-            runTest("testStub");
-        }
+        HotSpotForeignCallLinkage linkage = foreignCalls.registerStubCall(TEST_STUB, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED);
+        linkage.setCompiledStub(new TestStub(GraalCompilerTest.getInitialOptions(), providers, linkage));
+        runTest("testStub");
     }
 }

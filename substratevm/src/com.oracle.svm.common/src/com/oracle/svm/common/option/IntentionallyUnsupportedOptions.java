@@ -27,6 +27,7 @@ package com.oracle.svm.common.option;
 import java.util.HashSet;
 import java.util.Set;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.options.OptionKey;
@@ -43,6 +44,7 @@ public final class IntentionallyUnsupportedOptions {
 
     static {
         unsupportedOptions.add(CompilerConfigurationFactory.Options.CompilerConfiguration);
+        unsupportedOptions.add(GraalOptions.EagerSnippets);
         unsupportedOptions.add(CompilationAlarm.Options.CompilationNoProgressPeriod);
     }
 

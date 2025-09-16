@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp;
 
-import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
-
 import java.io.Closeable;
 import java.io.FileReader;
 import java.io.IOException;
@@ -44,6 +42,7 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
@@ -321,11 +320,18 @@ public class ReplayCompilationRunner {
          */
         private final OptionValues options;
 
-        private Reproducer(HotSpotGraalCompiler replayCompiler, HotSpotCompilationRequest request, String finalGraph, OptionValues options) {
+        /**
+         * Whether the recorded compilation was performed on libgraal.
+         */
+        private final boolean isLibgraal;
+
+        private Reproducer(HotSpotGraalCompiler replayCompiler, HotSpotCompilationRequest request, String finalGraph, OptionValues options,
+                        boolean isLibgraal) {
             this.replayCompiler = replayCompiler;
             this.request = request;
             this.finalGraph = finalGraph;
             this.options = options;
+            this.isLibgraal = isLibgraal;
         }
 
         /**
@@ -346,10 +352,6 @@ public class ReplayCompilationRunner {
         @SuppressWarnings("try")
         public static Reproducer initializeFromFile(String fileName, CompilerInterfaceDeclarations declarations, HotSpotJVMCIRuntime runtime,
                         OptionValues options, CompilerConfigurationFactory factory, GlobalMetrics globalMetrics, PrintStream out, EconomicMap<Object, Object> internPool) throws ReplayLauncherFailure {
-            if (!inRuntimeCode() && !HotSpotReplacementsImpl.snippetsAreEncoded()) {
-                out.println("Encode snippets");
-                HotSpotJVMCIRuntime.runtime().getCompiler();
-            }
             ReplayCompilationProxies proxies = new ReplayCompilationProxies(declarations, globalMetrics, options);
             out.println("Loading " + fileName);
             RecordedOperationPersistence.RecordedCompilationUnit compilationUnit;
@@ -366,18 +368,38 @@ public class ReplayCompilationRunner {
                 throw new ReplayParserFailure("Parsing failed due to " + exception.getMessage());
             }
             HotSpotCompilationRequest request = compilationUnit.request();
+            boolean replayingLibgraalInJargraal = !LibGraalSupport.inLibGraalRuntime() && compilationUnit.isLibgraal();
+            ReplayCompilationSupport.setReplayingLibgraalInJargraal(replayingLibgraalInJargraal);
             if (LibGraalSupport.inLibGraalRuntime() && !compilationUnit.isLibgraal()) {
                 throw new ReplayLauncherFailure("Cannot replay jargraal compilation " + request + " in libgraal");
             }
+            boolean encodeSnippets = replayingLibgraalInJargraal && !HotSpotReplacementsImpl.snippetsAreEncoded();
+            if (encodeSnippets) {
+                /*
+                 * Ensure the snippet encoder will be created and linked to the decorated providers
+                 * created below.
+                 */
+                HotSpotReplacementsImpl.clearSnippetEncoder();
+            }
+            OptionValues selectedOptions = options;
+            if (replayingLibgraalInJargraal) {
+                selectedOptions = new OptionValues(options, GraalOptions.EagerSnippets, true);
+            }
             out.println("Initializing the replay compiler for " + request);
-            HotSpotGraalCompiler replayCompiler = HotSpotGraalCompilerFactory.createCompiler("VM-replay", runtime, options, factory, new ReplayCompilationSupport(proxies, factory.getName()));
+            HotSpotGraalCompiler replayCompiler = HotSpotGraalCompilerFactory.createCompiler("VM-replay", runtime, selectedOptions, factory, new ReplayCompilationSupport(proxies, factory.getName()));
             HotSpotGraalRuntimeProvider graalRuntime = replayCompiler.getGraalRuntime();
             if (!graalRuntime.getCompilerConfigurationName().equals(compilationUnit.compilerConfiguration())) {
                 throw new ReplayLauncherFailure(("Compiler configuration mismatch: the task was compiled using " + compilationUnit.compilerConfiguration() +
                                 " but the initialized compiler is " + graalRuntime.getCompilerConfigurationName()));
             }
-            graalRuntime.getReplayCompilationSupport().setRecordedForeignCallLinkages(compilationUnit.linkages());
-            return new Reproducer(replayCompiler, request, compilationUnit.finalGraph(), options);
+            ReplayCompilationSupport support = graalRuntime.getReplayCompilationSupport();
+            support.setRecordedForeignCallLinkages(compilationUnit.linkages());
+            if (encodeSnippets) {
+                out.println("Encoding snippets");
+                HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) graalRuntime.getHostProviders().getReplacements();
+                replacements.encode(graalRuntime.getOptions());
+            }
+            return new Reproducer(replayCompiler, request, compilationUnit.finalGraph(), selectedOptions, compilationUnit.isLibgraal());
         }
 
         /**
@@ -387,6 +409,7 @@ public class ReplayCompilationRunner {
          */
         @SuppressWarnings("try")
         public ReplayResult compile() {
+            ReplayCompilationSupport.setReplayingLibgraalInJargraal(!LibGraalSupport.inLibGraalRuntime() && isLibgraal);
             ReplayCompilationSupport support = replayCompiler.getGraalRuntime().getReplayCompilationSupport();
             CompilationRequestResult result = replayCompiler.compileMethod(request, true, options);
             ReplayCompilationSupport.CompilationArtifacts replayedArtifacts = support.clearCompilationArtifacts();

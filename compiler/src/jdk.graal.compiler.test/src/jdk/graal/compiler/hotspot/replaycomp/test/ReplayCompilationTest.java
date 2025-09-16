@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot.replaycomp.test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -54,10 +55,15 @@ import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompilerFactory;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.replaycomp.CompilerInterfaceDeclarations;
+import jdk.graal.compiler.hotspot.replaycomp.RecordedOperationPersistence;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -118,15 +124,34 @@ public class ReplayCompilationTest extends GraalCompilerTest {
             HotSpotCompilationRequestResult regularResult = runRegularCompilation(method, recordOptions);
             assertTrue(regularResult.getFailure() == null);
             Path replayFile = findReplayCompFile(temp.path);
+            Path replayFileLibgraal = Path.of(temp.path.toString(), "libgraal.json");
+            copyReplayFileAsLibgraalCompilation(replayFile, replayFileLibgraal);
             String[][] argumentLists = new String[][]{
                             new String[]{"--compare-graphs=true", replayFile.toString()},
-                            new String[]{"--compare-graphs=false", "--benchmark=true", "--iterations=1", temp.path.toString()}
+                            new String[]{"--compare-graphs=false", "--benchmark=true", "--iterations=1", replayFileLibgraal.toString()}
             };
             for (String[] arguments : argumentLists) {
                 ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out());
                 assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
             }
+            assertTrue(HotSpotReplacementsImpl.snippetsAreEncoded());
         });
+    }
+
+    /**
+     * Creates a copy of the source replay file that acts as if it was compiled with libgraal. This
+     * way, we test replaying libgraal compilations on jargraal (without access to libgraal).
+     *
+     * @param replayFile the source replay file
+     * @param destFile the created replay file that acts as a libgraal compilation
+     *            ({@link jdk.graal.compiler.hotspot.replaycomp.RecordedOperationPersistence.RecordedCompilationUnit#isLibgraal()})
+     */
+    private static void copyReplayFileAsLibgraalCompilation(Path replayFile, Path destFile) throws Throwable {
+        try (FileReader reader = new FileReader(replayFile.toFile()); JsonWriter writer = new JsonWriter(destFile)) {
+            EconomicMap<String, Object> json = JsonParser.parseDict(reader);
+            json.put(RecordedOperationPersistence.RecordedCompilationUnitSerializer.IS_LIBGRAAL_PROPERTY, true);
+            writer.print(json);
+        }
     }
 
     @Test
@@ -165,6 +190,10 @@ public class ReplayCompilationTest extends GraalCompilerTest {
                 System.err.println(outputStream.toString(Charset.defaultCharset()));
                 throw throwable;
             }
+        } finally {
+            HotSpotReplacementsImpl.setEncodedSnippets(null);
+            HotSpotReplacementsImpl.clearSnippetEncoder();
+            ReplayCompilationSupport.setReplayingLibgraalInJargraal(false);
         }
     }
 
