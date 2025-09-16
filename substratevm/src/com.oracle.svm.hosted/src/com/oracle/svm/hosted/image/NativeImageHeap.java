@@ -26,6 +26,10 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
@@ -791,6 +795,43 @@ public final class NativeImageHeap implements ImageHeap {
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
         return addToImageHeap(object, (HostedClass) type, getSize(object, type), System.identityHashCode(object), reason);
+    }
+
+    /**
+     * Dumps metadata for every object in the heap.
+     */
+    public void dumpMetadata() {
+        final String heapMetadataPath = SubstrateOptions.OutHeapMetadataPath.getValue();
+        if (heapMetadataPath == null || heapMetadataPath.isEmpty()) {
+            // Do not dump metadata if the path isn't set
+            return;
+        }
+
+        final File metadataFile = new File(heapMetadataPath);
+        final String heapMetadataDir = metadataFile.getParent();
+        if (!new File(heapMetadataDir).exists()) {
+            throw VMError.shouldNotReachHere("Heap metadata directory does not exist: " + heapMetadataDir);
+        }
+
+        try (
+                        FileWriter metadataOut = new FileWriter(metadataFile);
+                        BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
+            metadataBw.write("class-name,partition,offset-in-heap,size\n");
+            for (final ObjectInfo info : getObjects()) {
+                try {
+                    metadataBw.write(
+                                    info.getClazz().getName() + "," +
+                                                    info.getPartition().getName() + "," +
+                                                    info.getOffset() + "," +
+                                                    info.getSize() + System.lineSeparator());
+                } catch (final Throwable ex) {
+                    // do nothing
+                    // write next
+                }
+            }
+        } catch (final IOException ex) {
+            // do nothing
+        }
     }
 
     private long getSize(Object object, HostedType type) {
