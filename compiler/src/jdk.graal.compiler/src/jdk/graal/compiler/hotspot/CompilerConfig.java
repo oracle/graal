@@ -38,8 +38,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.Fields;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
@@ -104,7 +104,6 @@ public class CompilerConfig {
     }
 
     private static EncodedSnippets getEncodedSnippets(HotSpotReplacementsImpl replacements, OptionValues options) {
-        GraalError.guarantee(!HotSpotReplacementsImpl.snippetsAreEncoded(), "snippets should not be encoded");
         SymbolicSnippetEncoder snippetEncoder = replacements.maybeInitializeEncoder();
         return snippetEncoder.encodeSnippets(options);
     }
@@ -131,11 +130,7 @@ public class CompilerConfig {
         HotSpotProviders providers = replacements.getProviders();
         collectForeignCalls(providers.getForeignCalls(), allForeignCalls);
 
-        /*
-         * Instantiate the Truffle compiler to collect its foreign calls as well. Ensure the
-         * snippets are registered using this encoder.
-         */
-        replacements.shareSnippetEncoder();
+        // Instantiate the Truffle compiler to collect its foreign calls as well
         for (Backend truffleBackend : HotSpotTruffleCompilerImpl.ensureBackendsInitialized(options)) {
             HotSpotProviders truffleProviders = (HotSpotProviders) truffleBackend.getProviders();
             collectForeignCalls(truffleProviders.getForeignCalls(), allForeignCalls);

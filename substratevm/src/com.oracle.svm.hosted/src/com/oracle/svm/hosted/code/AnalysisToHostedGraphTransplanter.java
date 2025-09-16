@@ -344,8 +344,8 @@ public class AnalysisToHostedGraphTransplanter {
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
             ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
             newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
-        } else if (obj.getClass() == SnippetTemplate.SnippetInfo.class) {
-            SnippetTemplate.SnippetInfo info = (SnippetTemplate.SnippetInfo) obj;
+        } else if (obj.getClass() == SnippetTemplate.EagerSnippetInfo.class) {
+            SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
             newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
         } else if (obj instanceof ImageHeapConstant) {
             newReplacement = obj;

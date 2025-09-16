@@ -63,7 +63,9 @@ Any `-ea`, `-esa`, and `-X` arguments from the command line are passed to the JV
 
 ## Jargraal vs. Libgraal
 
-Jargraal can replay both jargraal and libgraal compilations. Libgraal can replay only libgraal compilations.
+Both jargraal and libgraal compilations can be replayed on jargraal. When jargraal replays a libgraal compilation,
+it uses encoded snippets to match the behavior and compilations results of libgraal. It is also possible to replay
+libgraal compilations on libgraal. Replaying jargraal compilations on libgraal is not supported.
 
 It is necessary to explicitly enable the replay launcher entry point when building libgraal using the VM argument
 `-Ddebug.jdk.graal.enableReplayLauncher=true`.

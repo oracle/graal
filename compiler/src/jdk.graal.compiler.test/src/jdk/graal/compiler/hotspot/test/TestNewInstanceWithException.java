@@ -569,11 +569,6 @@ public class TestNewInstanceWithException extends SubprocessTest {
         }
     }
 
-    /**
-     * The argument setting the maximum heap space of the subprocess.
-     */
-    public static final String MAX_HEAP_SPACE_ARG = "-Xmx64m";
-
     public static class TestNewInstanceWithException1 extends TestNewInstanceWithException {
 
         @Test
@@ -584,7 +579,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (InvalidInstalledCodeException e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -597,7 +592,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (InvalidInstalledCodeException e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -610,7 +605,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -623,7 +618,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -636,7 +631,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -649,7 +644,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 
@@ -662,7 +657,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, MAX_HEAP_SPACE_ARG);
+            }, "-Xmx32m");
         }
     }
 }

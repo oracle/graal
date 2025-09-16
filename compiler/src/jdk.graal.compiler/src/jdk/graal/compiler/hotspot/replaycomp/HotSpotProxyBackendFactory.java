@@ -24,8 +24,12 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp;
 
+import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
+
+import java.util.List;
 import java.util.Objects;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.hotspot.HotSpotBackendFactoryDecorators;
 import jdk.graal.compiler.hotspot.HotSpotSnippetMetaAccessProvider;
 import jdk.graal.compiler.hotspot.SnippetObjectConstant;
@@ -69,7 +73,7 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
     public MetaAccessProvider decorateMetaAccessProvider(MetaAccessProvider metaAccess) {
         // Do not record snippet types in libgraal - decorate the JVMCI meta access only.
         metaAccessProviderProxy = (MetaAccessProvider) proxies.proxify(metaAccess);
-        return new HotSpotSnippetMetaAccessProvider(metaAccessProviderProxy);
+        return new HotSpotSnippetMetaAccessProvider(metaAccessProviderProxy, true);
     }
 
     @Override
@@ -87,8 +91,17 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
             this.delegate = delegate;
         }
 
+        private static final List<String> allowedFields = List.of("TYPE", "COMPACT_STRINGS");
+
         @Override
         public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+            /*
+             * Prevents jargraal from encoding runtime constants in snippets (such as in boxing
+             * snippets). Follows the logic of HotSpotSubstrateConstantReflectionProvider.
+             */
+            if (!LibGraalSupport.inLibGraalRuntime() && replayCompilationSupport.isInSnippetContext() && !isGraalClass(field.getDeclaringClass()) && !allowedFields.contains(field.getName())) {
+                return null;
+            }
             return delegate.readFieldValue(field, receiver);
         }
 
@@ -139,7 +152,7 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
         public ResolvedJavaType asJavaType(Constant constant) {
             if (constant instanceof SnippetObjectConstant objectConstant) {
                 /*
-                 * Avoid recording an operation with the snippet constant, which is not
+                 * Avoids recording an operation with the snippet constant, which is not
                  * serializable.
                  */
                 return metaAccessProviderProxy.lookupJavaType(objectConstant.asObject(Object.class).getClass());

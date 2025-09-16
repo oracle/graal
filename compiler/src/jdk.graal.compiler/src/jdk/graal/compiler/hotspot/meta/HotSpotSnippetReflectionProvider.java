@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Executable;
@@ -62,7 +62,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (inRuntimeCode()) {
+        if (isAfterSnippetEncoding()) {
             HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(object.getClass());
             // This can only be a compiler object when in libgraal.
             return new SnippetObjectConstant(object);

@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+
 import java.nio.file.Path;
 import java.util.function.Predicate;
 
@@ -34,6 +36,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
@@ -80,22 +83,33 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link #decorateIntrinsificationTrustPredicate} return proxies for additional objects.
  *
  * <p>
- * <b>Compiler Instances and Snippets.</b> Since we hijack the compiler's backend factory, a
- * dedicated compiler instance must be created for recording and replay. During recording, separate
- * compiler instances should be used for the recorded methods
- * ({@link #matchesRecordCompilationFilter}) and the methods that are not recorded. This ensures
- * that the recording overhead is paid for the recorded methods only. Snippets and stubs are
- * considered part of the compiler rather than the application, and they should never be recorded.
- * It is possible to record a libgraal compilation and replay it on jargraal.
+ * <b>Compiler Instances.</b> Since we hijack the compiler's backend factory, a dedicated compiler
+ * instance must be created for recording and replay. To modify the compiler's behavior even from
+ * places where an instance of this class cannot be reasonably obtained, this class tracks whether
+ * the current compiler thread is performing a replay of a libgraal compilation in jargraal
+ * ({@link #isReplayingLibgraalInJargraal()}) and whether it is in a snippet context
+ * ({@link #isInSnippetContext()}). During recording, separate compiler instances should be used for
+ * the recorded methods ({@link #matchesRecordCompilationFilter}) and the methods that are not
+ * recorded. This ensures that the recording overhead is paid for the recorded methods only.
+ *
+ * <p>
+ * <b>Snippets.</b> It is possible to record a libgraal compilation and replay it on jargraal. To
+ * ensure the replayed compilation matches the recorded one, we replay such compilations using
+ * encoded snippets ({@link #isReplayingLibgraalInJargraal()}). We must never mix raw JVMCI object
+ * and JVMCI proxies in a single graph, so we create proxies even during snippet parsing. Due to the
+ * need to replay libgraal compilations on jargraal and since snippets are compiler code rather than
+ * application code, the proxies do not record the operations during snippet parsing (i.e., inside
+ * snippet context {@link #enterSnippetContext}). When snippets are parsed during replay, the
+ * proxies may use local mirrors to query the information required for the snippets from the host VM
+ * instance.
  *
  * <p>
  * <b>Local Mirrors.</b> During replay, we search for equivalent JVMCI objects for some of the
  * proxies ({@link #findLocalMirrors()}). This is useful when the compiler queries information that
- * was not recorded, including the information used to process snippets. There are also local-only
- * proxies that do not originate from the recorded JSON but are instead created from local JVMCI
- * objects (created using {@link CompilationProxies#proxify}). The exact rules when operations are
- * delegated to local mirrors are dictated by the strategies defined in
- * {@link CompilerInterfaceDeclarations}.
+ * was not recorded, including the information to parse snippets. There are also local-only proxies
+ * that do not originate from the recorded JSON but are instead created from local JVMCI objects
+ * (created using {@link CompilationProxies#proxify}). The exact rules when operations are delegated
+ * to local mirrors are dictated by the strategies defined in {@link CompilerInterfaceDeclarations}.
  *
  * <p>
  * <b>Foreign Call Linkages.</b> During recording, we capture the addresses and killed registers of
@@ -115,6 +129,26 @@ public final class ReplayCompilationSupport {
     public static final boolean ENABLE_REPLAY_LAUNCHER = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_REPLAY_LAUNCHER_PROP));
 
     /**
+     * Returns whether this compiler thread is replaying a libgraal compilation in jargraal.
+     */
+    public static boolean isReplayingLibgraalInJargraal() {
+        return !inRuntimeCode() && isReplayingLibgraalInJargraal.get();
+    }
+
+    /**
+     * Sets whether the current compiler thread is replaying a libgraal compilation in jargraal.
+     *
+     * @param replayingLibgraalInJargraal true if the current compiler thread is replaying a
+     *            libgraal compilation in jargraal, false otherwise
+     */
+    public static void setReplayingLibgraalInJargraal(boolean replayingLibgraalInJargraal) {
+        if (replayingLibgraalInJargraal) {
+            GraalError.guarantee(!inRuntimeCode(), "this option is only valid in jargraal");
+        }
+        ReplayCompilationSupport.isReplayingLibgraalInJargraal.set(replayingLibgraalInJargraal);
+    }
+
+    /**
      * Checks whether the given method's compilation should be recorded according to the given
      * options.
      *
@@ -132,6 +166,11 @@ public final class ReplayCompilationSupport {
     }
 
     /**
+     * Whether the current compiler thread is replaying a libgraal compilation in jargraal.
+     */
+    private static final ThreadLocal<Boolean> isReplayingLibgraalInJargraal = ThreadLocal.withInitial(() -> false);
+
+    /**
      * The proxies used for recording/replaying the compilations.
      */
     private final CompilationProxies proxies;
@@ -145,6 +184,11 @@ public final class ReplayCompilationSupport {
      * Recorded foreign call linkages used to finalize foreign calls.
      */
     private RecordedForeignCallLinkages recordedForeignCallLinkages;
+
+    /**
+     * Whether the compiler thread is in a snippet context.
+     */
+    private final ThreadLocal<Boolean> inSnippetContext = ThreadLocal.withInitial(() -> false);
 
     /**
      * The compilation artifacts of the current compiler thread.
@@ -205,21 +249,28 @@ public final class ReplayCompilationSupport {
     }
 
     /**
-     * Enters a snippet context. In a recorded compilation, the proxies should not record JVMCI
-     * calls and results related to snippet processing. In a replayed compilation, the proxies can
-     * delegate to the local mirrors to handle JVMCI calls.
+     * Enters a snippet context for the current compiler thread. In a recorded compilation, the
+     * proxies should not record JVMCI calls and results related to snippet parsing and
+     * optimization. In a replayed compilation, the proxies can delegate to the local mirrors to
+     * handle JVMCI calls.
      *
      * @return a debug closeable that should be closed when exiting the context
      */
     private DebugCloseable enterSnippetContext() {
-        return proxies.enterSnippetContext();
+        boolean previous = inSnippetContext.get();
+        inSnippetContext.set(true);
+        DebugCloseable closeable = proxies.enterSnippetContext();
+        return () -> {
+            inSnippetContext.set(previous);
+            closeable.close();
+        };
     }
 
     /**
      * Enters a snippet context for the given providers.
      * <p>
      * If the providers have a non-null {@link ReplayCompilationSupport} instance, this method
-     * enters a snippet context. Otherwise, it returns {@code null}.
+     * enters a snippet context for the current compiler thread. Otherwise, it returns {@code null}.
      *
      * @param providers the providers to check for {@link ReplayCompilationSupport}
      * @return a scope representing the snippet context, or {@code null} if not supported
@@ -231,8 +282,8 @@ public final class ReplayCompilationSupport {
     /**
      * Enters a snippet context for the given {@link ReplayCompilationSupport} instance.
      * <p>
-     * If the provided {@code support} is not {@code null}, this method enters a snippet context.
-     * Otherwise, it returns {@code null}.
+     * If the provided {@code support} is not {@code null}, this method enters a snippet context for
+     * the current compiler thread. Otherwise, it returns {@code null}.
      *
      * @param support the instance to check
      * @return a scope representing the snippet context, or {@code null} if not supported
@@ -243,6 +294,13 @@ public final class ReplayCompilationSupport {
         } else {
             return support.enterSnippetContext();
         }
+    }
+
+    /**
+     * Returns whether this compiler thread is in a snippet context.
+     */
+    public boolean isInSnippetContext() {
+        return inSnippetContext.get();
     }
 
     /**

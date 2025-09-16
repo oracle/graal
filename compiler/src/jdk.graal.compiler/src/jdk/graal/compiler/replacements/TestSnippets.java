@@ -90,34 +90,4 @@ public abstract class TestSnippets {
             }
         }
     }
-
-    public static class CounterTestSnippets implements Snippets {
-        @Snippet
-        public static void increase(@Snippet.ConstantParameter TestSnippetCounters counters) {
-            counters.increments.inc();
-            counters.doubleIncrements.add(2);
-        }
-
-        public static class Templates extends AbstractTemplates {
-            public final SnippetInfo increase;
-
-            @SuppressWarnings("this-escape")
-            public Templates(OptionValues options, Providers providers) {
-                super(options, providers);
-                increase = snippet(providers, CounterTestSnippets.class, "increase");
-            }
-        }
-
-        public static class TestSnippetCounters {
-            public TestSnippetCounters(SnippetCounter.Group.Factory factory) {
-                SnippetCounter.Group allocations = factory.createSnippetCounterGroup("Increments");
-                increments = new SnippetCounter(allocations, "increments", "number of increments");
-                doubleIncrements = new SnippetCounter(allocations, "doubleIncrements", "number of increments times two");
-            }
-
-            public final SnippetCounter increments;
-
-            public final SnippetCounter doubleIncrements;
-        }
-    }
 }
