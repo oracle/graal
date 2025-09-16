@@ -1072,6 +1072,13 @@
             "parameterTypes": [
               "java.net.DatagramPacket"
             ]
+          },
+          {
+            "name": "send",
+            "parameterTypes": [
+              "java.net.DatagramPacket",
+              "byte"
+            ]
           }
         ]
       },
