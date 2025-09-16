@@ -113,6 +113,7 @@ final class BundleSupport {
     private static final String CONTAINER_OPTION = "container";
     private static final String DOCKERFILE_OPTION = "dockerfile";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
+    static final String BUNDLE_ALIAS = "<BUNDLE>";
 
     ContainerSupport containerSupport;
     boolean useContainer;
@@ -604,6 +605,15 @@ final class BundleSupport {
         return bundlePath.resolve(bundleName + '.' + outputDir.getFileName());
     }
 
+    String cleanupBuilderOutput(String output) {
+        var transformedOutput = output;
+        if (bundlePath != null) {
+            transformedOutput = transformedOutput.replace(outputDir.toString(), getExternalOutputDir().toString());
+        }
+        transformedOutput = transformedOutput.replace(rootDir.toString(), BUNDLE_ALIAS);
+        return transformedOutput;
+    }
+
     void updateBundleLocation(Path bundleFile, boolean redefine) {
         if (redefine) {
             bundlePath = null;
@@ -877,7 +887,7 @@ final class BundleSupport {
             String currentPlatform = bundlePlatform.equals(NativeImage.platform) ? "" : " != '" + NativeImage.platform + "'";
             String bundleCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, "");
             nativeImage.showNewline();
-            nativeImage.showMessage("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName);
+            nativeImage.showMessage("%sLoaded Bundle from %s referred to as %s from here on.", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName, BUNDLE_ALIAS);
             nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, ArchiveSupport.parseTimestamp(bundleCreationTimestamp));
             nativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
                             bundleVersion, currentVersion,
