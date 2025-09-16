@@ -33,6 +33,7 @@ import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
@@ -77,7 +78,7 @@ public class SubWordInputTest extends GraalCompilerTest implements CustomizedByt
         getCode(getResolvedJavaMethod(testClass, GET), null, false, true, getInitialOptions());
         assertEquals(executeExpected(wrapper, null, value), expected);
         // test with inlining
-        testAgainstExpected(wrapper, expected, null, new Object[]{value});
+        testAgainstExpected(wrapper, expected, Collections.emptySet(), null, value);
     }
 
     @Override
