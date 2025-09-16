@@ -46,7 +46,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -84,6 +84,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     private byte[] cwdBytes;
     private RawFileDescriptor emergencyFd;
     private CCharPointer pathBuffer;
+    private String openFileWarning;
+    private String openDirectoryWarning;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixJfrEmergencyDumpSupport() {
@@ -94,25 +96,40 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         pidBytes = Long.toString(ProcessHandle.current().pid()).getBytes(StandardCharsets.UTF_8);
         pathBuffer = NativeMemory.calloc(JVM_MAXPATHLEN + 1, NmtCategory.JFR);
         directory = Word.nullPointer();
-        String cwd = System.getProperty("user.dir");
-        if (cwd != null) {
-            cwdBytes = cwd.getBytes(StandardCharsets.UTF_8);
+        saveCwd();
+    }
+
+    private void saveCwd() {
+        if (cwdBytes == null) {
+            String cwd = System.getProperty("user.dir");
+            if (cwd != null) {
+                cwdBytes = cwd.getBytes(StandardCharsets.UTF_8);
+            }
         }
     }
 
     @Override
     public void setRepositoryLocation(String dirText) {
         repositoryLocationBytes = dirText.getBytes(StandardCharsets.UTF_8);
+        openDirectoryWarning = "Unable to open repository " + dirText;
     }
 
     /** This method is called during JFR initialization. */
     @Override
     public void setDumpPath(String dumpPathText) {
         if (dumpPathText == null || dumpPathText.isEmpty()) {
+            saveCwd();
             dumpPathBytes = cwdBytes;
         } else {
             dumpPathBytes = dumpPathText.getBytes(StandardCharsets.UTF_8);
         }
+
+        if (dumpPathBytes != null) {
+            openFileWarning = "Unable to create an emergency dump file at the location set by dumppath=" + new String(dumpPathBytes, StandardCharsets.UTF_8);
+        } else {
+            openFileWarning = "Unable to create an emergency dump file. Dump path could not be set.";
+        }
+
     }
 
     @Override
@@ -184,6 +201,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         // O_CREAT | O_RDWR and S_IREAD | S_IWRITE permissions
         emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(emergencyFd)) {
+            SubstrateJVM.getLogging().logJfrWarning(openFileWarning);
             // Fallback. Try to create it in the current directory.
             dumpPathBytes = null;
             emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
@@ -227,7 +245,9 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                 CCharPointer fn = entry.d_name();
                 if (filter(fn)) {
                     // Append filtered files to list
-                    GrowableWordArrayAccess.add(gwa, (Word) fn, NmtCategory.JFR);
+                    if (!GrowableWordArrayAccess.add(gwa, (Word) fn, NmtCategory.JFR)) {
+                        SubstrateJVM.getLogging().logJfrSystemError("Unable to add chunk filename to list during jfr emergency dump");
+                    }
                     count++;
                 }
             }
@@ -263,7 +283,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         int blockSize = 1024 * 1024;
         Pointer copyBlock = NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
         if (copyBlock.isNull()) {
-            Log.log().string("Emergency dump failed. Could not allocate copy block.");
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to malloc memory during jfr emergency dump");
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to write jfr emergency dump file");
             return;
         }
 
@@ -282,14 +303,14 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                     // Read from chunk file to copy block
                     long readResult = getFileSupport().read(chunkFd, copyBlock, Word.unsigned(blockSize));
                     if (readResult < 0) { // -1 if read failed
-                        Log.log().string("Emergency dump failed. Chunk file read failed.");
+                        SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, read failed.");
                         break;
                     }
                     bytesRead += readResult;
                     assert bytesRead - bytesWritten <= blockSize;
                     // Write from copy block to dump file
                     if (!getFileSupport().write(emergencyFd, copyBlock, Word.unsigned(bytesRead - bytesWritten))) {
-                        Log.log().string("Emergency dump failed. Dump file write failed.");
+                        SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, write failed.");
                         break;
                     }
                     bytesWritten = bytesRead;
@@ -309,6 +330,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         directory = Dirent.fdopendir(fd);
         if (directory.isNull()) {
             Unistd.NoTransitions.close(fd);
+            SubstrateJVM.getLogging().logJfrSystemError(openDirectoryWarning);
             return false;
         }
         return true;
