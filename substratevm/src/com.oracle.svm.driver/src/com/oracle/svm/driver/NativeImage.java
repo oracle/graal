@@ -1492,6 +1492,8 @@ public class NativeImage {
         // allow native access for all modules on the image builder module path
         var enableNativeAccessModules = getModulesFromPath(imageBuilderModulePath).keySet();
         imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", enableNativeAccessModules));
+        // pass the number of warnings to the builder process
+        imageBuilderArgs.add(oH(SubstrateOptions.DriverWarningsCount) + LogUtils.getWarningsCount());
 
         boolean useColorfulOutput = configureBuildOutput();
 
@@ -1908,11 +1910,8 @@ public class NativeImage {
             }
             p = pb.start();
             if (useBundle()) {
-                var internalOutputDir = bundleSupport.outputDir.toString();
-                var externalOutputDir = bundleSupport.getExternalOutputDir().toString();
-                Function<String, String> filter = line -> line.replace(internalOutputDir, externalOutputDir);
-                ProcessOutputTransformer.attach(p.getInputStream(), filter, System.out);
-                ProcessOutputTransformer.attach(p.getErrorStream(), filter, System.err);
+                ProcessOutputTransformer.attach(p.getInputStream(), bundleSupport::cleanupBuilderOutput, System.out);
+                ProcessOutputTransformer.attach(p.getErrorStream(), bundleSupport::cleanupBuilderOutput, System.err);
             }
             imageBuilderPid = p.pid();
             return p.waitFor();
@@ -1925,16 +1924,16 @@ public class NativeImage {
         }
     }
 
-    private record ProcessOutputTransformer(InputStream in, Function<String, String> filter, PrintStream out) implements Runnable {
+    private record ProcessOutputTransformer(InputStream in, Function<String, String> mapper, PrintStream out) implements Runnable {
 
-        static void attach(InputStream in, Function<String, String> filter, PrintStream out) {
-            Thread.ofVirtual().start(new ProcessOutputTransformer(in, filter, out));
+        static void attach(InputStream in, Function<String, String> mapper, PrintStream out) {
+            Thread.ofVirtual().start(new ProcessOutputTransformer(in, mapper, out));
         }
 
         @Override
         public void run() {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
-                reader.lines().map(filter).forEach(out::println);
+                reader.lines().map(mapper).forEach(out::println);
             } catch (IOException e) {
                 throw showError("Unable to process stdout/stderr of image builder process", e);
             }

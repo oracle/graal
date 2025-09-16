@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningRoot;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -149,6 +150,23 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testRangeCheck");
         runTest("testImplicitCast");
         runTest("testNativeCall");
+        runTest("testBCDSLPrologIfVersion");
+        runTest("testInliningRoot");
+    }
+
+    /*
+     * Test for GR-69170
+     */
+    @BytecodeInterpreterSwitch
+    static Object testBCDSLPrologIfVersion(@SuppressWarnings("unused") int value) {
+        Object o = null;
+        if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
+            GraalDirectives.deoptimize();
+            o = new Object();
+        }
+        // must be inlined
+        trivialMethod();
+        return o;
     }
 
     void runTest(String methodName) {
@@ -984,6 +1002,13 @@ public class HostInliningTest extends TruffleCompilerImplTest {
 
     static int testIndirectIntrinsicsImpl(A a) {
         return a.intrinsic(); // inlined and intrinsic
+    }
+
+    @InliningRoot
+    static int testInliningRoot(int value) {
+        // should work just like bytecode interpreter switches
+        trivialMethod();
+        return value;
     }
 
     @Retention(RetentionPolicy.RUNTIME)

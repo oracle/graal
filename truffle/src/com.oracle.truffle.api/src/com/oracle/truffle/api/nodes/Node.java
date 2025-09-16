@@ -107,7 +107,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see NodeInterface
  * @since 0.8 or earlier
  */
-// DefaultSymbol("$node")
+// Bind.DefaultExpression("$node")
 public abstract class Node implements NodeInterface, Cloneable {
 
     @CompilationFinal private volatile Node parent;

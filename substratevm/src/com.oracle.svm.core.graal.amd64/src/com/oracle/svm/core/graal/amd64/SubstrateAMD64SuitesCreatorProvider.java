@@ -31,6 +31,6 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 public class SubstrateAMD64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAMD64SuitesCreatorProvider() {
         super(new AMD64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
-                        new AMD64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
+                        new AMD64SubstrateSuitesCreator(new EconomyCompilerConfiguration()), new AMD64SubstrateSuitesCreator(getFallbackCompilerConfiguration()));
     }
 }

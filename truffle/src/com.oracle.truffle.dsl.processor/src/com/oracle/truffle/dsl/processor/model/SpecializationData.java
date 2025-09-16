@@ -682,79 +682,87 @@ public final class SpecializationData extends TemplateMethod {
         return sinks;
     }
 
-    public boolean needsState(ProcessorContext context) {
-        if (needsRewrite(context)) {
-            /*
-             * If there is a rewrite we need at least one state bit. This covers most cases for
-             * state.
-             */
-            return true;
-        }
-        if (!getCaches().isEmpty()) {
-            for (CacheExpression cache : getCaches()) {
-                if (!cache.isAlwaysInitialized()) { // @Bind
-                    return true;
-                }
-                /*
-                 * This is reachable typically for inlined cached values. They do not require a
-                 * rewrite, but need state.
-                 */
-            }
-        }
-        return false;
-    }
-
-    public boolean needsRewrite(ProcessorContext context) {
-        if (!getExceptions().isEmpty()) {
-            return true;
-        }
-        if (!getGuards().isEmpty()) {
-            return true;
-        }
+    /**
+     * Returns <code>true</code> if this specialization needs lazy initialization of cached fields.
+     */
+    boolean needsSpecialize() {
         if (!getAssumptionExpressions().isEmpty()) {
             return true;
         }
+
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
-                if (cache.isEagerInitialize()) {
-                    continue;
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
                 if (cache.getInlinedNode() != null) {
-                    continue;
+                    continue; // @Cached but inlined so no init state needed
                 }
-                if (!cache.isAlwaysInitialized()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
             }
         }
 
-        int signatureIndex = 0;
-        for (Parameter parameter : getSignatureParameters()) {
-            for (ExecutableTypeData executableType : node.getExecutableTypes()) {
-                List<TypeMirror> evaluatedParameters = executableType.getEvaluatedParameters();
-                if (signatureIndex < evaluatedParameters.size()) {
-                    TypeMirror evaluatedParameterType = evaluatedParameters.get(signatureIndex);
-                    if (ElementUtils.needsCastTo(evaluatedParameterType, parameter.getType())) {
-                        return true;
-                    }
-                }
-            }
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
 
-            NodeChildData child = parameter.getSpecification().getExecution().getChild();
-            if (child != null) {
-                ExecutableTypeData type = child.findExecutableType(parameter.getType());
-                if (type == null) {
-                    type = child.findAnyGenericExecutableType(context);
+    boolean needsState() {
+        if (!getAssumptionExpressions().isEmpty()) {
+            return true;
+        }
+
+        if (!getCaches().isEmpty()) {
+            for (CacheExpression cache : getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
-                if (type.hasUnexpectedValue()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
-                if (ElementUtils.needsCastTo(type.getReturnType(), parameter.getType())) {
-                    return true;
-                }
             }
+        }
 
-            signatureIndex++;
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
+
+    private boolean isImplicitTypeGuardUsed(TypeGuard guard) {
+        int signatureIndex = guard.getSignatureIndex();
+        for (ExecutableTypeData executable : node.getExecutableTypes()) {
+            List<TypeMirror> parameters = executable.getSignatureParameters();
+            if (signatureIndex >= parameters.size()) {
+                // dynamically executed can be any type.
+                return true;
+            }
+            TypeMirror polymorphicParameter = parameters.get(signatureIndex);
+            TypeMirror specializationType = this.getSignatureParameters().get(signatureIndex).getType();
+            if (ElementUtils.needsCastTo(polymorphicParameter, specializationType)) {
+                return true;
+            }
         }
         return false;
     }
@@ -854,6 +862,11 @@ public final class SpecializationData extends TemplateMethod {
                 if (cache.getDefaultExpression() != null && cache.getDefaultExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
                     return true;
                 }
+            }
+        }
+        for (CacheExpression cache : getCaches()) {
+            if (cache.isRequiresFrame()) {
+                return true;
             }
         }
         return false;

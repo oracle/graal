@@ -110,12 +110,32 @@ public abstract class WebImageCompileQueue extends CompileQueue {
     }
 
     @Override
+    protected Suites createFallbackSuites() {
+        return GraalConfiguration.hostedInstance().createFallbackSuites(HostedOptionValues.singleton(), true, null);
+    }
+
+    @Override
+    protected Suites createFallbackDeoptTargetSuites() {
+        return null;
+    }
+
+    @Override
     protected LIRSuites createLIRSuites() {
         return null;
     }
 
     @Override
     protected LIRSuites createDeoptTargetLIRSuites() {
+        return null;
+    }
+
+    @Override
+    protected LIRSuites createFallbackLIRSuites() {
+        return null;
+    }
+
+    @Override
+    protected LIRSuites createFallbackDeoptTargetLIRSuites() {
         return null;
     }
 
@@ -130,7 +150,17 @@ public abstract class WebImageCompileQueue extends CompileQueue {
     }
 
     @Override
+    protected void removeDeoptTargetFallbackOptimizations(Suites suites) {
+        // In Web Image, no suite modifications are necessary since it uses its own phase suites.
+    }
+
+    @Override
     protected void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
+        // In Web Image, no suite modifications are necessary since it uses its own phase suites.
+    }
+
+    @Override
+    protected void removeDeoptTargetFallbackOptimizations(LIRSuites lirSuites) {
         // In Web Image, no suite modifications are necessary since it uses its own phase suites.
     }
 

@@ -28,14 +28,12 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -101,8 +99,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAnySubtypeInstantiatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isAnySubtypeInstantiated");
 
     static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
@@ -122,7 +120,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /** Can be allocated via Unsafe or JNI, i.e., without executing a constructor. */
     @SuppressWarnings("unused") private volatile Object isUnsafeAllocated;
     @SuppressWarnings("unused") private volatile Object isReachable;
-    @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
+    @SuppressWarnings("unused") private volatile Object isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
 
@@ -534,7 +532,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected void onInstantiated() {
         assert !isWordType() : Assertions.errorMessage("Word types cannot be instantiated", this);
-        forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
+        forAllSuperTypes(superType -> AtomicUtils.atomicSet(superType, this, isAnySubtypeInstantiatedUpdater));
 
         universe.onTypeInstantiated(this);
         notifyInstantiatedCallbacks();
@@ -835,6 +833,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Object getInstantiatedReason() {
         return isInstantiated;
+    }
+
+    public Object getAnyInstantiatedSubtype() {
+        return isAnySubtypeInstantiated;
     }
 
     public boolean isUnsafeAllocated() {
@@ -1168,78 +1170,93 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     private volatile ResolvedJavaField[] instanceFieldsWithSuper;
     private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
+    private volatile ResolvedJavaField[] staticFields;
+
+    /**
+     * Note that although this returns a {@code ResolvedJavaField[]}, all instance fields are of
+     * type {@link AnalysisField} and can be cast to AnalysisField without problem.
+     */
+    @Override
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return includeSuperclasses ? getInstanceFieldsWithSuper() : getInstanceFieldsWithoutSuper();
+    }
+
+    private ResolvedJavaField[] getInstanceFieldsWithoutSuper() {
+        if (instanceFieldsWithoutSuper == null) {
+            if (isArray() || isInterface() || isPrimitive()) {
+                instanceFieldsWithoutSuper = AnalysisField.EMPTY_ARRAY;
+            } else {
+                instanceFieldsWithoutSuper = convertFields(wrapped.getInstanceFields(false), false);
+            }
+        }
+        return instanceFieldsWithoutSuper;
+    }
+
+    private ResolvedJavaField[] getInstanceFieldsWithSuper() {
+        if (instanceFieldsWithSuper == null) {
+            if (isArray() || isInterface() || isPrimitive()) {
+                instanceFieldsWithSuper = AnalysisField.EMPTY_ARRAY;
+            } else {
+                ResolvedJavaField[] instanceFields = getInstanceFieldsWithoutSuper();
+                if (getSuperclass() == null) {
+                    instanceFieldsWithSuper = instanceFields;
+                } else {
+                    ResolvedJavaField[] superInstanceFields = getSuperclass().getInstanceFields(true);
+                    ResolvedJavaField[] result = Arrays.copyOf(superInstanceFields, superInstanceFields.length + instanceFields.length);
+                    System.arraycopy(instanceFields, 0, result, superInstanceFields.length, instanceFields.length);
+                    for (int index = 0; index < instanceFields.length; ++index) {
+                        ((AnalysisField) instanceFields[index]).setPosition(superInstanceFields.length + index);
+                    }
+                    instanceFieldsWithSuper = result;
+                }
+            }
+        }
+        return instanceFieldsWithSuper;
+    }
 
     /**
      * Note that although this returns a ResolvedJavaField[], all instance fields are of type
      * AnalysisField and can be cast to AnalysisField without problem.
      */
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        ResolvedJavaField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
-        if (result != null) {
-            return result;
-        } else {
-            return initializeInstanceFields(includeSuperclasses);
+    public ResolvedJavaField[] getStaticFields() {
+        if (staticFields == null) {
+            if (isArray() || isPrimitive()) {
+                staticFields = AnalysisField.EMPTY_ARRAY;
+            } else {
+                staticFields = convertFields(wrapped.getStaticFields(), true);
+            }
         }
-    }
-
-    private ResolvedJavaField[] initializeInstanceFields(boolean includeSuperclasses) {
-        List<ResolvedJavaField> list = new ArrayList<>();
-        if (includeSuperclasses && getSuperclass() != null) {
-            list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
-        }
-        ResolvedJavaField[] result = convertFields(wrapped.getInstanceFields(false), list, includeSuperclasses);
-        if (includeSuperclasses) {
-            instanceFieldsWithSuper = result;
-        } else {
-            instanceFieldsWithoutSuper = result;
-        }
-        return result;
+        return staticFields;
     }
 
     /**
-     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
-     * class file format doesn't disallow duplicated names with differing types in the same class.
-     * Even though you cannot declare duplicated names in source code the class file can be
-     * manipulated such that two fields will have the same name.
+     * Converts the given array of hosted {@link ResolvedJavaField}s into an array of
+     * {@link AnalysisField}s. The resulting array is compact and contains only convertible fields,
+     * i.e., if looking up the field in the {@link AnalysisUniverse} is not supported then the field
+     * is skipped.
      */
-    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
-
-    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        ResolvedJavaField[] localOriginals = originals;
-        if (universe.hostVM.sortFields()) {
-            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
-            localOriginals = originals.clone();
-            Arrays.sort(localOriginals, FIELD_COMPARATOR);
-        }
-        for (ResolvedJavaField original : localOriginals) {
+    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, boolean setPosition) {
+        ResolvedJavaField[] result = new ResolvedJavaField[originals.length];
+        int index = 0;
+        for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
-                    AnalysisField aField = universe.lookup(original);
-                    if (aField != null) {
-                        if (listIncludesSuperClassesFields || aField.isStatic()) {
-                            /*
-                             * If the list includes the super classes fields, register the position.
-                             */
-                            aField.setPosition(list.size());
+                    AnalysisField field = universe.lookup(original);
+                    if (field != null) {
+                        if (setPosition) {
+                            field.setPosition(index);
                         }
-                        list.add(aField);
+                        result[index++] = field;
                     }
                 } catch (UnsupportedFeatureException ex) {
                     // Ignore deleted fields and fields of deleted types.
                 }
             }
         }
-        return list.toArray(new ResolvedJavaField[list.size()]);
-    }
 
-    /**
-     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
-     * AnalysisField and can be casted to AnalysisField without problem.
-     */
-    @Override
-    public ResolvedJavaField[] getStaticFields() {
-        return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
+        // Trim array if some fields could not be converted.
+        return index == result.length ? result : Arrays.copyOf(result, index);
     }
 
     @Override

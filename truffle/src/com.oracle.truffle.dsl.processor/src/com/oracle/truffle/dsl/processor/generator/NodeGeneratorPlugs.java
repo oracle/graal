@@ -47,15 +47,19 @@ import java.util.List;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.model.TemplateMethod;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 /**
  * Interface that allows node generators to customize the way {@link FlatNodeGenFactory} generates
@@ -87,10 +91,6 @@ public interface NodeGeneratorPlugs {
         return currentExecution.getChild().findExecutableType(type) != null;
     }
 
-    default CodeTree createTransferToInterpreterAndInvalidate() {
-        return GeneratorUtils.createTransferToInterpreterAndInvalidate();
-    }
-
     @SuppressWarnings("unused")
     default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
 
@@ -98,7 +98,15 @@ public interface NodeGeneratorPlugs {
 
     @SuppressWarnings("unused")
     default CodeTree bindExpressionValue(FrameState frameState, Variable variable) {
-        return null;
+        return switch (variable.getName()) {
+            case NodeParser.SYMBOL_FRAME -> {
+                if (!ElementUtils.isAssignable(frameState.getFrameType(), ProcessorContext.types().Frame)) {
+                    throw new AssertionError("Expression binds the frame, but the frame is unavailable. This should have been validated already.");
+                }
+                yield CodeTreeBuilder.singleString(TemplateMethod.FRAME_NAME);
+            }
+            default -> null;
+        };
     }
 
 }

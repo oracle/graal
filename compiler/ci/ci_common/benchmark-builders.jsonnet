@@ -16,8 +16,6 @@
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.barista + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
-    c.on_demand                + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
-    c.on_demand                + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
     c.monthly                  + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + PR_bench_libgraal,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
@@ -29,9 +27,9 @@
 
   local profiling_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52 + jdk + cc.libgraal + suite + cc.enable_profiling     + { job_prefix:: "bench-compiler-profiling" },
-    c.monthly + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking   + { job_prefix:: "bench-compiler-footprint" },
-    c.monthly + hw.x52_root + jdk + cc.libgraal + suite + cc.energy_tracking + { job_prefix:: "bench-compiler-energy" }
+    c.on_demand + hw.x52 + jdk + cc.libgraal + suite + cc.enable_profiling     + { job_prefix:: "bench-compiler-profiling" },
+    c.on_demand + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking   + { job_prefix:: "bench-compiler-footprint" },
+    c.monthly + hw.x52_root + jdk + cc.libgraal + suite + cc.energy_tracking   + { job_prefix:: "bench-compiler-energy" }
     ]
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
@@ -81,6 +79,12 @@
   for suite in bench.groups.main_suites
   ],
 
+  local shenandoah_builds = [
+    c.weekly + hw.x52 + jdk + cc.libgraal + cc.shenandoah_mode + suite,
+  for jdk in cc.product_jdks
+  for suite in bench.groups.main_suites + [bench.specjbb2015]
+  ],
+
   local metrics_suites = [bench.dacapo, bench.scala_dacapo, bench.renaissance, bench.specjvm2008],
 
   local metrics_builds = std.flattenArrays([
@@ -92,7 +96,8 @@
   for suite in metrics_suites
   ]),
 
-  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds + metrics_builds,
+  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds +
+                     shenandoah_builds + aarch64_builds + metrics_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(filtered_builds, std.thisFile),

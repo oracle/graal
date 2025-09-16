@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 
@@ -111,7 +113,7 @@ public abstract class IsolatedCompilationExceptionDispatch {
         return 0;
     }
 
-    @NeverInline("Ensure that an exception thrown from this method can always be caught.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private boolean dispatchExceptionToOtherIsolate(Throwable t) {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         try (PrintWriter pw = new PrintWriter(os)) {

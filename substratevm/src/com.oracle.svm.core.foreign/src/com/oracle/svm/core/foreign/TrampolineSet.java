@@ -159,7 +159,7 @@ final class TrampolineSet {
             VMError.guarantee(it.belowOrEqual(end), "Not enough memory was allocated to hold trampolines");
         }
 
-        VMError.guarantee(VirtualMemoryProvider.get().protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
+        VMError.guarantee(VirtualMemoryProvider.get().protect(page, pageSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.EXECUTE) == 0,
                         "Error when making the trampoline allocation executable");
 
         /*

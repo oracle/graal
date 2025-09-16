@@ -82,6 +82,7 @@ public class OperationModel implements PrettyPrintable {
 
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,
+        CUSTOM_YIELD,
         CUSTOM_INSTRUMENTATION,
     }
 
@@ -317,7 +318,7 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public boolean isCustom() {
-        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
+        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
     public boolean requiresRootOperation() {

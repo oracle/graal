@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,6 +101,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @SuppressWarnings("deprecation")
@@ -562,6 +563,26 @@ public class FeatureImpl {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
             VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
             aMethod.setOpaqueReturn();
+        }
+
+        /**
+         * Calling this method allows a given {@link Stable} {@code field} to be folded before
+         * analysis, which may improve analysis precision and allow more classes to be initialized
+         * via simulation. Users of this method are <b>required to somehow initialize the field
+         * before analysis</b>, ideally next to the call to {@code allowStableFieldFolding} or at
+         * least write a comment there to explain how the {@code field} is initialized. Trying to
+         * fold such a {@link Stable} field which still has a default value by the time the analysis
+         * is started results in a <b>build failure</b>, because if the initialization occurs later,
+         * the folding might result in a non-deterministic behavior, as the field will get folded
+         * before/during analysis only in some builds when the initialization happened fast enough,
+         * resulting in unstable number of reachable methods and unstable decisions of the
+         * simulation of class initializers.
+         * 
+         * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
+         */
+        public void allowStableFieldFoldingBeforeAnalysis(Field field) {
+            VMError.guarantee(field.isAnnotationPresent(Stable.class), "This method should only be called for @Stable fields: %s", field);
+            getHostVM().allowStableFieldFoldingBeforeAnalysis(getMetaAccess().lookupJavaField(field));
         }
     }
 

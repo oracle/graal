@@ -7,7 +7,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/DeoptCyclePa
 
 # Deoptimization Cycle Patterns
 
-As of GraalVM for JDK 25, the Truffle framework includes an **automatic deoptimization cycle detection feature**, which is a powerful tool for identifying existing deoptimization cycles.
+As of GraalVM 25, the Truffle framework includes an **automatic deoptimization cycle detection feature**, which is a powerful tool for identifying existing deoptimization cycles.
 The goal of this document is to help prevent deoptimization cycles by describing common patterns that can lead to such cycles, which should be avoided.
 
 ### Always Deoptimizing Node

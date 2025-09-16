@@ -219,7 +219,7 @@ public @interface GenerateBytecode {
      * language {@link ProvidedTags provides} it.
      * <p>
      * Root tagging requires the probe to be notified before the {@link Prolog prolog} is executed.
-     * Implementing this behavior manually is not trivial and not recommended. It is recommended to
+     * Implementing this behaviour manually is not trivial and not recommended. It is recommended to
      * use automatic root tagging. For inlining performed by the parser it may be useful to emit
      * custom {@link RootTag root} tag using the builder methods for inlined methods. This ensures
      * that tools can still work correctly for inlined calls.
@@ -248,7 +248,7 @@ public @interface GenerateBytecode {
      * <ul>
      * <li>Allowing instruments to access the current receiver or function object.
      * <li>Implementing custom scopes for local variables instead of the default scope.
-     * <li>Hiding certain local local variables or arguments from instruments.
+     * <li>Hiding certain local variables or arguments from instruments.
      * </ul>
      * <p>
      * Minimal example of a tag node library:
@@ -282,7 +282,7 @@ public @interface GenerateBytecode {
      * <p>
      * Unsafe accesses are faster, but they do not perform array bounds checks. This means it is
      * possible (though unlikely) for unsafe accesses to cause undefined behaviour. Undefined
-     * behavior may only happen due to a bug in the Bytecode DSL implementation and not language
+     * behaviour may only happen due to a bug in the Bytecode DSL implementation and not language
      * implementation code.
      *
      * @since 24.2
@@ -290,12 +290,17 @@ public @interface GenerateBytecode {
     boolean allowUnsafe() default true;
 
     /**
-     * Whether the generated interpreter should support coroutines via a {@code yield} operation.
+     * Whether the generated interpreter should support coroutines via a built-in {@code yield}
+     * operation.
      * <p>
-     * The yield operation returns a {@link ContinuationResult} from the current point in execution.
-     * The {@link ContinuationResult} saves the current state of the interpreter so that it can be
-     * resumed at a later time. The yield and resume actions pass values, enabling communication
-     * between the caller and callee.
+     * The built-in yield operation returns a {@link ContinuationResult} from the current point in
+     * execution. The {@link ContinuationResult} saves the current state of the interpreter so that
+     * it can be resumed at a later time. The yield and resume actions pass values, enabling
+     * communication between the caller and callee.
+     * <p>
+     * If more control over the yield process is required, consider defining a custom {@link Yield}
+     * instead. You can enable built-in and custom yields separately (i.e., {@link #enableYield}
+     * does not need to be {@code true} if you only use a custom yield).
      * <p>
      * Technical note: in theoretical terms, a {@link ContinuationResult} implements an asymmetric
      * stack-less coroutine.

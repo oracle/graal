@@ -24,7 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import com.oracle.truffle.sl.runtime.SLStrings;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionStability;
@@ -38,6 +39,7 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
@@ -51,6 +53,9 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testCompilationThreshold() {
+        // cleanup gets in the way with recursive contexts
+        this.automaticCleanup = false;
+
         // does not work with a different inline cache size.
         Assert.assertEquals(2, SLFunction.INLINE_CACHE_SIZE);
 
@@ -96,9 +101,16 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
-        Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
-                        : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
+        List<String> args = new ArrayList<>();
+        args.add("engine.MultiTier");
+        args.add("false");
+        if (compilationThresholdOption != null) {
+            args.add("engine.SingleTierCompilationThreshold");
+            args.add(compilationThresholdOption);
+        }
+        Context ctx = setupContext(args.toArray(String[]::new));
         ctx.eval("sl", "function test() {}");
+
         SLFunction test = SLContext.get(null).getFunctionRegistry().getFunction(SLStrings.fromJavaString("test"));
 
         Assert.assertFalse(isExecuteCompiled(test));
@@ -114,6 +126,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(isExecuteCompiled(test));
         test.getCallTarget().call();
         Assert.assertTrue(isExecuteCompiled(test));
+        cleanup();
     }
 
     private static boolean isExecuteCompiled(SLFunction value) {

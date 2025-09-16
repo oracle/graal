@@ -174,14 +174,18 @@ public class G1BarrierSet implements BarrierSet {
                     StructuredGraph graph = node.graph();
                     boolean init = node.getLocationIdentity().isInit();
                     if (!init && barrierType != BarrierType.AS_NO_KEEPALIVE_WRITE) {
-                        // The pre barrier does nothing if the value being read is null, so it can
-                        // be explicitly skipped when this is an initializing store.
-                        // No keep-alive means no need for the pre-barrier.
+                        /*
+                         * The pre barrier does nothing if the value being read is null, so it can
+                         * be explicitly skipped when this is an initializing store. No keep-alive
+                         * means no need for the pre-barrier.
+                         */
                         addG1PreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, graph);
                     }
                     if (writeRequiresPostBarrier(node, writtenValue)) {
-                        // Use a precise barrier for everything that might be an array write. Being
-                        // too precise with the barriers does not cause any correctness issues.
+                        /*
+                         * Use a precise barrier for everything that might be an array write. Being
+                         * too precise with the barriers does not cause any correctness issues.
+                         */
                         ValueNode object = null;
                         if (barrierType == BarrierType.FIELD) {
                             object = node.getAddress().getBase();

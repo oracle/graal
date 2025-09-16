@@ -22,7 +22,7 @@ Both repositories provide container images for x64 and AArch64 processor archite
 
 Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, and so on.
 
-For example, Oracle GraalVM for JDK 25 is installed in _/usr/lib64/graalvm/graalvm-java25/_.
+For example, Oracle GraalVM 25 is installed in _/usr/lib64/graalvm/graalvm-java25/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 ## Tags

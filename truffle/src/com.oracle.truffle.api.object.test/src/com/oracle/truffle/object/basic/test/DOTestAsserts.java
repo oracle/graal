@@ -214,7 +214,7 @@ public abstract class DOTestAsserts {
         return invokeGetter("getAssumption", getTypeAssumptionRecord(location));
     }
 
-    public static Location locationForType(Shape shape, Class<?> valueType) {
-        return invokeMethod("locationForType", invokeGetter("allocator", shape), valueType);
+    public static Location locationForValue(Shape shape, Object value) {
+        return invokeMethod("locationForValue", invokeGetter("allocator", shape), value);
     }
 }

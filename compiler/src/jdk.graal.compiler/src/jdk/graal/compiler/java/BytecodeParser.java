@@ -440,6 +440,7 @@ import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.common.InsertProxyPhase;
 import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
@@ -537,7 +538,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * A scoped object for tasks to be performed after inlining during parsing such as processing
      * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
      */
-    static class InliningScope implements AutoCloseable {
+    protected static class InliningScope implements AutoCloseable {
         final ResolvedJavaMethod callee;
         FrameState stateBefore;
         final Mark mark;
@@ -965,13 +966,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     private final boolean eagerInitializing;
     private final boolean uninitializedIsError;
     private final int traceLevel;
+    private final boolean createProxies;
 
     @SuppressWarnings("this-escape")
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance.providers);
         invocationPluginReceiver = new InvocationPluginReceiver(this);
-        this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
+        this.bytecodeProvider = intrinsicContext == null ? ResolvedJavaMethodBytecodeProvider.INSTANCE : intrinsicContext.getBytecodeProvider();
         this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
         this.graphBuilderInstance = graphBuilderInstance;
@@ -1010,6 +1012,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         int level = TraceBytecodeParserLevel.getValue(options);
         this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
+
+        this.createProxies = BytecodeParserOptions.ParserCreateProxies.getValue(options);
 
         /*
          * If some code (via graph builder config) requested to not use allocations with exceptions
@@ -1073,6 +1077,15 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
 
         cleanupFinalGraph();
+
+        if (!createProxies) {
+            /*
+             * We have to run the proxy insertion phase directly after parsing, the invariant is
+             * that anything coming out of a parser is in loop-closed SSA form. Else we would need
+             * to patch all places using a parser which is too much work and error prone.
+             */
+            new InsertProxyPhase().apply(graph);
+        }
     }
 
     protected BciBlockMapping generateBlockMap() {
@@ -3310,7 +3323,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     }
                     lastLoopExit = loopExit;
                     debug.log("Target %s Exits %s, scanning framestates...", targetBlock, loop);
-                    newState.insertLoopProxies(loopExit, getEntryState(loop));
+                    if (createProxies) {
+                        newState.insertLoopProxies(loopExit, getEntryState(loop));
+                    }
                     loopExit.setStateAfter(newState.create(bci, loopExit));
                 }
 

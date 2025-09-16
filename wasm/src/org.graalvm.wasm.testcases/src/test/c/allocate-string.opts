@@ -3,3 +3,4 @@ interpreter-iterations = 2
 sync-noinline-iterations = 0
 sync-inline-iterations = 0
 async-iterations = 2000
+entry-point = test

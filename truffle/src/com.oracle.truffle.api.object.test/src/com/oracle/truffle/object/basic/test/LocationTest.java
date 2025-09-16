@@ -217,8 +217,8 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     @Test
     public void testLocationDecoratorEquals() {
         var allocator = invokeGetter("allocator", rootShape);
-        Location intLocation1 = invokeMethod("locationForType", allocator, int.class);
-        Location intLocation2 = invokeMethod("locationForType", allocator, int.class);
+        Location intLocation1 = invokeMethod("locationForValue", allocator, 42);
+        Location intLocation2 = invokeMethod("locationForValue", allocator, 43);
         assertEquals(intLocation1.getClass(), intLocation2.getClass());
         Assert.assertNotEquals(intLocation1, intLocation2);
     }
@@ -241,14 +241,14 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testLocationIsPrimitive() {
         var allocator = invokeGetter("allocator", rootShape);
 
-        Location objectLocation = invokeMethod("locationForType", allocator, Object.class);
+        Location objectLocation = invokeMethod("locationForValue", allocator, new Object());
         assertFalse(objectLocation.isPrimitive());
 
-        Location intLocation = invokeMethod("locationForType", allocator, int.class);
+        Location intLocation = invokeMethod("locationForValue", allocator, 42);
         assertTrue(intLocation.isPrimitive());
-        Location doubleLocation = invokeMethod("locationForType", allocator, double.class);
+        Location doubleLocation = invokeMethod("locationForValue", allocator, 3.14);
         assertTrue(doubleLocation.isPrimitive());
-        Location longLocation = invokeMethod("locationForType", allocator, long.class);
+        Location longLocation = invokeMethod("locationForValue", allocator, 43L);
         assertTrue(longLocation.isPrimitive());
 
         Location constantLocation = invokeMethod("constantLocation", allocator, "constantValue");

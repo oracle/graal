@@ -733,6 +733,7 @@ suite = {
                     "sun.nio.ch",
                     "sun.util.cldr",
                     "sun.util.locale",
+                    "sun.util.spi",
                     "sun.invoke.util",
                 ],
                 "java.management": [
@@ -1120,10 +1121,6 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.meta",
-                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.21.0",
@@ -1137,19 +1134,46 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.test.missing.classes": {
+        "com.oracle.svm.test.debug": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+                "SVM",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance": "21+",
+            "spotbugs": "false",
+            "jacoco": "exclude",
+            "testProject": True,
+        },
+
+        "com.oracle.svm.test.debug.missing.classes": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "annotationProcessors": [
-            ],
             "checkstyle": "com.oracle.svm.test",
-            "javaCompliance" : "21+",
             "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance": "21+",
             "spotbugs": "false",
+            "jacoco": "exclude",
             "testProject": True,
-            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.with.space.test": {
@@ -2437,6 +2461,8 @@ suite = {
             "com.oracle.svm.test",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
+            "com.oracle.svm.test.debug",
+            "com.oracle.svm.test.debug.missing.classes",
             "SVM_TEST_RESOURCE_WITH_SPACE",
           ],
           "distDependencies": [
@@ -2444,18 +2470,8 @@ suite = {
             "sdk:NATIVEIMAGE",
             "SVM",
             "SVM_CONFIGURE",
-            "SVM_TEST_MISSING_CLASSES",
           ],
           "testDistribution" : True,
-        },
-
-        "SVM_TEST_MISSING_CLASSES" : {
-            "subDir": "src",
-            "relpath" : True,
-            "dependencies": [
-                "com.oracle.svm.test.missing.classes"
-            ],
-            "testDistribution": True,
         },
 
         # Special test distribution used for testing inclusion of resources from jar files with a space in their name.

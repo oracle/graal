@@ -31,17 +31,17 @@ Each package includes the JDK and the Native Image tool.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add a command to install Oracle GraalVM for JDK 25 with Native Image and Java Development Kit (JDK):
+1. Add a command to install Oracle GraalVM 25 with Native Image and Java Development Kit (JDK):
 
     ```yml
     steps:
     - type: Command
-        name: "Install Oracle GraalVM for JDK 25"
+        name: "Install Oracle GraalVM 25"
         command: |
         yum -y install graalvm-25-native-image
     ```
 
-2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 25:
+2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM 25:
 
     ```yml
     env:
@@ -68,7 +68,7 @@ Here is an example of a complete [build specification file](https://github.com/o
 
 Oracle GraalVM provides more features, each of which can be installed as an add-on.
 Use the `yum list` command to get a list of the available RPMs for your installation.
-For instance, for Oracle GraalVM for JDK 25, run:
+For instance, for Oracle GraalVM 25, run:
 ```bash
 yum list graalvm-25*
 ...

@@ -141,6 +141,7 @@ import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -410,6 +411,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public int getDepth() {
             return methodScope.inliningDepth;
+        }
+
+        @Override
+        public BytecodePosition getInliningChain() {
+            BytecodePosition inliningContext = null;
+            int bci = methodScope.invokeData == null ? 0 : methodScope.invokeData.invoke.bci();
+            for (PEMethodScope cur = methodScope.caller; cur != null; cur = cur.caller) {
+                BytecodePosition caller = new BytecodePosition(null, cur.method, bci);
+                inliningContext = inliningContext == null ? caller : inliningContext.addCaller(caller);
+                bci = cur.invokeData == null ? 0 : cur.invokeData.invoke.bci();
+            }
+            return inliningContext;
         }
 
         @Override
@@ -878,7 +891,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.forceLink = forceLink;
     }
 
-    protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
+    private static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
         if (loopExplosionPlugin == null) {
             return LoopExplosionKind.NONE;
         } else {
@@ -917,8 +930,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
-        super.cleanupGraph(methodScope);
+    protected void cleanupGraph(MethodScope rootMethodScope) {
+        super.cleanupGraph(rootMethodScope);
 
         for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
             if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
@@ -928,7 +941,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * anything because the usages of the frameState are not available yet. So we need
                  * to call it again.
                  */
-                PEMethodScope peMethodScope = (PEMethodScope) methodScope;
+                PEMethodScope peMethodScope = (PEMethodScope) rootMethodScope;
                 Invoke invoke = peMethodScope.invokeData != null ? peMethodScope.invokeData.invoke : null;
                 InliningUtil.handleMissingAfterExceptionFrameState(frameState, invoke, null, true);
 

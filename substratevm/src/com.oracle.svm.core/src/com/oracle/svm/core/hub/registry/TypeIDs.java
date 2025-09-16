@@ -43,10 +43,15 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLa
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
-/** Keeps track of type ID information at run-time (see {@link DynamicHub#getTypeID()}). */
+/**
+ * Keeps track of type ID information at run-time (see {@link DynamicHub#getTypeID()} and
+ * {@link DynamicHub#getInterfaceID()}).
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
 public class TypeIDs {
     private final AtomicInteger nextTypeId = new AtomicInteger();
+    // interfaceIDs must not be 0 to be distinct from empty hash table entries
+    private final AtomicInteger nextInterfaceId = new AtomicInteger(1);
     @UnknownPrimitiveField(availability = AfterCompilation.class) //
     private int firstRuntimeTypeId;
 
@@ -60,9 +65,10 @@ public class TypeIDs {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void initialize() {
-        assert firstRuntimeTypeId == 0 && nextTypeId.get() == 0;
+        assert firstRuntimeTypeId == 0 && nextTypeId.get() == 0 && nextInterfaceId.get() == 1;
         firstRuntimeTypeId = DynamicHubSupport.currentLayer().getMaxTypeId() + 1;
         nextTypeId.set(firstRuntimeTypeId);
+        nextInterfaceId.set(DynamicHubSupport.currentLayer().getMaxInterfaceId() + 1);
     }
 
     /** The type id that is used for the first type that is loaded at run-time. */
@@ -79,6 +85,12 @@ public class TypeIDs {
 
     public int getNumTypeIds() {
         return nextTypeId.get();
+    }
+
+    public int nextInterfaceId() {
+        int result = nextInterfaceId.getAndIncrement();
+        VMError.guarantee(result > 1);
+        return result;
     }
 }
 

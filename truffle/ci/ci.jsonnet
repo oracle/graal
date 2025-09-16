@@ -33,7 +33,9 @@
       ["cd", "./compiler"],
       ["mx", "build" ],
       ["mx", "hsdis", "||", "true"],
-    ]
+    ],
+    notify_groups:: ["truffle"],
+    upload:: ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
   },
 
   local simple_tool_maven_project_gate = truffle_common + {
@@ -138,7 +140,7 @@
     ],
     timelimit: "3:00:00",
     teardown: [
-      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
+      self.upload,
     ],
   },
 
@@ -146,6 +148,14 @@
     name:  self.name_prefix + 'truffle-test-benchmarks-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
     run+: [
       ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "org.graalvm.truffle.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
+    ],
+  },
+
+  local truffle_compiler_benchmark = bench_common + {
+    name: self.name_prefix + 'truffle-compiler-benchmark-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    run+: [
+      ["mx", "--java-home", "$JAVA_HOME", "benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "java-home", "--", "org.graalvm.truffle.compiler.benchmark", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      self.upload,
     ],
   },
 
@@ -244,7 +254,10 @@
 
     # Truffle Benchmarks
     [linux_amd64  + tier3  + jdk_latest_labs + jmh_benchmark_test],
-    [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark]
+    [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark],
+
+    # Truffle compilation benchmarks
+    [linux_amd64 + bench + jdk_latest_graalvm_ce + truffle_compiler_benchmark],
   ]),
   builds: utils.add_defined_in(_builds, std.thisFile),
 }

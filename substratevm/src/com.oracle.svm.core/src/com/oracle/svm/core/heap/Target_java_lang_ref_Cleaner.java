@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 
@@ -50,7 +52,7 @@ public final class Target_java_lang_ref_Cleaner {
 @TargetClass(className = "java.lang.ref.Cleaner$Cleanable")
 final class Target_java_lang_ref_Cleaner_Cleanable {
     @AnnotateOriginal
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     native void clean();
 }
 
@@ -96,7 +98,7 @@ final class Target_jdk_internal_ref_PhantomCleanable {
     int index;
 
     @AnnotateOriginal
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     /* final */ native void clean();
 }
 

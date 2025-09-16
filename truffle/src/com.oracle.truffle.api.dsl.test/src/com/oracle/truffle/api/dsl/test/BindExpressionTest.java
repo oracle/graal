@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
@@ -63,6 +64,8 @@ import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindBindsCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindCachedNodeTestNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindFieldNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindFrameInFallbackGuardTestNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindFrameTestNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindInLimitNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodTwiceNodeGen;
@@ -75,8 +78,13 @@ import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveC
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicAndCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicWithLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindVirtualFrameTestNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.DefaultBindingNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.IntrospectableNodeGen;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -519,6 +527,134 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         }
     }
 
+    private static VirtualFrame makeFrame(Object... args) {
+        return Truffle.getRuntime().createVirtualFrame(args, new FrameDescriptor());
+    }
+
+    @Test
+    public void testBindFrame() {
+        BindFrameTest node = adoptNode(BindFrameTestNodeGen.create()).get();
+        assertEquals(42, node.execute(makeFrame(42), false, false));
+        assertEquals(42, node.execute(makeFrame(42), true, false));
+        assertEquals(42, node.execute(makeFrame(42), false, true));
+    }
+
+    abstract static class BindFrameTest extends Node {
+
+        abstract Object execute(Frame f, boolean virtual, boolean materialized);
+
+        @Specialization(guards = {"!virtual", "!materialized"})
+        Object doFrame(boolean virtual, boolean materialized, @Bind Frame frame) {
+            return frame.getArguments()[0];
+        }
+
+        @Specialization(guards = {"virtual", "!materialized"})
+        Object doVirtualFrame(boolean virtual, boolean materialized, @Bind VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+
+        @Specialization
+        Object doMaterialized(boolean virtual, boolean materialized, @Bind MaterializedFrame frame) {
+            return frame.getArguments()[0];
+        }
+
+    }
+
+    @Test
+    public void testBindVirtualFrame() {
+        BindVirtualFrameTest node = adoptNode(BindVirtualFrameTestNodeGen.create()).get();
+        assertEquals(42, node.execute(makeFrame(42), false, false));
+        assertEquals(42, node.execute(makeFrame(42), true, false));
+        assertEquals(42, node.execute(makeFrame(42), false, true));
+    }
+
+    abstract static class BindVirtualFrameTest extends Node {
+
+        abstract Object execute(VirtualFrame f, boolean virtual, boolean materialized);
+
+        @Specialization(guards = {"!virtual", "!materialized"})
+        Object doFrame(boolean virtual, boolean materialized, @Bind Frame frame) {
+            return frame.getArguments()[0];
+        }
+
+        @Specialization(guards = {"virtual", "!materialized"})
+        Object doVirtualFrame(boolean virtual, boolean materialized, @Bind VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+
+        @Specialization
+        Object doMaterialized(boolean virtual, boolean materialized, @Bind MaterializedFrame frame) {
+            return frame.getArguments()[0];
+        }
+
+    }
+
+    @Test
+    public void testBindFrameInFallbackGuard() {
+        // Regression test where the frame is needed in the generated fallback guard.
+        BindFrameInFallbackGuardTest node = adoptNode(BindFrameInFallbackGuardTestNodeGen.create()).get();
+        assertEquals(2, node.execute(makeFrame(42, 123)));
+        assertEquals(0, node.execute(makeFrame()));
+    }
+
+    abstract static class BindFrameInFallbackGuardTest extends Node {
+
+        abstract Object execute(VirtualFrame f);
+
+        @Specialization(guards = {"frame.getArguments().length != 0"})
+        Object doSpecialization(@Bind Frame frame) {
+            return frame.getArguments().length;
+        }
+
+        @Fallback
+        Object doFallback() {
+            return 0;
+        }
+
+    }
+
+    /**
+     * Using the frame in a cached expression is not encouraged, but it is possible. Check that the
+     * generated code at least compiles.
+     */
+    abstract static class CacheFrameTest extends Node {
+        abstract Object execute(Frame f);
+
+        @Specialization(guards = "true")
+        Object doFrame(@Cached("$frame") Frame f) {
+            return null;
+        }
+
+        @Specialization(guards = "false")
+        Object doVirtualFrame(@Cached("$frame") VirtualFrame f) {
+            return null;
+        }
+
+        @Specialization
+        Object doMaterializedFrame(@Cached("$frame.materialize()") MaterializedFrame f) {
+            return null;
+        }
+    }
+
+    abstract static class CacheVirtualFrameTest extends Node {
+        abstract Object execute(VirtualFrame f);
+
+        @Specialization(guards = "true")
+        Object doFrame(@Cached("$frame") Frame f) {
+            return null;
+        }
+
+        @Specialization(guards = "false")
+        Object doVirtualFrame(@Cached("$frame") VirtualFrame f) {
+            return null;
+        }
+
+        @Specialization
+        Object doMaterializedFrame(@Cached("$frame.materialize()") MaterializedFrame f) {
+            return null;
+        }
+    }
+
     @Test
     public void testBindCachedNodeTest() {
         BindCachedNodeTest node = adoptNode(BindCachedNodeTestNodeGen.create()).get();
@@ -658,7 +794,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         @Specialization
         Object s0(
                         @ExpectError("Bind expression '$node' is redundant and can be automatically be resolved from the parameter type.%") //
-                        @Bind Node result) {
+                        @Bind("$node") Node result) {
             return null;
         }
 
@@ -672,6 +808,33 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         Object s0(
                         @ExpectError("Bind expression 'INSTANCE' is redundant and can be automatically be resolved from the parameter type.%") //
                         @Bind("INSTANCE") DefaultBindType result) {
+            return result;
+        }
+
+    }
+
+    abstract static class WarningRedundantBindingTest3 extends Node {
+
+        abstract Object execute(Frame frame);
+
+        @Specialization(guards = "true")
+        Object s0(
+                        @ExpectError("Bind expression '$frame' is redundant and can be automatically be resolved from the parameter type.%") //
+                        @Bind("$frame") Frame result) {
+            return result;
+        }
+
+        @Specialization(guards = "false")
+        Object s1(
+                        @ExpectError("Bind expression '$frame' is redundant and can be automatically be resolved from the parameter type.%") //
+                        @Bind("$frame") VirtualFrame result) {
+            return result;
+        }
+
+        @Specialization
+        Object s2(
+                        @ExpectError("Bind expression '$frame.materialize()' is redundant and can be automatically be resolved from the parameter type.%") //
+                        @Bind("$frame.materialize()") MaterializedFrame result) {
             return result;
         }
 
@@ -770,6 +933,62 @@ public class BindExpressionTest extends AbstractPolyglotTest {
                         @ExpectError("This expression binds variable 'this' which should no longer be used. Use the '$node' variable instead to resolve this warning.%")//
                         @Bind("this") Node result) {
             return result;
+        }
+
+    }
+
+    abstract static class BindFrameErrorTestNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization(guards = "true")
+        Object s0(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind Frame frame) {
+            return null;
+        }
+
+        @Specialization(guards = "false")
+        Object s1(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind VirtualFrame frame) {
+            return null;
+        }
+
+        @Specialization
+        Object s2(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind MaterializedFrame frame) {
+            return null;
+        }
+
+    }
+
+    abstract static class BindFrameError2TestNode extends Node {
+
+        abstract Object execute(Frame frame);
+
+        abstract Object executeWithoutFrame();
+
+        @Specialization(guards = "true")
+        Object s0(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind Frame frame) {
+            return null;
+        }
+
+        @Specialization(guards = "false")
+        Object s1(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind VirtualFrame frame) {
+            return null;
+        }
+
+        @Specialization
+        Object s2(
+                        @ExpectError("This expression binds the frame, but the frame is not available for this node. Declare a frame parameter on all execute methods to resolve this error.")//
+                        @Bind MaterializedFrame frame) {
+            return null;
         }
 
     }

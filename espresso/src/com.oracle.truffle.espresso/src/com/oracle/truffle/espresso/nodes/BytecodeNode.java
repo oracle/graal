@@ -2941,32 +2941,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
             if (table != LineNumberTableAttribute.EMPTY) {
                 List<LineNumberTableAttribute.Entry> entries = table.getEntries();
-                // don't allow multiple entries with same line, keep only the first one
-                // reduce the checks needed heavily by keeping track of max seen line number
-                int[] seenLines = new int[entries.size()];
-                Arrays.fill(seenLines, -1);
-                int maxSeenLine = -1;
-
                 EspressoStatementNode[] statements = new EspressoStatementNode[entries.size()];
                 MapperBCI mapper = new MapperBCI(table);
                 for (int i = 0; i < entries.size(); i++) {
                     LineNumberTableAttribute.Entry entry = entries.get(i);
                     int lineNumber = entry.getLineNumber();
-                    boolean seen = false;
-                    boolean checkSeen = !(maxSeenLine < lineNumber);
-                    if (checkSeen) {
-                        for (int seenLine : seenLines) {
-                            if (seenLine == lineNumber) {
-                                seen = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!seen) {
-                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
-                        seenLines[i] = lineNumber;
-                        maxSeenLine = Math.max(maxSeenLine, lineNumber);
-                    }
+                    statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
                 }
                 this.hookBCIToNodeIndex = mapper;
                 this.statementNodes = statements;

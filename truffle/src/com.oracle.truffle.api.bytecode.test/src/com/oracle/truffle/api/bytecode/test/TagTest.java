@@ -1057,8 +1057,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0020, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0020, 42, ExpressionTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x001c, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x001c, 42, ExpressionTag.class));
 
     }
 
@@ -1095,8 +1095,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0020, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0020, 42, ExpressionTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x001c, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x001c, 42, ExpressionTag.class));
 
     }
 
@@ -2142,12 +2142,12 @@ public class TagTest extends AbstractInstructionTest {
                         "return");
         assertEquals(123L, node.getCallTarget().call());
         assertEvents(node, events,
-                        new Event(EventKind.ENTER, 0x0000, 0x022, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x01e, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0000, 0x01e, null, ExpressionTag.class),
                         new Event(EventKind.YIELD, 0x0000, 0x01e, 42L, ExpressionTag.class),
                         new Event(EventKind.RESUME, 0x0000, 0x01e, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x01e, 123L, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x022, 123L, StatementTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x01e, 123L, StatementTag.class));
 
     }
 

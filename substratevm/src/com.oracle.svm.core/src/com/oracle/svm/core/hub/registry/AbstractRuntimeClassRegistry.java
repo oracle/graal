@@ -43,8 +43,9 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.CremaSupport;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
@@ -59,7 +60,6 @@ import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
-import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.svm.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
@@ -285,13 +285,16 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String externalName = getExternalName(parsed, info);
         String simpleBinaryName = getSimpleBinaryName(parsed);
         String sourceFile = getSourceFile(parsed);
-        Class<?> nestHost = getNestHost(parsed);
         Class<?> enclosingClass = getEnclosingClass(parsed);
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
         int classFileAccessFlags = parsed.getFlags();
 
+        /*
+         * The TypeCheckBuilder considers interface arrays as interfaces. Since we are dealing with
+         * loading from class files, interface arrays need not be considered.
+         */
         boolean isInterface = Modifier.isInterface(modifiers);
         boolean isRecord = Modifier.isFinal(modifiers) && superClass == Record.class && parsed.getAttribute(RecordAttribute.NAME) != null;
         // GR-62320 This should be set based on build-time and run-time arguments.
@@ -310,7 +313,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
 
         List<Class<?>> transitiveSuperInterfaces = transitiveSuperInterfaces(superClass, superInterfaces);
-        transitiveSuperInterfaces.sort(Comparator.comparing(c -> DynamicHub.fromClass(c).getTypeID()));
+        transitiveSuperInterfaces.sort(Comparator.comparing(c -> DynamicHub.fromClass(c).getInterfaceID()));
 
         CremaSupport.CremaDispatchTable dispatchTable = CremaSupport.singleton().getDispatchTable(parsed, superClass, transitiveSuperInterfaces);
 
@@ -328,13 +331,13 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * [vtable..., itable(I1)..., itable(I2)...]
          *             ^ idx1         ^ idx2
          * @formatter:on
-         * First compute idx* in interfaceIndices
+         * First compute idx* in iTableStartingIndices
          */
         int dispatchTableLength = dispatchTable.vtableLength();
-        int[] interfaceIndices = new int[transitiveSuperInterfaces.size()];
+        int[] iTableStartingIndices = new int[transitiveSuperInterfaces.size()];
         int i = 0;
         for (Class<?> iface : transitiveSuperInterfaces) {
-            interfaceIndices[i++] = dispatchTableLength;
+            iTableStartingIndices[i++] = dispatchTableLength;
             dispatchTableLength += dispatchTable.itableLength(iface);
         }
         /*
@@ -346,14 +349,20 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * - followed by transitive interfaces (ordered by type id)
          * - each interface is followed by its itable offset
          * ## Interface types
+         * a) Without interface hashing
          * [Object.id, I1.id, bad, I2.id, bad]
          * - display with Object
          * - followed by transitive interfaces (ordered by type id, including self)
          * - using 0xBADD0D1DL as interface starting index
+         * b) With interface hashing
+         * - Interfaces with interfaceIDs <= THRESHOLD are covered in per-type hash tables.
+         *   hashTableEntry = interfaceID < 16 | iTableOffset
+         * - Interfaces with interfaceIDs > THRESHOLD are covered by the type check slot array above.
          * @formatter:on
          */
         DynamicHub superHub = DynamicHub.fromClass(superClass);
         int typeID = TypeIDs.singleton().nextTypeId();
+        int interfaceID = isInterface ? TypeIDs.singleton().nextInterfaceId() : DynamicHub.NO_INTERFACE_ID;
         short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
         short numClassTypes;
         short typeIDDepth;
@@ -369,27 +378,17 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             typeIDDepth = (short) intDepth;
             numClassTypes = (short) intNumClassTypes;
         }
-        int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
-        int[] superOpenTypeWorldTypeCheckSlots = superHub.getOpenTypeWorldTypeCheckSlots();
-        System.arraycopy(superOpenTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, superHub.getNumClassTypes());
-        if (!isInterface) {
-            openTypeWorldTypeCheckSlots[numClassTypes - 1] = typeID;
-        }
 
-        i = 0;
-        long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
-        long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        for (Class<?> superInterface : transitiveSuperInterfaces) {
-            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes] = DynamicHub.fromClass(superInterface).getTypeID();
-            int offset;
-            if (isInterface) {
-                offset = 0xBADD0D1D;
-            } else {
-                offset = Math.toIntExact(vTableBaseOffset + interfaceIndices[i] * vTableEntrySize);
-            }
-            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes + 1] = offset;
-            i += 1;
-        }
+        /*
+         * Compute type check data, which might be based on interface hashing.
+         */
+        DynamicHubTypeCheckUtil.TypeCheckData typeCheckData = computeTypeCheckData(typeID, isInterface, numClassTypes, numInterfacesTypes, superHub, iTableStartingIndices, transitiveSuperInterfaces);
+
+        int[] openTypeWorldTypeCheckSlots = typeCheckData.openTypeWorldTypeCheckSlots();
+        int[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
+        int openTypeWorldInterfaceHashParam = typeCheckData.openTypeWorldInterfaceHashParam();
+        // number of interfaces which are not covered by hashing and need to be iterated
+        short numIterableInterfaces = typeCheckData.numIterableInterfaces();
 
         int afterFieldsOffset;
         if (isInterface) {
@@ -414,10 +413,11 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
-                        typeID, numClassTypes, typeIDDepth, numInterfacesTypes, openTypeWorldTypeCheckSlots, dispatchTableLength, afterFieldsOffset, isValueBased);
+                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
+                        typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
+                        dispatchTableLength, afterFieldsOffset, isValueBased);
 
-        CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, interfaceIndices);
+        CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 
         return DynamicHub.toClass(hub);
     }
@@ -483,16 +483,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             }
         }
         return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
-    }
-
-    private static Class<?> getNestHost(ParserKlass parsed) {
-        Class<?> nestHost = null;
-        NestHostAttribute nestHostAttribute = (NestHostAttribute) parsed.getAttribute(NestHostAttribute.NAME);
-        if (nestHostAttribute != null) {
-            // must be lazy, should move to companion
-            throw VMError.unimplemented("nest host is not supported yet");
-        }
-        return nestHost;
     }
 
     private static String getExternalName(ParserKlass parsed, ClassDefinitionInfo info) {
@@ -675,5 +665,26 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
                 // try to insert in that new array
             }
         }
+    }
+
+    private static DynamicHubTypeCheckUtil.TypeCheckData computeTypeCheckData(int typeID, boolean typeIsInterface, short numClassTypes, short numInterfacesTypes, DynamicHub superHub,
+                    int[] iTableStartingIndices, List<Class<?>> transitiveSuperInterfaces) {
+        int[] interfaceIDs = new int[numInterfacesTypes];
+        for (int i = 0; i < numInterfacesTypes; i++) {
+            interfaceIDs[i] = DynamicHub.fromClass(transitiveSuperInterfaces.get(i)).getInterfaceID();
+        }
+
+        int[] typeHierarchy = new int[numClassTypes];
+        System.arraycopy(superHub.getOpenTypeWorldTypeCheckSlots(), 0, typeHierarchy, 0, superHub.getNumClassTypes());
+
+        if (!typeIsInterface) {
+            // typeID is not yet in the type hierarchy derived from the super type.
+            typeHierarchy[numClassTypes - 1] = typeID;
+        }
+
+        long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
+        long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
+
+        return DynamicHubTypeCheckUtil.computeOpenTypeWorldTypeCheckData(!typeIsInterface, typeHierarchy, interfaceIDs, iTableStartingIndices, vTableBaseOffset, vTableEntrySize);
     }
 }

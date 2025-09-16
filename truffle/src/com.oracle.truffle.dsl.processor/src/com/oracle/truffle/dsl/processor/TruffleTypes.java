@@ -136,6 +136,7 @@ public class TruffleTypes {
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
     public static final String HostCompilerDirectives_BytecodeInterpreterSwitch_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch";
     public static final String HostCompilerDirectives_InliningCutoff_Name = "com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff";
+    public static final String HostCompilerDirectives_InliningRoot_Name = "com.oracle.truffle.api.HostCompilerDirectives.InliningRoot";
 
     public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
     public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
@@ -200,6 +201,7 @@ public class TruffleTypes {
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterSwitch = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterSwitch_Name);
     public final DeclaredType HostCompilerDirectives_InliningCutoff = c.getDeclaredType(HostCompilerDirectives_InliningCutoff_Name);
+    public final DeclaredType HostCompilerDirectives_InliningRoot = c.getDeclaredType(HostCompilerDirectives_InliningRoot_Name);
     public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
@@ -398,6 +400,7 @@ public class TruffleTypes {
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
     public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
+    public static final String Yield_Name = "com.oracle.truffle.api.bytecode.Yield";
 
     public static final String Instruction_Argument_Kind_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument.Kind";
     public static final String Instruction_Argument_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument";
@@ -462,6 +465,7 @@ public class TruffleTypes {
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
     public final DeclaredType Instrumentation = c.getDeclaredTypeOptional(Instrumentation_Name);
+    public final DeclaredType Yield = c.getDeclaredTypeOptional(Yield_Name);
 
     public final DeclaredType Instruction_Argument = c.getDeclaredTypeOptional(Instruction_Argument_Name);
     public final DeclaredType Instruction_Argument_BranchProfile = c.getDeclaredTypeOptional(Instruction_Argument_BranchProfile_Name);

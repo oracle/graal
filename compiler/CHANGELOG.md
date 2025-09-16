@@ -3,12 +3,13 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM for JDK 26 (Internal Version 26.0.0)
+* (GR-69280): Allow use of the `graal.` prefix for Graal compiler options without issuing a warning.
 * (GR-58163): Added support for recording and replaying JIT compilations. The `-Djdk.graal.RecordForReplay=*` option
   serializes all compilations matching the pattern to JSON files, which contain the results of JVMCI calls. The
   recorded compilations can be replayed with the `mx replaycomp` command. Truffle compilations are currently not
   supported. See `docs/ReplayCompilation.md` for details.
 
-## GraalVM for JDK 25 (Internal Version 25.0.0)
+## GraalVM 25 (Internal Version 25.0.0)
 * (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building
   libgraal has been moved into the compiler suite in a new `jdk.graal.compiler.libgraal` module
   which has no dependency on Native Image internals. This
@@ -27,7 +28,7 @@ This changelog summarizes newly introduced optimizations and other compiler rela
   This benefits the program warmup but could increase the maximum RSS.
   Setting `-XX:JVMCINativeLibraryThreadFraction` to a smaller value will result in smaller maximum RSS but potentially longer warmup. (See [JDK-8337493](https://bugs.openjdk.org/browse/JDK-8337493)).
 * (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 below).
-  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+  The warning is planned to be replaced by an error in GraalVM 25.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-50352): Added `-Djdk.graal.PrintPropertiesAll` to make `-XX:+JVMCIPrintProperties` show all Graal options.

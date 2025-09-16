@@ -25,7 +25,6 @@
 package com.oracle.svm.core.heap;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Function;
 
@@ -37,15 +36,18 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.ImageHeapList;
@@ -128,7 +130,13 @@ class GCCauseSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = GCCauseFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class GCCauseFeature implements InternalFeature {
+    /**
+     * In layered builds all {@link GCCause}s are registered and installed in the initial layer.
+     * Here we track which {@link GCCause}s were installed in the initial layer to detect issues.
+     */
+    List<String> registeredGCCauses;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -158,8 +166,7 @@ class GCCauseFeature implements InternalFeature {
                 var gcCauseList = GCCause.getGCCauses();
                 idToGCCauseName = (idx) -> gcCauseList.get(idx).getName();
             } else {
-                var gcCauseNames = LayeredGCCauseTracker.getRegisteredGCCauses();
-                idToGCCauseName = gcCauseNames::get;
+                idToGCCauseName = registeredGCCauses::get;
             }
             access.registerObjectReplacer(obj -> {
                 if (obj instanceof GCCause gcCause) {
@@ -172,49 +179,37 @@ class GCCauseFeature implements InternalFeature {
             });
         }
     }
-}
 
-/**
- * In layered builds all {@link GCCause}s are registered and installed in the initial layer. Here we
- * track which {@link GCCause}s were installed in the initial layer to detect issues.
- */
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-class LayeredGCCauseTracker implements LayeredImageSingleton {
-    List<String> registeredGCCauses;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-    public static List<String> getRegisteredGCCauses() {
-        assert ImageLayerBuildingSupport.buildingExtensionLayer();
-        return ImageSingletons.lookup(LayeredGCCauseTracker.class).registeredGCCauses;
-    }
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    List<String> gcCauses;
+                    if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                        gcCauses = GCCause.getGCCauses().stream().map(gcCause -> {
+                            if (gcCause == null) {
+                                return "";
+                            } else {
+                                assert !gcCause.getName().isEmpty() : Assertions.errorMessage("Empty string is reserved for non-existent GCCauses", gcCause);
+                                return gcCause.getName();
+                            }
+                        }).toList();
+                    } else {
+                        gcCauses = ((GCCauseFeature) singleton).registeredGCCauses;
+                    }
+                    writer.writeStringList("registeredGCCauses", gcCauses);
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        List<String> gcCauses;
-        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            gcCauses = GCCause.getGCCauses().stream().map(gcCause -> {
-                if (gcCause == null) {
-                    return "";
-                } else {
-                    assert !gcCause.getName().isEmpty() : Assertions.errorMessage("Empty string is reserved for non-existent GCCauses", gcCause);
-                    return gcCause.getName();
+                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
                 }
-            }).toList();
-        } else {
-            gcCauses = registeredGCCauses;
-        }
-        writer.writeStringList("registeredGCCauses", gcCauses);
-        return PersistFlags.CREATE;
-    }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        var causeTracker = new LayeredGCCauseTracker();
-        causeTracker.registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
-        return causeTracker;
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
+                    ((GCCauseFeature) singleton).registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
+                }
+            });
+        }
     }
 }

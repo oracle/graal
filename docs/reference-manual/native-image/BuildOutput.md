@@ -24,10 +24,16 @@ Below is the example output when building a native executable of the `HelloWorld
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/8] Initializing...                                            (2.0s @ 0.19GB)
- Java version: 26+9, vendor version: GraalVM CE 26-dev+9.1
- Graal compiler: optimization level: 2, target machine: x86-64-v3
- C compiler: gcc (linux, x86_64, 15.2.1)
- Garbage collector: Serial GC (max heap size: 80% of RAM)
+ Builder configuration:
+ - Java version: 26+12, vendor version: GraalVM CE 26-dev+12.1
+ - Graal compiler: optimization level: 2, target machine: x86-64-v3
+ - C compiler: gcc (linux, x86_64, 15.2.1)
+ - Assertions: enabled, system assertions: enabled
+ - 1 user-specific feature(s):
+   - com.oracle.svm.thirdparty.gson.GsonFeature
+ Image configuration:
+ - Garbage collector: Serial GC (max heap size: 80% of RAM)
+ - Assertions: disabled (class-specific config may apply), system assertions: disabled
 --------------------------------------------------------------------------------
 Build resources:
  - 14.69GiB of memory (47.0% of system memory, using all available memory)
@@ -110,6 +116,14 @@ On Oracle GraalVM, the line also shows information about [Profile-Guided Optimiz
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
 
+#### <a name="glossary-builder-assertions"></a>Assertions in the Builder
+This shows whether Java assertions and system assertions are enabled for the Native Image Builder process.
+Enabling them can help the GraalVM team identify and debug problems in the Builder.
+
+#### <a name="glossary-user-specific-features"></a>User-Specific Features
+All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are provided or explicitly enabled by the user, or implicitly registered on the user's behalf (for example, by a framework).
+Internal features used by GraalVM Native Image are not included in this list.
+
 #### <a name="glossary-gc"></a>Garbage Collector
 The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
@@ -124,9 +138,9 @@ Use the `-Xmx` option when invoking your native executable (for example `./myapp
 This can also improve latency in some cases.
 Use the `-R:MaxHeapSize` option when building with Native Image to preconfigure the maximum heap size.
 
-#### <a name="glossary-user-specific-features"></a>User-Specific Features
-All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
-GraalVM Native Image deploys a number of internal features, which are excluded from this list.
+#### <a name="glossary-image-assertions"></a>Assertions in the Generated Image
+This shows whether Java assertions and system assertions are enabled in the generated image.
+Enabling them can help identifying and debugging problems in the Java code built into the image.
 
 #### <a name="glossary-experimental-options"></a>Experimental Options
 A list of all active experimental options, including their origin and possible API option alternatives if available.

@@ -42,7 +42,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -74,6 +73,7 @@ import com.oracle.svm.util.StringUtil;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionsContainer;
 import jdk.graal.compiler.options.OptionsParser;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -410,7 +410,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         OptionInfo option = null;
         boolean whitespaceSeparated = false;
         String[] optionNameAndOptionValue = null;
-        OptionOrigin argumentOrigin = OptionOrigin.from(argQueue.argumentOrigin);
+        String argumentOriginString = OptionOrigin.from(argQueue.argumentOrigin).toString();
+        if (nativeImage.useBundle()) {
+            argumentOriginString = nativeImage.bundleSupport.cleanupBuilderOutput(argumentOriginString);
+        }
         found: for (OptionInfo optionInfo : apiOptions.values()) {
             for (String variant : optionInfo.variants) {
                 String optionName;
@@ -437,7 +440,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         argQueue.poll();
                         String optionValue = argQueue.peek();
                         if (optionValue == null) {
-                            NativeImage.showError(headArg + " from " + argumentOrigin + " requires option argument");
+                            NativeImage.showError(headArg + " from " + argumentOriginString + " requires option argument");
                         }
                         option = optionInfo;
                         optionNameAndOptionValue = new String[]{headArg, optionValue};
@@ -457,14 +460,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (option != null) {
             if (!option.deprecationWarning.isEmpty()) {
-                LogUtils.warning("Using a deprecated option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + ". " + option.deprecationWarning);
+                LogUtils.warning("Using a deprecated option " + optionNameAndOptionValue[0] + " from " + argumentOriginString + ". " + option.deprecationWarning);
             }
             String builderOption = option.builderOption;
             /* If option is in group, defaultValue has different use */
             String optionValue = option.group != null ? null : option.defaultValue;
             if (optionNameAndOptionValue.length == 2) {
                 if (option.defaultFinal) {
-                    NativeImage.showError("Passing values to option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + " is not supported.");
+                    NativeImage.showError("Passing values to option " + optionNameAndOptionValue[0] + " from " + argumentOriginString + " is not supported.");
                 }
                 optionValue = optionNameAndOptionValue[1];
             }

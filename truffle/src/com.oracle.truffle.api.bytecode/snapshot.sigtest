@@ -242,6 +242,7 @@ meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
 meth public java.lang.Object continueWith(java.lang.Object)
 meth public java.lang.Object getResult()
 meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.bytecode.ContinuationResult create(com.oracle.truffle.api.bytecode.ContinuationRootNode,com.oracle.truffle.api.frame.MaterializedFrame,java.lang.Object)
 supr java.lang.Object
 hfds frame,result,rootNode
 
@@ -640,6 +641,14 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Varia
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault int startOffset()
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Yield
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forceCached()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>[] tags()
+meth public abstract !hasdefault java.lang.String javadoc()
+
 CLSS public abstract interface com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener
 meth public void afterInstructionExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Throwable)
 meth public void afterRootExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Object,java.lang.Throwable)
@@ -980,4 +989,9 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 

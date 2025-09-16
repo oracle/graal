@@ -25,6 +25,8 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.graal.pointsto.util.AnalysisError.guarantee;
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.FullyInitialized;
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.InitializationError;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
@@ -51,7 +53,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -121,6 +122,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
@@ -1318,6 +1320,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         });
         registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
         registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+
+        /*
+         * Inject the base layer position. If the position computed for this layer, either before
+         * this step or later, is different this will result in a failed guarantee.
+         */
+        analysisField.setPosition(fieldData.getPosition());
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
@@ -1859,28 +1867,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return null;
         }
         var initInfo = typeData.getClassInitializationInfo();
-        if (initInfo.getIsNoInitializerNoTracking()) {
-            return ClassInitializationInfo.forNoInitializerInfo(false);
-        } else if (initInfo.getIsInitializedNoTracking()) {
-            return ClassInitializationInfo.forInitializedInfo(false);
-        } else if (initInfo.getIsFailedNoTracking()) {
-            return ClassInitializationInfo.forFailedInfo(false);
+        if (initInfo.getIsInitialized() || initInfo.getIsInErrorState()) {
+            ClassInitializationInfo.InitState initState = initInfo.getIsInitialized() ? FullyInitialized : InitializationError;
+            return ClassInitializationInfo.forBuildTimeInitializedClass(initState, initInfo.getHasInitializer(), initInfo.getIsTracked());
         } else {
-            boolean isTracked = initInfo.getIsTracked();
-
-            ClassInitializationInfo.InitState initState;
-            if (initInfo.getIsInitialized()) {
-                initState = ClassInitializationInfo.InitState.FullyInitialized;
-            } else if (initInfo.getIsInErrorState()) {
-                initState = ClassInitializationInfo.InitState.InitializationError;
-            } else {
-                assert initInfo.getIsLinked() : "Invalid state";
-                int classInitializerId = initInfo.getInitializerMethodId();
-                MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
-                return new ClassInitializationInfo(classInitializer, isTracked);
-            }
-
-            return new ClassInitializationInfo(initState, initInfo.getHasInitializer(), initInfo.getIsBuildTimeInitialized(), isTracked);
+            assert initInfo.getIsLinked() : "Invalid state";
+            int classInitializerId = initInfo.getInitializerMethodId();
+            MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
+            return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializer, initInfo.getIsTracked());
         }
     }
 

@@ -49,7 +49,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.object.ExtLocations.BooleanLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleLocation;
 import com.oracle.truffle.api.object.ExtLocations.IntLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongLocation;
@@ -209,8 +208,6 @@ abstract class Obsolescence {
             return (otherLoc instanceof DoubleLocation && ((DoubleLocation) thisLoc).isImplicitCastIntToDouble() && ((DoubleLocation) otherLoc).isImplicitCastIntToDouble());
         } else if (thisLoc instanceof LongLocation) {
             return (otherLoc instanceof LongLocation && ((LongLocation) thisLoc).isImplicitCastIntToLong() && ((LongLocation) otherLoc).isImplicitCastIntToLong());
-        } else if (thisLoc instanceof BooleanLocation) {
-            return (otherLoc instanceof BooleanLocation);
         } else if (thisLoc instanceof ObjectLocation) {
             return (otherLoc instanceof ObjectLocation &&
                             ((ObjectLocation) thisLoc).getType() == ((ObjectLocation) otherLoc).getType() &&
@@ -229,8 +226,6 @@ abstract class Obsolescence {
             return (source instanceof DoubleLocation || (layout.isAllowedIntToDouble() && source instanceof IntLocation));
         } else if (destination instanceof LongLocation) {
             return (source instanceof LongLocation || (layout.isAllowedIntToLong() && source instanceof IntLocation));
-        } else if (destination instanceof BooleanLocation) {
-            return (source instanceof BooleanLocation);
         } else if (destination instanceof ObjectLocation dstObjLoc) {
             if (source instanceof ObjectLocation) {
                 return (dstObjLoc.getType() == Object.class || dstObjLoc.getType().isAssignableFrom(((ObjectLocation) source).getType())) &&

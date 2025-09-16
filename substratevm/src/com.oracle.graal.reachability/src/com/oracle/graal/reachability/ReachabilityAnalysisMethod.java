@@ -40,6 +40,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -108,6 +109,11 @@ public final class ReachabilityAnalysisMethod extends AnalysisMethod {
     @Override
     public List<BytecodePosition> getInvokeLocations() {
         return calledFrom;
+    }
+
+    @Override
+    public Iterable<EncodedGraph.EncodedNodeReference> getEncodedNodeReferences() {
+        return null;
     }
 
     public void addCaller(BytecodePosition bytecodePosition) {

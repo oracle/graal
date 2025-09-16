@@ -29,23 +29,21 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.ArrayList;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.LIRInsertionBuffer;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
+import jdk.graal.compiler.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.phases.LIRPhase;
-import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
-import jdk.graal.compiler.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -98,7 +96,7 @@ public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase
              */
             Interval interval;
             interval = allocator.createUnhandledLists(mustStoreAtDefinition, null).getLeft();
-            if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
+            if (allocator.isDetailedAsserts()) {
                 checkIntervals(debug, interval);
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,6 +113,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
+    protected final boolean reportTypeStateMemoryFootprint;
 
     private ConcurrentMap<UnsafeLoadTypeFlow, Boolean> unsafeLoads;
     private ConcurrentMap<UnsafeStoreTypeFlow, Boolean> unsafeStores;
@@ -146,7 +147,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
         reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
-        if (reportAnalysisStatistics) {
+        reportTypeStateMemoryFootprint = PointstoOptions.PrintTypeStateMemoryFootprint.getValue(options);
+        if (reportAnalysisStatistics || reportTypeStateMemoryFootprint) {
             PointsToStats.init(this);
         }
 
@@ -199,6 +201,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public boolean reportAnalysisStatistics() {
         return reportAnalysisStatistics;
+    }
+
+    public boolean reportTypeStateMemoryFootprint() {
+        return reportTypeStateMemoryFootprint;
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -299,6 +305,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         unsafeStores = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
+        PointsToStats.cleanupAfterAnalysis();
     }
 
     public AnalysisType lookup(JavaType type) {

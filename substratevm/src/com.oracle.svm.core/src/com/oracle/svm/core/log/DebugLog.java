@@ -52,7 +52,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(String value) {
+    public DebugLog string(String value) {
         string0(value);
         return this;
     }
@@ -60,7 +60,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(String str, int fill, int align) {
+    public DebugLog string(String str, int fill, int align) {
         string0(str, fill, align);
         return this;
     }
@@ -68,7 +68,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(String value, int maxLen) {
+    public DebugLog string(String value, int maxLen) {
         string0(value, maxLen);
         return this;
     }
@@ -76,7 +76,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(char[] value) {
+    public DebugLog string(char[] value) {
         string0(value);
         return this;
     }
@@ -84,7 +84,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(byte[] value) {
+    public DebugLog string(byte[] value) {
         string0(value);
         return this;
     }
@@ -92,7 +92,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(byte[] value, int offset, int length) {
+    public DebugLog string(byte[] value, int offset, int length) {
         string0(value, offset, length);
         return this;
     }
@@ -100,7 +100,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(CCharPointer value) {
+    public DebugLog string(CCharPointer value) {
         string0(value);
         return this;
     }
@@ -108,7 +108,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log string(CCharPointer value, int length) {
+    public DebugLog string(CCharPointer value, int length) {
         string0(value, length);
         return this;
     }
@@ -116,7 +116,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log character(char value) {
+    public DebugLog character(char value) {
         character0(value);
         return this;
     }
@@ -124,7 +124,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log newline() {
+    public DebugLog newline() {
         newline0();
         return this;
     }
@@ -132,7 +132,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log number(long value, int radix, boolean signed) {
+    public DebugLog number(long value, int radix, boolean signed) {
         number0(value, radix, signed);
         return this;
     }
@@ -140,7 +140,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log signed(WordBase value) {
+    public DebugLog signed(WordBase value) {
         signed0(value);
         return this;
     }
@@ -148,7 +148,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log signed(int value) {
+    public DebugLog signed(int value) {
         signed0(value);
         return this;
     }
@@ -156,7 +156,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log signed(long value) {
+    public DebugLog signed(long value) {
         signed0(value);
         return this;
     }
@@ -164,7 +164,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log signed(long value, int fill, int align) {
+    public DebugLog signed(long value, int fill, int align) {
         signed0(value, fill, align);
         return this;
     }
@@ -172,7 +172,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log unsigned(WordBase value) {
+    public DebugLog unsigned(WordBase value) {
         unsigned0(value);
         return this;
     }
@@ -180,7 +180,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log unsigned(WordBase value, int fill, int align) {
+    public DebugLog unsigned(WordBase value, int fill, int align) {
         unsigned0(value, fill, align);
         return this;
     }
@@ -188,7 +188,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log unsigned(int value) {
+    public DebugLog unsigned(int value) {
         unsigned0(value);
         return this;
     }
@@ -196,7 +196,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log unsigned(long value) {
+    public DebugLog unsigned(long value) {
         unsigned0(value);
         return this;
     }
@@ -204,7 +204,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log unsigned(long value, int fill, int align) {
+    public DebugLog unsigned(long value, int fill, int align) {
         unsigned0(value, fill, align);
         return this;
     }
@@ -212,7 +212,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log rational(long numerator, long denominator, long decimals) {
+    public DebugLog rational(long numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
         return this;
     }
@@ -220,7 +220,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log rational(UnsignedWord numerator, long denominator, long decimals) {
+    public DebugLog rational(UnsignedWord numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
         return this;
     }
@@ -228,7 +228,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log hex(WordBase value) {
+    public DebugLog hex(WordBase value) {
         hex0(value);
         return this;
     }
@@ -236,7 +236,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log hex(int value) {
+    public DebugLog hex(int value) {
         hex0(value);
         return this;
     }
@@ -244,7 +244,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log hex(long value) {
+    public DebugLog hex(long value) {
         hex0(value);
         return this;
     }
@@ -252,7 +252,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log zhex(WordBase value) {
+    public DebugLog zhex(WordBase value) {
         zhex0(value);
         return this;
     }
@@ -260,7 +260,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log zhex(long value) {
+    public DebugLog zhex(long value) {
         zhex0(value);
         return this;
     }
@@ -268,7 +268,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log zhex(int value) {
+    public DebugLog zhex(int value) {
         zhex0(value);
         return this;
     }
@@ -276,7 +276,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log zhex(short value) {
+    public DebugLog zhex(short value) {
         zhex0(value);
         return this;
     }
@@ -284,7 +284,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log zhex(byte value) {
+    public DebugLog zhex(byte value) {
         zhex0(value);
         return this;
     }
@@ -292,7 +292,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log hexdump(PointerBase from, int wordSize, int numWords) {
+    public DebugLog hexdump(PointerBase from, int wordSize, int numWords) {
         hexdump0(from, wordSize, numWords);
         return this;
     }
@@ -300,7 +300,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
+    public DebugLog hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
         hexdump0(from, wordSize, numWords);
         return this;
     }
@@ -308,7 +308,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log redent(boolean addOrRemove) {
+    public DebugLog redent(boolean addOrRemove) {
         redent0(addOrRemove);
         return this;
     }
@@ -316,14 +316,14 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log indent(boolean addOrRemove) {
+    public DebugLog indent(boolean addOrRemove) {
         indent0(addOrRemove);
         return this;
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Log resetIndentation() {
+    public DebugLog resetIndentation() {
         resetIndentation0();
         return this;
     }
@@ -337,7 +337,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log bool(boolean value) {
+    public DebugLog bool(boolean value) {
         bool0(value);
         return this;
     }
@@ -345,7 +345,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log object(Object value) {
+    public DebugLog object(Object value) {
         object0(value);
         return this;
     }
@@ -353,7 +353,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log spaces(int value) {
+    public DebugLog spaces(int value) {
         spaces0(value);
         return this;
     }
@@ -361,7 +361,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log exception(Throwable t) {
+    public DebugLog exception(Throwable t) {
         exception0(t);
         return this;
     }
@@ -369,7 +369,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log exception(Throwable t, int maxFrames) {
+    public DebugLog exception(Throwable t, int maxFrames) {
         exception0(t, maxFrames);
         return this;
     }
@@ -377,7 +377,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    public Log flush() {
+    public DebugLog flush() {
         ImageSingletons.lookup(StdErrWriter.class).flush();
         return this;
     }
@@ -385,7 +385,7 @@ public class DebugLog extends AbstractLog {
     @Override
     @NeverInline("Logging is always slow-path code")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
+    protected DebugLog rawBytes(CCharPointer bytes, UnsignedWord length) {
         ImageSingletons.lookup(StdErrWriter.class).log(bytes, length);
         return this;
     }

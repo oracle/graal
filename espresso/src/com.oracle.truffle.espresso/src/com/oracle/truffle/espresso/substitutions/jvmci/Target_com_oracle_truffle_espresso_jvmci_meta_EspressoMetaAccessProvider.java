@@ -38,7 +38,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -61,38 +60,34 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
-                        @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached InitCheck initCheck) {
+                        @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             if (StaticObject.isNull(clazz)) {
                 throw meta.throwIllegalArgumentExceptionBoundary("Class parameter was null");
             }
             Klass klass = clazz.getMirrorKlass(meta);
-            return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
+            return toJVMCIType(klass, objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
         }
     }
 
-    static StaticObject toJVMCIType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, InitCheck initCheck, EspressoContext context,
-                    Meta meta) {
+    static StaticObject toJVMCIType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, EspressoContext context, Meta meta) {
         if (klass.isArray()) {
             StaticObject jvmciMirror = meta.jvmci.EspressoResolvedArrayType.allocateInstance(context);
             ArrayKlass arrayKlass = (ArrayKlass) klass;
-            arrayTypeConstructor.call(jvmciMirror, toJVMCIElementalType(arrayKlass.getElementalType(), objectTypeConstructor, forBasicType, initCheck, context, meta), arrayKlass.getDimension(),
+            arrayTypeConstructor.call(jvmciMirror, toJVMCIElementalType(arrayKlass.getElementalType(), objectTypeConstructor, forBasicType, context, meta), arrayKlass.getDimension(),
                             arrayKlass.mirror());
             return jvmciMirror;
         } else {
-            return toJVMCIElementalType(klass, objectTypeConstructor, forBasicType, initCheck, context, meta);
+            return toJVMCIElementalType(klass, objectTypeConstructor, forBasicType, context, meta);
         }
     }
 
-    static StaticObject toJVMCIObjectType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, InitCheck initCheck,
-                    EspressoContext context,
-                    Meta meta) {
+    static StaticObject toJVMCIObjectType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, EspressoContext context, Meta meta) {
         if (klass.isArray()) {
             StaticObject jvmciMirror = meta.jvmci.EspressoResolvedArrayType.allocateInstance(context);
             ArrayKlass arrayKlass = (ArrayKlass) klass;
-            arrayTypeConstructor.call(jvmciMirror, toJVMCIElementalType(arrayKlass.getElementalType(), objectTypeConstructor, forBasicType, initCheck, context, meta), arrayKlass.getDimension(),
+            arrayTypeConstructor.call(jvmciMirror, toJVMCIElementalType(arrayKlass.getElementalType(), objectTypeConstructor, forBasicType, context, meta), arrayKlass.getDimension(),
                             arrayKlass.mirror());
             return jvmciMirror;
         } else {
@@ -111,9 +106,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
         }
     }
 
-    static StaticObject toJVMCIElementalType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode forBasicType, InitCheck initCheck, EspressoContext context, Meta meta) {
+    static StaticObject toJVMCIElementalType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode forBasicType, EspressoContext context, Meta meta) {
         if (klass.isPrimitive()) {
-            return toJVMCIPrimitiveType(klass.getJavaKind(), forBasicType, initCheck, meta);
+            return toJVMCIPrimitiveType(klass.getJavaKind(), forBasicType, meta);
         } else {
             return toJVMCIInstanceType((ObjectKlass) klass, objectTypeConstructor, context, meta);
         }
@@ -127,15 +122,14 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
         }
     }
 
-    static StaticObject toJVMCIPrimitiveType(JavaKind kind, DirectCallNode forBasicType, InitCheck initCheck, Meta meta) {
-        initCheck.execute(meta.jvmci.EspressoResolvedPrimitiveType);
+    static StaticObject toJVMCIPrimitiveType(JavaKind kind, DirectCallNode forBasicType, Meta meta) {
+        meta.jvmci.EspressoResolvedPrimitiveType.safeInitialize();
         StaticObject result = (StaticObject) forBasicType.call(kind.getBasicType());
         assert !StaticObject.isNull(result);
         return result;
     }
 
     static StaticObject toJVMCIPrimitiveType(JavaKind kind, Meta meta) {
-        meta.jvmci.EspressoResolvedPrimitiveType.initialize();
         StaticObject result = (StaticObject) meta.jvmci.EspressoResolvedPrimitiveType_forBasicType.invokeDirectStatic(kind.getBasicType());
         assert !StaticObject.isNull(result);
         return result;
@@ -158,6 +152,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
     static StaticObject toJVMCIUnresolvedType(ByteSequence symbol, DirectCallNode createUnresolved, Meta meta) {
         assert Validation.validTypeDescriptor(symbol, true);
         assert (symbol.byteAt(0) == 'L' && symbol.byteAt(symbol.length() - 1) == ';') || symbol.byteAt(0) == '[' : symbol;
+        meta.jvmci.UnresolvedJavaType.safeInitialize();
         return (StaticObject) createUnresolved.call(meta.toGuestString(symbol));
     }
 

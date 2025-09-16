@@ -219,13 +219,41 @@ public class DeoptimizationUtils {
 
     static void removeDeoptTargetOptimizations(Suites suites) {
         GraalConfiguration.hostedInstance().removeDeoptTargetOptimizations(suites);
-
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         highTier.removePhase(PartialEscapePhase.class);
         highTier.removePhase(ReadEliminationPhase.class);
         highTier.removePhase(BoxNodeOptimizationPhase.class);
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         midTier.removePhase(FloatingReadPhase.class);
+        replaceFixReadsPhase(suites);
+    }
+
+    static void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
+        ListIterator<LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext>> it = lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class);
+        if (it != null) {
+            it.remove();
+        }
+        setNeverSpillConstants(lirSuites);
+    }
+
+    static void removeDeoptTargetFallbackOptimizations(@SuppressWarnings("unused") Suites suites) {
+        replaceFixReadsPhase(suites);
+    }
+
+    static void removeDeoptTargetFallbackOptimizations(LIRSuites lirSuites) {
+        setNeverSpillConstants(lirSuites);
+    }
+
+    /**
+     * At deoptimization entry points we need to be able to recreate the stack from the
+     * {@code LIRFrameState}. As constants are not part of the state, we must not spill them. See
+     * {@code VerifyDeoptLIRFrameStatesPhase#doState}.
+     */
+    private static void setNeverSpillConstants(LIRSuites lirSuites) {
+        lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
+    }
+
+    private static void replaceFixReadsPhase(Suites suites) {
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
         ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
         if (it != null) {
@@ -234,14 +262,6 @@ public class DeoptimizationUtils {
             boolean replaceInputsWithConstants = false;
             it.add(new FixReadsPhase(replaceInputsWithConstants, fixReads.getSchedulePhase()));
         }
-    }
-
-    static void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
-        ListIterator<LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext>> it = lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class);
-        if (it != null) {
-            it.remove();
-        }
-        lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
     public static boolean isDeoptEntry(HostedMethod method, CompilationResult compilation, Infopoint infopoint) {

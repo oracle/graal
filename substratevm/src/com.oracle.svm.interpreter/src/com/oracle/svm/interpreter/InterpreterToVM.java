@@ -691,7 +691,7 @@ public final class InterpreterToVM {
             if (!seedHub.isInterface()) {
                 vtableOffset += KnownOffsets.singleton().getVTableBaseOffset();
             } else {
-                vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getTypeID());
+                vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getInterfaceID());
             }
         }
         MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
@@ -732,7 +732,7 @@ public final class InterpreterToVM {
             if (!seedHub.isInterface()) {
                 return vTable[vTableIndex];
             } else {
-                int iTableStartingIndex = determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getTypeID());
+                int iTableStartingIndex = determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getInterfaceID());
                 return vTable[iTableStartingIndex + vTableIndex];
             }
         }

@@ -188,8 +188,8 @@ typedef union {
 typedef union {
   uint32_t value;
   struct {
-    uint32_t cores_per_cpu : 8,
-                           : 24;
+    uint32_t threads_per_cpu : 8,
+                             : 24;
   } bits;
 } ExtCpuid8Ecx;
 
@@ -265,7 +265,8 @@ typedef union {
       fast_short_rep_mov : 1,
                          : 9,
                serialize : 1,
-                         : 5,
+                  hybrid : 1,
+                         : 4,
                  cet_ibt : 1,
                          : 2,
             avx512_fp16  : 1,

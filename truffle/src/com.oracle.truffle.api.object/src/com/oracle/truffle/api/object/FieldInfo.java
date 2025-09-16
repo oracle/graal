@@ -68,7 +68,7 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
 
     FieldInfo(Class<?> type, String name, long offset, Class<? extends DynamicObject> declaringClass, VarHandle varHandle) {
         super(JDK21 ? offset : UNUSED_OFFSET, declaringClass);
-        if (type != Object.class && type != int.class && type != long.class) {
+        if (type != Object.class && type != long.class) {
             throw new IllegalArgumentException(type.getName());
         }
         this.offset = JDK21 ? UNUSED_OFFSET : offset;
@@ -112,14 +112,6 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
 
     public String name() {
         return name;
-    }
-
-    public int getBytes() {
-        if (type == long.class) {
-            return Long.BYTES;
-        }
-        assert type == int.class;
-        return Integer.BYTES;
     }
 
     @Override

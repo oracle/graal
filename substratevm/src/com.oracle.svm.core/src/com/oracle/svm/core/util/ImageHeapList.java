@@ -25,7 +25,6 @@
 package com.oracle.svm.core.util;
 
 import java.lang.reflect.Array;
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -57,17 +56,17 @@ import com.oracle.svm.core.BuildPhaseProvider;
 public final class ImageHeapList {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <E> List<E> create(Class<E> elementClass) {
+    public static <E> AbstractImageHeapList<E> create(Class<E> elementClass) {
         return create(elementClass, null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static List<?> createGeneric(Class<?> elementClass) {
+    public static AbstractImageHeapList<?> createGeneric(Class<?> elementClass) {
         return create(elementClass, null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <E> List<E> create(Class<E> elementClass, Comparator<E> comparator) {
+    public static <E> AbstractImageHeapList<E> create(Class<E> elementClass, Comparator<E> comparator) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapList after analysis.");
         return new HostedImageHeapList<>(elementClass, comparator);
     }
@@ -76,7 +75,7 @@ public final class ImageHeapList {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static final class HostedImageHeapList<E> extends AbstractList<E> {
+    public static final class HostedImageHeapList<E> extends AbstractImageHeapList<E> {
         private final Comparator<E> comparator;
         private final List<E> hostedList;
         private final RuntimeImageHeapList<E> runtimeList;

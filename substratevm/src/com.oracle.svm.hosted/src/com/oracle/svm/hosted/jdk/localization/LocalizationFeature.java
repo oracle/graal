@@ -81,6 +81,7 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -102,6 +103,7 @@ import sun.util.cldr.CLDRLocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
+import sun.util.spi.CalendarProvider;
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -279,6 +281,7 @@ public class LocalizationFeature implements InternalFeature {
              */
             addProviders();
         }
+        this.imageClassLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader();
     }
 
     @Override
@@ -297,7 +300,6 @@ public class LocalizationFeature implements InternalFeature {
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
 
-        this.imageClassLoader = access.getImageClassLoader();
     }
 
     /**
@@ -429,7 +431,8 @@ public class LocalizationFeature implements InternalFeature {
                     TimeZoneNameProvider.class,
                     JavaTimeDateTimePatternProvider.class,
                     CalendarDataProvider.class,
-                    CalendarNameProvider.class);
+                    CalendarNameProvider.class,
+                    CalendarProvider.class);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addProviders() {

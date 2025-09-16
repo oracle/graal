@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -379,6 +379,7 @@ public final class JNIFunctions {
     static int RegisterNatives(JNIEnvironment env, JNIObjectHandle hclazz, JNINativeMethod methods, int nmethods) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         Pointer p = (Pointer) methods;
+        String declaringClass = MetaUtil.toInternalName(clazz.getName());
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
             CharSequence name = Utf8.wrapUtf8CString(entry.name());
@@ -393,7 +394,6 @@ public final class JNIFunctions {
 
             CFunctionPointer fnPtr = entry.fnPtr();
 
-            String declaringClass = MetaUtil.toInternalName(clazz.getName());
             JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(declaringClass, name, signature);
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);

@@ -47,7 +47,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -67,7 +66,7 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -222,7 +221,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
-public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenerationProvider {
+public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64MacroAssembler> implements LIRGenerationProvider {
 
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
@@ -854,8 +853,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
-            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key);
+        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                        boolean inputMayBeOutOfRange) {
+            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, inputMayBeOutOfRange);
             markIndirectBranchTargets(targets);
         }
 
@@ -1922,6 +1922,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return crb;
     }
 
+    @Override
     protected AMD64MacroAssembler createAssembler(OptionValues options) {
         return new AMD64MacroAssembler(getTarget(), options, true);
     }
@@ -1959,11 +1960,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
             optimizeLongJumps(crb);
         }
-    }
-
-    public AMD64Assembler createAssemblerNoOptions() {
-        OptionValues o = new OptionValues(EconomicMap.create());
-        return createAssembler(o);
     }
 
     protected void resetForEmittingCode(CompilationResultBuilder crb) {
