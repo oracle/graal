@@ -2840,6 +2840,17 @@
         ]
       },
       {
+        "name": "java.applet.Applet",
+        "methods": [
+          {
+            "name": "setStub",
+            "parameterTypes": [
+              "java.applet.AppletStub"
+            ]
+          }
+        ]
+      },
+      {
         "name": "java.awt.Button",
         "methods": [
           {

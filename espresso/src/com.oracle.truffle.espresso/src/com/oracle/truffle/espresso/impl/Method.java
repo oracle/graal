@@ -1961,10 +1961,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         private void checkPoisonPill(Meta meta) {
             if (poisonPill) {
                 // Conflicting Maximally-specific non-abstract interface methods.
-                if (getJavaVersion().inRange(9, 25) && getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.HOTSPOT) {
+                if (getJavaVersion().java9OrLater() && getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.HOTSPOT) {
                     /*
                      * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface),
-                     * but HotSpot throws AbstractMethodError. See JDK-8356942.
+                     * but HotSpot throws AbstractMethodError.
                      */
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getName());
                 }
