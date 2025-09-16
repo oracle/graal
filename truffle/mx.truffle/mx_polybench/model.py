@@ -284,6 +284,7 @@ class PolybenchBenchmarkSuite(
         "application-memory-metric": "application-memory",
         "none": None,
     }
+    REUSE_DISK_IMAGES = "POLYBENCH_REUSE_DISK_IMAGES"
 
     def __init__(self):
         super(PolybenchBenchmarkSuite, self).__init__()
@@ -333,14 +334,14 @@ class PolybenchBenchmarkSuite(
         working_directory = self.workingDirectory(benchmarks, bmSuiteArgs) or os.getcwd()
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
 
-        mx.log(f'Running polybench benchmark "{resolved_benchmark.name}"".')
+        mx.log(f'Running polybench benchmark "{resolved_benchmark.name}".')
         mx.logv(f"CWD: {working_directory}")
         mx.logv(f"Languages included on the classpath: {resolved_benchmark.suite.languages}")
 
         env_vars = PolybenchBenchmarkSuite._prepare_distributions(working_directory, resolved_benchmark)
-        with _extend_env(env_vars):
+        with _extend_env(env_vars), self._set_image_context(resolved_benchmark, bmSuiteArgs):
             if self._can_use_image_cache(bmSuiteArgs):
-                return self._run_with_image_cache(resolved_benchmark, benchmarks, bmSuiteArgs)
+                return self._run_with_image_cache(benchmarks, bmSuiteArgs)
             else:
                 return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
@@ -380,13 +381,10 @@ class PolybenchBenchmarkSuite(
     def _can_use_image_cache(self, bm_suite_args) -> bool:
         return self.is_native_mode(bm_suite_args) and "pgo" not in self.jvmConfig(bm_suite_args)
 
-    def _run_with_image_cache(
-        self, resolved_benchmark: ResolvedPolybenchBenchmark, benchmarks: List[str], bm_suite_args: List[str]
-    ) -> DataPoints:
-        with self._set_image_context(resolved_benchmark, bm_suite_args):
-            image_build_datapoints = self._build_cached_image(benchmarks, bm_suite_args)
-            image_run_datapoints = self._run_cached_image(benchmarks, bm_suite_args)
-            return list(image_build_datapoints) + list(image_run_datapoints)
+    def _run_with_image_cache(self, benchmarks: List[str], bm_suite_args: List[str]) -> DataPoints:
+        image_build_datapoints = self._build_cached_image(benchmarks, bm_suite_args)
+        image_run_datapoints = self._run_cached_image(benchmarks, bm_suite_args)
+        return list(image_build_datapoints) + list(image_run_datapoints)
 
     @contextlib.contextmanager
     def _set_image_context(self, resolved_benchmark: ResolvedPolybenchBenchmark, bm_suite_args: List[str]):
@@ -404,12 +402,11 @@ class PolybenchBenchmarkSuite(
 
     def _base_image_name(self) -> Optional[str]:
         """Overrides the image name used to build/run the image."""
-        if self._current_image:
-            return self._current_image.full_executable_name()
-        return None
+        assert self._current_image, "Image should have been set already"
+        return self._current_image.full_executable_name()
 
     def _build_cached_image(self, benchmarks: List[str], bm_suite_args: List[str]) -> DataPoints:
-        if self._current_image in self._image_cache:
+        if self._image_is_cached(bm_suite_args):
             # already built
             return []
 
@@ -422,14 +419,33 @@ class PolybenchBenchmarkSuite(
             datapoint["benchmark"] = self._current_image.executable_name()
         return image_build_datapoints
 
+    def _image_is_cached(self, bm_suite_args: List[str]) -> bool:
+        if self._current_image in self._image_cache:
+            return True
+
+        if mx.get_env(PolybenchBenchmarkSuite.REUSE_DISK_IMAGES) in ["true", "True"]:
+            full_image_name = self.get_full_image_name(self.get_base_image_name(), self.jvmConfig(bm_suite_args))
+            image_path = self.get_image_output_dir(
+                self.benchmark_output_dir(self.benchmark_name, self.vmArgs(bm_suite_args)), full_image_name
+            ) / self.get_image_file_name(full_image_name)
+            if os.path.exists(image_path):
+                mx.warn(
+                    f"Existing image at {image_path} will be reused ({PolybenchBenchmarkSuite.REUSE_DISK_IMAGES} is set to true). "
+                    "Reusing disk images is a development feature and it does not detect stale images. Use with caution."
+                )
+                self._image_cache.add(self._current_image)
+                return True
+
+        return False
+
     def _run_cached_image(self, benchmarks: List[str], bm_suite_args: List[str]) -> DataPoints:
         return self.intercept_run(
             super(), benchmarks, self._extend_vm_args(bm_suite_args, ["-Dnative-image.benchmark.stages=run"])
         )
 
     def _extend_vm_args(self, bm_suite_args: List[str], new_vm_args: List[str]) -> List[str]:
-        vmArgs, runArgs = self.vmAndRunArgs(bm_suite_args)
-        return vmArgs + new_vm_args + ["--"] + runArgs
+        vm_args, run_args = self.vmAndRunArgs(bm_suite_args)
+        return vm_args + new_vm_args + ["--"] + run_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
@@ -596,6 +612,7 @@ class ExcludeWarmupRule(mx_benchmark.StdOutRule):
 
 @contextlib.contextmanager
 def _extend_env(env_vars: Dict[str, str]):
+    """Temporarily extends the environment variables for the extent of this context."""
     old_env = dict(os.environ)
     try:
         for k, v in env_vars.items():
