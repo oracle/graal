@@ -172,7 +172,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
             if (replayCompilationSupport != null) {
-                factory = replayCompilationSupport.decorateBackendFactory(factory, jvmciRuntime);
+                factory = replayCompilationSupport.decorateBackendFactory(factory);
             }
             hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }

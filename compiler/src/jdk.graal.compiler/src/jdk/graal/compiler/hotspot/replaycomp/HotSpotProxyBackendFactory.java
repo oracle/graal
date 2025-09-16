@@ -32,7 +32,6 @@ import jdk.graal.compiler.hotspot.SnippetObjectConstant;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -49,12 +48,11 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
 
     private final ReplayCompilationSupport replayCompilationSupport;
 
-    private final HotSpotJVMCIRuntime jvmciRuntime;
+    private MetaAccessProvider metaAccessProviderProxy;
 
-    HotSpotProxyBackendFactory(CompilationProxies proxies, ReplayCompilationSupport replayCompilationSupport, HotSpotJVMCIRuntime jvmciRuntime) {
+    HotSpotProxyBackendFactory(CompilationProxies proxies, ReplayCompilationSupport replayCompilationSupport) {
         this.proxies = proxies;
         this.replayCompilationSupport = replayCompilationSupport;
-        this.jvmciRuntime = jvmciRuntime;
     }
 
     @Override
@@ -64,13 +62,14 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
          * mirrors. We must identify the local mirrors before initialization continues to avoid
          * creating duplicate proxies for equivalent local mirrors.
          */
-        replayCompilationSupport.findLocalMirrors(jvmciRuntime);
+        replayCompilationSupport.findLocalMirrors();
     }
 
     @Override
     public MetaAccessProvider decorateMetaAccessProvider(MetaAccessProvider metaAccess) {
         // Do not record snippet types in libgraal - decorate the JVMCI meta access only.
-        return new HotSpotSnippetMetaAccessProvider((MetaAccessProvider) proxies.proxify(metaAccess));
+        metaAccessProviderProxy = (MetaAccessProvider) proxies.proxify(metaAccess);
+        return new HotSpotSnippetMetaAccessProvider(metaAccessProviderProxy);
     }
 
     @Override
@@ -80,7 +79,7 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
         return new DecoratedConstantReflectionProvider(delegate);
     }
 
-    private static final class DecoratedConstantReflectionProvider extends HotSpotConstantReflectionProvider {
+    private final class DecoratedConstantReflectionProvider extends HotSpotConstantReflectionProvider {
         private final HotSpotConstantReflectionProvider delegate;
 
         private DecoratedConstantReflectionProvider(HotSpotConstantReflectionProvider delegate) {
@@ -143,7 +142,7 @@ class HotSpotProxyBackendFactory implements HotSpotBackendFactoryDecorators {
                  * Avoid recording an operation with the snippet constant, which is not
                  * serializable.
                  */
-                return objectConstant.asObject(ResolvedJavaType.class);
+                return metaAccessProviderProxy.lookupJavaType(objectConstant.asObject(Object.class).getClass());
             } else {
                 return delegate.asJavaType(constant);
             }

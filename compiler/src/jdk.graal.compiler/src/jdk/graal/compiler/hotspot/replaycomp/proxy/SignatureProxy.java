@@ -47,8 +47,8 @@ public final class SignatureProxy extends CompilationProxyBase implements Signat
         return (int) handle(getParameterCountMethod, getParameterCountInvokable, rec);
     }
 
-    public static final SymbolicMethod getParameterTypeMethod = method("getParameterType", int.class, ResolvedJavaType.class);
-    public static final InvokableMethod getParameterTypeInvokable = (receiver, args) -> ((Signature) receiver).getParameterType((int) args[0], (ResolvedJavaType) args[1]);
+    private static final SymbolicMethod getParameterTypeMethod = method("getParameterType", int.class, ResolvedJavaType.class);
+    private static final InvokableMethod getParameterTypeInvokable = (receiver, args) -> ((Signature) receiver).getParameterType((int) args[0], (ResolvedJavaType) args[1]);
 
     @Override
     public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {

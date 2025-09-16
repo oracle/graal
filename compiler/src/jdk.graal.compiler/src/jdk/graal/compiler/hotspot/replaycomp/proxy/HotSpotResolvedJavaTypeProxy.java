@@ -281,7 +281,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (HotSpotResolvedObjectType) handle(findLeastCommonAncestorMethod, findLeastCommonAncestorInvokable, otherType);
     }
 
-    public static final SymbolicMethod isPrimitiveMethod = method("isPrimitive");
+    private static final SymbolicMethod isPrimitiveMethod = method("isPrimitive");
     private static final InvokableMethod isPrimitiveInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isPrimitive();
 
     @Override

@@ -89,15 +89,15 @@ public final class HotSpotResolvedObjectTypeProxy extends HotSpotResolvedJavaTyp
         return (Constant) handle(klassMethod, klassInvokable);
     }
 
-    public static final SymbolicMethod isPrimaryTypeMethod = method("isPrimaryType");
-    public static final InvokableMethod isPrimaryTypeInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isPrimaryType();
+    private static final SymbolicMethod isPrimaryTypeMethod = method("isPrimaryType");
+    private static final InvokableMethod isPrimaryTypeInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isPrimaryType();
 
     @Override
     public boolean isPrimaryType() {
         return (boolean) handle(isPrimaryTypeMethod, isPrimaryTypeInvokable);
     }
 
-    public static final SymbolicMethod superCheckOffsetMethod = method("superCheckOffset");
+    private static final SymbolicMethod superCheckOffsetMethod = method("superCheckOffset");
     private static final InvokableMethod superCheckOffsetInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).superCheckOffset();
 
     @Override
