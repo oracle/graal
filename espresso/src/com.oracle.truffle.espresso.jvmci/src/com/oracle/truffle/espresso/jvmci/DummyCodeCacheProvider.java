@@ -39,7 +39,7 @@ public final class DummyCodeCacheProvider implements CodeCacheProvider {
     }
 
     @Override
-    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode installedCode, SpeculationLog log, boolean isDefault, boolean profileDeopt) {
+    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode installedCode, SpeculationLog log, boolean isDefault) {
         throw JVMCIError.unimplemented();
     }
 

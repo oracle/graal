@@ -225,7 +225,7 @@ public abstract class Stub {
                                     DebugContext.Activation a = debug.activate()) {
                         assert destroyedCallerRegisters != null;
                         HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult, options);
-                        code = codeCache.installCode(null, compiledCode, null, null, false, false);
+                        code = codeCache.installCode(null, compiledCode, null, null, false);
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }

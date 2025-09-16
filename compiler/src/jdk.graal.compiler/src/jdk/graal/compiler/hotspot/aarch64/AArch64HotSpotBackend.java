@@ -159,7 +159,6 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     CompilationResult compilationResult,
                     InstalledCode predefinedInstalledCode,
                     boolean isDefault,
-                    boolean profileDeopt,
                     Object[] context) {
         boolean isStub = (method == null);
         if (!isStub) {
@@ -171,7 +170,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             // in manually assembled code in CodeGenTest cases.
             assert hasInvalidatePlaceholder(compilationResult);
         }
-        return super.createInstalledCode(debug, method, compilationRequest, compilationResult, predefinedInstalledCode, isDefault, profileDeopt, context);
+        return super.createInstalledCode(debug, method, compilationRequest, compilationResult, predefinedInstalledCode, isDefault, context);
     }
 
     private boolean hasInvalidatePlaceholder(CompilationResult compilationResult) {

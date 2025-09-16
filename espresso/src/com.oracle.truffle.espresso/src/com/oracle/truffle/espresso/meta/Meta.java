@@ -947,12 +947,15 @@ public final class Meta extends ContextAccessImpl
                         .klass();
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.requireDeclaredField(Names.constantPoolOop, Types.java_lang_Object);
 
+        sun_misc_Cleaner = diff() //
+                        .klass(VERSION_8_OR_LOWER, Types.sun_misc_Cleaner) //
+                        .klass(VERSION_9_OR_HIGHER, Types.jdk_internal_ref_Cleaner) //
+                        .klass();
+
         if (getJavaVersion().java8OrEarlier()) {
             java_lang_ref_Reference_pending = java_lang_ref_Reference.requireDeclaredField(Names.pending, Types.java_lang_ref_Reference);
-            sun_misc_Cleaner = knownKlass(Types.sun_misc_Cleaner);
         } else {
             java_lang_ref_Reference_pending = null;
-            sun_misc_Cleaner = null;
         }
         java_lang_ref_Reference_lock = diff() //
                         .field(VERSION_8_OR_LOWER, Names.lock, Types.java_lang_ref_Reference$Lock) //
