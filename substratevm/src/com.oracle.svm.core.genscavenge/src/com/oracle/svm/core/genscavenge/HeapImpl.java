@@ -385,7 +385,7 @@ public final class HeapImpl extends Heap {
 
         @Override
         public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+            if (!access.isWritable(region) && !access.usesUnalignedChunks(region)) {
                 access.visitObjects(region, this);
             }
         }
@@ -765,22 +765,22 @@ public final class HeapImpl extends Heap {
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            if (info.isInReadOnlyRegularPartition(ptr)) {
+            if (info.isInAlignedReadOnly(ptr)) {
                 log.string("points into the image heap (read-only)");
                 return true;
-            } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
+            } else if (info.isInAlignedReadOnlyRelocatable(ptr)) {
                 log.string("points into the image heap (read-only relocatables)");
                 return true;
-            } else if (info.isInWritablePatchedPartition(ptr)) {
+            } else if (info.isInAlignedWritablePatched(ptr)) {
                 log.string("points into the image heap (writable patched)");
                 return true;
-            } else if (info.isInWritableRegularPartition(ptr)) {
+            } else if (info.isInAlignedWritable(ptr)) {
                 log.string("points into the image heap (writable)");
                 return true;
-            } else if (info.isInWritableHugePartition(ptr)) {
+            } else if (info.isInUnalignedWritable(ptr)) {
                 log.string("points into the image heap (writable huge)");
                 return true;
-            } else if (info.isInReadOnlyHugePartition(ptr)) {
+            } else if (info.isInUnalignedReadOnly(ptr)) {
                 log.string("points into the image heap (read-only huge)");
                 return true;
             }
@@ -933,7 +933,7 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Image heap boundaries:").indent(true);
+            log.string("Image heap:").indent(true);
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 info.print(log);
             }
@@ -942,7 +942,7 @@ public final class HeapImpl extends Heap {
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxHeapInfo != null) {
-                    log.string("Auxiliary image heap boundaries:").indent(true);
+                    log.string("Auxiliary image heap:").indent(true);
                     auxHeapInfo.print(log);
                     log.indent(false);
                 }
