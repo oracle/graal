@@ -7006,13 +7006,13 @@ public final class TruffleString extends AbstractTruffleString {
             if (a.isEmpty()) {
                 return "";
             }
-            TruffleString cur = a.next;
-            if (cur != null) {
+            TruffleString cur;
+            if (a.isCompatibleToIntl(Encoding.UTF_16) || (cur = a.next) == null) {
+                cur = a;
+            } else {
                 while (cur != a && !cur.isCompatibleToIntl(Encoding.UTF_16)) {
                     cur = cur.next;
                 }
-            } else {
-                cur = a;
             }
             Encoding encodingA = Encoding.get(cur.encoding());
             final AbstractTruffleString utf16String;
