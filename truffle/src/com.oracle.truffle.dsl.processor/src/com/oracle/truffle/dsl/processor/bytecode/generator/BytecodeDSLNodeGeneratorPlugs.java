@@ -53,6 +53,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.InterpreterTier;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -64,6 +65,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.NodeExecutionMode;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -105,11 +107,10 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         if (model.hasYieldOperation()) {
             result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$stackFrame"));
         }
-        result.addAll(List.of(
-                        new CodeVariableElement(nodeType, "$bytecode"),
-                        new CodeVariableElement(context.getType(byte[].class), "$bc"),
-                        new CodeVariableElement(context.getType(int.class), "$bci"),
-                        new CodeVariableElement(context.getType(int.class), "$sp")));
+        result.add(new CodeVariableElement(nodeType, "$bytecode"));
+        result.add(new CodeVariableElement(context.getType(byte[].class), "$bc"));
+        result.add(new CodeVariableElement(context.getType(int.class), "$bci"));
+        result.add(new CodeVariableElement(context.getType(int.class), "$sp"));
         return result;
     }
 
@@ -129,6 +130,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     public boolean canBoxingEliminateType(NodeExecutionData currentExecution, TypeMirror type) {
         return model.isBoxingEliminated(type);
+    }
+
+    public void beforeCallSpecialization(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState,
+                    SpecializationData specialization) {
+
+        InterpreterTier tier = frameState.getMode() == NodeExecutionMode.UNCACHED ? InterpreterTier.UNCACHED : InterpreterTier.CACHED;
+        if (BytecodeRootNodeElement.isStoreBciBeforeSpecialization(model, tier, instruction, specialization)) {
+            BytecodeRootNodeElement.storeBciInFrame(builder, "frameValue", "$bci");
+        }
     }
 
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int specializationIndex) {

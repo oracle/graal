@@ -92,8 +92,11 @@ public interface NodeGeneratorPlugs {
     }
 
     @SuppressWarnings("unused")
-    default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
+    default void beforeCallSpecialization(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
+    }
 
+    @SuppressWarnings("unused")
+    default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
     }
 
     @SuppressWarnings("unused")

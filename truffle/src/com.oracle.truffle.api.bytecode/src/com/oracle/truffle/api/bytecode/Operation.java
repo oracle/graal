@@ -45,6 +45,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 
 /**
@@ -132,5 +134,23 @@ public @interface Operation {
      * @since 24.2
      */
     String javadoc() default "";
+
+    /**
+     * Indicates whether this operation requires the bytecode index to be updated. By default, the
+     * DSL assumes that all operations with caches require the bytecode index to be updated. The DSL
+     * will emit a warning if specifying this attribute is necessary.
+     * <p>
+     * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
+     * annotation can be used to enable this property for individual {@link Specialization} or
+     * {@link Fallback}-annotated methods.
+     * <p>
+     * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is
+     * set to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter()
+     * uncached interpreter tier} is enabled.
+     *
+     * @see StoreBytecodeIndex
+     * @since 26.0
+     */
+    boolean storeBytecodeIndex() default true;
 
 }

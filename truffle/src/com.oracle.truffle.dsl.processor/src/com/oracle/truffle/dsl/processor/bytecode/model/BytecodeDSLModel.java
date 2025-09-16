@@ -313,6 +313,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (customRegularOperations.containsKey(typeElement)) {
             throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
         }
+
         customRegularOperations.put(typeElement, customOp);
         operationsToCustomOperations.put(op, customOp);
 
@@ -359,7 +360,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel customOp = new CustomOperationModel(context, this, null, mirror, op);
+        CustomOperationModel customOp = new CustomOperationModel(context, this, this.getTemplateType(), mirror, op);
         customShortCircuitOperations.add(customOp);
         operationsToCustomOperations.put(op, customOp);
 
