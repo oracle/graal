@@ -62,7 +62,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotResolvedObjectTypeProxy;
 import jdk.graal.compiler.hotspot.stubs.AbstractForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
@@ -533,8 +532,6 @@ public class SymbolicSnippetEncoder {
         lookupSnippetType(SnippetTemplate.SnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
         lookupSnippetType(HotSpotSpeculationLog.HotSpotSpeculation.class);
-        // Needed to pass constant type parameters to snippets when recording/replaying.
-        lookupSnippetType(HotSpotResolvedObjectTypeProxy.class);
 
         registerAbstractForeignCallStubInfo();
 

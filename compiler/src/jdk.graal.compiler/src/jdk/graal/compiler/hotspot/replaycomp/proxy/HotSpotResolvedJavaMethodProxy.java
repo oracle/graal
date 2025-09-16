@@ -372,7 +372,7 @@ public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.C
         return (boolean) handle(hasCompiledCodeAtLevelMethod, hasCompiledCodeAtLevelInvokable, level);
     }
 
-    public static final SymbolicMethod vtableEntryOffsetMethod = method("vtableEntryOffset", ResolvedJavaType.class);
+    private static final SymbolicMethod vtableEntryOffsetMethod = method("vtableEntryOffset", ResolvedJavaType.class);
     private static final InvokableMethod vtableEntryOffsetInvokable = (receiver, args) -> ((HotSpotResolvedJavaMethod) receiver).vtableEntryOffset((ResolvedJavaType) args[0]);
 
     @Override

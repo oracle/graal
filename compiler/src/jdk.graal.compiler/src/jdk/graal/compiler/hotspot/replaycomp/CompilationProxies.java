@@ -73,11 +73,4 @@ public interface CompilationProxies {
      * @return a debug closeable object representing the debug context
      */
     DebugCloseable withDebugContext(DebugContext debugContext);
-
-    /**
-     * Enters the context of a method compilation.
-     *
-     * @return a scope for the context
-     */
-    DebugCloseable enterCompilationContext();
 }

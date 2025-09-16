@@ -30,11 +30,10 @@ import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEINTERFACE;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESPECIAL;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESTATIC;
 import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
-import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy.wrapInvocationExceptions;
 import static jdk.graal.compiler.java.StableMethodNameFormatter.isMethodHandle;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Formattable;
@@ -56,7 +55,6 @@ import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilerProfilerProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.ConstantPoolProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotCodeCacheProviderProxy;
-import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotConstantProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotConstantReflectionProviderProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotMetaspaceConstantProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.HotSpotObjectConstantProxy;
@@ -71,8 +69,6 @@ import jdk.graal.compiler.hotspot.replaycomp.proxy.SignatureProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.SpeculationLogProxy;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -85,14 +81,10 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotResolvedPrimitiveType;
-import jdk.vm.ci.hotspot.HotSpotRuntimeStub;
 import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -229,10 +221,10 @@ public final class CompilerInterfaceDeclarations {
          * @param proxy the proxy receiver
          * @param method the invoked method
          * @param args the arguments to the method
-         * @param metaAccess the host meta accces
+         * @param singletonObjects a map of provider classes to instances
          * @return the result of the operation
          */
-        Object apply(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, MetaAccessProvider metaAccess);
+        Object apply(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects);
     }
 
     /**
@@ -245,12 +237,10 @@ public final class CompilerInterfaceDeclarations {
          * found.
          *
          * @param proxy the proxy object
-         * @param metaAccess the unprofixied host meta access
-         * @param constantReflection the unproxified host constant reflection
-         * @param jvmciRuntime the JVMCI runtime
+         * @param singletonObjects a map of provider classes to instances
          * @return the local mirror or {@code null}
          */
-        Object findLocalMirror(Object proxy, MetaAccessProvider metaAccess, HotSpotConstantReflectionProvider constantReflection, HotSpotJVMCIRuntime jvmciRuntime);
+        Object findLocalMirror(Object proxy, EconomicMap<Class<?>, Object> singletonObjects);
     }
 
     /**
@@ -345,15 +335,15 @@ public final class CompilerInterfaceDeclarations {
          * @param proxy the proxy receiver object
          * @param method the invoked method
          * @param args the arguments passed to the invocation
-         * @param metaAccess the host meta access
+         * @param singletonObjects a map of provider classes to instances
          * @return the default value
          */
-        public Object findDefaultValue(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, MetaAccessProvider metaAccess) {
+        public Object findDefaultValue(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects) {
             MethodRegistration found = methods.get(method);
             if (found == null) {
                 return null;
             } else if (found.defaultValueSupplier != null) {
-                return found.defaultValueSupplier.apply(proxy, method, args, metaAccess);
+                return found.defaultValueSupplier.apply(proxy, method, args, singletonObjects);
             } else {
                 return found.defaultValue;
             }
@@ -518,7 +508,7 @@ public final class CompilerInterfaceDeclarations {
         public RegistrationBuilder<T> ensureRecorded(CompilationProxy.SymbolicMethod symbolicMethod, CompilationProxy.InvokableMethod invokableMethod, Object... arguments) {
             MethodRegistrationBuilder builder = findRegistrationBuilder(symbolicMethod);
             builder.callsToRecordArguments.add(arguments);
-            builder.invokableMethod = wrapInvocationExceptions(invokableMethod);
+            builder.invokableMethod = invokableMethod;
             return this;
         }
 
@@ -648,7 +638,7 @@ public final class CompilerInterfaceDeclarations {
                 .setStrategy(HotSpotConstantReflectionProviderProxy.asJavaClassMethod, MethodStrategy.Passthrough)
                 .setStrategy(HotSpotConstantReflectionProviderProxy.asObjectHubMethod, MethodStrategy.Passthrough)
                 .setDefaultValueSupplier(HotSpotConstantReflectionProviderProxy.asJavaTypeMethod,
-                        (proxy, method, args, metaAccess) -> {
+                        (proxy, method, args, singletonObjects) -> {
                             if (args[0] instanceof HotSpotMetaspaceConstant constant) {
                                 return constant.asResolvedJavaType();
                             }
@@ -656,16 +646,19 @@ public final class CompilerInterfaceDeclarations {
                         })
                 .register(declarations);
         new RegistrationBuilder<>(MethodHandleAccessProvider.class)
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) ->
-                    constantReflection.getMethodHandleAccess())
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
+                    HotSpotConstantReflectionProvider provider = (HotSpotConstantReflectionProvider) singletonObjects.get(HotSpotConstantReflectionProvider.class);
+                    return provider.getMethodHandleAccess();
+                })
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotMemoryAccessProvider.class)
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) ->
-                    constantReflection.getMemoryAccessProvider())
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
+                    HotSpotConstantReflectionProvider provider = (HotSpotConstantReflectionProvider) singletonObjects.get(HotSpotConstantReflectionProvider.class);
+                    return provider.getMemoryAccessProvider();
+                })
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotCodeCacheProvider.class).setSingleton(true)
                 .setDefaultValueStrategy(HotSpotCodeCacheProviderProxy.installCodeMethod, null)
-                .setDefaultValueSupplier(HotSpotCodeCacheProviderProxy.installCodeMethod, CompilerInterfaceDeclarations::installCodeReplacement)
                 // Interpreter frame size is not tracked since the arguments are not serializable.
                 .setDefaultValueStrategy(HotSpotCodeCacheProviderProxy.interpreterFrameSizeMethod, 0)
                 .register(declarations);
@@ -677,7 +670,20 @@ public final class CompilerInterfaceDeclarations {
         new RegistrationBuilder<>(HotSpotResolvedObjectType.class, HotSpotResolvedJavaType.class)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getNameMethod, HotSpotResolvedObjectTypeProxy.getNameInvokable)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getModifiersMethod, HotSpotResolvedObjectTypeProxy.getModifiersInvokable)
-                .setLocalMirrorLocator(CompilerInterfaceDeclarations::findObjectTypeMirror)
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
+                    MetaAccessProvider metaAccess = (MetaAccessProvider) singletonObjects.get(MetaAccessProvider.class);
+                    HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) proxy;
+                    Class<?> clazz;
+                    try {
+                        clazz = Class.forName(type.toClassName());
+                    } catch (ClassNotFoundException e) {
+                        return null;
+                    }
+                    if (Proxy.class.isAssignableFrom(clazz)) {
+                        return null;
+                    }
+                    return metaAccess.lookupJavaType(clazz);
+                })
                 // getComponentType() is used by the default implementation of isArray().
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getComponentTypeMethod, HotSpotResolvedObjectTypeProxy.getComponentTypeInvokable)
                 .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, MethodStrategy.Passthrough)
@@ -687,15 +693,12 @@ public final class CompilerInterfaceDeclarations {
                         HotSpotResolvedObjectTypeProxy.getInstanceFieldsInvokable, new Object[]{true}) // For snippet decoding
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getStaticFieldsMethod, HotSpotResolvedObjectTypeProxy.getStaticFieldsInvokable) // For snippet decoding
                 .setDefaultValueStrategy(HotSpotResolvedObjectTypeProxy.getJavaKindMethod, JavaKind.Object)
-                .setDefaultValueStrategy(HotSpotResolvedJavaTypeProxy.isPrimitiveMethod, false)
-                .setDefaultValueSupplier(HotSpotResolvedObjectTypeProxy.findLeastCommonAncestorMethod, (proxy1, method1, args1, metaAccess) -> metaAccess.lookupJavaType(Object.class))
+                .setDefaultValueSupplier(HotSpotResolvedObjectTypeProxy.findLeastCommonAncestorMethod, CompilerInterfaceDeclarations::javaLangObjectSupplier)
                 .setDefaultValue(HotSpotResolvedObjectTypeProxy.isAssignableFromMethod, false)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.isInterfaceMethod, HotSpotResolvedObjectTypeProxy.isInterfaceInvokable)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.klassMethod, HotSpotResolvedObjectTypeProxy.klassInvokable)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getJavaMirrorMethod, HotSpotResolvedObjectTypeProxy.getJavaMirrorInvokable)
                 .setDefaultValue(HotSpotResolvedObjectTypeProxy.isInitializedMethod, false)
-                .ensureRecorded(HotSpotResolvedObjectTypeProxy.isPrimaryTypeMethod, HotSpotResolvedObjectTypeProxy.isPrimaryTypeInvokable) // For InstanceOfSnippets after divergence
-                .setDefaultValue(HotSpotResolvedObjectTypeProxy.superCheckOffsetMethod, 0) // For InstanceOfSnippets after divergence
                 .provideMethodCallsToRecord((input) -> {
                     HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) input;
                     if (!type.isArray() && !type.isInterface()) {
@@ -710,8 +713,7 @@ public final class CompilerInterfaceDeclarations {
                 .ensureRecorded(HotSpotResolvedJavaTypeProxy.getNameMethod, HotSpotResolvedJavaTypeProxy.getNameInvokable)
                 .ensureRecorded(HotSpotResolvedJavaTypeProxy.getJavaKindMethod, HotSpotResolvedJavaTypeProxy.getJavaKindInvokable)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getComponentTypeMethod, HotSpotResolvedObjectTypeProxy.getComponentTypeInvokable)
-                .setDefaultValueStrategy(HotSpotResolvedJavaTypeProxy.isPrimitiveMethod, true)
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) -> {
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
                     HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) proxy;
                     return HotSpotResolvedPrimitiveType.forKind(type.getJavaKind());
                 })
@@ -725,9 +727,8 @@ public final class CompilerInterfaceDeclarations {
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.isConstructorMethod, HotSpotResolvedJavaMethodProxy.isConstructorInvokable)
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.canBeStaticallyBoundMethod, HotSpotResolvedJavaMethodProxy.canBeStaticallyBoundInvokable)
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.getCodeMethod, HotSpotResolvedJavaMethodProxy.getCodeInvokable)
-                .setDefaultValue(HotSpotResolvedJavaMethodProxy.vtableEntryOffsetMethod, 0) // For LoadMethodNode lowering after divergence
                 .setStrategy(HotSpotResolvedJavaMethodProxy.formatToMethod, MethodStrategy.DefaultValue)
-                .setDefaultValueSupplier(HotSpotResolvedJavaMethodProxy.formatToMethod, (proxy, method, args, metaAccess) -> {
+                .setDefaultValueSupplier(HotSpotResolvedJavaMethodProxy.formatToMethod, (proxy, method, args, singletonObjects) -> {
                     ResolvedJavaMethod receiver = (ResolvedJavaMethod) proxy;
                     Formatter formatter = (Formatter) args[0];
                     int flags = (int) args[1];
@@ -737,11 +738,11 @@ public final class CompilerInterfaceDeclarations {
                     return null;
                 })
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.asStackTraceElementMethod, HotSpotResolvedJavaMethodProxy.asStackTraceElementInvokable, -1)
-                .setFallbackInvocationHandler(HotSpotResolvedJavaMethodProxy.asStackTraceElementMethod, (proxy, method, args, metaAccess) -> {
+                .setFallbackInvocationHandler(HotSpotResolvedJavaMethodProxy.asStackTraceElementMethod, (proxy, method, args, singletonObjects) -> {
                     ResolvedJavaMethod receiver = (ResolvedJavaMethod) proxy;
                     return receiver.asStackTraceElement(-1);
                 })
-                .setFallbackInvocationHandler(HotSpotResolvedJavaMethodProxy.getCodeSizeMethod, (proxy, method, args, metaAccess) -> {
+                .setFallbackInvocationHandler(HotSpotResolvedJavaMethodProxy.getCodeSizeMethod, (proxy, method, args, singletonObjects) -> {
                     byte[] code = ((ResolvedJavaMethod) proxy).getCode();
                     if (code == null) {
                         return 0;
@@ -751,14 +752,22 @@ public final class CompilerInterfaceDeclarations {
                 })
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.getDeclaringClassMethod, HotSpotResolvedJavaMethodProxy.getDeclaringClassInvokable)
                 .ensureRecorded(HotSpotResolvedJavaMethodProxy.getSignatureMethod, HotSpotResolvedJavaMethodProxy.getSignatureInvokable)
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) -> {
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
                     ResolvedJavaMethod method = (ResolvedJavaMethod) proxy;
-                    ResolvedJavaType holderMirror = findObjectTypeMirror(method.getDeclaringClass(), metaAccess, constantReflection, jvmciRuntime);
-                    if (holderMirror == null) {
-                        return null;
-                    }
                     String methodName = method.getName();
                     String methodDescriptor = method.getSignature().toMethodDescriptor();
+                    ResolvedJavaType holder = method.getDeclaringClass();
+                    Class<?> clazz;
+                    try {
+                        clazz = Class.forName(holder.toClassName());
+                    } catch (ClassNotFoundException e) {
+                       return null;
+                    }
+                    if (Proxy.class.isAssignableFrom(clazz)) {
+                        return null;
+                    }
+                    MetaAccessProvider metaAccess = (MetaAccessProvider) singletonObjects.get(MetaAccessProvider.class);
+                    ResolvedJavaType holderMirror = metaAccess.lookupJavaType(clazz);
                     if (method.isConstructor()) {
                         for (ResolvedJavaMethod candidate : holderMirror.getDeclaredConstructors()) {
                             if (candidate.getSignature().toMethodDescriptor().equals(methodDescriptor)) {
@@ -779,7 +788,7 @@ public final class CompilerInterfaceDeclarations {
                 .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod, MethodStrategy.Passthrough)
                 .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod, MethodStrategy.Passthrough)
                 .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, MethodStrategy.Passthrough)
-                .setFallbackInvocationHandler(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, (proxy, method, args, metaAccess) -> {
+                .setFallbackInvocationHandler(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, (proxy, method, args, singletonObjects) -> {
                     // The HostInliningPhase can query Truffle-related annotations during replay on jargraal. It is safe to return null.
                     return null;
                 })
@@ -827,12 +836,14 @@ public final class CompilerInterfaceDeclarations {
                     Signature signature = (Signature) input;
                     int count = signature.getParameterCount(false);
                     List<MethodCallToRecord> calls = new ArrayList<>();
+                    CompilationProxy.SymbolicMethod symbolicMethod = new CompilationProxy.SymbolicMethod(Signature.class, "getParameterType", int.class, ResolvedJavaType.class);
+                    CompilationProxy.InvokableMethod invokableMethod = (receiver, args) -> ((Signature) receiver).getParameterType((int) args[0], (ResolvedJavaType) args[1]);
                     for (int i = 0; i < count; i++) {
-                        calls.add(new MethodCallToRecord(input, SignatureProxy.getParameterTypeMethod, SignatureProxy.getParameterTypeInvokable, new Object[]{i, null}));
+                        calls.add(new MethodCallToRecord(input, symbolicMethod, invokableMethod, new Object[]{i, null}));
                     }
                     return calls;
                 })
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) -> {
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
                     Signature signature = (Signature) proxy;
                     return new HotSpotSignature(HotSpotJVMCIRuntime.runtime(), signature.toMethodDescriptor());
                 })
@@ -845,42 +856,47 @@ public final class CompilerInterfaceDeclarations {
                 .ensureRecorded(HotSpotResolvedJavaFieldProxy.getNameMethod, HotSpotResolvedJavaFieldProxy.getNameInvokable)
                 .ensureRecorded(HotSpotResolvedJavaFieldProxy.getModifiersMethod, HotSpotResolvedJavaFieldProxy.getModifiersInvokable) // For graph dumps (BinaryGraphPrinter)
                 .ensureRecorded(HotSpotResolvedJavaFieldProxy.getTypeMethod, HotSpotResolvedJavaFieldProxy.getTypeInvokable) // For graph dumps (BinaryGraphPrinter)
-                .setLocalMirrorLocator((proxy, metaAccess, constantReflection, jvmciRuntime) -> {
+                .setLocalMirrorLocator((proxy, singletonObjects) -> {
                     ResolvedJavaField field = (ResolvedJavaField) proxy;
-                    ResolvedJavaType holderMirror = findObjectTypeMirror(field.getDeclaringClass(), metaAccess, constantReflection, jvmciRuntime);
-                    if (holderMirror == null) {
+                    ResolvedJavaType holderProxy = field.getDeclaringClass();
+                    Class<?> holderClazz;
+                    try {
+                        holderClazz = Class.forName(holderProxy.toClassName());
+                    } catch (ClassNotFoundException e) {
                         return null;
                     }
+                    if (Proxy.class.isAssignableFrom(holderClazz)) {
+                        return null;
+                    }
+                    MetaAccessProvider metaAccess = (MetaAccessProvider) singletonObjects.get(MetaAccessProvider.class);
+                    ResolvedJavaType holder = metaAccess.lookupJavaType(holderClazz);
                     String name = field.getName();
                     boolean isStatic = field.isStatic();
-                    ResolvedJavaField[] fields = (isStatic) ? holderMirror.getStaticFields() : holderMirror.getInstanceFields(false);
+                    ResolvedJavaField[] fields = (isStatic) ? holder.getStaticFields() : holder.getInstanceFields(false);
                     for (ResolvedJavaField candidate : fields) {
                         if (name.equals(candidate.getName())) {
                             return candidate;
                         }
                     }
-                    return null;
+                    throw new IllegalStateException("Cannot find mirror for " + field + ": the local holder does not contain a matching field");
                 })
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotObjectConstant.class)
-                .ensureRecorded(HotSpotConstantProxy.toValueStringMethod, HotSpotConstantProxy.toValueStringInvokable) // For graph dumps (BinaryGraphPrinter)
-                .ensureRecorded(HotSpotConstantProxy.isCompressibleMethod, HotSpotConstantProxy.isCompressibleInvokable)
-                .ensureRecorded(HotSpotConstantProxy.isCompressedMethod, HotSpotConstantProxy.isCompressedInvokable)
-                .ensureRecorded(HotSpotConstantProxy.compressMethod, HotSpotConstantProxy.compressInvokable)
-                .ensureRecorded(HotSpotConstantProxy.uncompressMethod, HotSpotConstantProxy.uncompressInvokable)
-                .setDefaultValueStrategy(HotSpotConstantProxy.isDefaultForKindMethod, false)
+                .ensureRecorded(HotSpotObjectConstantProxy.toValueStringMethod, HotSpotObjectConstantProxy.toValueStringInvokable) // For graph dumps (BinaryGraphPrinter)
+                .ensureRecorded(HotSpotObjectConstantProxy.isCompressedMethod, HotSpotObjectConstantProxy.isCompressedInvokable)
+                .ensureRecorded(HotSpotObjectConstantProxy.getTypeMethod, HotSpotObjectConstantProxy.getTypeInvokable)
                 .setDefaultValueStrategy(HotSpotObjectConstantProxy.isNullMethod, false)
                 .setDefaultValueStrategy(HotSpotObjectConstantProxy.getJavaKindMethod, JavaKind.Object)
+                .setDefaultValueSupplier(HotSpotObjectConstantProxy.compressMethod, (proxy, method, args, singletonObjects) -> proxy)
+                .setDefaultValueSupplier(HotSpotObjectConstantProxy.uncompressMethod, (proxy, method, args, singletonObjects) -> proxy)
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotMetaspaceConstant.class)
-                .ensureRecorded(HotSpotConstantProxy.toValueStringMethod, HotSpotConstantProxy.toValueStringInvokable) // For graph dumps (BinaryGraphPrinter)
-                .ensureRecorded(HotSpotConstantProxy.isCompressibleMethod, HotSpotConstantProxy.isCompressibleInvokable)
-                .ensureRecorded(HotSpotConstantProxy.isCompressedMethod, HotSpotConstantProxy.isCompressedInvokable)
-                .ensureRecorded(HotSpotConstantProxy.compressMethod, HotSpotConstantProxy.compressInvokable)
-                .ensureRecorded(HotSpotConstantProxy.uncompressMethod, HotSpotConstantProxy.uncompressInvokable)
-                .setDefaultValueStrategy(HotSpotConstantProxy.isDefaultForKindMethod, false)
+                .ensureRecorded(HotSpotMetaspaceConstantProxy.toValueStringMethod, HotSpotMetaspaceConstantProxy.toValueStringInvokable) // For graph dumps (BinaryGraphPrinter)
+                .ensureRecorded(HotSpotMetaspaceConstantProxy.isCompressedMethod, HotSpotMetaspaceConstantProxy.isCompressedInvokable)
                 .ensureRecorded(HotSpotMetaspaceConstantProxy.asResolvedJavaTypeMethod, HotSpotMetaspaceConstantProxy.asResolvedJavaTypeInvokable)
                 .ensureRecorded(HotSpotMetaspaceConstantProxy.asResolvedJavaMethodMethod, HotSpotMetaspaceConstantProxy.asResolvedJavaMethodInvokable)
+                .setDefaultValueSupplier(HotSpotMetaspaceConstantProxy.compressMethod, (proxy, method, args, singletonObjects) -> proxy)
+                .setDefaultValueSupplier(HotSpotMetaspaceConstantProxy.uncompressMethod, (proxy, method, args, singletonObjects) -> proxy)
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotProfilingInfo.class)
                 .setDefaultValueStrategy(ProfilingInfoProxy.setCompilerIRSizeMethod, false)
@@ -896,12 +912,7 @@ public final class CompilerInterfaceDeclarations {
                 .register(declarations);
         new RegistrationBuilder<>(SpeculationLog.class)
                 .setDefaultValue(SpeculationLogProxy.maySpeculateMethod, true)
-                .setDefaultValueSupplier(SpeculationLogProxy.speculateMethod, (Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, MetaAccessProvider metaAccess) -> {
-                    // Some callers expect to get an actual speculation rather than NO_SPECULATION.
-                    SpeculationLog.SpeculationReason reason = (SpeculationLog.SpeculationReason) args[0];
-                    JavaConstant id = JavaConstant.forLong(-1);
-                    return new HotSpotSpeculationLog.HotSpotSpeculation(reason, id, new byte[0]);
-                })
+                .setDefaultValue(SpeculationLogProxy.speculateMethod, SpeculationLog.NO_SPECULATION)
                 .register(declarations);
         new RegistrationBuilder<>(Predicate.class).setSingleton(true)
                 .register(declarations); // Intrinsification trust predicate.
@@ -909,41 +920,10 @@ public final class CompilerInterfaceDeclarations {
         return declarations;
     }
 
-    /**
-     * Finds a local mirror for an object type proxy by resolving the class name on the host JVM.
-     *
-     * @param proxy the object type proxy
-     * @param metaAccess the host meta access
-     * @param constantReflection the host constant reflection
-     * @param jvmciRuntime the host JVMCI runtime
-     * @return the object type mirror or {@code null} if it cannot be resolved
-     */
     @SuppressWarnings("unused")
-    private static HotSpotResolvedObjectType findObjectTypeMirror(Object proxy, MetaAccessProvider metaAccess, HotSpotConstantReflectionProvider constantReflection, HotSpotJVMCIRuntime jvmciRuntime) {
-        HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) proxy;
-        String typeName = type.getName();
-        if (typeName.contains("$Proxy") || typeName.contains(".0x")) {
-            // Skip dynamic proxies and hidden classes, which have unstable names.
-            return null;
-        }
-        Class<?> accessingClass = (inRuntimeCode()) ? Object.class : CompilerInterfaceDeclarations.class;
-        HotSpotResolvedObjectType accessingType = (HotSpotResolvedObjectType) metaAccess.lookupJavaType(accessingClass);
-        try {
-            JavaType result = jvmciRuntime.lookupType(typeName, accessingType, true);
-            if (result instanceof HotSpotResolvedObjectType mirror) {
-                /*
-                 * Initialize the type to avoid reducing whole snippets to a deopt when replay
-                 * diverges and depends on the mirrors (e.g., BoxingSnippets on libgraal).
-                 */
-                synchronized (CompilerInterfaceDeclarations.class) {
-                    mirror.initialize();
-                }
-                return mirror;
-            }
-        } catch (LinkageError | Exception ignored) {
-            // Ignore LinkageError or TranslatedException.
-        }
-        return null;
+    private static ResolvedJavaType javaLangObjectSupplier(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects) {
+        MetaAccessProvider metaAccess = (MetaAccessProvider) singletonObjects.get(MetaAccessProvider.class);
+        return metaAccess.lookupJavaType(Object.class);
     }
 
     /**
@@ -956,7 +936,7 @@ public final class CompilerInterfaceDeclarations {
      */
     @SuppressWarnings("unused")
     @ExcludeFromJacocoGeneratedReport("related to replay of libgraal compilations on jargraal")
-    private static boolean objectTypeIsInstanceFallback(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, MetaAccessProvider metaAccess) {
+    private static boolean objectTypeIsInstanceFallback(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, EconomicMap<Class<?>, Object> singletonObjects) {
         HotSpotResolvedObjectType receiverType = (HotSpotResolvedObjectType) proxy;
         if (!(args[0] instanceof HotSpotObjectConstant objectConstant)) {
             return false;
@@ -967,22 +947,5 @@ public final class CompilerInterfaceDeclarations {
             return false;
         }
         return receiverType.isAssignableFrom(constantType);
-    }
-
-    /**
-     * Implements {@link HotSpotCodeCacheProvider#installCode} for replay compilation.
-     */
-    @SuppressWarnings("unused")
-    private static InstalledCode installCodeReplacement(Object proxy, CompilationProxy.SymbolicMethod method, Object[] args, MetaAccessProvider metaAccess) {
-        ResolvedJavaMethod installedCodeOwner = (ResolvedJavaMethod) args[0];
-        CompiledCode compiledCode = (CompiledCode) args[1];
-        InstalledCode installedCode = (InstalledCode) args[2];
-        if (installedCodeOwner == null) {
-            // This is an installation of a stub which was not compiled during recording.
-            return new HotSpotRuntimeStub(compiledCode.toString()); // ExcludeFromJacocoGeneratedReport
-        } else {
-            // For method installations, the return value is not important.
-            return installedCode;
-        }
     }
 }
