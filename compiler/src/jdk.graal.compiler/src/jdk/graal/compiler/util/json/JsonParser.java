@@ -498,11 +498,6 @@ public final class JsonParser {
         if (buffer.isEmpty()) {
             buffer.clear(); // resets position and limit
             if (source.read(buffer) == -1) { // eof
-                /*
-                 * Set the limit to 0 to ensure that subsequent next() calls do not start re-reading
-                 * the cleared buffer.
-                 */
-                buffer.limit(0);
                 next = -1;
                 return cur;
             }
@@ -542,7 +537,7 @@ public final class JsonParser {
     private JsonParserException error(final String message, final int position) {
         final int columnNum = position - beginningOfLine;
         final String formatted = format(message, line, columnNum);
-        return new JsonParserException(formatted, peek() == EOF);
+        return new JsonParserException(formatted);
     }
 
     /**

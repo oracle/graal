@@ -35,7 +35,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.runtime.RuntimeProvider;
@@ -108,9 +107,4 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
      * Returns the instance holding the instrumentation data structures.
      */
     Instrumentation getInstrumentation();
-
-    /**
-     * Returns the interface for recording/replaying compilations or {@code null} if disabled.
-     */
-    ReplayCompilationSupport getReplayCompilationSupport();
 }

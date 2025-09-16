@@ -60,7 +60,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.stubs.AbstractForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
@@ -357,7 +356,7 @@ public class SymbolicSnippetEncoder {
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                         originalProvider.getRegisters(), originalProvider.getSnippetReflection(), originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig(),
-                        originalProvider.getIdentityHashCodeProvider(), originalProvider.getReplayCompilationSupport());
+                        originalProvider.getIdentityHashCodeProvider());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -368,7 +367,7 @@ public class SymbolicSnippetEncoder {
             }
             StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, args, null, original,
                             trackNodeSourcePosition, null);
-            EncodedSnippets.SymbolicEncodedGraph symbolicGraph = new EncodedSnippets.SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), null, false);
+            EncodedSnippets.SymbolicEncodedGraph symbolicGraph = new EncodedSnippets.SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), null);
             StructuredGraph decodedSnippet = EncodedSnippets.decodeSnippetGraph(symbolicGraph, original != null ? original : method, original, originalReplacements, null,
                             StructuredGraph.AllowAssumptions.ifNonNull(graph.getAssumptions()), graph.getOptions(), false);
             String snippetString = getCanonicalGraphString(snippet, true, false);
@@ -425,9 +424,6 @@ public class SymbolicSnippetEncoder {
 
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
         if (HotSpotReplacementsImpl.snippetsAreEncoded()) {
-            if (ReplayCompilationSupport.isReplayingLibgraalInJargraal()) {
-                return;
-            }
             throw new GraalError("Snippet encoding has already been done");
         }
 

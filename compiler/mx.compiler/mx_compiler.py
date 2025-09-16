@@ -1571,41 +1571,6 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
-def replaycomp_vm_args():
-    """Returns the VM arguments required to run the replay compilation launcher."""
-    vm_args = [
-        '-XX:-UseJVMCICompiler',
-        '--enable-native-access=org.graalvm.truffle',
-        '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-        '-Djdk.graal.CompilationFailureAction=Print'
-    ]
-    _, dists = mx.defaultDependencies(opt_limit_to_suite=True)
-    dists = [d for d in dists if d.isJARDistribution() and os.path.exists(d.classpath_repr(resolve=False))]
-    return mx.get_runtime_jvm_args(dists) + vm_args
-
-def replaycomp_main_class():
-    """Returns the main class name for the replay compilation launcher."""
-    return 'jdk.graal.compiler.hotspot.replaycomp.test.ReplayCompilationLauncher'
-
-def replaycomp(args):
-    """Runs the replay compilation launcher with the provided launcher and VM arguments."""
-    extra_vm_args = []
-    launcher_args = []
-    for arg in args:
-        vm_arg_prefixes = ['-X', '-D', '-ea', '-enableassertions', '-esa', '-enablesystemassertions']
-        if any(map(arg.startswith, vm_arg_prefixes)):
-            extra_vm_args.append(arg)
-        elif arg == '--libgraal':
-            jvmci_lib_path = os.path.join(mx.suite('sdk').get_output_root(platformDependent=True, jdkDependent=False),
-                                          mx.add_lib_suffix(mx.add_lib_prefix('jvmcicompiler')) + '.image')
-            extra_vm_args.extend([
-                '-XX:+UseJVMCINativeLibrary',
-                f'-XX:JVMCILibPath={jvmci_lib_path}'
-            ])
-        else:
-            launcher_args.append(arg)
-    return run_vm([*replaycomp_vm_args(), *extra_vm_args, replaycomp_main_class(), *launcher_args], nonZeroIsFatal=False)
-
 def igvutil(args):
     """various utilities to inspect and modify IGV graphs"""
     cp = mx.classpath('GRAAL_IGVUTIL', jdk=jdk)
@@ -1624,7 +1589,6 @@ mx.update_commands(_suite, {
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
-    'replaycomp': [replaycomp, ''],
     'igvutil': [igvutil, '[subcommand] [options]'],
 })
 

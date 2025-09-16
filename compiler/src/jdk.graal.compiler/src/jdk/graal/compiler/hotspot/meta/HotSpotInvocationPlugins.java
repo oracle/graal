@@ -32,7 +32,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -95,12 +94,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             }
         }
 
-        Predicate<ResolvedJavaType> predicate = runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass());
-        ReplayCompilationSupport replayCompilationSupport = graalRuntime.getReplayCompilationSupport();
-        if (replayCompilationSupport != null) {
-            predicate = replayCompilationSupport.decorateIntrinsificationTrustPredicate(predicate);
-        }
-        registerIntrinsificationPredicate(predicate);
+        registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
     @Override

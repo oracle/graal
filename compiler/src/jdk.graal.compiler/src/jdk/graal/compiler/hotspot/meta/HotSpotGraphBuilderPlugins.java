@@ -96,7 +96,6 @@ import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
-import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
@@ -117,7 +116,6 @@ import jdk.graal.compiler.hotspot.replacements.HubGetClassNode;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.lir.SyncPort;
@@ -238,7 +236,6 @@ public class HotSpotGraphBuilderPlugins {
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
      */
-    @SuppressWarnings("try")
     public static Plugins create(HotSpotGraalRuntimeProvider graalRuntime,
                     CompilerConfiguration compilerConfiguration,
                     GraalHotSpotVMConfig config,
@@ -323,10 +320,8 @@ public class HotSpotGraphBuilderPlugins {
             // In libgraal, all NodeIntrinsics have already been converted into nodes.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
             invocationPlugins.defer(() -> {
-                try (DebugCloseable ignored = ReplayCompilationSupport.enterSnippetContext(graalRuntime.getReplayCompilationSupport())) {
-                    for (GeneratedPluginFactory factory : GraalServices.load(GeneratedPluginFactory.class)) {
-                        factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
-                    }
+                for (GeneratedPluginFactory factory : GraalServices.load(GeneratedPluginFactory.class)) {
+                    factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
                 }
             });
         }

@@ -28,7 +28,6 @@ import static jdk.graal.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocate
 import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -233,29 +232,6 @@ public class LibGraalCompilationDriver {
             @Override
             public void close() {
                 free();
-            }
-        }
-
-        /**
-         * A buffer holding a zero-terminated UTF-8 string.
-         */
-        public static class UTF8CStringBuffer extends NativeBuffer {
-            private final byte[] encoded;
-
-            public UTF8CStringBuffer(String string) {
-                byte[] utf8Bytes = string.getBytes(StandardCharsets.UTF_8);
-                encoded = new byte[utf8Bytes.length + 1];
-                System.arraycopy(utf8Bytes, 0, encoded, 0, utf8Bytes.length);
-            }
-
-            @Override
-            public void initialize(long address) {
-                UNSAFE.copyMemory(encoded, ARRAY_BYTE_BASE_OFFSET, null, address, encoded.length);
-            }
-
-            @Override
-            public int length() {
-                return encoded.length;
             }
         }
 

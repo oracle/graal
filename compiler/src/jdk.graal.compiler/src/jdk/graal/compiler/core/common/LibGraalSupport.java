@@ -55,12 +55,6 @@ public interface LibGraalSupport {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.FIELD})
     @interface HostedOnly {
-        /**
-         * The name of a libgraal build-time system property that allows the annotated element to be
-         * used at libgraal run time. The value of the property is parsed using
-         * {@link Boolean#parseBoolean}.
-         */
-        String unlessTrue() default "";
     }
 
     /**

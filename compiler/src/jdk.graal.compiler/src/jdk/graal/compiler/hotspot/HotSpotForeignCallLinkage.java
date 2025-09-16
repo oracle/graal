@@ -267,11 +267,6 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
     long getAddress();
 
     /**
-     * Returns {@code true} if this linkage has a finalized address.
-     */
-    boolean hasAddress();
-
-    /**
      * Determines if the runtime function or stub might use floating point registers. If the answer
      * is no, then no FPU state management prologue or epilogue needs to be emitted around the call.
      */

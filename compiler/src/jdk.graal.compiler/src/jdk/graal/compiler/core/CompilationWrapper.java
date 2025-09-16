@@ -33,7 +33,6 @@ import static jdk.graal.compiler.debug.DebugOptions.PrintBackendCFG;
 import static jdk.graal.compiler.debug.DebugOptions.Counters;
 import static jdk.graal.compiler.debug.DebugOptions.Timers;
 import static jdk.graal.compiler.debug.PathUtilities.getPath;
-import static jdk.graal.compiler.debug.DebugOptions.RecordForReplay;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -398,7 +397,6 @@ public abstract class CompilationWrapper<T> {
         values.put(DumpPath, dumpPath);
         values.put(PrintBackendCFG, true);
         values.put(TrackNodeSourcePosition, true);
-        values.put(RecordForReplay, "*");
 
         String diagnoseOptions = DebugOptions.DiagnoseOptions.getValue(initialOptions);
         parseRetryOptions(OptionsParser.splitOptions(diagnoseOptions), values);

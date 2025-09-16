@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
-import static jdk.graal.compiler.hotspot.EncodedSnippets.isUsingEncodedSnippets;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -86,35 +85,6 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 
 @LibGraalService
 public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
-    /**
-     * Creates a meta access provider based on a JVMCI backend.
-     *
-     * @param jvmci the JVMCI backend
-     * @return a meta access provider
-     */
-    protected MetaAccessProvider createMetaAccessProvider(JVMCIBackend jvmci) {
-        return new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
-    }
-
-    /**
-     * Creates a constant reflection provider based on a JVMCI backend.
-     *
-     * @param jvmci the JVMCI backend
-     * @return a constant reflection provider
-     */
-    protected HotSpotConstantReflectionProvider createConstantReflectionProvider(JVMCIBackend jvmci) {
-        return (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
-    }
-
-    /**
-     * Creates a code cache provider based on a JVMCI backend.
-     *
-     * @param jvmci the JVMCI backend
-     * @return a code cache provider.
-     */
-    protected HotSpotCodeCacheProvider createCodeCacheProvider(JVMCIBackend jvmci) {
-        return (HotSpotCodeCacheProvider) jvmci.getCodeCache();
-    }
 
     protected HotSpotGraalConstantFieldProvider createConstantFieldProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         return new HotSpotGraalConstantFieldProvider(config, metaAccess);
@@ -159,13 +129,6 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         return new LoopsDataProviderImpl();
     }
 
-    /**
-     * Hook method called after all JVMCI providers have been created (meta access, code cache,
-     * constant reflection).
-     */
-    protected void afterJVMCIProvidersCreated() {
-    }
-
     @SuppressWarnings("try")
     public final HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntime jvmciRuntime, HotSpotBackend host) {
         assert host == null;
@@ -173,14 +136,14 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         OptionValues options = graalRuntime.getOptions();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
-        MetaAccessProvider metaAccess = createMetaAccessProvider(jvmci);
-        HotSpotCodeCacheProvider codeCache = createCodeCacheProvider(jvmci);
-        HotSpotConstantReflectionProvider constantReflection = createConstantReflectionProvider(jvmci);
-        afterJVMCIProvidersCreated();
-        TargetDescription target = codeCache.getTarget();
-        if (inBuildtimeCode() || isUsingEncodedSnippets()) {
-            SnippetSignature.initPrimitiveKindCache(metaAccess);
+        if (inBuildtimeCode() || inRuntimeCode()) {
+            SnippetSignature.initPrimitiveKindCache(jvmci.getMetaAccess());
         }
+
+        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
+        TargetDescription target = codeCache.getTarget();
+        MetaAccessProvider metaAccess = new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
+        HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
         ConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
         HotSpotProviders providers;
         HotSpotReplacementsImpl replacements;
@@ -236,8 +199,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                 identityHashCodeProvider = createIdentityHashCodeProvider();
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
-                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider,
-                            graalRuntime.getReplayCompilationSupport());
+                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider);
 
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, bytecodeProvider);

@@ -28,11 +28,11 @@ import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.PrintStream;
 
-import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.LibGraalSupport;
+
+import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -183,7 +183,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         if (isGraalPredicate != null) {
             isGraalPredicate.onCompilerConfigurationFactorySelection(hsRuntime, factory);
         }
-        HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory, null);
+        HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory);
         // Only the HotSpotGraalRuntime associated with the compiler created via
         // jdk.vm.ci.runtime.JVMCIRuntime.getCompiler() is registered for receiving
         // VM events.
@@ -222,14 +222,12 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
      *            by this method
      * @param runtime the JVMCI runtime on which the {@link HotSpotGraalRuntime} is built
      * @param compilerConfigurationFactory factory for the {@link CompilerConfiguration}
-     * @param replaySupport replay compilation support if this is a recording or replaying compiler
      */
     @SuppressWarnings("try")
-    public static HotSpotGraalCompiler createCompiler(String runtimeNameQualifier, JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory,
-                    ReplayCompilationSupport replaySupport) {
+    public static HotSpotGraalCompiler createCompiler(String runtimeNameQualifier, JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(runtimeNameQualifier, jvmciRuntime, compilerConfigurationFactory, options, replaySupport);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(runtimeNameQualifier, jvmciRuntime, compilerConfigurationFactory, options);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime, graalRuntime.getOptions());
         }
     }
