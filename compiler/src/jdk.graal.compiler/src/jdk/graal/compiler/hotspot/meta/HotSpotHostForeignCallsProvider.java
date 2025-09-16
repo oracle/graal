@@ -28,7 +28,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
-import static jdk.graal.compiler.hotspot.EncodedSnippets.isUsingEncodedSnippets;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
@@ -121,6 +120,7 @@ import java.util.EnumMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -379,7 +379,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
 
-        if (!isUsingEncodedSnippets()) {
+        if (!LibGraalSupport.inLibGraalRuntime()) {
             /*
              * These functions are only used for testing purposes but their registration also
              * ensures that libgraal has support for InvokeJavaMethodStub built into the image,

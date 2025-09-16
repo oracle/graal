@@ -298,7 +298,7 @@ public class BytecodeDisassembler {
             case INVOKESPECIAL  :
             case INVOKESTATIC   : {
                 int cpi = stream.readCPI();
-                JavaMethod callee = cp.lookupMethod(cpi, opcode, method);
+                JavaMethod callee = cp.lookupMethod(cpi, opcode);
                 cpi = cpiFunction.apply(opcode, cpi);
                 if (format) {
                     String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
@@ -315,7 +315,7 @@ public class BytecodeDisassembler {
             }
             case INVOKEINTERFACE: {
                 int cpi = stream.readCPI();
-                JavaMethod callee = cp.lookupMethod(cpi, opcode, method);
+                JavaMethod callee = cp.lookupMethod(cpi, opcode);
                 cpi = cpiFunction.apply(opcode, cpi);
                 if (format) {
                     String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
@@ -334,7 +334,7 @@ public class BytecodeDisassembler {
             }
             case INVOKEDYNAMIC: {
                 int cpi = stream.readCPI4();
-                JavaMethod callee = cp.lookupMethod(cpi, opcode, method);
+                JavaMethod callee = cp.lookupMethod(cpi, opcode);
                 cpi = cpiFunction.apply(opcode, cpi);
                 if (format) {
                     String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
@@ -497,11 +497,13 @@ public class BytecodeDisassembler {
                         case INVOKESTATIC:
                         case INVOKEINTERFACE: {
                             int cpi = stream.readCPI();
-                            return cp.lookupMethod(cpi, opcode, method);
+                            JavaMethod callee = cp.lookupMethod(cpi, opcode);
+                            return callee;
                         }
                         case INVOKEDYNAMIC: {
                             int cpi = stream.readCPI4();
-                            return cp.lookupMethod(cpi, opcode, method);
+                            JavaMethod callee = cp.lookupMethod(cpi, opcode);
+                            return callee;
                         }
                         default:
                             throw new InternalError(BytecodeDisassembler.disassembleOne(method, invokeBci));

@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Executable;
@@ -32,12 +31,14 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.SnippetObjectConstant;
 import jdk.graal.compiler.word.WordTypes;
+
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
@@ -62,7 +63,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (isAfterSnippetEncoding()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(object.getClass());
             // This can only be a compiler object when in libgraal.
             return new SnippetObjectConstant(object);

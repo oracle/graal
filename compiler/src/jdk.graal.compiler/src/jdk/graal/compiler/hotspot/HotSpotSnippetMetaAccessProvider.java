@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -40,28 +41,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
-
 public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
     private final MetaAccessProvider delegate;
 
-    /**
-     * {@code true} if the compiler is recording/replaying a compilation.
-     */
-    private final boolean replayCompilationEnabled;
-
-    public HotSpotSnippetMetaAccessProvider(MetaAccessProvider delegate, boolean replayCompilationEnabled) {
-        this.delegate = delegate;
-        this.replayCompilationEnabled = replayCompilationEnabled;
-    }
-
     public HotSpotSnippetMetaAccessProvider(MetaAccessProvider delegate) {
-        this(delegate, false);
+        this.delegate = delegate;
     }
 
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        if (isAfterSnippetEncoding()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
             if (type != null) {
                 return type;
@@ -84,14 +73,14 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
         if (constant instanceof SnippetObjectConstant objectConstant) {
             Class<?> clazz = objectConstant.asObject(Object.class).getClass();
-            if (isAfterSnippetEncoding() && HotSpotReplacementsImpl.isGraalClass(clazz)) {
+            if (LibGraalSupport.inLibGraalRuntime() && HotSpotReplacementsImpl.isGraalClass(clazz)) {
                 ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
                 GraalError.guarantee(type != null, "Type of compiler object %s missing from encoded snippet types: %s", constant, clazz.getName());
                 return type;
             }
             return delegate.lookupJavaType(clazz);
         }
-        if (constant instanceof HotSpotObjectConstant hsConstant && !replayCompilationEnabled) {
+        if (constant instanceof HotSpotObjectConstant hsConstant) {
             Object object = hsConstant.asObject(Object.class);
             if (object != null) {
                 Class<?> clazz = object.getClass();

@@ -37,13 +37,11 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.gen.LIRGenerationProvider;
-import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -111,10 +109,10 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
         HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
 
-        try (InitTimer st = timer("foreignCalls.initialize"); DebugCloseable c = ReplayCompilationSupport.enterSnippetContext(providers)) {
+        try (InitTimer st = timer("foreignCalls.initialize")) {
             foreignCalls.initialize(providers, options);
         }
-        try (InitTimer st = timer("lowerer.initialize"); DebugCloseable c = ReplayCompilationSupport.enterSnippetContext(providers)) {
+        try (InitTimer st = timer("lowerer.initialize")) {
             Iterable<DebugDumpHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
             lowerer.initialize(options, factories, providers, config);
         }
