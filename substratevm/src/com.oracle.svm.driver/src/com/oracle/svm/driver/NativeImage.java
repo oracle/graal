@@ -351,7 +351,8 @@ public class NativeImage {
                     boolean hasGCTimeRatio,
                     boolean hasExitOnOutOfMemoryError,
                     boolean hasMaximumHeapSizePercent,
-                    boolean hasUseParallelGC) {
+                    boolean hasUseParallelGC,
+                    boolean hasUseCompressedOops) {
 
         public List<String> defaultMemoryFlags() {
             List<String> flags = new ArrayList<>();
@@ -371,6 +372,12 @@ public class NativeImage {
                  * Let the builder exit on first OutOfMemoryError to have shorter feedback loops.
                  */
                 flags.add("-XX:+ExitOnOutOfMemoryError");
+            }
+            if (hasUseCompressedOops) {
+                /*
+                 * To print a warning if the max heap size is too large for compressed oops.
+                 */
+                flags.add("-XX:+UseCompressedOops");
             }
             return flags;
         }
@@ -574,6 +581,7 @@ public class NativeImage {
             boolean hasGCTimeRatio = false;
             boolean hasExitOnOutOfMemoryError = false;
             boolean hasUseParallelGC = false;
+            boolean hasUseCompressedOops = false;
 
             ProcessBuilder pb = new ProcessBuilder();
             sanitizeJVMEnvironment(pb.environment(), Map.of());
@@ -604,6 +612,8 @@ public class NativeImage {
                             hasMaximumHeapSizePercent = true;
                         } else if (line.contains(" UseParallelGC ")) {
                             hasUseParallelGC = true;
+                        } else if (line.contains(" UseCompressedOops ")) {
+                            hasUseCompressedOops = true;
                         }
                     }
                 }
@@ -623,7 +633,8 @@ public class NativeImage {
                             hasGCTimeRatio,
                             hasExitOnOutOfMemoryError,
                             hasMaximumHeapSizePercent,
-                            hasUseParallelGC);
+                            hasUseParallelGC,
+                            hasUseCompressedOops);
         }
 
         /**
