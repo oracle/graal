@@ -489,8 +489,10 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
                         Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
-                        Collections.singletonList(ClassLoader.class), imageClassLoader);
+        if (System.getProperty("substratevm.svmtest") == null) {
+            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
+                            Collections.singletonList(ClassLoader.class), imageClassLoader);
+        }
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
     }
 
