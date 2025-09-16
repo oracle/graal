@@ -47,7 +47,6 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -251,14 +250,12 @@ public class EncodedSnippets {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
         /*
-         * If there is a possibility of a recorded/replayed compilation, we must not mutate the
-         * snippet objects. During recording, this ensures that we record all relevant operations
-         * and the cached objects are resolved to proxies. During replay, this ensures that no
-         * proxies are stored in the snippet objects.
+         * If this is a recorded/replayed compilation, we must not mutate the snippet objects. This
+         * ensures we record all relevant operations during recording and no proxies are stored in
+         * the snippet objects during replay.
          */
         boolean allowCacheReplacements = replacements.getProviders().getReplayCompilationSupport() == null &&
-                        GraalCompilerOptions.CompilationFailureAction.getValue(options) != CompilationWrapper.ExceptionAction.Diagnose &&
-                        !DebugOptions.RecordForReplay.hasBeenSet(options);
+                        GraalCompilerOptions.CompilationFailureAction.getValue(options) != CompilationWrapper.ExceptionAction.Diagnose;
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, allowCacheReplacements,
                         snippetNodeClasses, data.originalMethod, declaringClass);
         return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, true);
