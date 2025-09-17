@@ -58,7 +58,7 @@ Optionally, you can specify GraalVM as the default JRE or JDK installation in yo
 
 ## Script-Friendly URLs
 
-[Script-friendly URLs](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/){:target="_blank"} enable you to download GraalVM from a command line, or automatically in your script and Dockerfile by using a download URL. 
+Script-friendly URLs enable you to download GraalVM from a command line, or automatically in your script and Dockerfile by using a download URL. 
 Substitute `<version>` and `<architecture>` with the JDK version and `aarch64` or `x64` architecture.
 ```bash
 # Download with wget
