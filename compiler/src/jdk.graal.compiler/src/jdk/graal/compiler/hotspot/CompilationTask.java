@@ -34,6 +34,7 @@ import static jdk.graal.compiler.hotspot.CompilationTask.Options.MethodRecompila
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
+import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.collections.EconomicMap;
@@ -57,7 +58,9 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import jdk.graal.compiler.options.Option;
@@ -75,7 +78,6 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -290,6 +292,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         @Override
         protected HotSpotCompilationRequestResult performCompilation(DebugContext debug) {
             HotSpotResolvedJavaMethod method = getMethod();
+            if (ReplayCompilationSupport.matchesRecordCompilationFilter(debug.getOptions(), method) || compiler.getGraalRuntime().getReplayCompilationSupport() != null) {
+                return performCompilationWithReplaySupport(debug);
+            }
+
             int entryBCI = getEntryBCI();
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
             CompilationStatistics stats = CompilationStatistics.create(debug.getOptions(), method, isOSR);
@@ -299,32 +305,15 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
                 Suites suites = compiler.getSuites(compiler.getGraalRuntime().getHostProviders(), debug.getOptions());
-                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) < 0 || decompileCount < MethodRecompilationLimit.getValue(debug.getOptions()))) {
-                    /*
-                     * Disable DeoptimizationGroupingPhase to simplify the creation of the
-                     * speculations for each deopt.
-                     */
-                    ListIterator<BasePhase<? super MidTierContext>> phase = suites.getMidTier().findPhase(DeoptimizationGroupingPhase.class);
-                    if (phase != null) {
-                        phase.remove();
-                    }
-                    ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
-                    if (lowTierPhasesIterator != null) {
-                        lowTierPhasesIterator.previous();
-                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount));
-                    }
-                }
+                adjustSuitesForRecompilation(debug.getOptions(), suites);
                 result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
-                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(debug.getOptions()))) {
-                    ProfilingInfo info = profileProvider.getProfilingInfo(method);
-                    throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
-                }
+                performRecompilationCheck(debug.getOptions(), method);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
 
             try (DebugCloseable b = CodeInstallationTime.start(debug)) {
-                installMethod(debug, graph, result);
+                installMethod(compiler.getGraalRuntime().getHostBackend(), debug, graph, result);
             }
             // Installation is included in compilation time and memory usage reported by printer
             printer.finish(result, installedCode);
@@ -332,6 +321,110 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             stats.finish(method, installedCode);
 
             return buildCompilationRequestResult(method);
+        }
+
+        /**
+         * Modifies the provided suites to prevent excessive recompilation if necessary.
+         *
+         * @param options the option values
+         * @param suites the suites to modify
+         */
+        private void adjustSuitesForRecompilation(OptionValues options, Suites suites) {
+            if (checkRecompileCycle && (MethodRecompilationLimit.getValue(options) < 0 || decompileCount < MethodRecompilationLimit.getValue(options))) {
+                /*
+                 * Disable DeoptimizationGroupingPhase to simplify the creation of the speculations
+                 * for each deopt.
+                 */
+                ListIterator<BasePhase<? super MidTierContext>> phase = suites.getMidTier().findPhase(DeoptimizationGroupingPhase.class);
+                if (phase != null) {
+                    phase.remove();
+                }
+                ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
+                if (lowTierPhasesIterator != null) {
+                    lowTierPhasesIterator.previous();
+                    lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount));
+                }
+            }
+        }
+
+        /**
+         * Checks whether the recompilation limit is exceeded, and if so, throws an exception.
+         *
+         * @param options the option values
+         * @param method the compiled method
+         */
+        private void performRecompilationCheck(OptionValues options, HotSpotResolvedJavaMethod method) {
+            if (checkRecompileCycle && (MethodRecompilationLimit.getValue(options) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(options))) {
+                ProfilingInfo info = profileProvider.getProfilingInfo(method);
+                throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
+            }
+        }
+
+        private static final TimerKey CompilationReplayTime = DebugContext.timer("CompilationReplayTime").doc("The time spent in recorded/replayed compilations.");
+
+        private static final CounterKey CompilationReplayBytecodes = DebugContext.counter("CompilationReplayBytecodes").doc("The size of bytecodes compiled in recorded/replayed compilations.");
+
+        /**
+         * Performs a recorded or replayed compilation.
+         *
+         * @param initialDebug the initial debug context
+         * @return the compilation result
+         */
+        @SuppressWarnings("try")
+        private HotSpotCompilationRequestResult performCompilationWithReplaySupport(DebugContext initialDebug) {
+            OptionValues options = initialDebug.getOptions();
+            HotSpotGraalCompiler selectedCompiler;
+            if (compiler.getGraalRuntime().getReplayCompilationSupport() != null) {
+                selectedCompiler = compiler;
+            } else {
+                CompilerConfigurationFactory configFactory = CompilerConfigurationFactory.selectFactory(compiler.getGraalRuntime().getCompilerConfigurationName(), options, jvmciRuntime);
+                selectedCompiler = HotSpotGraalCompilerFactory.createCompiler("VM-record", jvmciRuntime, options, configFactory, ReplayCompilationSupport.createRecording(configFactory.getName()));
+            }
+            ReplayCompilationSupport replaySupport = selectedCompiler.getGraalRuntime().getReplayCompilationSupport();
+            HotSpotCompilationRequest request = getRequest();
+            try (DebugCloseable closeable = replaySupport.enterCompilationContext(request, options)) {
+                request = replaySupport.decorateCompilationRequest(request);
+                HotSpotResolvedJavaMethod method = request.getMethod();
+                /*
+                 * Passing a snippet reflection instance to the debug handlers would cause replay
+                 * failures.
+                 */
+                List<DebugDumpHandlersFactory> debugHandlersFactories = List.of(new GraalDebugHandlersFactory(null));
+                PrintStream selectedPrintStream = initialDebug.getConfig() == null ? DebugContext.getDefaultLogStream() : initialDebug.getConfig().output();
+                try (DebugContext debug = selectedCompiler.getGraalRuntime().openDebugContext(options, compilationId, method, debugHandlersFactories, selectedPrintStream);
+                                DebugContext.Activation a = debug.activate();
+                                DebugCloseable d = replaySupport.withDebugContext(debug);
+                                DebugCloseable c = initialDebug.inRetryCompilation() ? debug.openRetryCompilation() : null;
+                                DebugCloseable t = CompilationReplayTime.start(debug)) {
+                    int entryBCI = getEntryBCI();
+                    boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
+                    CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
+                    CompilationPrinter printer = CompilationPrinter.begin(options, compilationId, method, entryBCI);
+                    if (initialDebug.inRetryCompilation()) {
+                        profileProvider.forQueriedProfiles((profileKey, profilingInfo) -> {
+                            replaySupport.injectProfiles(profileKey.method(), profileKey.includeNormal(), profileKey.includeOSR(), profilingInfo);
+                        });
+                    }
+                    ProfileProvider selectedProfileProvider = new StableProfileProvider();
+                    try (DebugContext.Scope s = debug.scope("Compiling with replay support", new DebugDumpScope(getIdString(), true))) {
+                        graph = selectedCompiler.createGraph(method, entryBCI, selectedProfileProvider, compilationId, options, debug);
+                        Suites suites = compiler.getSuites(compiler.getGraalRuntime().getHostProviders(), debug.getOptions());
+                        adjustSuitesForRecompilation(options, suites);
+                        result = selectedCompiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
+                        performRecompilationCheck(options, method);
+                        CompilationReplayBytecodes.add(debug, result.getBytecodeSize());
+                    } catch (Throwable e) {
+                        throw debug.handle(e);
+                    }
+                    try (DebugCloseable b = CodeInstallationTime.start(debug)) {
+                        installMethod(selectedCompiler.getGraalRuntime().getHostBackend(), debug, graph, result);
+                    }
+                    printer.finish(result, installedCode);
+                    stats.finish(method, installedCode);
+                    replaySupport.recordCompilationArtifacts(graph, result);
+                    return buildCompilationRequestResult(method);
+                }
+            }
         }
 
         protected HotSpotCompilationRequestResult buildCompilationRequestResult(HotSpotResolvedJavaMethod method) {
@@ -599,11 +692,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     }
 
     @SuppressWarnings("try")
-    protected void installMethod(DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
-        final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-        HotSpotBackend backend = compiler.getGraalRuntime().getHostBackend();
+    protected void installMethod(HotSpotBackend backend, DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
         installedCode = null;
-        Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
+        Object[] context = {new DebugDumpScope(getIdString(), true), backend.getProviders().getCodeCache(), getMethod(), compResult};
         try (DebugContext.Scope s = debug.scope("CodeInstall", context, graph)) {
             HotSpotCompilationRequest request = getRequest();
             installedCode = (HotSpotInstalledCode) backend.createInstalledCode(debug,

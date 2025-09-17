@@ -286,6 +286,9 @@ public class DebugOptions {
     @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
             "Directories are created if they do no exist.", type = OptionType.Debug)
     public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
+
+    @Option(help = "Record the compilations matching the method filter for replay compilation.", type = OptionType.Debug)
+    public static final OptionKey<String> RecordForReplay = new OptionKey<>(null);
     // @formatter:on
 
     /**
