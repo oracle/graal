@@ -40,6 +40,18 @@ import com.oracle.svm.core.util.UnsignedUtils;
 interface AdaptiveCollectionPolicy2Tunables {
 
     /**
+     * The minimum estimated decrease in eden survival rate (survived eden bytes after collection
+     * vs. eden usage before collection) in percent to decide in favor of expanding eden by 1%.
+     */
+    double EDEN_GROWTH_MIN_SURVIVAL_RATE_TRADEOFF = 0.5;
+
+    /**
+     * When throughput is below this percentage, sizes are increased unconditionally to avoid
+     * starving the mutator.
+     */
+    double ALWAYS_GROW_BELOW_THROUGHPUT_THRESHOLD = 0.5;
+
+    /**
      * Start out with the same sizes for young and old generation. This leads to less frequent minor
      * collections and tenuring at startup especially with {@link #YOUNG_GENERATION_SIZE_SUPPLEMENT}
      * disabled. (The HotSpot NewRatio default is 2, so 1:2 for young:old)
@@ -156,6 +168,8 @@ interface AdaptiveCollectionPolicy2Tunables {
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psYoungGen.cpp#L325-L423")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/parallelScavengeHeap.cpp#L824-L916")
 class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
+
+    private final ReciprocalLeastSquareFit edenOccupiedToSurvivedRate = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_POLICY_WEIGHT);
 
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
 
@@ -279,10 +293,21 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
              */
             oldSizeExceededInPreviousCollection = oldLive.aboveThan(sizes.getOldSize());
 
+            YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
             boolean survivorOverflow = acc.hasLastIncrementalCollectionOverflowedSurvivors();
-            UnsignedWord survived = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
+            UnsignedWord survived = youngGen.getSurvivorChunkBytes();
             UnsignedWord promoted = acc.getLastIncrementalCollectionPromotedChunkBytes();
             updateAverages(survivorOverflow, UnsignedUtils.toDouble(survived), UnsignedUtils.toDouble(promoted));
+
+            UnsignedWord edenOccupiedBefore = acc.getEdenChunkBytesBefore();
+            UnsignedWord edenSurvived;
+            if (youngGen.getMaxSurvivorSpaces() > 0) {
+                edenSurvived = youngGen.getSurvivorChunkBytes(0); // age 1, only from eden
+            } else {
+                edenSurvived = promoted;
+            }
+            sampleEdenSurvived(edenOccupiedBefore, edenSurvived);
+
             sampleOldGenUsedBytes(acc.getOldGenerationAfterChunkBytes());
 
             tenuringThreshold = computeTenuringThreshold(survivorOverflow, tenuringThreshold);
@@ -293,6 +318,39 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
         }
 
         recordGcPauseEndInstant();
+    }
+
+    /**
+     * Build a model of how eden sizing impacts the survival rate out of eden.
+     *
+     * @see #growingEdenSufficientlyReducesSurvivalRate
+     */
+    private void sampleEdenSurvived(UnsignedWord edenOccupiedBefore, UnsignedWord edenSurvived) {
+        assert edenSurvived.belowOrEqual(edenOccupiedBefore);
+        double edenBefore = UnsignedUtils.toDouble(edenOccupiedBefore);
+        edenBefore = Math.max(edenBefore, 1); // 1 byte, to avoid division by zero
+        double edenSurvivalRate = UnsignedUtils.toDouble(edenSurvived) / edenBefore;
+        edenOccupiedToSurvivedRate.sample(edenBefore, edenSurvivalRate);
+    }
+
+    /**
+     * We might find it hard to meet our throughput goal, especially when trying to keep up with
+     * multithreaded allocations. While growing eden can help throughput, we avoid growing past the
+     * point where it doesn't reduce the survival rate of objects significantly but inflates our
+     * footprint.
+     * <p>
+     * This and {@link #sampleEdenSurvived} is not part of the original code.
+     */
+    private boolean growingEdenSufficientlyReducesSurvivalRate(UnsignedWord curEden) {
+        double size = UnsignedUtils.toDouble(curEden);
+        if (!youngGenPolicyIsReady || size == 0.0) {
+            return true; // general assumption for space expansion
+        }
+        double y = edenOccupiedToSurvivedRate.estimate(size);
+        double minSlope = -(y * EDEN_GROWTH_MIN_SURVIVAL_RATE_TRADEOFF / size);
+
+        double estimatedSlope = edenOccupiedToSurvivedRate.getSlope(size);
+        return estimatedSlope <= minSlope;
     }
 
     private void resizeAfterFullGC(UnsignedWord oldLive) { // ParallelScavengeHeap::resize_after_full_gc
@@ -471,23 +529,28 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
 
         double throughputGoal = calculateThroughputGoal(GC_TIME_RATIO);
 
-        if (mutatorTimePercent() < throughputGoal) {
-            UnsignedWord newEden;
+        double throughput = mutatorTimePercent();
+        boolean meetingThroughputGoal = (throughput >= throughputGoal);
+        if (meetingThroughputGoal) {
+            if (minorGcTimeEstimate() > gcPauseGoalSec) {
+                return decreaseEdenForMinorPauseTime(curEden);
+            }
+        } else {
             double expectedGcDistance = trimmedMinorGcTimeSeconds.last() * GC_TIME_RATIO;
             if (gcDistance >= expectedGcDistance) {
                 // The latest sample already satisfies throughput goal; keep the current size
-                newEden = curEden;
-            } else {
-                // Using the latest sample to limit the growth in order to avoid overshoot
-                newEden = UnsignedUtils.min(
+                return curEden;
+            }
+
+            boolean growEden = (throughput < ALWAYS_GROW_BELOW_THROUGHPUT_THRESHOLD) || growingEdenSufficientlyReducesSurvivalRate(curEden);
+            if (growEden) {
+                // Using the latest sample to limit the growth to avoid overshoot
+                return UnsignedUtils.min(
                                 UnsignedUtils.fromDouble((expectedGcDistance / gcDistance) * UnsignedUtils.toDouble(curEden)),
                                 increaseEden(curEden));
             }
-            return newEden;
-        }
 
-        if (minorGcTimeEstimate() > gcPauseGoalSec) {
-            return decreaseEdenForMinorPauseTime(curEden);
+            /* We think growing eden won't help throughput. Look at min GC distance first. */
         }
 
         if (gcDistance < minGcDistance) {
@@ -495,6 +558,14 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
                             UnsignedUtils.fromDouble((minGcDistance / gcDistance) * UnsignedUtils.toDouble(curEden)),
                             increaseEden(curEden));
             return newEden;
+        }
+
+        if (!meetingThroughputGoal) {
+            /*
+             * We decided above that growing won't help throughput. Shrink instead so we don't get
+             * stuck and so we keep collecting new data points for the underlying estimator.
+             */
+            return decreaseEden(curEden);
         }
 
         // If no overflowing and promotion is small
@@ -558,9 +629,13 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
     }
 
     private UnsignedWord decreaseEdenForMinorPauseTime(UnsignedWord currentEdenSize) {
-        UnsignedWord desiredEdenSize = minorPauseYoungEstimator.decrementWillDecrease()
-                        ? currentEdenSize.subtract(edenDecrementAlignedDown(currentEdenSize))
+        return minorPauseYoungEstimator.decrementWillDecrease()
+                        ? decreaseEden(currentEdenSize)
                         : currentEdenSize;
+    }
+
+    private UnsignedWord decreaseEden(UnsignedWord currentEdenSize) {
+        UnsignedWord desiredEdenSize = currentEdenSize.subtract(edenDecrementAlignedDown(currentEdenSize));
         assert desiredEdenSize.belowOrEqual(currentEdenSize);
         return desiredEdenSize;
     }
