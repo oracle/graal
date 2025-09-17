@@ -881,7 +881,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private List<ReductionEntry> reducePoints(ReductionEntry task) {
             //lastPoint is already saved in reduced edges
             Point lastPoint = task.lastPoint;
-            //currentPoint can be omited as middle point if in line with lastPoint and nextPoint
+            //currentPoint can be omitted as middle point if in line with lastPoint and nextPoint
             Point currentPoint = task.nextPoint;
             int currentIndex = task.nextPointIndex;
             //null must stay where it is, save and move on
@@ -1307,7 +1307,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
     }
 
     /*
-     *   Partialy implemented class, only needed methods
+     *   Partially implemented class, only needed methods
      */
     private class LayoutLayer extends ArrayList<LayoutNode> {
 
@@ -2654,7 +2654,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         protected void run() {
             // Set up nodes
             for (Vertex v : graph.getVertices()) {
-                assert v.isVisible() : "Invisible nodes aren't permited in HierarchicalLayout.";
+                assert v.isVisible() : "Invisible nodes aren't permitted in HierarchicalLayout.";
                 LayoutNode node = new LayoutNode(v);
                 nodes.add(node);
                 vertexToLayoutNode.put(v, node);

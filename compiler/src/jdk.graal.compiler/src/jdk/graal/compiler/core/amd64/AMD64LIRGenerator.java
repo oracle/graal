@@ -609,7 +609,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitOpMaskOrTest(left, right);
         // if (left | right) == 0, the ZF is set
         // if (left | right) == -1, the CF is set
-        // allZeros selects the flag we preform the move on by selecting either EQ(ZF) or BT(CF)
+        // allZeros selects the flag we perform the move on by selecting either EQ(ZF) or BT(CF)
         return emitCondMoveOp(allZeros ? Condition.EQ : Condition.BT, asAllocatable(trueValue), asAllocatable(falseValue), false, false);
     }
 

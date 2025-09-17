@@ -35,7 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Instance of output to dump informations about a compiler compilations.
+ * Instance of output to dump information about a compiler compilations.
  *
  * @param <G> the type of graph this instance handles
  * @param <M> the type of methods this instance handles
@@ -321,7 +321,7 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
         }
 
         /**
-         * Support for nesting heterogenous graphs. The newly created output uses all the interfaces
+         * Support for nesting heterogeneous graphs. The newly created output uses all the interfaces
          * currently associated with this builder, but shares with {@code parent} the output
          * {@code channel}, internal constant pool and {@link #protocolVersion(int, int) protocol
          * version}.

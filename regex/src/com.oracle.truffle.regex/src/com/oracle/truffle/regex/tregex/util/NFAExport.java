@@ -175,7 +175,7 @@ public final class NFAExport {
                         "\t\t\tfont=\\footnotesize\\ttfamily,\n" +
                         "\t\t},\n" +
                         "\t\tdouble distance=1.5pt,  % Adjust appearance of accept states\n" +
-                        "\t\tinitial text={start},   % label on inital state arrow\n" +
+                        "\t\tinitial text={start},   % label on initial state arrow\n" +
                         "\t\tevery edge/.style={\n" +
                         "\t\t\tdraw,\n" +
                         "\t\t\tfont=\\footnotesize\\ttfamily,\n" +

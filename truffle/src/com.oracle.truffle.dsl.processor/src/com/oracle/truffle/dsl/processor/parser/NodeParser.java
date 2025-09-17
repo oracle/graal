@@ -654,7 +654,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             if (mode == ParseMode.DEFAULT && element.getSimpleName().toString().startsWith("execute")) {
                 specialization.addWarning("It is discouraged that @%s annotated methods start with the prefix 'execute'. " + //
-                                "This prefix is reserved for execute methods, which identifies methods to execute nodes and should alwas be separate from execute methods. " + //
+                                "This prefix is reserved for execute methods, which identifies methods to execute nodes and should always be separate from execute methods. " + //
                                 "Rename this method to resolve this. Examples for specialization names are 'doInt', 'doInBounds' or 'doCached'.",
                                 getSimpleName(types.Specialization));
             }
@@ -705,7 +705,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         getSimpleName(types.GenerateInline));
                     } else if (!isStatic) {
                         specialization.addError("For @%s annotated nodes all specialization methods with inlined cached values must be static. " +
-                                        "The method must be static to avoid accidently passing the wrong node parameter to inlined cached nodes. " +
+                                        "The method must be static to avoid accidentally passing the wrong node parameter to inlined cached nodes. " +
                                         "To resolve this add the static keyword to the specialization method. ",
                                         getSimpleName(types.GenerateInline));
                     }
@@ -742,7 +742,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                         String message = String.format(
                                         "For this specialization with inlined cache parameters it is recommended to use the static modifier. " + //
-                                                        "The method should be static to avoid accidently passing the wrong node parameter to inlined cached nodes. " +
+                                                        "The method should be static to avoid accidentally passing the wrong node parameter to inlined cached nodes. " +
                                                         "To resolve this add the static keyword to the specialization method. ");
 
                         specialization.addSuppressableWarning(TruffleSuppressedWarnings.STATIC_METHOD, message);
@@ -865,7 +865,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     cache.addError(inlineValue, "Cached type '%s' does not support inlining. " + //
                                     "Only inlinable types are supported for nodes annotated with @%s. " + //
                                     "Inlinable types declare a static inline method or use the @%s annotation. " + //
-                                    "Non node references and primtives types are also considered inlinable.",
+                                    "Non node references and primitives types are also considered inlinable.",
                                     getSimpleName(cache.getParameter().getType()),
                                     getSimpleName(types.GenerateInline),
                                     getSimpleName(types.GenerateInline));
@@ -984,7 +984,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (cache.getInlinedNode() != null && inline != null && inline) {
                     if (emitErrors) {
                         cache.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED, inlineValue, "Redundant specification of @%s(... inline=true). " + //
-                                        "Cached values of nodes with @%s are implicitely inlined.",
+                                        "Cached values of nodes with @%s are implicitly inlined.",
                                         getSimpleName(types.GenerateInline),
                                         getSimpleName(types.Cached),
                                         getSimpleName(types.GenerateInline));
@@ -1657,7 +1657,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (int i = 1; i < rootTypes.size(); i++) {
             ExecutableTypeData rootType = rootTypes.get(i);
             if (rootType.isAbstract()) {
-                // cannot implemement root
+                // cannot implement root
                 additionalAbstractRootTypes.add(rootType);
             } else {
                 node.getExecutableTypes().remove(rootType);
@@ -3454,7 +3454,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     Iterator<Parameter> firstParameter = specialization.getSignatureParameters().iterator();
                     if (firstParameter.hasNext() && firstParameter.next().getVariableElement().getSimpleName().toString().equals(NodeParser.SYMBOL_THIS)) {
                         cache.addError("Variable 'this' is reserved for library receiver values in methods annotated with @%s. " +
-                                        "If the intention was to access the encapsulting Node for inlined nodes or profiles, you may use '%s' as expression instead.",
+                                        "If the intention was to access the encapsulating Node for inlined nodes or profiles, you may use '%s' as expression instead.",
                                         getSimpleName(types.ExportMessage),
                                         NodeParser.SYMBOL_NODE);
                     }

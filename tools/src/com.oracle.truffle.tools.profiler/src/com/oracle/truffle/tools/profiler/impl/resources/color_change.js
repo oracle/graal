@@ -23,7 +23,7 @@
  * questions.
  */
 
-// Cycle through grpah coloring.
+// Cycle through graph coloring.
 
 var color_type = "fg";
 let legend_state = false;
@@ -120,7 +120,7 @@ function color_create_legend() {
     r.style.stroke = "black";
     r.style["stroke-width"] = 2;
     r.rx.baseVal.value = 2;
-    r.ry.baseVal.vlaue = 2;
+    r.ry.baseVal.value = 2;
 
     let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
     t.className.baseVal = "title";
@@ -201,7 +201,7 @@ function color_legend_entry(e, i, color, text) {
     box.style.stroke = "black";
     box.style["stroke-width"] = 0.5;
     box.rx.baseVal.value = 2;
-    box.ry.baseVal.vlaue = 2;
+    box.ry.baseVal.value = 2;
 
     let label = document.createElementNS("http://www.w3.org/2000/svg", "text");
     label.className.baseVal = "label";

@@ -2300,7 +2300,7 @@ class LoopDetector implements Runnable {
                         break;
                     }
                     /*
-                     * No next merge was found, this can only mean no immediate unroll happend next,
+                     * No next merge was found, this can only mean no immediate unroll happened next,
                      * i.e., there is no subsequent iteration of any loop exploded directly after,
                      * thus no loop exit possible.
                      */

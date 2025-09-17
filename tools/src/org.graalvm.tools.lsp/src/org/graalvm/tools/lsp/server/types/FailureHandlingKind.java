@@ -42,11 +42,11 @@ public enum FailureHandlingKind {
     /**
      * If the workspace edit contains only textual file changes they are executed transactional. If
      * resource changes (create, rename or delete file) are part of the change the failure handling
-     * startegy is abort.
+     * strategy is abort.
      */
     TextOnlyTransactional("textOnlyTransactional"),
     /**
-     * The client tries to undo the operations already executed. But there is no guaruntee that this
+     * The client tries to undo the operations already executed. But there is no guarantee that this
      * is succeeding.
      */
     Undo("undo");
