@@ -1822,7 +1822,7 @@ class NativeImageVM(GraalVm):
 
 # Adds JAVA_HOME VMs so benchmarks can run on GraalVM binaries without building them first.
 for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
