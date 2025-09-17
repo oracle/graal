@@ -531,7 +531,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             if (!required) {
                 return null;
             }
-            throw new NoClassDefFoundError(className);
+            String msg = String.format("%s (need to update %s.initLookupTypes?)", className, OptimizedTruffleRuntime.class.getName());
+            throw new NoClassDefFoundError(msg);
         }
         ResolvedJavaType type = metaAccess.lookupJavaType(c);
         // In some situations, we may need the class to be linked now, especially if we are
