@@ -25,6 +25,7 @@ Here you will learn how to generate a Build Report and how to use each report se
   * [Resources](#resources)
   * [Software Bill of Materials (SBOM)](#software-bill-of-materials-sbom)
   * [PGO Sampling Profile](#pgo-sampling-profile)
+* [Dynamic Access](#dynamic-access)
 * [Related Documentation](#related-documentation)
 
 ## Report Generation
