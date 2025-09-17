@@ -54,10 +54,13 @@ public final class JVMCIVersionCheck {
      * to {@code java.vm.vendor} to {@link Version}. {@link #DEFAULT_VENDOR_ENTRY} can be used as a
      * default/fallback entry.
      */
+    // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "25", Map.of(
                                     "Oracle Corporation", createLabsJDKVersion("25+37", 1),
                                     DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+37", 1)));
+    // Checkstyle: resume stable iteration order check
+
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
