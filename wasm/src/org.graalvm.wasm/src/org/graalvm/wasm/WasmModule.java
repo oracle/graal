@@ -196,10 +196,6 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         this.codeEntries = codeEntries;
     }
 
-    public boolean hasCodeEntries() {
-        return codeEntries != null;
-    }
-
     public void setParsed() {
         isParsed = true;
     }
@@ -346,6 +342,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
                 case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor, exceptionProvider);
                 case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor, exceptionProvider);
                 case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor, exceptionProvider);
+                case ImportIdentifier.TAG -> requireWasmTag(member, descriptor, exceptionProvider);
                 default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier());
             });
         }
@@ -413,5 +410,12 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
             throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid global.");
         }
         return global;
+    }
+
+    private static WasmTag requireWasmTag(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
+        if (!(member instanceof WasmTag tag)) {
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid tag.");
+        }
+        return tag;
     }
 }

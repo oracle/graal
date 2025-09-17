@@ -42,6 +42,7 @@
 package org.graalvm.wasm.test.suites.bytecode;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -56,8 +57,10 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
+import org.graalvm.wasm.api.FuncType;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.ValueType;
@@ -85,6 +88,7 @@ public class MultiInstantiationSuite {
     private static void test(byte[] testSource, Function<WebAssembly, Object> importFun, BiConsumer<WebAssembly, WasmInstance> check) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
+        contextBuilder.option("wasm.Exceptions", "true");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
@@ -146,10 +150,12 @@ public class MultiInstantiationSuite {
         final byte[] source = WasmBinaryTools.compileWat("main", """
                         (module
                            (type (;0;) (func (result i32)))
+                           (type (;1;) (func))
                            (import "a" "f" (func (type 0)))
                            (import "a" "t" (table 2 2 funcref))
                            (import "a" "m" (memory 1 1))
                            (import "a" "g" (global i32))
+                           (import "a" "e" (tag (type 1)))
                            (func (type 0) i32.const 13)
                            (func (export "main") (type 0) i32.const 0)
                            (func (export "test") (type 0)
@@ -163,13 +169,22 @@ public class MultiInstantiationSuite {
                                i32.load
                                i32.add
                            )
+                           (func (export "exception") (result exnref)
+                               block (result exnref)
+                                   try_table (catch_ref 0 0)
+                                       throw 0
+                                   end
+                                   unreachable
+                               end
+                           )
                            (export "f" (func 0))
                            (export "t" (table 0))
                            (export "m" (memory 0))
                            (export "g" (global 0))
+                           (export "e" (tag 0))
                            (elem (i32.const 1) func 1)
                         )
-                        """);
+                        """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS));
         final Executable tableFun = new Executable(args -> 13);
         test(source, wasm -> {
             final Dictionary imports = new Dictionary();
@@ -187,6 +202,9 @@ public class MultiInstantiationSuite {
 
             final WasmGlobal g = wasm.globalAlloc(ValueType.i32, false, 4);
             a.addMember("g", g);
+
+            final WasmTag e = WebAssembly.tagAlloc(FuncType.fromString("()"));
+            a.addMember("e", e);
 
             imports.addMember("a", a);
             return imports;
@@ -210,6 +228,13 @@ public class MultiInstantiationSuite {
                 final Object globalRead = wasm.readMember("global_read");
                 final int gValue = lib.asInt(lib.execute(globalRead, g));
                 Assert.assertEquals("Global value does not match", 4, gValue);
+
+                final Object e = WebAssembly.instanceExport(i, "e");
+                final Object exception = WebAssembly.instanceExport(i, "exception");
+                final Object eInstance = lib.execute(exception);
+                final Object tagRead = wasm.readMember("exn_read");
+                final Object eInstanceTag = lib.execute(tagRead, eInstance);
+                Assert.assertSame("Exception tag does not match", e, eInstanceTag);
 
                 final Object test = WebAssembly.instanceExport(i, "test");
                 final int result = lib.asInt(lib.execute(test));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,13 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
     @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
     private final BranchProfile errorBranch = BranchProfile.create();
+    private final BranchProfile exceptionBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
     private final boolean usesMemoryZero;
+    private final int exceptionTableOffset;
 
-    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero, int exceptionTableOffset) {
         this.function = function;
         this.bytecode = bytecode;
         this.localTypes = localTypes;
@@ -62,6 +64,7 @@ public final class WasmCodeEntry {
         this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
         this.usesMemoryZero = usesMemoryZero;
+        this.exceptionTableOffset = exceptionTableOffset;
     }
 
     public WasmFunction function() {
@@ -96,8 +99,16 @@ public final class WasmCodeEntry {
         errorBranch.enter();
     }
 
+    public void exceptionBranch() {
+        exceptionBranch.enter();
+    }
+
     public boolean usesMemoryZero() {
         return usesMemoryZero;
+    }
+
+    public int exceptionTableOffset() {
+        return exceptionTableOffset;
     }
 
     @Override

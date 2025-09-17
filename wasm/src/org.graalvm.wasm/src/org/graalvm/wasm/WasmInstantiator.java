@@ -198,6 +198,33 @@ public class WasmInstantiator {
             });
         }
 
+        for (int i = 0; i < module.tagCount(); i++) {
+            final int tagIndex = i;
+            final int typeIndex = module.tagTypeIndex(tagIndex);
+            final SymbolTable.FunctionType type = module.typeAt(typeIndex);
+            final ImportDescriptor tagDescriptor = module.importedTag(tagIndex);
+            if (tagDescriptor != null) {
+                linkActions.add((context, store, instance, imports) -> {
+                    store.linker().resolveTagImport(store, instance, tagDescriptor, tagIndex, type, imports);
+                });
+            } else {
+                linkActions.add((context, store, instance, imports) -> {
+                    final WasmTag tag = new WasmTag(type);
+                    final int address = store.tags().register(tag);
+                    final WasmTag allocatedTag = store.tags().tag(address);
+                    instance.setTag(tagIndex, allocatedTag);
+                });
+            }
+        }
+        final MapCursor<String, Integer> exportedTags = module.exportedTags().getEntries();
+        while (exportedTags.advance()) {
+            final String tagName = exportedTags.getKey();
+            final int tagIndex = exportedTags.getValue();
+            linkActions.add((context, store, instance, imports) -> {
+                store.linker().resolveTagExport(instance, tagIndex, tagName);
+            });
+        }
+
         final byte[] bytecode = module.bytecode();
 
         for (int i = 0; i < module.dataInstanceCount(); i++) {
@@ -500,7 +527,8 @@ public class WasmInstantiator {
     }
 
     private WasmFunctionRootNode instantiateCodeEntryRootNode(WasmStore store, WasmModule module, CodeEntry codeEntry, WasmFunction function) {
-        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
+        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero(),
+                        codeEntry.exceptionTableOffset());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final Node[] callNodes = setupCallNodes(module, codeEntry);
         final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(), callNodes);

@@ -284,7 +284,7 @@ public abstract class BinaryStreamParser {
      * @param result The array used for returning the result.
      *
      */
-    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType) {
+    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType, boolean allowExnType) {
         byte type = peek1(data, offset);
         switch (type) {
             case WasmType.VOID_TYPE:
@@ -309,6 +309,12 @@ public abstract class BinaryStreamParser {
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;
                 break;
+            case WasmType.EXNREF_TYPE:
+                Assert.assertTrue(allowExnType, Failure.MALFORMED_VALUE_TYPE);
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
             default:
                 long valueAndLength = peekSignedInt32AndLength(data, offset);
                 result[0] = value(valueAndLength);
@@ -318,7 +324,7 @@ public abstract class BinaryStreamParser {
         }
     }
 
-    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes, boolean allowVecType) {
+    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes, boolean allowVecType, boolean allowExnType) {
         byte b = peek1(data, offset);
         switch (b) {
             case WasmType.I32_TYPE:
@@ -333,14 +339,17 @@ public abstract class BinaryStreamParser {
             case WasmType.EXTERNREF_TYPE:
                 Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 break;
+            case WasmType.EXNREF_TYPE:
+                Assert.assertTrue(allowExnType, Failure.MALFORMED_VALUE_TYPE);
+                break;
             default:
                 Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", b);
         }
         return b;
     }
 
-    protected byte readValueType(boolean allowRefTypes, boolean allowVecType) {
-        byte b = peekValueType(data, offset, allowRefTypes, allowVecType);
+    protected byte readValueType(boolean allowRefTypes, boolean allowVecType, boolean allowExnType) {
+        byte b = peekValueType(data, offset, allowRefTypes, allowVecType, allowExnType);
         offset++;
         return b;
     }

@@ -76,6 +76,7 @@ public abstract class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
+    private static final int INITIAL_TAG_TYPE_SIZE = 1;
     private static final byte GLOBAL_MUTABLE_BIT = 0x01;
     private static final byte GLOBAL_EXPORTED_BIT = 0x02;
     private static final byte GLOBAL_INITIALIZED_BIT = 0x04;
@@ -95,6 +96,10 @@ public abstract class SymbolTable {
             this.paramTypes = paramTypes;
             this.resultTypes = resultTypes;
             this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
+        }
+
+        public static FunctionType create(byte[] paramTypes, byte[] resultTypes) {
+            return new FunctionType(paramTypes, resultTypes);
         }
 
         public byte[] paramTypes() {
@@ -170,6 +175,13 @@ public abstract class SymbolTable {
      * @param shared Whether the memory is shared (modifications are visible to other threads).
      */
     public record MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
+    }
+
+    /**
+     * @param attribute Attribute of the tag.
+     * @param typeIndex The type index of the tag.
+     */
+    public record TagInfo(byte attribute, int typeIndex) {
     }
 
     /**
@@ -320,7 +332,7 @@ public abstract class SymbolTable {
     @CompilationFinal private int numGlobalInitializersBytecode;
 
     /**
-     * The descriptor of the table of this module.
+     * The descriptor of the tables of this module.
      * <p>
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
@@ -340,21 +352,38 @@ public abstract class SymbolTable {
     @CompilationFinal private final EconomicMap<String, Integer> exportedTables;
 
     /**
-     * The descriptors of the memory of this module.
+     * The descriptors of the memories of this module.
      */
     @CompilationFinal(dimensions = 1) private MemoryInfo[] memories;
 
     @CompilationFinal private int memoryCount;
 
     /**
-     * The memory used in this module.
+     * The memories used in this module.
      */
     @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedMemories;
 
     /**
-     * The name(s) of the exported memory of this module, if any.
+     * The name(s) of the exported memories of this module, if any.
      */
     @CompilationFinal private final EconomicMap<String, Integer> exportedMemories;
+
+    /**
+     * The descriptors of the tags of this module.
+     */
+    @CompilationFinal(dimensions = 1) private TagInfo[] tags;
+
+    @CompilationFinal private int tagCount;
+
+    /**
+     * The tags used in this module.
+     */
+    @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedTags;
+
+    /**
+     * The name(s) of the exported tags of this module, if any.
+     */
+    @CompilationFinal private final EconomicMap<String, Integer> exportedTags;
 
     /**
      * List of all custom sections.
@@ -423,6 +452,9 @@ public abstract class SymbolTable {
         this.memoryCount = 0;
         this.importedMemories = EconomicMap.create();
         this.exportedMemories = EconomicMap.create();
+        this.tags = new TagInfo[INITIAL_TAG_TYPE_SIZE];
+        this.importedTags = EconomicMap.create();
+        this.exportedTags = EconomicMap.create();
         this.customSections = new ArrayList<>();
         this.elemSegmentCount = 0;
         this.dataCountExists = false;
@@ -1118,6 +1150,95 @@ public abstract class SymbolTable {
     public boolean memoryIsShared(int index) {
         final MemoryInfo memory = memories[index];
         return memory.shared;
+    }
+
+    private void ensureTagCapacity(int index) {
+        if (index >= tags.length) {
+            final TagInfo[] nTags = new TagInfo[Math.max(Integer.highestOneBit(index) << 1, 2 * tags.length)];
+            System.arraycopy(tags, 0, nTags, 0, tags.length);
+            tags = nTags;
+        }
+    }
+
+    public void allocateTag(int index, byte attribute, int typeIndex) {
+        checkNotParsed();
+        addTag(index, attribute, typeIndex);
+        module().addLinkAction((context, store, instance, imports) -> {
+            final WasmTag tag = new WasmTag(typeAt(typeIndex));
+            final int tagAddress = store.tags().register(tag);
+            final WasmTag allocatedTag = store.tags().tag(tagAddress);
+            instance.setTag(index, allocatedTag);
+        });
+    }
+
+    public void importTag(String moduleName, String tagName, int index, byte attribute, int typeIndex) {
+        checkNotParsed();
+        addTag(index, attribute, typeIndex);
+        final ImportDescriptor importedTag = new ImportDescriptor(moduleName, tagName, ImportIdentifier.TAG, index, numImportedSymbols());
+        final FunctionType type = typeAt(typeIndex);
+        importedTags.put(index, importedTag);
+        importSymbol(importedTag);
+        module().addLinkAction((context, store, instance, imports) -> {
+            store.linker().resolveTagImport(store, instance, importedTag, index, type, imports);
+        });
+    }
+
+    void addTag(int index, byte attribute, int typeIndex) {
+        ensureTagCapacity(index);
+        final TagInfo tag = new TagInfo(attribute, typeIndex);
+        tags[index] = tag;
+        tagCount++;
+    }
+
+    public void checkTagIndex(int tagIndex) {
+        assertUnsignedIntLess(tagIndex, tagCount, Failure.UNKNOWN_TAG);
+    }
+
+    public void exportTag(int tagIndex, String name) {
+        checkNotParsed();
+        exportSymbol(name);
+        if (!checkExistingTagIndex(tagIndex)) {
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No tag with the specified index has been declared or imported, so it cannot be exported.");
+        }
+        exportedTags.put(name, tagIndex);
+        module().addLinkAction((context, store, instance, imports) -> {
+            store.linker().resolveTagExport(instance, tagIndex, name);
+        });
+    }
+
+    public int tagCount() {
+        return tagCount;
+    }
+
+    public ImportDescriptor importedTag(int index) {
+        return importedTags.get(index);
+    }
+
+    public EconomicMap<ImportDescriptor, Integer> importTagDescriptors() {
+        final EconomicMap<ImportDescriptor, Integer> reverseMap = EconomicMap.create();
+        final MapCursor<Integer, ImportDescriptor> cursor = importedTags.getEntries();
+        while (cursor.advance()) {
+            reverseMap.put(cursor.getValue(), cursor.getKey());
+        }
+        return reverseMap;
+    }
+
+    public EconomicMap<String, Integer> exportedTags() {
+        return exportedTags;
+    }
+
+    private boolean checkExistingTagIndex(int index) {
+        return Integer.compareUnsigned(index, tagCount) < 0;
+    }
+
+    public int tagTypeIndex(int index) {
+        assert index < tags.length;
+        return tags[index].typeIndex();
+    }
+
+    public byte tagAttribute(int index) {
+        assert index < tags.length;
+        return tags[index].attribute();
     }
 
     void allocateCustomSection(String name, int offset, int length) {
