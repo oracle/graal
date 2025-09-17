@@ -591,6 +591,14 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
+    public Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());
+        return registry.findLoadedClass(symbolicType);
+    }
+
+    @Override
     public Object execute(ResolvedJavaMethod targetMethod, Object[] args) {
         return Interpreter.execute((InterpreterResolvedJavaMethod) targetMethod, args);
     }

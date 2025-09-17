@@ -214,7 +214,7 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
         return resolvedType;
     }
 
-    public final InterpreterResolvedJavaType getResolvedType() {
+    public InterpreterResolvedJavaType getResolvedType() {
         if (resolvedType == null) {
             Class<?> cls = CremaSupport.singleton().resolveOrThrow(UnresolvedJavaType.create(typeSymbol.toString()), getDeclaringClass());
             resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
