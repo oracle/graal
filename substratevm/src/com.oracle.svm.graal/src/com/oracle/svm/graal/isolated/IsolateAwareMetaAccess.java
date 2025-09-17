@@ -26,6 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;

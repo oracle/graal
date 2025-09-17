@@ -39,12 +39,15 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -1016,7 +1019,23 @@ public abstract class VMThreads {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void markThreadAsCrashed() {
-            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
+            if (SubstrateOptions.supportCompileInIsolates()) {
+                /*
+                 * Threads that are used for isolated compilation may be attached to both the main
+                 * and a compilation isolate. So, mark it as crashed in both isolates.
+                 */
+                IsolatedCompileContext compileContext = IsolatedCompileContext.get();
+                if (compileContext != null) {
+                    safepointBehaviorTL.setVolatile(compileContext.getClient(), THREAD_CRASHED);
+                }
+
+                IsolatedCompileClient compileClient = IsolatedCompileClient.get();
+                if (compileClient != null) {
+                    safepointBehaviorTL.setVolatile(compileClient.getCompiler(), THREAD_CRASHED);
+                }
+            }
+
+            /* It would be nice if we could retire the TLAB here but that wouldn't work reliably. */
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
         }
 
