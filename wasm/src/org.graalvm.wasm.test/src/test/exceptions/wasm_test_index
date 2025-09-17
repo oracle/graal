@@ -1,0 +1,7 @@
+exceptions_global_unwind
+exceptions_indirect_call
+exceptions_local_unwind
+exceptions_single_func
+exceptions_with_params
+multi_exception_types
+throw_ref

@@ -139,6 +139,7 @@ public class BytecodeBitEncoding {
 
     public static final int ELEM_SEG_TYPE_FUNREF = 0b0001_0000;
     public static final int ELEM_SEG_TYPE_EXTERNREF = 0b0010_0000;
+    public static final int ELEM_SEG_TYPE_EXNREF = 0b0011_0000;
 
     public static final int ELEM_SEG_MODE_VALUE = 0b0000_1111;
 

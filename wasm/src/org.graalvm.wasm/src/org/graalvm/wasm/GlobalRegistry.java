@@ -124,7 +124,7 @@ public final class GlobalRegistry {
             case WasmType.F32_TYPE -> storeFloat(address, (float) value);
             case WasmType.F64_TYPE -> storeDouble(address, (double) value);
             case WasmType.V128_TYPE -> storeVector128(address, (Vector128) value);
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> storeReference(address, value);
+            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> storeReference(address, value);
             default -> throw CompilerDirectives.shouldNotReachHere();
         }
     }

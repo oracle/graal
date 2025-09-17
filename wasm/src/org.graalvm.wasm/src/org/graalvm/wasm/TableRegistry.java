@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,10 +71,6 @@ public class TableRegistry {
         tables[index] = table;
         numTables++;
         return index;
-    }
-
-    public int registerExternal(WasmTable table) {
-        return register(table);
     }
 
     public WasmTable table(int index) {

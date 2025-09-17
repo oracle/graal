@@ -5,7 +5,7 @@
 Building GraalWasm using the `mx build` command will also create the `wasm-tests.jar`, which contains the main test cases.
 To run these tests, the WebAssembly binary toolkit is needed.
 
-1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
+1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) (**1.0.37** or higher) and extract it.
 
 2. Set `WABT_DIR`:
     ```bash

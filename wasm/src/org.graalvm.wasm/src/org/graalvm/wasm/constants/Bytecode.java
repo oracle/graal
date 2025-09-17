@@ -372,6 +372,10 @@ public class Bytecode {
     public static final int TABLE_SIZE = 0x1A;
     public static final int TABLE_FILL = 0x1B;
 
+    // Exception opcodes
+    public static final int THROW = 0x1C;
+    public static final int THROW_REF = 0x1D;
+
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;

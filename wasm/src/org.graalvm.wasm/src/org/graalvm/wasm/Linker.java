@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import static org.graalvm.wasm.Assert.assertByteEqual;
+import static org.graalvm.wasm.Assert.assertFunctionTypeEquals;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -79,10 +80,12 @@ import org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportGlobalSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportTableSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportTagSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportFunctionSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportTagSym;
 import org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
@@ -490,7 +493,7 @@ public class Linker {
             final WasmMemory importedMemory;
             final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
             if (externalMemory != null) {
-                final int contextMemoryIndex = store.memories().registerExternal(externalMemory);
+                final int contextMemoryIndex = store.memories().register(externalMemory);
                 importedMemory = store.memories().memory(contextMemoryIndex);
                 assert memoryIndex == importDescriptor.targetIndex();
             } else {
@@ -536,6 +539,49 @@ public class Linker {
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory(memoryIndex);
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor, memoryIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, () -> {
+        });
+    }
+
+    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, SymbolTable.FunctionType type, ImportValueSupplier imports) {
+        final String importedModuleName = importDescriptor.moduleName();
+        final String importedTagName = importDescriptor.memberName();
+        final Runnable resolveAction = () -> {
+            final WasmTag importedTag;
+            final WasmTag externalTag = lookupImportObject(instance, importDescriptor, imports, WasmTag.class);
+            if (externalTag != null) {
+                final int contextTagIndex = store.tags().register(externalTag);
+                importedTag = store.tags().tag(contextTagIndex);
+                assert tagIndex == importDescriptor.targetIndex();
+            } else {
+                final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
+                if (importedInstance == null) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of tag '%s' in module '%s', does not exist",
+                                    importedModuleName, importedTagName, instance.name()));
+                }
+                final WasmModule importedModule = importedInstance.module();
+                if (importedModule.exportedTags().isEmpty()) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT,
+                                    String.format("The imported module '%s' does not export any tags, so cannot resolve tag '%s' imported in module '%s'.",
+                                                    importedModuleName, importedTagName, instance.name()));
+                }
+                final Integer exportedTagIndex = importedModule.exportedTags().get(importedTagName);
+                if (exportedTagIndex == null) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT,
+                                    "Tag '" + importedTagName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
+                }
+                importedTag = importedInstance.tag(exportedTagIndex);
+            }
+            assertFunctionTypeEquals(type, importedTag.type(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            instance.setTag(tagIndex, importedTag);
+        };
+        resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);
+    }
+
+    void resolveTagExport(WasmInstance instance, int tagIndex, String exportedTagName) {
+        final WasmModule module = instance.module();
+        final ImportDescriptor importDescriptor = module.symbolTable().importedTag(tagIndex);
+        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportTagSym(module.name(), importDescriptor, tagIndex)} : ResolutionDag.NO_DEPENDENCIES;
+        resolutionDag.resolveLater(new ExportTagSym(module.name(), exportedTagName), dependencies, () -> {
         });
     }
 
@@ -782,7 +828,7 @@ public class Linker {
             final int tableAddress;
             if (externalTable != null) {
                 assert tableIndex == importDescriptor.targetIndex();
-                tableAddress = store.tables().registerExternal(externalTable);
+                tableAddress = store.tables().register(externalTable);
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importDescriptor.moduleName());
                 final String importedModuleName = importDescriptor.moduleName();
@@ -1198,6 +1244,63 @@ public class Linker {
                     return false;
                 }
                 return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
+            }
+        }
+
+        static class ImportTagSym extends Sym {
+            final ImportDescriptor importDescriptor;
+            final int tagIndex;
+
+            ImportTagSym(String moduleName, ImportDescriptor importDescriptor, int tagIndex) {
+                super(moduleName);
+                this.importDescriptor = importDescriptor;
+                this.tagIndex = tagIndex;
+            }
+
+            @Override
+            public String toString() {
+                return String.format(Locale.ROOT, "(import tag %s from %s into %s with index %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, tagIndex);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode() ^ tagIndex;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (!(obj instanceof ImportTagSym that)) {
+                    return false;
+                }
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor) && this.tagIndex == that.tagIndex;
+            }
+        }
+
+        static class ExportTagSym extends Sym {
+            final String tagName;
+
+            ExportTagSym(String moduleName, String tagName) {
+                super(moduleName);
+                this.tagName = tagName;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(export tag %s from %s)", tagName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ tagName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (!(obj instanceof ExportTagSym that)) {
+                    return false;
+                }
+                return this.moduleName.equals(that.moduleName) && this.tagName.equals(that.tagName);
             }
         }
 
