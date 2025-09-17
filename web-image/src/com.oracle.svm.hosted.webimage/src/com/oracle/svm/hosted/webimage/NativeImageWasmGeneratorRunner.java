@@ -59,7 +59,6 @@ import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
-import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionValues;
@@ -127,12 +126,8 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             return ExitStatus.OK.getValue();
         }
 
-        optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
-
         // Turn off fallback images, Web Image cannot be built as a fallback image.
         optionProvider.getHostedValues().put(SubstrateOptions.FallbackThreshold, SubstrateOptions.NoFallback);
-
-        optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
 
         // We do not need to compile a GC because the JavaScript environment provides one.
         optionProvider.getHostedValues().put(SubstrateOptions.SupportedGCs, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
