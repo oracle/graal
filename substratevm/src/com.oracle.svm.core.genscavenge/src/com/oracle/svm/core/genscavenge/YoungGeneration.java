@@ -194,7 +194,12 @@ public final class YoungGeneration extends Generation {
      * include chunks that will be freed at the end of the GC.
      */
     UnsignedWord getChunkBytes() {
-        return getEden().getChunkBytes().add(getSurvivorChunkBytes());
+        return getEdenChunkBytes().add(getSurvivorChunkBytes());
+    }
+
+    /** @see #getChunkBytes() */
+    UnsignedWord getEdenChunkBytes() {
+        return getEden().getChunkBytes();
     }
 
     /**
