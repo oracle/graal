@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.jtt.lang;
 
-import jdk.graal.compiler.jtt.JTTTest;
-import jdk.graal.compiler.options.OptionValues;
 import org.junit.Test;
 
+import jdk.graal.compiler.jtt.JTTTest;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /*
@@ -137,7 +137,7 @@ public class Math_pow extends JTTTest {
     private void testOne(OptionValues options, ResolvedJavaMethod method, Object receiver, long testIteration, long l, double x, double y) throws AssertionError {
         Result expect = executeExpected(method, receiver, x, y);
         try {
-            testAgainstExpected(options, method, expect, EMPTY, receiver, x, y);
+            testAgainstExpected(options, method, expect, receiver, x, y);
         } catch (AssertionError e) {
             throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", testIteration, x, l, l), e);
         }

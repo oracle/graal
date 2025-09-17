@@ -39,7 +39,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
@@ -76,7 +75,7 @@ public class SubWordInputTest2 extends GraalCompilerTest implements CustomizedBy
         getCode(getResolvedJavaMethod(testClass, GET), null, false, true, getInitialOptions());
         assertEquals(executeExpected(wrapper, null, value), expected);
         // test with inlining
-        testAgainstExpected(wrapper, expected, CollectionsUtil.setOf(), null, value);
+        testAgainstExpected(wrapper, expected, null, new Object[]{value});
     }
 
     @Override
