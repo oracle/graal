@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
+import sun.util.resources.ParallelListResourceBundle;
 
 /**
  * This version of LocalizationSupport stores the content of resource bundles in a map to make the
@@ -150,7 +151,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isBundleSupported(Class<?> bundleClass) {
-        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass);
+        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
