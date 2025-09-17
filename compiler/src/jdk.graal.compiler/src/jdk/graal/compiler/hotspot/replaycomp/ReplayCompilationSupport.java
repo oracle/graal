@@ -90,7 +90,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * <p>
  * <b>Local Mirrors.</b> During replay, we search for equivalent JVMCI objects for some of the
- * proxies ({@link #findLocalMirrors()}). This is useful when the compiler queries information that
+ * proxies ({@link #findLocalMirrors}). This is useful when the compiler queries information that
  * was not recorded, including the information used to process snippets. There are also local-only
  * proxies that do not originate from the recorded JSON but are instead created from local JVMCI
  * objects (created using {@link CompilationProxies#proxify}). The exact rules when operations are
@@ -263,18 +263,16 @@ public final class ReplayCompilationSupport {
      * @return a debug closeable that should be closed after the compilation
      */
     public DebugCloseable enterCompilationContext(HotSpotCompilationRequest originalRequest, OptionValues initialOptions) {
-        if (proxies instanceof RecordingCompilationProxies recordingCompilationProxies) {
-            DebugCloseable context = recordingCompilationProxies.enterCompilationContext();
-            return () -> {
-                try {
+        DebugCloseable context = proxies.enterCompilationContext();
+        return () -> {
+            try {
+                if (proxies instanceof RecordingCompilationProxies) {
                     serializeRecordedCompilation(originalRequest, initialOptions);
-                } finally {
-                    context.close();
                 }
-            };
-        } else {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
+            } finally {
+                context.close();
+            }
+        };
     }
 
     private void serializeRecordedCompilation(HotSpotCompilationRequest originalRequest, OptionValues initialOptions) {
@@ -322,10 +320,12 @@ public final class ReplayCompilationSupport {
      * Finds local mirrors for the parsed proxies during replay compilation. This should be invoked
      * just after the core JVMCI providers are created because they are needed to look up the
      * mirrors.
+     *
+     * @param jvmciRuntime the JVMCI runtime
      */
-    public void findLocalMirrors() {
+    public void findLocalMirrors(HotSpotJVMCIRuntime jvmciRuntime) {
         if (proxies instanceof ReplayCompilationProxies replayCompilationProxies) {
-            replayCompilationProxies.findLocalMirrors();
+            replayCompilationProxies.findLocalMirrors(jvmciRuntime);
         }
     }
 
@@ -333,10 +333,11 @@ public final class ReplayCompilationSupport {
      * Decorates a backend factory.
      *
      * @param factory the backend factory to decorate
+     * @param jvmciRuntime the JVMCI runtime
      * @return the decorated backend factory
      */
-    public HotSpotBackendFactory decorateBackendFactory(HotSpotBackendFactory factory) {
-        return new HotSpotDecoratedBackendFactory(factory, new HotSpotProxyBackendFactory(proxies, this));
+    public HotSpotBackendFactory decorateBackendFactory(HotSpotBackendFactory factory, HotSpotJVMCIRuntime jvmciRuntime) {
+        return new HotSpotDecoratedBackendFactory(factory, new HotSpotProxyBackendFactory(proxies, this, jvmciRuntime));
     }
 
     /**
