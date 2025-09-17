@@ -57,6 +57,6 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTest(EMPTY, "test", null, 1L, 2L);
+        runTest("test", null, 1L, 2L);
     }
 }
