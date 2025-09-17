@@ -26,9 +26,10 @@
  */
 package jdk.graal.compiler.jtt.except;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.jtt.JTTTest;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Test;
 
 public class BC_getfield1 extends JTTTest {
 
@@ -55,7 +56,7 @@ public class BC_getfield1 extends JTTTest {
     @Test
     public void run1() throws Throwable {
         // tests that the null check isn't removed along with the read
-        runTest(EMPTY, "test", (Object) null);
+        runTest("test", (Object) null);
     }
 
     @Test

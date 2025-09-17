@@ -33,13 +33,13 @@ import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
@@ -76,7 +76,7 @@ public class SubWordInputTest2 extends GraalCompilerTest implements CustomizedBy
         getCode(getResolvedJavaMethod(testClass, GET), null, false, true, getInitialOptions());
         assertEquals(executeExpected(wrapper, null, value), expected);
         // test with inlining
-        testAgainstExpected(wrapper, expected, Collections.emptySet(), null, value);
+        testAgainstExpected(wrapper, expected, CollectionsUtil.setOf(), null, value);
     }
 
     @Override
