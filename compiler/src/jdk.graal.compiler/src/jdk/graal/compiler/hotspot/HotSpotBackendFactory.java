@@ -24,9 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
-import static jdk.graal.compiler.hotspot.EncodedSnippets.isUsingEncodedSnippets;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -178,9 +176,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         HotSpotConstantReflectionProvider constantReflection = createConstantReflectionProvider(jvmci);
         afterJVMCIProvidersCreated();
         TargetDescription target = codeCache.getTarget();
-        if (inBuildtimeCode() || isUsingEncodedSnippets()) {
-            SnippetSignature.initPrimitiveKindCache(metaAccess);
-        }
+        SnippetSignature.initPrimitiveKindCache(metaAccess);
         ConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
         HotSpotProviders providers;
         HotSpotReplacementsImpl replacements;
