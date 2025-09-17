@@ -1226,6 +1226,18 @@ class NativeImageVM(GraalVm):
             assert len(datapoints) == 1
             dims.update(datapoints[0])
 
+        if self.name() == 'native-image-java-home':
+            dims.update({
+                "host-vm": "native-image",
+                "platform.prebuilt-vm": "true",
+            })
+            edition = dims.get("platform.graalvm-edition").lower()
+            if edition in ["ce", "ee"]:
+                # append ce/ee to the host-vm-config.
+                config_name = self.config_name()
+                assert config_name.split("-")[-1] not in ["ce", "ee"], f"host-vm-config for native-image-java-home ({config_name}) should not have a ce/ee suffix."
+                dims["host-vm-config"] = f"{config_name}-{edition}"
+
         return dims
 
     def image_build_rules(self, benchmarks):
