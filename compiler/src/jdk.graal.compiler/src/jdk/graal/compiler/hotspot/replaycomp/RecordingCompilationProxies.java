@@ -139,11 +139,7 @@ class RecordingCompilationProxies implements CompilationProxies {
         return recorder.getCurrentRecordedOperations();
     }
 
-    /**
-     * Enters the context of a method compilation for the current compilation thread.
-     *
-     * @return a scope for the context
-     */
+    @Override
     public DebugCloseable enterCompilationContext() {
         return recorder.enterCompilationContext();
     }
