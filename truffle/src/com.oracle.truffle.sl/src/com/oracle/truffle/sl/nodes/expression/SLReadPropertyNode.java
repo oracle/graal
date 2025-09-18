@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -89,13 +89,13 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
         }
     }
 
-    @Specialization(limit = "LIBRARY_LIMIT")
+    @Specialization
     public static Object readSLObject(SLObject receiver, Object name,
                     @Bind Node node,
-                    @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                    @Cached DynamicObject.GetNode getNode,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
         TruffleString nameTS = toTruffleStringNode.execute(node, name);
-        Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
+        Object result = getNode.getOrNull(receiver, nameTS);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
             throw SLException.undefinedProperty(node, nameTS);

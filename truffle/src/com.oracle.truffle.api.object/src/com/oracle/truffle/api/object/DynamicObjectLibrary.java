@@ -106,7 +106,7 @@ public abstract class DynamicObjectLibrary extends Library {
     /**
      * @since 20.2.0
      */
-    DynamicObjectLibrary() {
+    public DynamicObjectLibrary() {
     }
 
     /**
@@ -156,6 +156,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param key the property key
      * @param defaultValue value to be returned if the property does not exist
      * @return the property's value if it exists, else {@code defaultValue}.
+     * @see DynamicObject.GetNode#getOrDefault(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract Object getOrDefault(DynamicObject object, Object key, Object defaultValue);
@@ -169,6 +170,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not an {@code int}
      * @see #getOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#getIntOrDefault(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -189,6 +191,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not a {@code double}
      * @see #getOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#getDoubleOrDefault(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -209,6 +212,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not a {@code long}
      * @see #getOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#getLongOrDefault(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -243,6 +247,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @see #putLong(DynamicObject, Object, long)
      * @see #putIfPresent(DynamicObject, Object, Object)
      * @see #putWithFlags(DynamicObject, Object, Object, int)
+     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract void put(DynamicObject object, Object key, Object value);
@@ -251,6 +256,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Int-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putInt(DynamicObject object, Object key, int value) {
@@ -261,6 +267,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Double-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putDouble(DynamicObject object, Object key, double value) {
@@ -271,6 +278,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Long-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putLong(DynamicObject object, Object key, long value) {
@@ -284,6 +292,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param value value to be set
      * @return {@code true} if the property was present and the value set, otherwise {@code false}
      * @see #put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#putIfPresent(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract boolean putIfPresent(DynamicObject object, Object key, Object value);
@@ -297,6 +306,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param flags flags to be set
      * @see #put(DynamicObject, Object, Object)
      * @see #setPropertyFlags(DynamicObject, Object, int)
+     * @see DynamicObject.PutNode#putWithFlags(DynamicObject, Object, Object, int)
      * @since 20.2.0
      */
     public abstract void putWithFlags(DynamicObject object, Object key, Object value, int flags);
@@ -336,6 +346,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param value the constant value to be set
      * @param flags property flags or 0
      * @see #put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutConstantNode#putConstant(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract void putConstant(DynamicObject object, Object key, Object value, int flags);
@@ -345,6 +356,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @param key the property key
      * @return {@code true} if the property was removed or {@code false} if property was not found
+     * @see DynamicObject.RemoveKeyNode
      * @since 20.2.0
      */
     public abstract boolean removeKey(DynamicObject object, Object key);
@@ -365,6 +377,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return {@code true} if the type (and the object's shape) changed
      * @since 20.2.0
      * @see #getDynamicType(DynamicObject)
+     * @see DynamicObject.SetDynamicTypeNode
      */
     public abstract boolean setDynamicType(DynamicObject object, Object type);
 
@@ -376,6 +389,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @since 20.2.0
      * @see #setDynamicType(DynamicObject, Object)
      * @see Shape#getDynamicType()
+     * @see DynamicObject.GetDynamicTypeNode
      */
     public abstract Object getDynamicType(DynamicObject object);
 
@@ -394,6 +408,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @param key the property key
      * @return {@code true} if the object contains a property with this key, else {@code false}
+     * @see DynamicObject.ContainsKeyNode
      * @since 20.2.0
      */
     public abstract boolean containsKey(DynamicObject object, Object key);
@@ -425,6 +440,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @see #setShapeFlags(DynamicObject, int)
      * @see Shape.Builder#shapeFlags(int)
      * @see Shape#getFlags()
+     * @see DynamicObject.GetShapeFlagsNode
      * @since 20.2.0
      */
     public abstract int getShapeFlags(DynamicObject object);
@@ -453,6 +469,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @throws IllegalArgumentException if the flags are not in the allowed range.
      * @see #getShapeFlags(DynamicObject)
      * @see Shape.Builder#shapeFlags(int)
+     * @see DynamicObject.SetShapeFlagsNode
      * @since 20.2.0
      */
     public abstract boolean setShapeFlags(DynamicObject object, int flags);
@@ -462,6 +479,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * {@code null} if the object contains no such property.
      *
      * @return {@link Property} if the property exists, else {@code null}
+     * @see DynamicObject.GetPropertyNode
      * @since 20.2.0
      */
     public abstract Property getProperty(DynamicObject object, Object key);
@@ -483,6 +501,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param defaultValue value to return if no such property exists
      * @return the property flags if the property exists, else {@code defaultValue}
      * @see #getProperty(DynamicObject, Object)
+     * @see DynamicObject.GetPropertyFlagsNode
      * @since 20.2.0
      */
     public final int getPropertyFlagsOrDefault(DynamicObject object, Object key, int defaultValue) {
@@ -495,6 +514,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @param key the property key
      * @return {@code true} if the property was found and its flags were changed, else {@code false}
+     * @see DynamicObject.SetPropertyFlagsNode
      * @since 20.2.0
      */
     public abstract boolean setPropertyFlags(DynamicObject object, Object key, int propertyFlags);
@@ -509,6 +529,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @throws UnsupportedOperationException if the object is already {@linkplain #isShared shared}.
      * @see #isShared(DynamicObject)
+     * @see DynamicObject.MarkSharedNode
      * @since 20.2.0
      */
     public abstract void markShared(DynamicObject object);
@@ -519,6 +540,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return {@code true} if the object is shared
      * @see #markShared(DynamicObject)
      * @see Shape#isShared()
+     * @see DynamicObject.IsSharedNode
      * @since 20.2.0
      */
     public abstract boolean isShared(DynamicObject object);
@@ -534,6 +556,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * cached which can cause unnecessary cache polymorphism and invalidations.
      *
      * @return {@code true} if the object's shape was changed, otherwise {@code false}.
+     * @see DynamicObject.UpdateShapeNode
      * @since 20.2.0
      */
     public abstract boolean updateShape(DynamicObject object);
@@ -545,6 +568,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param otherShape the desired shape
      * @return {@code true} if the object's shape was changed
      * @throws IllegalArgumentException if the shape contains instance properties
+     * @see DynamicObject.ResetShapeNode
      * @since 20.2.0
      */
     public abstract boolean resetShape(DynamicObject object, Shape otherShape);
@@ -602,6 +626,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * </pre>
      *
      * @return a read-only array of the object's property keys.
+     * @see DynamicObject.GetKeyArrayNode
      * @since 20.2.0
      */
     public abstract Object[] getKeyArray(DynamicObject object);
@@ -617,6 +642,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @return a read-only array of the object's properties.
      * @see #getKeyArray(DynamicObject)
+     * @see DynamicObject.GetPropertyArrayNode
      * @since 20.2.0
      */
     public abstract Property[] getPropertyArray(DynamicObject object);

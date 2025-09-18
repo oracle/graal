@@ -56,7 +56,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -159,21 +158,21 @@ public abstract class DOTestAsserts {
         return sb.toString();
     }
 
+    @SuppressWarnings("deprecation")
     public static Map<Object, Object> archive(DynamicObject object) {
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
         Map<Object, Object> archive = new HashMap<>();
-        for (Property property : lib.getPropertyArray(object)) {
-            archive.put(property.getKey(), lib.getOrDefault(object, property.getKey(), null));
+        for (Property property : object.getShape().getPropertyList()) {
+            archive.put(property.getKey(), property.get(object, false));
         }
         return archive;
     }
 
+    @SuppressWarnings("deprecation")
     public static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
-        for (Property property : lib.getPropertyArray(object)) {
+        for (Property property : object.getShape().getPropertyList()) {
             Object key = property.getKey();
             Object before = archive.get(key);
-            Object after = lib.getOrDefault(object, key, null);
+            Object after = property.get(object, false);
             assertEquals("before != after for key: " + key, after, before);
         }
         return true;

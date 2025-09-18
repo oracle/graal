@@ -162,7 +162,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"unused", "deprecation"})
     @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         try {
@@ -184,8 +184,9 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     @SuppressWarnings({"unused", "deprecation"})
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
+            boolean guard = checkShape(store, oldShape);
             DynamicObjectSupport.grow(store, oldShape, newShape);
-            setSafe(store, value, false, true);
+            setSafe(store, value, guard, true);
             DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
         } else {
             throw incompatibleLocation();

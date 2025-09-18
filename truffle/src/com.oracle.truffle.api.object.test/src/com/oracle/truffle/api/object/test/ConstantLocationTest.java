@@ -55,11 +55,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
-public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
+public class ConstantLocationTest extends ParametrizedDynamicObjectTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
@@ -82,7 +80,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
     public void testConstantLocation() {
         DynamicObject object = newInstanceWithConstant();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
 
@@ -113,7 +111,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
     public void testMigrateConstantLocation() {
         DynamicObject object = newInstanceWithConstant();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
@@ -131,7 +129,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         property.getLocation().set(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
@@ -158,7 +156,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
         library.put(object, "other", "otherValue");
 
         Property otherProperty = object.getShape().getProperty("other");

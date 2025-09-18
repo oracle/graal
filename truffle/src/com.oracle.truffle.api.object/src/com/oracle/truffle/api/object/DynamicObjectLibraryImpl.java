@@ -489,7 +489,7 @@ abstract class DynamicObjectLibraryImpl {
         }
     }
 
-    private static final class RemovePlan {
+    static final class RemovePlan {
         private static final int MAX_UNROLL = 32;
 
         @CompilationFinal(dimensions = 1) private final Move[] moves;

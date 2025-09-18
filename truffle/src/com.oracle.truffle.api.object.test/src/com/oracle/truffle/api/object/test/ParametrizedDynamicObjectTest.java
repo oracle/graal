@@ -1,0 +1,265 @@
+/*
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.api.object.test;
+
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+
+import com.oracle.truffle.api.test.AbstractLibraryTest;
+
+@RunWith(Parameterized.class)
+public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest {
+
+    public enum TestRun {
+        CACHED_LIBRARY,
+        UNCACHED_LIBRARY,
+        DISPATCHED_CACHED_LIBRARY,
+        DISPATCHED_UNCACHED_LIBRARY,
+        CACHED_NODES,
+        UNCACHED_NODES;
+
+        public static final TestRun[] DISPATCHED_ONLY = {DISPATCHED_CACHED_LIBRARY, DISPATCHED_UNCACHED_LIBRARY, CACHED_NODES, UNCACHED_NODES};
+        public static final TestRun[] UNCACHED_ONLY = {DISPATCHED_UNCACHED_LIBRARY, UNCACHED_NODES};
+    }
+
+    @Parameter // first data value (0) is default
+    public /* NOT private */ TestRun run;
+
+    protected final DynamicObjectLibrary createLibrary(Object receiver) {
+        return switch (run) {
+            case CACHED_LIBRARY -> adoptNode(DynamicObjectLibrary.getFactory().create(receiver)).get();
+            case UNCACHED_LIBRARY -> DynamicObjectLibrary.getFactory().getUncached(receiver);
+            case DISPATCHED_CACHED_LIBRARY -> adoptNode(DynamicObjectLibrary.getFactory().createDispatched(2)).get();
+            case DISPATCHED_UNCACHED_LIBRARY -> DynamicObjectLibrary.getUncached();
+            case CACHED_NODES -> new NodesFakeDynamicObjectLibrary();
+            case UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
+        };
+
+    }
+
+    protected final DynamicObjectLibrary createLibrary() {
+        assert run != TestRun.CACHED_LIBRARY;
+        assert run != TestRun.UNCACHED_LIBRARY;
+        return createLibrary(null);
+    }
+
+    protected final DynamicObjectLibrary uncachedLibrary() {
+        return switch (run) {
+            case CACHED_LIBRARY, UNCACHED_LIBRARY, DISPATCHED_CACHED_LIBRARY, DISPATCHED_UNCACHED_LIBRARY ->
+                DynamicObjectLibrary.getUncached();
+            case CACHED_NODES, UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
+        };
+    }
+
+    static final DynamicObjectLibrary UNCACHED_NODES_LIBRARY = new NodesFakeDynamicObjectLibrary("uncached");
+
+    static class NodesFakeDynamicObjectLibrary extends DynamicObjectLibrary {
+
+        final DynamicObject.GetNode getNode;
+        final DynamicObject.PutNode putNode;
+        final DynamicObject.PutConstantNode putConstantNode;
+        final DynamicObject.RemoveKeyNode removeKeyNode;
+        final DynamicObject.SetDynamicTypeNode setDynamicTypeNode;
+        final DynamicObject.GetDynamicTypeNode getDynamicTypeNode;
+        final DynamicObject.ContainsKeyNode containsKeyNode;
+        final DynamicObject.GetShapeFlagsNode getShapeFlagsNode;
+        final DynamicObject.SetShapeFlagsNode setShapeFlagsNode;
+        final DynamicObject.GetPropertyNode getPropertyNode;
+        final DynamicObject.SetPropertyFlagsNode setPropertyFlagsNode;
+        final DynamicObject.MarkSharedNode markSharedNode;
+        final DynamicObject.IsSharedNode isSharedNode;
+        final DynamicObject.UpdateShapeNode updateShapeNode;
+        final DynamicObject.ResetShapeNode resetShapeNode;
+        final DynamicObject.GetKeyArrayNode getKeyArrayNode;
+        final DynamicObject.GetPropertyArrayNode getPropertyArrayNode;
+
+        NodesFakeDynamicObjectLibrary() {
+            getNode = DynamicObject.GetNode.create();
+            putNode = DynamicObject.PutNode.create();
+            putConstantNode = DynamicObject.PutConstantNode.create();
+            removeKeyNode = DynamicObject.RemoveKeyNode.create();
+            setDynamicTypeNode = DynamicObject.SetDynamicTypeNode.create();
+            getDynamicTypeNode = DynamicObject.GetDynamicTypeNode.create();
+            containsKeyNode = DynamicObject.ContainsKeyNode.create();
+            getShapeFlagsNode = DynamicObject.GetShapeFlagsNode.create();
+            setShapeFlagsNode = DynamicObject.SetShapeFlagsNode.create();
+            getPropertyNode = DynamicObject.GetPropertyNode.create();
+            setPropertyFlagsNode = DynamicObject.SetPropertyFlagsNode.create();
+            markSharedNode = DynamicObject.MarkSharedNode.create();
+            isSharedNode = DynamicObject.IsSharedNode.create();
+            updateShapeNode = DynamicObject.UpdateShapeNode.create();
+            resetShapeNode = DynamicObject.ResetShapeNode.create();
+            getKeyArrayNode = DynamicObject.GetKeyArrayNode.create();
+            getPropertyArrayNode = DynamicObject.GetPropertyArrayNode.create();
+        }
+
+        NodesFakeDynamicObjectLibrary(String uncached) {
+            getNode = DynamicObject.GetNode.getUncached();
+            putNode = DynamicObject.PutNode.getUncached();
+            putConstantNode = DynamicObject.PutConstantNode.getUncached();
+            removeKeyNode = DynamicObject.RemoveKeyNode.getUncached();
+            setDynamicTypeNode = DynamicObject.SetDynamicTypeNode.getUncached();
+            getDynamicTypeNode = DynamicObject.GetDynamicTypeNode.getUncached();
+            containsKeyNode = DynamicObject.ContainsKeyNode.getUncached();
+            getShapeFlagsNode = DynamicObject.GetShapeFlagsNode.getUncached();
+            setShapeFlagsNode = DynamicObject.SetShapeFlagsNode.getUncached();
+            getPropertyNode = DynamicObject.GetPropertyNode.getUncached();
+            setPropertyFlagsNode = DynamicObject.SetPropertyFlagsNode.getUncached();
+            markSharedNode = DynamicObject.MarkSharedNode.getUncached();
+            isSharedNode = DynamicObject.IsSharedNode.getUncached();
+            updateShapeNode = DynamicObject.UpdateShapeNode.getUncached();
+            resetShapeNode = DynamicObject.ResetShapeNode.getUncached();
+            getKeyArrayNode = DynamicObject.GetKeyArrayNode.getUncached();
+            getPropertyArrayNode = DynamicObject.GetPropertyArrayNode.getUncached();
+        }
+
+        @Override
+        public boolean accepts(Object receiver) {
+            return true;
+        }
+
+        @Override
+        public Shape getShape(DynamicObject object) {
+            return object.getShape();
+        }
+
+        @Override
+        public Object getOrDefault(DynamicObject object, Object key, Object defaultValue) {
+            return getNode.getOrDefault(object, key, defaultValue);
+        }
+
+        @Override
+        public void put(DynamicObject object, Object key, Object value) {
+            putNode.put(object, key, value);
+        }
+
+        @Override
+        public boolean putIfPresent(DynamicObject object, Object key, Object value) {
+            return putNode.putIfPresent(object, key, value);
+        }
+
+        @Override
+        public void putWithFlags(DynamicObject object, Object key, Object value, int flags) {
+            putNode.putWithFlags(object, key, value, flags);
+        }
+
+        @Override
+        public void putConstant(DynamicObject object, Object key, Object value, int flags) {
+            putConstantNode.putConstantWithFlags(object, key, value, flags);
+        }
+
+        @Override
+        public boolean removeKey(DynamicObject object, Object key) {
+            return removeKeyNode.execute(object, key);
+        }
+
+        @Override
+        public boolean setDynamicType(DynamicObject object, Object type) {
+            return setDynamicTypeNode.execute(object, type);
+        }
+
+        @Override
+        public Object getDynamicType(DynamicObject object) {
+            return getDynamicTypeNode.execute(object);
+        }
+
+        @Override
+        public boolean containsKey(DynamicObject object, Object key) {
+            return containsKeyNode.execute(object, key);
+        }
+
+        @Override
+        public int getShapeFlags(DynamicObject object) {
+            return getShapeFlagsNode.execute(object);
+        }
+
+        @Override
+        public boolean setShapeFlags(DynamicObject object, int flags) {
+            return setShapeFlagsNode.execute(object, flags);
+        }
+
+        @Override
+        public Property getProperty(DynamicObject object, Object key) {
+            return getPropertyNode.execute(object, key);
+        }
+
+        @Override
+        public boolean setPropertyFlags(DynamicObject object, Object key, int propertyFlags) {
+            return setPropertyFlagsNode.execute(object, key, propertyFlags);
+        }
+
+        @Override
+        public void markShared(DynamicObject object) {
+            markSharedNode.execute(object);
+        }
+
+        @Override
+        public boolean isShared(DynamicObject object) {
+            return isSharedNode.execute(object);
+        }
+
+        @Override
+        public boolean updateShape(DynamicObject object) {
+            return updateShapeNode.execute(object);
+        }
+
+        @Override
+        public boolean resetShape(DynamicObject object, Shape otherShape) {
+            return resetShapeNode.execute(object, otherShape);
+        }
+
+        @Override
+        public Object[] getKeyArray(DynamicObject object) {
+            return getKeyArrayNode.execute(object);
+        }
+
+        @Override
+        public Property[] getPropertyArray(DynamicObject object) {
+            return getPropertyArrayNode.execute(object);
+        }
+    }
+
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
@@ -93,12 +93,12 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
         return value;
     }
 
-    @Specialization(limit = "LIBRARY_LIMIT")
+    @Specialization
     public static Object writeSLObject(SLObject receiver, Object name, Object value,
                     @Bind Node node,
-                    @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                    @Cached DynamicObject.PutNode putNode,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
-        objectLibrary.put(receiver, toTruffleStringNode.execute(node, name), value);
+        putNode.put(receiver, toTruffleStringNode.execute(node, name), value);
         return value;
     }
 

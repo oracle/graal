@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
@@ -143,19 +142,17 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     @ExportMessage
     void removeMember(String member,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
+                    @Cached DynamicObject.RemoveKeyNode removeKeyNode) throws UnknownIdentifierException {
         TruffleString memberTS = fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING);
-        if (objectLibrary.containsKey(this, memberTS)) {
-            objectLibrary.removeKey(this, memberTS);
-        } else {
+        if (!removeKeyNode.execute(this, memberTS)) {
             throw UnknownIdentifierException.create(member);
         }
     }
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        return new Keys(objectLibrary.getKeyArray(this));
+                    @Cached DynamicObject.GetKeyArrayNode getKeyArrayNode) {
+        return new Keys(getKeyArrayNode.execute(this));
     }
 
     @ExportMessage(name = "isMemberReadable")
@@ -163,8 +160,8 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     @ExportMessage(name = "isMemberRemovable")
     boolean existsMember(String member,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        return objectLibrary.containsKey(this, fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING));
+                    @Cached @Shared DynamicObject.ContainsKeyNode containsKeyNode) {
+        return containsKeyNode.execute(this, fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING));
     }
 
     @ExportMessage
@@ -207,13 +204,13 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     }
 
     /**
-     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for reading properties.
+     * {@link DynamicObject.GetNode} provides the polymorphic inline cache for reading properties.
      */
     @ExportMessage
     Object readMember(String name,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
-        Object result = objectLibrary.getOrDefault(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), null);
+                    @Cached DynamicObject.GetNode getNode) throws UnknownIdentifierException {
+        Object result = getNode.getOrNull(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING));
         if (result == null) {
             /* Property does not exist. */
             throw UnknownIdentifierException.create(name);
@@ -222,12 +219,12 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     }
 
     /**
-     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for writing properties.
+     * {@link DynamicObject.PutNode} provides the polymorphic inline cache for writing properties.
      */
     @ExportMessage
     void writeMember(String name, Object value,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        objectLibrary.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
+                    @Cached DynamicObject.PutNode putNode) {
+        putNode.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
     }
 }

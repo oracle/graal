@@ -59,11 +59,9 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
-public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
+public class ImplicitCastTest extends ParametrizedDynamicObjectTest {
 
     @Parameters
     public static Collection<Object[]> data() {
@@ -98,7 +96,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testIntOther() {
         DynamicObject object = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         library.put(object, "a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
@@ -115,7 +113,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testOtherInt() {
         DynamicObject object = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         library.put(object, "a", otherVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
@@ -132,7 +130,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testIntOtherDoesNotGoBack() {
         DynamicObject object = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         library.put(object, "a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
@@ -155,7 +153,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testIntObject() {
         DynamicObject object = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         library.put(object, "a", intVal);
         library.put(object, "a", "");
@@ -168,7 +166,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testIntOtherObject() {
         DynamicObject object = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        DynamicObjectLibrary library = createLibrary(object);
 
         library.put(object, "a", intVal);
         library.put(object, "a", otherVal);
@@ -182,7 +180,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
     public void testLocationDecoratorEquals() {
         DynamicObject object1 = newInstanceWithImplicitCast();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
+        DynamicObjectLibrary library = createLibrary(object1);
 
         library.put(object1, "a", otherVal);
         Location location1 = object1.getShape().getProperty("a").getLocation();

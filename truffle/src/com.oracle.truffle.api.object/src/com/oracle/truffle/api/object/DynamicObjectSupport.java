@@ -185,21 +185,23 @@ final class DynamicObjectSupport {
         }
     }
 
+    @SuppressWarnings("deprecation")
     static Map<Object, Object> archive(DynamicObject object) {
         Map<Object, Object> archive = new HashMap<>();
         Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
-            archive.put(property.getKey(), DynamicObjectLibrary.getUncached().getOrDefault(object, property.getKey(), null));
+            archive.put(property.getKey(), property.getLocation().get(object, false));
         }
         return archive;
     }
 
+    @SuppressWarnings("deprecation")
     static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
         Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
             Object key = property.getKey();
             Object before = archive.get(key);
-            Object after = DynamicObjectLibrary.getUncached().getOrDefault(object, key, null);
+            Object after = property.getLocation().get(object, false);
             assert Objects.equals(after, before) : "before != after for key: " + key;
         }
         return true;

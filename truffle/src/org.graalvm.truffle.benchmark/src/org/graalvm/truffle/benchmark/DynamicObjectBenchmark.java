@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.truffle.benchmark;
 
+import java.lang.invoke.MethodHandles;
 import java.util.stream.IntStream;
 
 import org.graalvm.polyglot.Context;
@@ -53,15 +54,19 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 
 @Warmup(iterations = 10, time = 1)
-@SuppressWarnings("deprecation")
 public class DynamicObjectBenchmark extends TruffleBenchmark {
 
     static final String TEST_LANGUAGE = "benchmark-test-language";
     private static final int PROPERTY_KEYS_PER_ITERATION = 1000;
+    static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+
+    static final DynamicObject.GetNode GET_NODE = DynamicObject.GetNode.create();
+    static final DynamicObject.PutNode PUT_NODE = DynamicObject.PutNode.create();
+    static final String[] PROPERTY_KEYS = IntStream.range(0, PROPERTY_KEYS_PER_ITERATION).mapToObj(i -> "testKey" + i).toArray(String[]::new);
+    static final String SOME_KEY = PROPERTY_KEYS[10];
 
     private static final class MyDynamicObject extends DynamicObject {
         private MyDynamicObject(Shape shape) {
@@ -72,8 +77,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @State(Scope.Benchmark)
     public static class SharedEngineState {
         final Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.Compilation", "false").build();
-        final Shape rootShape = Shape.newBuilder().build();
-        final String[] propertyKeys = IntStream.range(0, PROPERTY_KEYS_PER_ITERATION).mapToObj(i -> "testKey" + i).toArray(String[]::new);
+        final Shape rootShape = Shape.newBuilder().layout(MyDynamicObject.class, LOOKUP).build();
         final Shape[] expectedShapes = new Shape[PROPERTY_KEYS_PER_ITERATION];
 
         @TearDown
@@ -94,14 +98,22 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @State(Scope.Thread)
     public static class PerThreadContextState {
         Context context;
+        DynamicObject object;
 
         @Setup
         public void setup(SharedEngineState shared) {
             context = Context.newBuilder(TEST_LANGUAGE).engine(shared.engine).build();
+            context.enter();
+
+            object = new MyDynamicObject(shared.rootShape);
+            for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
+                DynamicObject.PutNode.getUncached().put(object, PROPERTY_KEYS[i], "testValue");
+            }
         }
 
         @TearDown
         public void tearDown() {
+            context.leave();
             context.close();
         }
     }
@@ -112,13 +124,11 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @Benchmark
     @Threads(8)
     public void shapeTransitionMapContended(SharedEngineState shared, PerThreadContextState perThread) {
-        perThread.context.enter();
         for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
             DynamicObject object = new MyDynamicObject(shared.rootShape);
-            DynamicObjectLibrary.getUncached().put(object, shared.propertyKeys[i], "testValue");
+            DynamicObject.PutNode.getUncached().put(object, PROPERTY_KEYS[i], "testValue");
             shared.assertSameShape(i, object.getShape());
         }
-        perThread.context.leave();
     }
 
     /**
@@ -127,12 +137,24 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @Benchmark
     @Threads(1)
     public void shapeTransitionMapUncontended(SharedEngineState shared, PerThreadContextState perThread) {
-        perThread.context.enter();
         for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
             DynamicObject object = new MyDynamicObject(shared.rootShape);
-            DynamicObjectLibrary.getUncached().put(object, shared.propertyKeys[i], "testValue");
+            DynamicObject.PutNode.getUncached().put(object, PROPERTY_KEYS[i], "testValue");
             shared.assertSameShape(i, object.getShape());
         }
-        perThread.context.leave();
+    }
+
+    @Benchmark
+    @Threads(1)
+    public Object get(SharedEngineState shared, PerThreadContextState perThread) {
+        DynamicObject object = perThread.object;
+        return GET_NODE.getOrDefault(object, SOME_KEY, null);
+    }
+
+    @Benchmark
+    @Threads(1)
+    public void put(SharedEngineState shared, PerThreadContextState perThread) {
+        DynamicObject object = perThread.object;
+        PUT_NODE.put(object, SOME_KEY, "updated value");
     }
 }
