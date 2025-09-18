@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
+import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 import static java.util.Objects.requireNonNull;
 
 import java.lang.annotation.Annotation;
@@ -38,6 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaType {
     private static final EspressoResolvedPrimitiveType[] primitives;
@@ -280,6 +282,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     @Override
     public boolean isCloneableWithAllocation() {
         return false;
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return lookupType(unresolvedJavaType, runtime().getJavaLangObject(), resolve);
     }
 
     @Override

@@ -565,11 +565,7 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
 
     @Override
     public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
-        JavaType javaType = runtime().lookupType(unresolvedJavaType.getName(), this, resolve);
-        if (javaType instanceof ResolvedJavaType) {
-            return (ResolvedJavaType) javaType;
-        }
-        return null;
+        return lookupType(unresolvedJavaType, this, resolve);
     }
 
     public EspressoConstantPool getConstantPool() {
