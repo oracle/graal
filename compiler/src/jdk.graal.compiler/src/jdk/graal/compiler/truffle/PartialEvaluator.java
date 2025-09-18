@@ -184,16 +184,14 @@ public abstract class PartialEvaluator {
      */
     public static ConstantFieldInfo computeConstantFieldInfo(ResolvedJavaField field,
                     Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
-                    ResolvedJavaType Child,
-                    ResolvedJavaType Children,
-                    ResolvedJavaType CompilationFinal) {
-        if (declaredAnnotationValues.containsKey(Child)) {
+                    KnownTruffleTypes types) {
+        if (declaredAnnotationValues.containsKey(types.Node_Child)) {
             return ConstantFieldInfo.CHILD;
         }
-        if (declaredAnnotationValues.containsKey(Children)) {
+        if (declaredAnnotationValues.containsKey(types.Node_Children)) {
             return ConstantFieldInfo.CHILDREN;
         }
-        AnnotationValue cf = declaredAnnotationValues.get(CompilationFinal);
+        AnnotationValue cf = declaredAnnotationValues.get(types.CompilerDirectives_CompilationFinal);
         if (cf != null) {
             int dimensions = actualStableDimensions(field, cf.get("dimensions", Integer.class));
             return ConstantFieldInfo.forDimensions(dimensions);

@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -43,13 +42,12 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -60,9 +58,11 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     private final SubstrateTruffleRuntime truffleRuntime;
     private final ConcurrentMap<PartialEvaluationMethodInfo, PartialEvaluationMethodInfo> canonicalMethodInfos = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantFieldInfo, ConstantFieldInfo> canonicalFieldInfos = new ConcurrentHashMap<>();
+    private final KnownTruffleTypes types;
 
-    public SubstrateTruffleUniverseFactory(SubstrateTruffleRuntime truffleRuntime) {
+    public SubstrateTruffleUniverseFactory(SubstrateTruffleRuntime truffleRuntime, KnownTruffleTypes types) {
         this.truffleRuntime = truffleRuntime;
+        this.types = types;
     }
 
     @Override
@@ -82,10 +82,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     public SubstrateField createField(AnalysisField aField, HostedStringDeduplication stringTable) {
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
         Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) aField);
-        ResolvedJavaType child = GraalAccess.lookupType(Node.Child.class);
-        ResolvedJavaType children = GraalAccess.lookupType(Node.Children.class);
-        ResolvedJavaType compilationFinal = GraalAccess.lookupType(CompilerDirectives.CompilationFinal.class);
-        ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, child, children, compilationFinal);
+        ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, types);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
     }

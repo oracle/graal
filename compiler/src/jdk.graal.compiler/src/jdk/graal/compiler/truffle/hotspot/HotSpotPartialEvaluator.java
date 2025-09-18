@@ -48,7 +48,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleElementCache;
@@ -204,9 +203,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
-            KnownTruffleTypes types = getTypes();
             Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(field);
-            return computeConstantFieldInfo(field, declaredAnnotationValues, types.Node_Child, types.Node_Children, types.CompilerDirectives_CompilationFinal);
+            return computeConstantFieldInfo(field, declaredAnnotationValues, getTypes());
         }
     }
 }

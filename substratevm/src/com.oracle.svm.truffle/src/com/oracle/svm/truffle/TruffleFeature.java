@@ -290,7 +290,6 @@ public class TruffleFeature implements InternalFeature {
         UserError.guarantee(runtime instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         truffleRuntime.resetHosted();
-        RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -383,8 +382,10 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        registerKnownTruffleFields(config, partialEvaluator.getTypes());
+        KnownTruffleTypes types = partialEvaluator.getTypes();
+        registerKnownTruffleFields(config, types);
 
+        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime, types));
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
