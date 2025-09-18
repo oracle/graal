@@ -14680,7 +14680,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             b.startTryBlock();
-            b.startSwitch().tree(op).end().startBlock();
+            b.startSwitch();
+
+            if (model.enableThreadedSwitch) {
+                b.startStaticCall(types.HostCompilerDirectives, "markThreadedSwitch");
+            }
+            b.tree(op);
+            if (model.enableThreadedSwitch) {
+                b.end();
+            }
+
+            b.end().startBlock();
 
             List<InstructionModel> topLevelInstructions = instructionPartitions.get(0);
             Map<Boolean, List<InstructionModel>> groupedInstructions = topLevelInstructions.stream().collect(deterministicGroupingBy((i) -> isForceCached(tier, i)));

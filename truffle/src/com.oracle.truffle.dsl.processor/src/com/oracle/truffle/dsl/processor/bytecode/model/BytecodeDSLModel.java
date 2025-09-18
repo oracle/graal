@@ -130,6 +130,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableRootTagging;
     public boolean enableRootBodyTagging;
     public boolean enableBlockScoping;
+    public boolean enableThreadedSwitch;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
     public String variadicStackLimit;
