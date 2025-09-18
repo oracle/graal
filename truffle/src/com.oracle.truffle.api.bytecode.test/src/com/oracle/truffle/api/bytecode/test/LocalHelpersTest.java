@@ -1002,9 +1002,9 @@ public class LocalHelpersTest {
         CallTarget collectFrames = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                List<Object[]> frames = new ArrayList<>();
+                List<FrameInstance> frames = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(f -> {
-                    frames.add(BytecodeNode.getLocalValues(f));
+                    frames.add(f);
                     return null;
                 });
                 return frames;
@@ -1058,19 +1058,27 @@ public class LocalHelpersTest {
         assertTrue(result instanceof List<?>);
 
         @SuppressWarnings("unchecked")
-        List<Object[]> frames = (List<Object[]>) result;
+        List<FrameInstance> frames = (List<FrameInstance>) result;
         assertEquals(3, frames.size());
 
         // <anon>
-        assertNull(frames.get(0));
+        assertNull(BytecodeNode.getLocalValues(frames.get(0)));
 
         // bar
-        Object[] barLocals = frames.get(1);
+        Object[] barLocals = BytecodeNode.getLocalValues(frames.get(1));
         assertArrayEquals(new Object[]{42}, barLocals);
+        Object[] barLocalNames = BytecodeNode.getLocalNames(frames.get(1));
+        assertArrayEquals(new Object[]{"y"}, barLocalNames);
+        BytecodeNode.setLocalValues(frames.get(1), new Object[]{-42});
+        assertArrayEquals(new Object[]{-42}, BytecodeNode.getLocalValues(frames.get(1)));
 
         // foo
-        Object[] fooLocals = frames.get(2);
+        Object[] fooLocals = BytecodeNode.getLocalValues(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
+        Object[] fooLocalNames = BytecodeNode.getLocalNames(frames.get(2));
+        assertArrayEquals(new Object[]{"x"}, fooLocalNames);
+        BytecodeNode.setLocalValues(frames.get(2), new Object[]{456});
+        assertArrayEquals(new Object[]{456}, BytecodeNode.getLocalValues(frames.get(2)));
     }
 
     @Test

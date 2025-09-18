@@ -1226,7 +1226,7 @@ public abstract class BytecodeNode extends Node {
         if (bytecode == null) {
             return null;
         }
-        Frame frame = resolveFrame(frameInstance);
+        Frame frame = resolveFrame(frameInstance, FrameAccess.READ_ONLY);
         int bci = bytecode.findBytecodeIndexImpl(frame, frameInstance.getCallNode());
         return bytecode.getLocalValues(bci, frame);
     }
@@ -1265,16 +1265,14 @@ public abstract class BytecodeNode extends Node {
             return false;
         }
         int bci = bytecode.findBytecodeIndex(frameInstance);
-        bytecode.setLocalValues(bci, frameInstance.getFrame(FrameAccess.READ_WRITE), values);
+        bytecode.setLocalValues(bci, resolveFrame(frameInstance, FrameAccess.READ_WRITE), values);
         return true;
     }
 
-    private static Frame resolveFrame(FrameInstance frameInstance) {
-        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-        if (frameInstance.getCallTarget() instanceof RootCallTarget root) {
-            if (root.getRootNode() instanceof ContinuationRootNode continuation) {
-                frame = continuation.findFrame(frame);
-            }
+    private static Frame resolveFrame(FrameInstance frameInstance, FrameAccess access) {
+        Frame frame = frameInstance.getFrame(access);
+        if (frameInstance.getCallTarget() instanceof RootCallTarget root && root.getRootNode() instanceof ContinuationRootNode continuation) {
+            frame = continuation.findFrame(frame);
         }
         return frame;
     }
