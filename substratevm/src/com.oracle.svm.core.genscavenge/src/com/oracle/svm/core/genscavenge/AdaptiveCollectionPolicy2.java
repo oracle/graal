@@ -75,10 +75,15 @@ interface AdaptiveCollectionPolicy2Tunables {
     int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
     double MAX_GC_PAUSE_MILLIS = UnsignedUtils.toDouble(UnsignedUtils.MAX_VALUE.subtract(1));
     /**
-     * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
-     * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
+     * Target for throughput, which is the ratio of mutator wall-clock time to GC wall-clock time.
+     * Eden grows until reaching this ratio. HotSpot's default is 99, so, spending 1% of time in GC.
+     *
+     * With our single-threaded collector, we cannot expect to always scale with the allocations of
+     * a multi-threaded mutator by growing spaces, and often end up with long pause times instead.
+     * Therefore we set this to 1, i.e., 50%. Beyond that, we use {@link #MIN_GC_DISTANCE_SECOND} to
+     * drive eden size, avoiding collecting too frequently and starving the mutator.
      */
-    int GC_TIME_RATIO = 19;
+    int GC_TIME_RATIO = 1;
     int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
     /**
      * The tenuring threshold at startup (HotSpot default: 7). The policy intentionally never
@@ -109,9 +114,16 @@ interface AdaptiveCollectionPolicy2Tunables {
     /**
      * Minimal distance between two consecutive GC pauses; shorter distance (more frequent gc) can
      * hinder app throughput. Additionally, too frequent gc means objs haven't got time to die yet,
-     * so the number of promoted objs will be high. Default: 100ms.
+     * so the number of promoted objs will be high. HotSpot default: 100ms.
+     *
+     * Beyond the minimum throughput via {@link #GC_TIME_RATIO}, we use distance to set eden size so
+     * the mutator can make sufficient progress and to limit overhead from frequent safepoints.
+     * Enforcing longer distance generally results in higher memory usage, and when it does not lead
+     * to a larger share of dying objects, causes longer pauses with little throughput improvement.
+     *
+     * 20ms seems to strike a good balance for us.
      */
-    double MIN_GC_DISTANCE_SECOND = 0.100;
+    double MIN_GC_DISTANCE_SECOND = 0.020;
 
     int NUM_OF_GC_SAMPLE = 32;
 }
@@ -134,7 +146,8 @@ interface AdaptiveCollectionPolicy2Tunables {
  * <p>
  * Most of this code is based on HotSpot's ParallelGC adaptive size policy. Unless otherwise stated,
  * code in this class has been adapted from HotSpot class {@code PSAdaptiveSizePolicy}. Names have
- * been kept mostly the same for comparability.
+ * been kept mostly the same for comparability. Initial tweaking focused on {@link #GC_TIME_RATIO}
+ * and {@link #MIN_GC_DISTANCE_SECOND}, further ideas are tracked in GR-73130.
  */
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
