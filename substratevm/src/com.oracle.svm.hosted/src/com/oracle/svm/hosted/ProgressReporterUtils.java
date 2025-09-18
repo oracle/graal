@@ -25,6 +25,8 @@
 
 package com.oracle.svm.hosted;
 
+import com.oracle.svm.core.util.ByteFormattingUtil;
+
 import java.net.URL;
 import java.security.CodeSource;
 

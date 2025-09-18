@@ -92,6 +92,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
