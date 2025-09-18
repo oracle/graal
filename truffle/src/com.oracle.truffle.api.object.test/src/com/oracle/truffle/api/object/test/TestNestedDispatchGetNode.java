@@ -40,43 +40,48 @@
  */
 package com.oracle.truffle.api.object.test;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.MatcherAssert.assertThat;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObject.GetNode;
 
-import java.lang.invoke.MethodHandles;
-import java.util.List;
+@SuppressWarnings("truffle")
+public abstract class TestNestedDispatchGetNode extends Node {
 
-import org.junit.Test;
-import com.oracle.truffle.api.object.Shape;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+    final Object key = "testKey";
 
-@RunWith(Parameterized.class)
-public class DynamicObjectConstructorTest extends ParametrizedDynamicObjectTest {
+    public abstract Object execute(DynamicObject obj);
 
-    @Parameters(name = "{0}")
-    public static List<TestRun> data() {
-        return List.of(TestRun.UNCACHED_ONLY);
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
 
-    @Test
-    public void testIncompatibleShape() {
-        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-
-        assertFails(() -> new TestDynamicObjectMinimal(shape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Incompatible shape")));
-    }
-
-    @Test
-    public void testNonEmptyShape() {
-        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-        TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
-        uncachedLibrary().put(obj, "key", "value");
-        Shape nonEmptyShape = obj.getShape();
-
-        assertFails(() -> new TestDynamicObjectDefault(nonEmptyShape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Shape must not have instance properties")));
+    @Specialization(limit = "3")
+    Object cached(DynamicObject obj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", allowUncached = true) boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
 
 }

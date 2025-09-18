@@ -698,6 +698,12 @@ public final class Shape {
         return propertyMap.get(key);
     }
 
+    @TruffleBoundary
+    Location getLocation(Object key) {
+        Property property = propertyMap.get(key);
+        return property == null ? null : property.getLocation();
+    }
+
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
@@ -733,6 +739,11 @@ public final class Shape {
     @TruffleBoundary
     protected Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
         return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, putFlags);
+    }
+
+    @TruffleBoundary
+    protected Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags, Property existing) {
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, existing, putFlags);
     }
 
     /**
@@ -926,6 +937,14 @@ public final class Shape {
     protected Shape replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
         return ObsolescenceStrategy.replaceProperty(this, oldProperty, newProperty);
+    }
+
+    @TruffleBoundary
+    protected Shape setPropertyFlags(Property oldProperty, int newFlags) {
+        if (oldProperty.getFlags() == newFlags) {
+            return this;
+        }
+        return replaceProperty(oldProperty, oldProperty.copyWithFlags(newFlags));
     }
 
     /**
