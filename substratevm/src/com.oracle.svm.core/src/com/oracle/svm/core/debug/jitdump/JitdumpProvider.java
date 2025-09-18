@@ -31,14 +31,24 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.elf.ELFMachine;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
@@ -46,6 +56,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -56,8 +67,27 @@ import jdk.graal.compiler.word.Word;
 public class JitdumpProvider {
     public static class Options {
         @Option(help = "Directory where jitdump related files will be placed for perf. Defaults to './jitdump'.")//
-        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", Options::validateRuntimeJitdumpDir,
+                        RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
+
+        private static void validateRuntimeJitdumpDir(RuntimeOptionKey<String> optionKey) {
+            if (optionKey.hasBeenSet() && !OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            }
+        }
     }
+
+    /**
+     * A value representing the string "JiTD", which serves as a magic number for tagging jitdump
+     * files. It is written is 0x4A695444 and the reader will detect an endian mismatch when it
+     * reads 0x4454694a.
+     */
+    public static final int MAGIC = 0x4A695444;
+    /**
+     * The jitdump version. The implementation is based on the
+     * {@code JITDUMP specification version 2}, which specifies the version number to be set to 1.
+     */
+    public static final int VERSION = 1;
 
     /**
      * A pointer to the file descriptor of the jitdump file. This needs to be a {@code CGlobalData}
@@ -69,10 +99,10 @@ public class JitdumpProvider {
      */
     private static final CGlobalData<WordPointer> jitdumpMappedAddress = CGlobalDataFactory.createWord(Word.nullPointer(), null, true);
     /**
-     * A unique index for a {@link JitdumpCodeLoadRecord code load record}. This is used by perf to
-     * generate one .so file per {@code code load record}
-     * ('jitted-&lt;pid&gt;-&lt;code_index&gt;.so') containing the run-time compiled code and debug
-     * info from the corresponding {@link JitdumpDebugInfoRecord debug info record}.
+     * A unique index for a {@link JitdumpEntry.CodeLoadRecord code load record}. This is used by
+     * perf to generate one .so file per {@code code load record}
+     * ({@literal 'jitted-<pid>-<code_index>.so'}) containing the run-time compiled code and debug
+     * info from the corresponding {@link JitdumpEntry.DebugInfoRecord debug info record}.
      */
     private static final GlobalAtomicLong codeIndex = new GlobalAtomicLong("JITDUMP_CODE_INDEX", 0L);
 
@@ -82,9 +112,8 @@ public class JitdumpProvider {
     }
 
     /**
-     * The file name of a jitdump file is defined as jit-&lt;pid&gt;.dump. The file will be placed
-     * in the directory as specified by {@link Options#RuntimeJitdumpDir} which defaults to
-     * './jitdump'.
+     * The file name of a jitdump file is defined as {@literal jit-<pid>.dump}. The file will be
+     * placed in the directory as specified by {@link Options#RuntimeJitdumpDir}.
      * 
      * @return the full path of the jitdump file
      */
@@ -96,18 +125,14 @@ public class JitdumpProvider {
      * Create a jitdump file, write the jitdump header, and set up the {@link JitdumpProvider} for
      * processing run-time debug info of a native image.
      * <p>
-     * First, the jitdump file as specified in {@link #getJitdumpPath()} is created. Then an
-     * {@code mmap} call is produced through {@link VirtualMemoryProvider#mapFile}. The {@code mmap}
-     * call is a perf event, that allows perf to find the jitdump file for a perf profiling run.
-     * With {@code perf inject}, perf creates one .so file per run-time compilation and injects them
-     * into the perf profiling data.
+     * Produces a mmap event for perf by mapping the jitdump file to virtual memory. This allows
+     * perf to find and parse the jitdump file during {@code perf inject}. {@code perf inject}
+     * creates one .so file per run-time compilation containing the compiled code and debug info
+     * related to a code load record and injects references to the .so files into the perf profiling
+     * data.
      * <p>
-     * Writing to the jitdump files is handled by a {@link RawFileOperationSupport} from
-     * {@link #getFileSupport()} via a {@link RawFileOperationSupport.RawFileDescriptor raw file
-     * descriptor}.
-     * <p>
-     * After the file is created and memory mapped, the {@link JitdumpHeader} is written to the
-     * jitdump file.
+     * Only if the file was created and the memory mapping was successful, a
+     * {@link JitdumpEntry.FileHeader jitdump header} is written to the jitdump file.
      *
      * @return the startup hook that only runs for the first isolate
      */
@@ -158,14 +183,12 @@ public class JitdumpProvider {
     /**
      * Close the jitdump file and clean up the {@link JitdumpProvider}.
      * <p>
-     * If the {@link #startupHook()} ran at startup, the {@code JitdumpProvider} holds the
-     * {@link RawFileOperationSupport.RawFileDescriptor raw file descriptor} of the jitdump file and
-     * its memory mapped address from {@code mmap}. First, a {@link #writeCloseRecord jitdump close
-     * record} is written to the jitdump file. Then, the file is closed and the mapped memory is
-     * cleared with {@code munmap} through {@link VirtualMemoryProvider#free}.
+     * If the {@link #startupHook()} ran at startup and successfully set up the
+     * {@code JitdumpProvider} the optional {@link #writeCloseRecord close record} is written, the
+     * jitdump file is closed, and the memory mapped region is unmapped. .
      * <p>
-     * If the startup hook did not run or failed to create the jitdump file, the shutdown hook does
-     * nothing.
+     * If the startup hook did not run or failed to create the jitdump file, the shutdown hook has
+     * no effect.
      *
      * @return the shutdown hook that only runs for the first isolate
      */
@@ -191,6 +214,7 @@ public class JitdumpProvider {
             Pointer mappedAddress = jitdumpMappedAddress.get().read();
             if (mappedAddress.isNonNull()) {
                 UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+                /* Free the memory mapped region with a munmap call. */
                 VirtualMemoryProvider.get().free(mappedAddress, pageSize);
                 /* Clear address of memory mapped region. */
                 jitdumpMappedAddress.get().write(Word.nullPointer());
@@ -198,56 +222,62 @@ public class JitdumpProvider {
         };
     }
 
-    private static synchronized void writeToFile(RawFileOperationSupport.RawFileDescriptor fd, byte[] content) {
+    private static boolean writeToFile(RawFileOperationSupport.RawFileDescriptor fd, Pointer data, UnsignedWord size) {
         assert getFileSupport().isValid(fd) : "File descriptor for jitdump file must be initialized before writing to it";
-        getFileSupport().write(fd, content);
+        return getFileSupport().write(fd, data, size);
+    }
+
+    private static boolean writeToFile(RawFileOperationSupport.RawFileDescriptor fd, byte[] data) {
+        assert getFileSupport().isValid(fd) : "File descriptor for jitdump file must be initialized before writing to it";
+        return getFileSupport().write(fd, data);
     }
 
     /**
-     * Create a {@link JitdumpHeader jitdump header} and writes it to the jitdump file.
+     * Create a {@link JitdumpEntry.FileHeader jitdump header} and writes it to the jitdump file.
      * 
      * @param fd the file descriptor to write to.
      */
-    public static void writeHeader(RawFileOperationSupport.RawFileDescriptor fd) {
-        ByteBuffer content = ByteBuffer.allocate(JitdumpHeader.SIZE);
-        content.order(ByteOrder.nativeOrder());
+    private static void writeHeader(RawFileOperationSupport.RawFileDescriptor fd) {
+        int headerSize = SizeOf.get(JitdumpEntry.FileHeader.class);
 
-        JitdumpHeader header = new JitdumpHeader();
-        content.putInt(JitdumpHeader.MAGIC)
-                        .putInt(JitdumpHeader.VERSION)
-                        .putInt(JitdumpHeader.SIZE)
-                        .putInt(header.elfMach().toShort())
-                        .putInt(0)  // padding. Reserved for future use
-                        .putInt(header.pid())
-                        .putLong(header.timestamp())
-                        .putLong(0);  // no flags needed
-        assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump header.";
+        JitdumpEntry.FileHeader fileHeader = StackValue.get(JitdumpEntry.FileHeader.class);
+        fileHeader.setMagic(MAGIC);
+        fileHeader.setVersion(VERSION);
+        fileHeader.setTotalSize(headerSize);
+        fileHeader.setElfMach(ELFMachine.from(ImageSingletons.lookup(Platform.class).getArchitecture()).toShort());
+        fileHeader.setPad1(0);  // Padding for future use.
+        fileHeader.setPid((int) ProcessProperties.getProcessID());
+        fileHeader.setTimestamp(System.nanoTime());  // Get CLOCK_MONOTONIC timestamp.
+        fileHeader.setFlags(0);  // No flags needed.
 
-        writeToFile(fd, content.array());
+        boolean success = writeToFile(fd, (Pointer) fileHeader, Word.unsigned(headerSize));
+        assert success : "Failed to write jitdump header";
     }
 
     /**
      * Create a code close record and append it to the jitdump file.
      * <p>
-     * A code close record only consists of a {@link JitdumpRecordHeader} with the record id
-     * {@link JitdumpRecordId#JIT_CODE_CLOSE} and no record body.
+     * A code close record only consists of a {@link JitdumpEntry.RecordHeader} with the record id
+     * {@link JitdumpEntry.RecordType#JIT_CODE_CLOSE} and no record body.
      * 
      * @param fd the file descriptor to write to.
      */
-    public static void writeCloseRecord(RawFileOperationSupport.RawFileDescriptor fd) {
-        ByteBuffer content = ByteBuffer.allocate(JitdumpRecordHeader.SIZE);
-        content.order(ByteOrder.nativeOrder());
+    private static void writeCloseRecord(RawFileOperationSupport.RawFileDescriptor fd) {
+        int closeRecordSize = SizeOf.get(JitdumpEntry.RecordHeader.class);
 
-        JitdumpRecordHeader header = new JitdumpRecordHeader(JitdumpRecordId.JIT_CODE_CLOSE, JitdumpRecordHeader.SIZE);
-        putRecordHeader(header, content);
-        assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump close record.";
+        JitdumpEntry.RecordHeader closeRecord = StackValue.get(JitdumpEntry.RecordHeader.class);
+        closeRecord.setId(JitdumpEntry.RecordType.JIT_CODE_CLOSE.getCValue());
+        closeRecord.setTotalSize(closeRecordSize);
+        closeRecord.setTimestamp(System.nanoTime());
 
-        writeToFile(fd, content.array());
+        boolean success = writeToFile(fd, (Pointer) closeRecord, Word.unsigned(closeRecordSize));
+        assert success : "Failed to write jitdump close record";
     }
 
     /**
-     * Create a {@link JitdumpCodeLoadRecord code load record} and a {@link JitdumpDebugInfoRecord
-     * debug info record} for a run-time compilation and append them to the jitdump file.
+     * Create a {@link JitdumpEntry.CodeLoadRecord code load record} and a
+     * {@link JitdumpEntry.DebugInfoRecord debug info record} for a run-time compilation and append
+     * them to the jitdump file.
      * <p>
      * As perf processes the records one after another and there are no links between jitdump
      * records, a debug info record must come before the corresponding code load record. If e.g. two
@@ -259,52 +289,111 @@ public class JitdumpProvider {
      */
     public static void writeRecords(SubstrateDebugInfoProvider debugInfoProvider, CompiledMethodEntry compiledMethodEntry) {
         MethodEntry methodEntry = compiledMethodEntry.primary().getMethodEntry();
-        JitdumpCodeLoadRecord cl = JitdumpCodeLoadRecord.create(methodEntry, debugInfoProvider.getCompilation(), debugInfoProvider.getCodeSize(), debugInfoProvider.getCodeAddress());
-        JitdumpDebugInfoRecord di = JitdumpDebugInfoRecord.create(compiledMethodEntry, debugInfoProvider.getCodeAddress());
 
-        int totalSize = cl.header().recordSize() + di.header().recordSize();
-        ByteBuffer content = ByteBuffer.allocate(totalSize);
+        /* Calculate the total size for the record headers and ByteBuffer. */
+        int deSize = SizeOf.get(JitdumpEntry.DebugEntry.class);
+        int debugEntriesSize = compiledMethodEntry.topDownRangeStream(false)
+                        .mapToInt(r -> {
+                            try (CTypeConversion.CCharPointerHolder filename = CTypeConversion.toCString(r.getMethodEntry().getFullFileName())) {
+                                /* Filename +1 for string termination. */
+                                int filenameLen = (int) SubstrateUtil.strlen(filename.get()).rawValue() + 1;
+                                return deSize + filenameLen;
+                            }
+                        })
+                        .sum();
+        int debugInfoRecordSize = SizeOf.get(JitdumpEntry.DebugInfoRecord.class) + debugEntriesSize;
+
+        /* Symbol name +1 for string termination. */
+        int symbolNameLen = 1;
+        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(methodEntry.getSymbolName())) {
+            symbolNameLen += (int) SubstrateUtil.strlen(symbolName.get()).rawValue();
+        }
+        int codeSize = debugInfoProvider.getCompilation().getTargetCodeSize();
+        int codeLoadRecordSize = SizeOf.get(JitdumpEntry.CodeLoadRecord.class) + codeSize + symbolNameLen;
+
+        /*
+         * Setup ByteBuffer for filling it with jitdump records. The ByteBuffer is needed here
+         * because the size of the jitdump records is not known at compile time. We also want to
+         * write both records with a single write operation to the file to ensure they are written
+         * right after each other.
+         */
+        ByteBuffer content = ByteBuffer.allocate(debugInfoRecordSize + codeLoadRecordSize);
         content.order(ByteOrder.nativeOrder());
 
         /*
-         * First write the debug info record for the run-time compiled method.
+         * First add the debug info record for the run-time compiled method.
          */
-        putRecordHeader(di.header(), content)
-                        .putLong(di.address())
-                        .putLong(di.entries().size());
-        for (JitdumpDebugInfoRecord.JitdumpDebugEntry de : di.entries()) {
-            content.putLong(de.address())
-                            .putInt(de.line())
-                            .putInt(de.discriminator())
-                            .put(de.filename().getBytes())
-                            .put((byte) 0); // Terminate filename string.
+        JitdumpEntry.DebugInfoRecord di = StackValue.get(JitdumpEntry.DebugInfoRecord.class);
+        /* Fill the jitdump record header. */
+        di.setId(JitdumpEntry.RecordType.JIT_CODE_DEBUG_INFO.getCValue());
+        di.setTotalSize(debugInfoRecordSize);
+        di.setTimestamp(System.nanoTime());
+        /* Fill the debug info record fields. */
+        di.setCodeAddr(compiledMethodEntry.primary().getCodeOffset());
+        List<Range> ranges = compiledMethodEntry.topDownRangeStream(false).toList();
+        di.setNrEntry(ranges.size());
+
+        content.put(CTypeConversion.asByteBuffer(di, SizeOf.get(JitdumpEntry.DebugInfoRecord.class)));
+
+        JitdumpEntry.DebugEntry de = StackValue.get(JitdumpEntry.DebugEntry.class);
+        ByteBuffer deBuffer = CTypeConversion.asByteBuffer(de, SizeOf.get(JitdumpEntry.DebugEntry.class));
+        /* Add all debug entries. */
+        for (Range range : ranges) {
+            de.setCodeAddr(range.getLo());
+            de.setLine(range.getLine());
+            de.setDiscrim(0);
+
+            /*
+             * Add debug entry and reset the corresponding buffer to be ready for adding the next
+             * debug entry.
+             */
+            content.put(deBuffer);
+            deBuffer.clear();
+
+            try (CTypeConversion.CCharPointerHolder filename = CTypeConversion.toCString(range.getMethodEntry().getFullFileName())) {
+                /* Filename +1 for string termination. */
+                int filenameLen = (int) SubstrateUtil.strlen(filename.get()).rawValue() + 1;
+                content.put(CTypeConversion.asByteBuffer(filename.get(), filenameLen));
+            }
         }
-        assert content.position() == di.header().recordSize();
+        assert content.position() == debugInfoRecordSize : "Written " + content.position() + " bytes as jitdump debug info record, should be " + debugInfoRecordSize + " bytes";
 
         /*
-         * Add corresponding code load record after the debug info record.
+         * Add the corresponding code load record after the debug info record.
          */
-        putRecordHeader(cl.header(), content)
-                        .putInt(cl.pid())
-                        .putInt(cl.tid())
-                        .putLong(cl.address())  // Virtual address = address.
-                        .putLong(cl.address())
-                        .putLong(cl.size())
-                        // Code index -> unique identifier for run-time compiled code.
-                        .putLong(codeIndex.getAndIncrement())
-                        .put(cl.name().getBytes())
-                        .put((byte) 0)  // Terminate method name string.
-                        .put(cl.code(), 0, debugInfoProvider.getCodeSize());  // Add compiled code.
+        JitdumpEntry.CodeLoadRecord cl = StackValue.get(JitdumpEntry.CodeLoadRecord.class);
 
+        /* Fill the jitdump record header. */
+        cl.setId(JitdumpEntry.RecordType.JIT_CODE_LOAD.getCValue());
+        cl.setTotalSize(codeLoadRecordSize);
+        cl.setTimestamp(System.nanoTime());
+
+        /* Fill the debug info record fields. */
+        cl.setPid((int) ProcessProperties.getProcessID());
+        cl.setTid((int) Thread.currentThread().threadId());
+        // Virtual address = address.
+        cl.setVma(debugInfoProvider.getCodeAddress());
+        cl.setCodeAddr(debugInfoProvider.getCodeAddress());
+        cl.setCodeSize(codeSize);
+        // Code index -> unique identifier for run-time compiled code.
+        cl.setCodeIndex(codeIndex.getAndIncrement());
+
+        content.put(CTypeConversion.asByteBuffer(cl, SizeOf.get(JitdumpEntry.CodeLoadRecord.class)));
+        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(methodEntry.getSymbolName())) {
+            /* Add symbol name and raw bytes of the compiled code. */
+            content.put(CTypeConversion.asByteBuffer(symbolName.get(), symbolNameLen));
+        }
+        content.put(debugInfoProvider.getCompilation().getTargetCode(), 0, codeSize);
         assert content.remaining() == 0 : "Missing " + content.remaining() + " byte(s) in the jitdump records for " + methodEntry.getMethodName() + ".";
 
-        writeToFile(fdPointer.get().read(), content.array());
-    }
-
-    private static ByteBuffer putRecordHeader(JitdumpRecordHeader header, ByteBuffer content) {
-        // Append the jitdump header to the given ByteBuffer.
-        return content.putInt(header.id().value())
-                        .putInt(header.recordSize())
-                        .putLong(header.timestamp());
+        /*
+         * Append records to the jitdump file. If the file descriptor is invalid (e.g. if the file
+         * is already closed), do not write to it.
+         */
+        RawFileOperationSupport.RawFileDescriptor fd = fdPointer.get().read();
+        if (getFileSupport().isValid(fd)) {
+            boolean success = writeToFile(fd, content.array());
+            assert success : "Failed to write debug info record and code load record";
+        }
     }
 }

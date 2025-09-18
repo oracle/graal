@@ -69,18 +69,20 @@ The following command assumes that `native-image` is on the system path and avai
 If it is not installed, refer to the [Getting Started](README.md).
 
 ```bash
-native-image -g <entry_class>
+native-image -g -H:+PreserveFramePointer <entry_class>
 ```
 
 The `-g` option instructs Native Image to produce debug information for the generated binary.
 `perf` can use this debug information, for example, to provide proper names for types and methods in traces.
+The `-H:+PreserveFramePointer` options instructs Native Image to save frame pointers on the stack.
+This allows `perf` to reliably unwind stack frames and reconstruct the call hierarchy.
 
 ### Profiling of Runtime-Compiled Methods
 
 Native Image can integrate runtime compilation information with perf enabling profiling of runtime compiled methods. 
 Two formats are supported:
- - [perf-map](https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jit-interface.txt) – lightweight symbol mapping
- - [jitdump](https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jitdump-specification.txt) – detailed runtime compilation metadata
+ - [perf-map](https://github.com/torvalds/linux/blob/46a51f4f5edade43ba66b3c151f0e25ec8b69cb6/tools/perf/Documentation/jit-interface.txt) – lightweight symbol mapping
+ - [jitdump](https://github.com/torvalds/linux/blob/46a51f4f5edade43ba66b3c151f0e25ec8b69cb6/tools/perf/Documentation/jitdump-specification.txt) – detailed runtime compilation metadata
 
 Both formats can be enabled independently or together.
 
@@ -96,12 +98,16 @@ The mapping file is generated at:
 Perf automatically uses this file to resolve symbols.
 
 The perf-map format supports basic symbol resolution only and does not provide detailed runtime compilation metadata like jitdump.
-If the same code address is reused, perf-map cannot distinguish between different symbols.
+
+**Note:** This is a major limitation of perf-map. 
+It does cannot distinguish between symbols for the same code address, and the first matching entry in the perf-map file is used. 
+As a consequence, if a code address is reused, perf will provide incorrect symbol mappings with perf-map.
+The only way around this limitation is to use jitdump, which uses timestamps to find the correct information for a compilation.
 
 1. Building with perf-map support
 
    ```bash
-   native-image -g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=perf-map ...
+   native-image -g -H:+PreserveFramePointer -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=perf-map ...
    ```
    
    At image-runtime, the perf-map file `/tmp/perf-<pid>.map` is created and filled with mappings from code address to symbol name.
@@ -120,7 +126,7 @@ This requires post-processing of the perf data to inject the runtime compilation
 1. Building with jitdump support
 
    ```bash
-   native-image -g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump ...
+   native-image -g -H:+PreserveFramePointer -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump ...
    ```
    
    At image-runtime, the jitdump file `<jitdump_dir>/jit-<pid>.dump` is created, and runtime compilation metadata is written to it.
@@ -145,7 +151,7 @@ This requires post-processing of the perf data to inject the runtime compilation
    This step:
     - Locates the jitdump file. 
     - Generates a .so file for each runtime compilation entry in the jitdump file. 
-    - Injects runtime compilation information into the profiling data and saves ist to `perf.jit.data`.
+    - Injects runtime compilation information into the profiling data and stores it in `perf.jit.data`.
 
 4. Inspect profiling data
 
@@ -154,6 +160,19 @@ This requires post-processing of the perf data to inject the runtime compilation
    ```
    
    Symbols from the jitdump file appear as coming from `jitted-<pid>-<code_id>.so`, where code_id is the index of a compilation entry in the jitdump file.
+
+#### Choosing a Format
+Use perf-map:
+ - for quick, lightweight symbol resolution of run-time compiled methods.
+ - if no detailed metadata about run-time compiled methods is required.
+ - if it is no concern that the same code address may be used multiple times (this leads to an incorrect output).
+
+Use jitdump:
+ - for accurate and detailed profiling of run-time methods.
+ - to directly inject additional information for run-time compiled methods into the perf profiling data.
+ - if the additional steps (`perf record -k 1`, `perf inject`) are affordable.
+
+While perf-map is faster to set up, jitdump is usually the preferred format, especially for in-depth analysis.
 
 ## Basic Operations
 

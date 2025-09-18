@@ -42,27 +42,33 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
- * The accessor for a {@link GdbJitHandle}.
+ * The accessor for a {@link GdbJitAccessorHandle}.
  */
 public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserverHandleAccessor {
 
+    @Fold
+    public static GdbJitAccessor singleton() {
+        return ImageSingletons.lookup(GdbJitAccessor.class);
+    }
+
     /**
-     * Creates and allocates a {@link GdbJitHandle} and a {@link GdbJitInterface.JITCodeEntry} in
-     * native memory. The handle wraps the {@code GDB JITCodeEntry}, the corresponding runtime debug
-     * info, and its state is set as {@link GdbJitHandle#INITIALIZED}.
+     * Creates and allocates a {@link GdbJitAccessorHandle} and a
+     * {@link GdbJitInterface.JITCodeEntry} in native memory. The handle wraps the
+     * {@code GDB JITCodeEntry}, the corresponding runtime debug info, and its state is set as
+     * {@link GdbJitAccessorHandle#INITIALIZED}.
      *
      * @param debug the {@link DebugContext} used for logging
      * @param debugInfoData the runtime debug info for a runtime compilation
-     * @return the {@code GdbJitHandle} for the runtime debug info
+     * @return the {@code GdbJitAccessorHandle} for the runtime debug info
      */
     @SuppressWarnings("try")
-    public static GdbJitHandle createHandle(DebugContext debug, NonmovableArray<Byte> debugInfoData) {
-        GdbJitHandle handle = NativeMemory.malloc(SizeOf.get(GdbJitHandle.class), NmtCategory.Code);
+    public static InstalledCodeObserver.InstalledCodeObserverHandle createHandle(DebugContext debug, NonmovableArray<Byte> debugInfoData) {
+        GdbJitAccessorHandle handle = NativeMemory.malloc(SizeOf.get(GdbJitAccessorHandle.class), NmtCategory.Code);
         GdbJitInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GdbJitInterface.JITCodeEntry.class), NmtCategory.Code);
         handle.setAccessor(singleton());
         handle.setRawHandle(entry);
         handle.setDebugInfoData(debugInfoData);
-        handle.setState(GdbJitHandle.INITIALIZED);
+        handle.setState(GdbJitAccessorHandle.INITIALIZED);
         if (debug.isLogEnabled()) {
             try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
                 debug.log(toString(handle));
@@ -71,41 +77,36 @@ public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserv
         return handle;
     }
 
-    @Fold
-    public static GdbJitAccessor singleton() {
-        return ImageSingletons.lookup(GdbJitAccessor.class);
-    }
-
     /**
-     * Transfers a {@link GdbJitHandle} to the state {@link GdbJitHandle#ACTIVATED}.
-     * <p>
-     * GDB is notified about new runtime debug info through {@link GdbJitInterface#registerJITCode}.
+     * Registers debug info for a runtime compilation in GDB through
+     * {@link GdbJitInterface#registerJITCode}.
      *
      * @param installedCodeObserverHandle the handle holding a {@code GDB JITCodeEntry} and the
      *            corresponding debug info
      */
     @Override
     public void activate(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {
-        GdbJitHandle handle = (GdbJitHandle) installedCodeObserverHandle;
-        VMOperation.guaranteeInProgressAtSafepoint("SubstrateDebugInfoInstaller.Accessor.activate must run in a VMOperation");
-        VMError.guarantee(handle.getState() == GdbJitHandle.INITIALIZED);
+        GdbJitAccessorHandle handle = (GdbJitAccessorHandle) installedCodeObserverHandle;
+        VMOperation.guaranteeInProgressAtSafepoint("GdbJitAccessor.activate must run in a VMOperation");
+        VMError.guarantee(handle.getState() == GdbJitAccessorHandle.INITIALIZED);
 
         NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
         CCharPointer address = NonmovableArrays.addressOf(debugInfoData, 0);
         int size = NonmovableArrays.lengthOf(debugInfoData);
         GdbJitInterface.registerJITCode(address, size, handle.getRawHandle());
 
-        handle.setState(GdbJitHandle.ACTIVATED);
+        handle.setState(GdbJitAccessorHandle.REGISTERED);
     }
 
     /**
-     * Transfers a {@link GdbJitHandle} to the state {@link GdbJitHandle#RELEASED}.
+     * Unregisters debug info for a runtime compilation in GDB through
+     * {@link GdbJitInterface#unregisterJITCode}.
      * <p>
-     * If the handle was already activated, GDB is notified about the invalid runtime debug info
-     * through {@link GdbJitInterface#unregisterJITCode}.
+     * After unregistering in GDB all native memory used by the handle, {@code JITCodeEntry} and
+     * runtime debug info is cleaned up.
      * <p>
-     * Also cleans up all native memory used by the handle, {@code JITCodeEntry} and runtime debug
-     * info.
+     * If the handle was not registered yet, GDB is not notified and all native memory is
+     * immediately cleaned up.
      *
      * @param installedCodeObserverHandle the handle holding a {@code GDB JITCodeEntry} and the
      *            corresponding debug info
@@ -113,12 +114,12 @@ public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserv
     @Override
     @Uninterruptible(reason = "Called during GC or teardown.")
     public void release(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {
-        GdbJitHandle handle = (GdbJitHandle) installedCodeObserverHandle;
+        GdbJitAccessorHandle handle = (GdbJitAccessorHandle) installedCodeObserverHandle;
         GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
         // Handle may still be just initialized here, so it never got registered in GDB.
-        if (handle.getState() == GdbJitHandle.ACTIVATED) {
+        if (handle.getState() == GdbJitAccessorHandle.REGISTERED) {
             GdbJitInterface.unregisterJITCode(entry);
-            handle.setState(GdbJitHandle.RELEASED);
+            handle.setState(GdbJitAccessorHandle.UNREGISTERED);
         }
         NativeMemory.free(entry);
         NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
@@ -127,17 +128,17 @@ public class GdbJitAccessor implements InstalledCodeObserver.InstalledCodeObserv
 
     @Override
     public void detachFromCurrentIsolate(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {
-        GdbJitHandle handle = (GdbJitHandle) installedCodeObserverHandle;
+        GdbJitAccessorHandle handle = (GdbJitAccessorHandle) installedCodeObserverHandle;
         NonmovableArrays.untrackUnmanagedArray(handle.getDebugInfoData());
     }
 
     @Override
     public void attachToCurrentIsolate(InstalledCodeObserver.InstalledCodeObserverHandle installedCodeObserverHandle) {
-        GdbJitHandle handle = (GdbJitHandle) installedCodeObserverHandle;
+        GdbJitAccessorHandle handle = (GdbJitAccessorHandle) installedCodeObserverHandle;
         NonmovableArrays.trackUnmanagedArray(handle.getDebugInfoData());
     }
 
-    private static String toString(GdbJitHandle handle) {
+    private static String toString(GdbJitAccessorHandle handle) {
         return "DebugInfoHandle(handle = 0x" + Long.toHexString(handle.getRawHandle().rawValue()) +
                         ", address = 0x" +
                         Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +

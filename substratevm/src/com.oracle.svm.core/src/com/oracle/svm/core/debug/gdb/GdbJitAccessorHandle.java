@@ -23,36 +23,41 @@
  * questions.
  */
 
-package com.oracle.svm.core.debug.jitdump;
+package com.oracle.svm.core.debug.gdb;
+
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.code.InstalledCodeObserver;
 
 /**
- * A jitdump record header specifies the type and length of a jitdump record. The following record
- * types are defined:
- * <ul>
- * <li><code>Value 0 : JIT_CODE_LOAD      : record describing a jitted function</code>
- * <li><code>Value 1 : JIT_CODE_MOVE      : record describing an already jitted function which is moved</code>
- * <li><code>Value 2 : JIT_CODE_DEBUG_INFO: record describing the debug information for a jitted function</code>
- * <li><code>Value 3 : JIT_CODE_CLOSE     : record marking the end of the jit runtime (optional)</code>
- * <li><code>Value 4 : JIT_CODE_UNWINDING_INFO: record describing a function unwinding information</code>
- * </ul>
+ * A code observer handle for wrapping a {@link GdbJitInterface.JITCodeEntry} and the corresponding
+ * run-time debug info object file.
  * <p>
- * See <a href=
- * "https://raw.githubusercontent.com/torvalds/linux/master/tools/perf/Documentation/jitdump-specification.txt">jitdump-specification</a>
+ * This should only be accessed via {@link GdbJitAccessor}.
  */
-public enum JitdumpRecordId {
-    JIT_CODE_LOAD(0),
-    JIT_CODE_MOVE(1),
-    JIT_CODE_DEBUG_INFO(2),
-    JIT_CODE_CLOSE(3),
-    JIT_CODE_UNWINDING_INFO(4);
+@RawStructure
+interface GdbJitAccessorHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
+    int INITIALIZED = 0;
+    int REGISTERED = 1;
+    int UNREGISTERED = 2;
 
-    private final int value;
+    @RawField
+    GdbJitInterface.JITCodeEntry getRawHandle();
 
-    JitdumpRecordId(int v) {
-        value = v;
-    }
+    @RawField
+    void setRawHandle(GdbJitInterface.JITCodeEntry value);
 
-    public int value() {
-        return value;
-    }
+    @RawField
+    NonmovableArray<Byte> getDebugInfoData();
+
+    @RawField
+    void setDebugInfoData(NonmovableArray<Byte> data);
+
+    @RawField
+    int getState();
+
+    @RawField
+    void setState(int value);
 }
