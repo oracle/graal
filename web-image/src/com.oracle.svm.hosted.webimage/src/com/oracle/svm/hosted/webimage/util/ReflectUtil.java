@@ -72,8 +72,15 @@ public class ReflectUtil {
             return Optional.empty();
         }
 
+        Method[] methods;
+        try {
+            methods = javaInterface.getMethods();
+        } catch (NoClassDefFoundError e) {
+            return Optional.empty();
+        }
+
         Method sam = null;
-        for (final Method method : javaInterface.getMethods()) {
+        for (final Method method : methods) {
             if (OBJECT_METHODS.contains(method)) {
                 // Skip the methods from the Object class.
                 continue;
