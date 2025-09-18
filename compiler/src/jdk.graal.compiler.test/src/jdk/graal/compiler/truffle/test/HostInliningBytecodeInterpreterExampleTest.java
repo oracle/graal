@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /*
- * If you update the code here, please also update truffle/docs/HostOptimization.md.
+ * If you update the code here, please also update truffle/docs/HostCompilation.md.
  */
 public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerImplTest {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,59 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object;
+package com.oracle.truffle.api.object.test;
 
-/**
- * Helper methods for accessing property and object flags.
- */
-final class Flags {
-    static final int DEFAULT = 0;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-    /** If set, {@code int} values can be implicitly cast to {@code long}. */
-    static final int IMPLICIT_CAST_INT_TO_LONG = 1 << 0;
-    /** If set, {@code int} values can be implicitly cast to {@code double}. */
-    static final int IMPLICIT_CAST_INT_TO_DOUBLE = 1 << 1;
+import java.lang.invoke.MethodHandles;
 
-    /** Only set property if it already exists. */
-    static final int IF_PRESENT = 1 << 2;
-    /** Only set property if it does not already exist. */
-    static final int IF_ABSENT = 1 << 3;
-    /** Redefine property if it already exists. */
-    static final int UPDATE_FLAGS = 1 << 4;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
+import org.junit.Test;
 
-    /** Define property as constant in the shape. */
-    static final int CONST = 1 << 5;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-    private Flags() {
-        // do not instantiate
+public class DynamicObjectConstructorTest extends AbstractLibraryTest {
+
+    @Test
+    public void testIncompatibleShape() {
+        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
+
+        assertFails(() -> new TestDynamicObjectMinimal(shape), IllegalArgumentException.class,
+                        ex -> assertThat(ex.getMessage(), containsString("Incompatible shape")));
     }
 
-    private static boolean getFlag(int flags, int flagBit) {
-        return (flags & flagBit) != 0;
-    }
+    @Test
+    public void testNonEmptyShape() {
+        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
+        TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
+        DynamicObjectLibrary.getUncached().put(obj, "key", "value");
+        Shape nonEmptyShape = obj.getShape();
 
-    static boolean isImplicitCastIntToLong(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
-    }
-
-    static boolean isImplicitCastIntToDouble(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
-    }
-
-    static boolean isPutIfPresent(int flags) {
-        return getFlag(flags, IF_PRESENT);
-    }
-
-    static boolean isPutIfAbsent(int flags) {
-        return getFlag(flags, IF_ABSENT);
-    }
-
-    static boolean isUpdateFlags(int flags) {
-        return getFlag(flags, UPDATE_FLAGS);
-    }
-
-    static boolean isConstant(int flags) {
-        return getFlag(flags, CONST);
+        assertFails(() -> new TestDynamicObjectDefault(nonEmptyShape), IllegalArgumentException.class,
+                        ex -> assertThat(ex.getMessage(), containsString("Shape must not have instance properties")));
     }
 
 }

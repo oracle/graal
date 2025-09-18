@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,59 +38,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object;
+package com.oracle.truffle.api.object.test;
 
-/**
- * Helper methods for accessing property and object flags.
- */
-final class Flags {
-    static final int DEFAULT = 0;
+import static org.junit.Assert.assertSame;
 
-    /** If set, {@code int} values can be implicitly cast to {@code long}. */
-    static final int IMPLICIT_CAST_INT_TO_LONG = 1 << 0;
-    /** If set, {@code int} values can be implicitly cast to {@code double}. */
-    static final int IMPLICIT_CAST_INT_TO_DOUBLE = 1 << 1;
+import java.util.Arrays;
+import java.util.List;
 
-    /** Only set property if it already exists. */
-    static final int IF_PRESENT = 1 << 2;
-    /** Only set property if it does not already exist. */
-    static final int IF_ABSENT = 1 << 3;
-    /** Redefine property if it already exists. */
-    static final int UPDATE_FLAGS = 1 << 4;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-    /** Define property as constant in the shape. */
-    static final int CONST = 1 << 5;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-    private Flags() {
-        // do not instantiate
+@RunWith(Parameterized.class)
+public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
     }
 
-    private static boolean getFlag(int flags, int flagBit) {
-        return (flags & flagBit) != 0;
+    @Test
+    public void testDynamicTypeCanBeAnyObject() {
+        Object dynamicType = new Object();
+        Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertSame(dynamicType, lib.getDynamicType(obj));
+        dynamicType = new Object();
+        lib.setDynamicType(obj, dynamicType);
+        assertSame(dynamicType, lib.getDynamicType(obj));
     }
 
-    static boolean isImplicitCastIntToLong(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
-    }
-
-    static boolean isImplicitCastIntToDouble(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
-    }
-
-    static boolean isPutIfPresent(int flags) {
-        return getFlag(flags, IF_PRESENT);
-    }
-
-    static boolean isPutIfAbsent(int flags) {
-        return getFlag(flags, IF_ABSENT);
-    }
-
-    static boolean isUpdateFlags(int flags) {
-        return getFlag(flags, UPDATE_FLAGS);
-    }
-
-    static boolean isConstant(int flags) {
-        return getFlag(flags, CONST);
+    @Test
+    public void testDynamicTypeCannotBeNull() {
+        assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
+        Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
     }
 
 }

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
+import static com.oracle.truffle.api.object.LayoutImpl.OPTION_PREFIX;
 
 final class ObjectStorageOptions {
 

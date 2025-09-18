@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,59 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object;
+package com.oracle.truffle.api.object.test;
 
-/**
- * Helper methods for accessing property and object flags.
- */
-final class Flags {
-    static final int DEFAULT = 0;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
-    /** If set, {@code int} values can be implicitly cast to {@code long}. */
-    static final int IMPLICIT_CAST_INT_TO_LONG = 1 << 0;
-    /** If set, {@code int} values can be implicitly cast to {@code double}. */
-    static final int IMPLICIT_CAST_INT_TO_DOUBLE = 1 << 1;
+@GenerateInline(false)
+abstract class CachedPutNode extends Node {
+    public abstract void execute(DynamicObject obj, Object key, Object value);
 
-    /** Only set property if it already exists. */
-    static final int IF_PRESENT = 1 << 2;
-    /** Only set property if it does not already exist. */
-    static final int IF_ABSENT = 1 << 3;
-    /** Redefine property if it already exists. */
-    static final int UPDATE_FLAGS = 1 << 4;
-
-    /** Define property as constant in the shape. */
-    static final int CONST = 1 << 5;
-
-    private Flags() {
-        // do not instantiate
+    @Specialization(limit = "3")
+    static void write(DynamicObject obj, Object key, Object value,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
+        lib.put(obj, key, value);
     }
-
-    private static boolean getFlag(int flags, int flagBit) {
-        return (flags & flagBit) != 0;
-    }
-
-    static boolean isImplicitCastIntToLong(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
-    }
-
-    static boolean isImplicitCastIntToDouble(int flags) {
-        return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
-    }
-
-    static boolean isPutIfPresent(int flags) {
-        return getFlag(flags, IF_PRESENT);
-    }
-
-    static boolean isPutIfAbsent(int flags) {
-        return getFlag(flags, IF_ABSENT);
-    }
-
-    static boolean isUpdateFlags(int flags) {
-        return getFlag(flags, UPDATE_FLAGS);
-    }
-
-    static boolean isConstant(int flags) {
-        return getFlag(flags, CONST);
-    }
-
 }
