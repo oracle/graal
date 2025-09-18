@@ -51,7 +51,6 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -156,7 +155,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
             }
             return clazz;
         } catch (Throwable t) {
-            LogUtils.warning("Could not create a proxy class from list of interfaces: %s. Reason: %s", Arrays.toString(interfaces), t.getMessage());
             return t;
         }
     }

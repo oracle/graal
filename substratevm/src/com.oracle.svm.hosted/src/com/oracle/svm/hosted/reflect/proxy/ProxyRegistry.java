@@ -28,12 +28,12 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.LogUtils;
-import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
 public class ProxyRegistry extends ConditionalConfigurationRegistry implements RuntimeProxyRegistrySupport, BiConsumer<ConfigurationCondition, List<String>> {
     private final DynamicProxyRegistry dynamicProxySupport;
@@ -57,7 +57,12 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements R
         abortIfSealed();
         requireNonNull(interfaces, "interface", "proxy class creation");
         registerConditionalConfiguration(condition, (cnd) -> dynamicProxySupport.addProxyClass(cnd, interfaces));
-        return dynamicProxySupport.getProxyClassHosted(interfaces);
+        try {
+            return dynamicProxySupport.getProxyClassHosted(interfaces);
+        } catch (Throwable t) {
+            /* we return null for illegal proxy classes */
+            return null;
+        }
     }
 
     public Class<?> createProxyClassForSerialization(List<String> proxies) {
