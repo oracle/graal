@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core.util;
 
 public class ByteFormattingUtil {
     // "123.12KiB".length() = 9, holds as long as it's not >= 1000GiB
