@@ -43,6 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Type which fully substitutes its original type, i.e. @{@link Substitute} on the class level.
@@ -353,6 +354,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean declaresDefaultMethods() {
         return original.declaresDefaultMethods();
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return original.lookupType(unresolvedJavaType, resolve);
     }
 
     @Override

@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * This type is used in the context of Layered Image, when loading a base layer in another layer.
@@ -238,6 +239,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 

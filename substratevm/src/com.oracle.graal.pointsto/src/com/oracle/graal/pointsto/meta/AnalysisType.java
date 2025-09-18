@@ -75,6 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
@@ -972,6 +973,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             permittedSubclasses = wrappedPermittedSubclasses == null ? null : wrappedPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
         }
         return permittedSubclasses;
+    }
+
+    @Override
+    public AnalysisType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
     }
 
     @Override
