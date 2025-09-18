@@ -8,7 +8,6 @@ redirect_from: /docs/getting-started/
 
 # Getting Started with Oracle GraalVM
 
-Oracle GraalVM is an advanced JDK with ahead-of-time Native Image compilation.
 Here you can find information about how to install Oracle GraalVM and run basic applications with it.
 
 If you are new to Oracle GraalVM, we recommend starting with the [GraalVM Overview](../introduction.md), where you will find information about GraalVM's benefits, distributions, certified platforms, available features, and licensing.
