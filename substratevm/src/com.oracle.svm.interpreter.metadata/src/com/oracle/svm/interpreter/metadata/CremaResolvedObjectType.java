@@ -37,10 +37,20 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType {
+    private final byte[] primitiveStatics;
+    private final Object[] referenceStatics;
 
     public CremaResolvedObjectType(Symbol<Type> type, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass, InterpreterResolvedObjectType[] interfaces,
-                    InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType) {
+                    InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType,
+                    int staticReferenceFields, int staticPrimitiveFieldsSize) {
         super(type, modifiers, componentType, superclass, interfaces, constantPool, javaClass, isWordType);
+        this.primitiveStatics = new byte[staticPrimitiveFieldsSize];
+        this.referenceStatics = new Object[staticReferenceFields];
+    }
+
+    @Override
+    public Object getStaticStorage(boolean primitives) {
+        return primitives ? primitiveStatics : referenceStatics;
     }
 
     @Override

@@ -52,9 +52,12 @@ import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
+import com.oracle.svm.espresso.classfile.attributes.Attribute;
+import com.oracle.svm.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
@@ -203,7 +206,8 @@ public class CremaSupportImpl implements CremaSupport {
                         table.getParserKlass(),
                         hub.getModifiers(),
                         componentType, superType, interfaces,
-                        DynamicHub.toClass(hub));
+                        DynamicHub.toClass(hub),
+                        table.layout.getStaticReferenceFieldCount(), table.layout.getStaticPrimitiveFieldSize());
 
         ParserKlass parserKlass = table.partialType.parserKlass;
         thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
@@ -241,6 +245,8 @@ public class CremaSupportImpl implements CremaSupport {
         thisType.setAfterFieldsOffset(table.layout().afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
 
+        initStaticFields(thisType, table.getParserKlass().getFields());
+
         // Done
         hub.setInterpreterType(thisType);
 
@@ -263,6 +269,86 @@ public class CremaSupportImpl implements CremaSupport {
             }
         } catch (MethodTableException e) {
             throw new IncompatibleClassChangeError(e.getMessage());
+        }
+    }
+
+    private static void initStaticFields(CremaResolvedObjectType type, ParserField[] fields) {
+        // GR-61367: Currently done eagerly, but should be done during linking.
+        InterpreterResolvedJavaField[] declaredFields = type.getDeclaredFields();
+        for (int i = 0; i < declaredFields.length; i++) {
+            InterpreterResolvedJavaField resolvedField = declaredFields[i];
+            ParserField parsedField = fields[i];
+            assert resolvedField.getSymbolicName() == parsedField.getName();
+            assert resolvedField.isStatic() == parsedField.isStatic();
+            if (resolvedField.isStatic()) {
+                ConstantValueAttribute cva = null;
+                for (Attribute attribute : parsedField.getAttributes()) {
+                    if (attribute.getName() == ConstantValueAttribute.NAME) {
+                        assert attribute instanceof ConstantValueAttribute;
+                        cva = (ConstantValueAttribute) attribute;
+                        break;
+                    }
+                }
+                if (cva != null) {
+                    int constantValueIndex = cva.getConstantValueIndex();
+                    switch (parsedField.getKind()) {
+                        case Boolean: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            boolean c = type.getConstantPool().intAt(constantValueIndex) != 0;
+                            InterpreterToVM.setFieldBoolean(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Byte: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            byte c = (byte) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldByte(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Short: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            short c = (short) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldShort(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Char: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            char c = (char) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldChar(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Int: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            int c = type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldInt(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Float: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.FLOAT;
+                            float c = type.getConstantPool().floatAt(constantValueIndex);
+                            InterpreterToVM.setFieldFloat(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Long: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.LONG;
+                            long c = type.getConstantPool().longAt(constantValueIndex);
+                            InterpreterToVM.setFieldLong(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Double: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.DOUBLE;
+                            double c = type.getConstantPool().doubleAt(constantValueIndex);
+                            InterpreterToVM.setFieldDouble(c, type.getStaticStorage(true), resolvedField);
+                            break;
+                        }
+                        case Object: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.STRING;
+                            String c = type.getConstantPool().resolveStringAt(constantValueIndex);
+                            InterpreterToVM.setFieldObject(c, type.getStaticStorage(false), resolvedField);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -596,6 +682,11 @@ public class CremaSupportImpl implements CremaSupport {
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
         AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());
         return registry.findLoadedClass(symbolicType);
+    }
+
+    @Override
+    public Object getStaticStorage(Class<?> cls, boolean primitives) {
+        return ((InterpreterResolvedObjectType) DynamicHub.fromClass(cls).getInterpreterType()).getStaticStorage(primitives);
     }
 
     @Override
