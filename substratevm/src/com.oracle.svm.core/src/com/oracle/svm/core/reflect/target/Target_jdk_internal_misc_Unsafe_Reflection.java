@@ -31,6 +31,8 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.UnsafeFieldUtil;
@@ -55,6 +57,10 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
             throw new NullPointerException();
         }
         int layerNumber = ImageLayerBuildingSupport.buildingImageLayer() ? field.installedLayerNumber : MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        if (RuntimeClassLoading.isSupported()) {
+            Field reflectField = SubstrateUtil.cast(field, Field.class);
+            return CremaSupport.singleton().getStaticStorage(reflectField.getDeclaringClass(), reflectField.getType().isPrimitive());
+        }
         if (SubstrateUtil.cast(field, Field.class).getType().isPrimitive()) {
             return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNumber);
         } else {
