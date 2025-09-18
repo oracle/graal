@@ -35,10 +35,10 @@ import com.oracle.svm.core.code.InstalledCodeObserver;
  * A code observer handle for wrapping a {@link GdbJitInterface.JITCodeEntry} and the corresponding
  * run-time debug info object file.
  * <p>
- * This should only be accessed via {@link GdbJitAccessor}.
+ * This should only be accessed via {@link GdbJitHandleAccessor}.
  */
 @RawStructure
-interface GdbJitAccessorHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
+interface GdbJitHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
     int INITIALIZED = 0;
     int REGISTERED = 1;
     int UNREGISTERED = 2;

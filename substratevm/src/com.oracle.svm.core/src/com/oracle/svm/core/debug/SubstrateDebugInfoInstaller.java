@@ -45,7 +45,7 @@ import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
-import com.oracle.svm.core.debug.gdb.GdbJitAccessor;
+import com.oracle.svm.core.debug.gdb.GdbJitHandleAccessor;
 import com.oracle.svm.core.debug.jitdump.JitdumpProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -181,7 +181,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     public InstalledCodeObserverHandle install() {
         if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
             assert debugInfoData.isNonNull() : "Run-time debug info file is emtpy!";
-            return GdbJitAccessor.createHandle(debug, debugInfoData);
+            return GdbJitHandleAccessor.createHandle(debug, debugInfoData);
         } else {
             return Word.nullPointer();
         }

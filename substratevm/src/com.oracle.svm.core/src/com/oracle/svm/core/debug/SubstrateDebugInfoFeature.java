@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.InstalledCodeObserverSupportFeature;
-import com.oracle.svm.core.debug.gdb.GdbJitAccessor;
+import com.oracle.svm.core.debug.gdb.GdbJitHandleAccessor;
 import com.oracle.svm.core.debug.jitdump.JitdumpProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -111,7 +111,7 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
 
         installedCodeObserverSupport.addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig));
         if (Options.hasRuntimeDebugInfoFormatSupport(DEBUG_INFO_OBJFILE_NAME)) {
-            ImageSingletons.add(GdbJitAccessor.class, new GdbJitAccessor());
+            ImageSingletons.add(GdbJitHandleAccessor.class, new GdbJitHandleAccessor());
         }
     }
 
