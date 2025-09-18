@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Type which {@linkplain Inject injects} individual members into its original type (and can alias
@@ -308,6 +309,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return original.lookupType(unresolvedJavaType, resolve);
     }
 
     @SuppressWarnings("deprecation")
