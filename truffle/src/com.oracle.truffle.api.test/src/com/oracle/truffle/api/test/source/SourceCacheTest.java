@@ -66,6 +66,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -154,6 +155,7 @@ public class SourceCacheTest {
     @Test
     public void testTraceSourceCacheEviction() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation(); // Can't control GC in the isolate.
+        Assume.assumeTrue(GCUtils.isSupported());
         Runnable runnable = () -> {
             try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Context context = Context.newBuilder().option("engine.TraceSourceCache", "true").out(out).err(out).build()) {
                 Source auxiliarySource = Source.newBuilder(SourceCacheTestLanguage.ID, "x", "AuxiliarySource").build();
@@ -321,6 +323,7 @@ public class SourceCacheTest {
     @Test
     public void testSourceCachesCleared() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation(); // Can't control GC in the isolate.
+        Assume.assumeTrue(GCUtils.isSupported());
         Runnable runnable = () -> {
             List<String> logs = new ArrayList<>();
             String[] expectedSequence = new String[]{"miss1", "miss2", "evict2", "miss1", "evict1", "evict1"};

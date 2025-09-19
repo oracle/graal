@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -97,7 +98,7 @@ public final class GCUtils {
      */
     private static final String SAVE_HEAP_DUMP_TO = System.getProperty(GCUtils.class.getSimpleName() + ".saveHeapDumpTo");
 
-    private static final ReachabilityAnalyser<?> analyser = selectAnalyser();
+    private static final ReachabilityAnalyser<?> analyser = new HeapDumpAnalyser();
 
     private GCUtils() {
         throw new IllegalStateException("No instance allowed.");
@@ -115,6 +116,10 @@ public final class GCUtils {
      * @param objectFactory producer of collectible object per an iteration
      */
     public static void assertObjectsCollectible(Function<Integer, Object> objectFactory) {
+        if (!isSupported()) {
+            emitHeapDumpNotSupportedWarning("assertObjectsCollectible");
+            return;
+        }
         List<Reference<Object>> collectibleObjects = new ArrayList<>();
         for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i)));
@@ -138,6 +143,10 @@ public final class GCUtils {
      * @see #assertGc(Collection)
      */
     public static void assertGc(String message, Reference<?> ref) {
+        if (!isSupported()) {
+            emitHeapDumpNotSupportedWarning("assertGc");
+            return;
+        }
         Result result = analyser.allCollected(Collections.singleton(ref), true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
         if (!result.isCollected()) {
             Assert.fail(formatShortestGCRootPath(message, result));
@@ -154,6 +163,10 @@ public final class GCUtils {
      * @param refs references their referents are to be released
      */
     public static void assertGc(String message, Collection<? extends Reference<?>> refs) {
+        if (!isSupported()) {
+            emitHeapDumpNotSupportedWarning("assertGc");
+            return;
+        }
         Result result = analyser.allCollected(refs, true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
         if (!result.isCollected()) {
             Assert.fail(formatShortestGCRootPath(message, result));
@@ -170,6 +183,10 @@ public final class GCUtils {
      *            {@link AssertionError} thrown when the referent is not freed by the GC
      */
     public static void assertGc(Collection<? extends Pair<String, Reference<?>>> refsWithMessages) {
+        if (!isSupported()) {
+            emitHeapDumpNotSupportedWarning("assertGc");
+            return;
+        }
         Map<Reference<?>, String> refsMap = new IdentityHashMap<>();
         for (Pair<String, Reference<?>> pair : refsWithMessages) {
             refsMap.putIfAbsent(pair.getRight(), pair.getLeft());
@@ -188,6 +205,10 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertNotGc(final String message, final Reference<?> ref) {
+        if (!isSupported()) {
+            emitHeapDumpNotSupportedWarning("assertNotGc");
+            return;
+        }
         if (analyser.allCollected(Collections.singleton(ref), false, false, false).isCollected()) {
             Assert.fail(message);
         }
@@ -243,14 +264,14 @@ public final class GCUtils {
         }
     }
 
-    private static ReachabilityAnalyser<?> selectAnalyser() {
-        if (OSUtils.isWindows()) {
-            // On Windows there are problems with the Heap release, which prevents the headump file
-            // from being deleted.
-            return new GCAnalyser();
-        } else {
-            return new HeapDumpAnalyser();
-        }
+    public static boolean isSupported() {
+        return !ImageInfo.inImageRuntimeCode() || !OSUtils.isWindows();
+    }
+
+    private static void emitHeapDumpNotSupportedWarning(String method) {
+        PrintStream err = System.err;
+        err.printf("[GCUtils] Ignoring GCUtils.%s: heap dump not supported in native-image on %s.%n",
+                        method, OSUtils.getCurrent());
     }
 
     private static String formatShortestGCRootPath(String message, Result result) {
@@ -336,17 +357,6 @@ public final class GCUtils {
         private Result() {
             this.collected = true;
             this.reference = null;
-            this.gcRootKind = null;
-            this.instanceId = -1;
-            this.shortestGCRootPath = null;
-            this.gcRootThreadId = -1;
-            this.gcRootStackTrace = null;
-            this.heapDumpFile = null;
-        }
-
-        Result(Reference<?> reference) {
-            this.collected = false;
-            this.reference = reference;
             this.gcRootKind = null;
             this.instanceId = -1;
             this.shortestGCRootPath = null;
@@ -674,60 +684,18 @@ public final class GCUtils {
         }
 
         private static void delete(Path file) throws IOException {
-            if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
-                try (DirectoryStream<Path> content = Files.newDirectoryStream(file)) {
-                    for (Path child : content) {
-                        delete(child);
+            // On Windows there are problems with the Heap release, which prevents the headump file
+            // from being deleted.
+            if (OSUtils.getCurrent() != OSUtils.OS.Windows) {
+                if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
+                    try (DirectoryStream<Path> content = Files.newDirectoryStream(file)) {
+                        for (Path child : content) {
+                            delete(child);
+                        }
                     }
                 }
+                Files.delete(file);
             }
-            Files.delete(file);
-        }
-    }
-
-    private static final class GCAnalyser extends ReachabilityAnalyser<Void> {
-
-        @Override
-        Result analyse(Collection<? extends Reference<?>> references, boolean performAllocations, boolean collectGCRootPath,
-                        boolean preserveHeapDumpIfNonCollectable, Function<Void, Result> testCollected) {
-            int blockSize = 100_000;
-            final List<byte[]> blocks = new ArrayList<>();
-            Result result = null;
-            for (int i = 0; i < 50; i++) {
-                result = testCollected.apply(null);
-                if (result.isCollected()) {
-                    return result;
-                }
-                try {
-                    System.gc();
-                } catch (OutOfMemoryError oom) {
-                }
-                try {
-                    System.runFinalization();
-                } catch (OutOfMemoryError oom) {
-                }
-                if (performAllocations) {
-                    try {
-                        blocks.add(new byte[blockSize]);
-                        blockSize = (int) (blockSize * 1.3);
-                    } catch (OutOfMemoryError oom) {
-                        blockSize >>>= 1;
-                    }
-                }
-                if (i % 10 == 0) {
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException ie) {
-                        break;
-                    }
-                }
-            }
-            return result;
-        }
-
-        @Override
-        Result isCollected(Reference<?> reference, Void context) {
-            return reference.get() == null ? Result.COLLECTED : new Result(reference);
         }
     }
 }
