@@ -31,7 +31,8 @@ import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEn
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE;
-import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8_STATE_MACHINE_ACCEPTING_STATE;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.utf8GetNextState;
@@ -141,7 +142,7 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
     }
 
     private static JavaKind getReturnValueKind(CalcStringAttributesEncoding encoding) {
-        return encoding == UTF_8 || encoding == UTF_16 ? JavaKind.Long : JavaKind.Int;
+        return encoding == UTF_8 || encoding.isUTF16() ? JavaKind.Long : JavaKind.Int;
     }
 
     public CalcStringAttributesEncoding getOp() {
@@ -254,12 +255,16 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
                         }
                         return ConstantNode.forLong(nCodePoints << 32 | ret);
                     }
-                    case UTF_16 -> {
+                    case UTF_16, UTF_16_FOREIGN_ENDIAN -> {
                         long nCodePoints = lengthConstant;
                         int last = 0;
                         int ret = CR_7BIT;
                         for (int i = 0; i < lengthConstant; i++) {
-                            final int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, offsetConstant + i);
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, offsetConstant + i);
+                            if (encoding == UTF_16_FOREIGN_ENDIAN) {
+                                assert stride == Stride.S2;
+                                value = Character.reverseBytes((char) value);
+                            }
                             if (assumeValid) {
                                 if (Character.isHighSurrogate((char) value)) {
                                     nCodePoints--;
@@ -292,10 +297,14 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
                         }
                         return ConstantNode.forLong(nCodePoints << 32 | ret);
                     }
-                    case UTF_32 -> {
+                    case UTF_32, UTF_32_FOREIGN_ENDIAN -> {
                         int ret = CR_7BIT;
                         for (int i = 0; i < lengthConstant; i++) {
-                            final int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, offsetConstant + i);
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, offsetConstant + i);
+                            if (encoding == UTF_32_FOREIGN_ENDIAN) {
+                                assert stride == Stride.S4 : stride;
+                                value = Integer.reverseBytes(value);
+                            }
                             if ((Integer.compareUnsigned(value, Character.MAX_CODE_POINT) > 0) || ((value <= Character.MAX_VALUE) && Character.isSurrogate((char) value))) {
                                 ret = CR_BROKEN;
                                 break;
@@ -351,6 +360,7 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
     @GenerateStub(name = "calcStringAttributesLatin1", parameters = {"LATIN1", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesBMP", parameters = {"BMP", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesUTF32", parameters = {"UTF_32", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF32FE", parameters = {"UTF_32_FOREIGN_ENDIAN", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int intReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);
@@ -366,6 +376,10 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
     @GenerateStub(name = "calcStringAttributesUTF8Unknown", parameters = {"UTF_8", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesUTF16Valid", parameters = {"UTF_16", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesUTF16Unknown", parameters = {"UTF_16", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF16FEValid", parameters = {"UTF_16_FOREIGN_ENDIAN",
+                    "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF16FEUnknown", parameters = {"UTF_16_FOREIGN_ENDIAN",
+                    "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native long longReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);

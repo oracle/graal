@@ -93,7 +93,7 @@ final class TSCodeRange {
     }
 
     static boolean isCodeRange(int codeRange) {
-        return CR_7BIT <= ordinal(codeRange) && ordinal(codeRange) <= CR_BROKEN && (codeRange >>> 6) == 0;
+        return CR_7BIT <= ordinal(codeRange) && ordinal(codeRange) <= CR_BROKEN && (codeRange >>> 5) == 0;
     }
 
     static int markImprecise(int codeRange) {

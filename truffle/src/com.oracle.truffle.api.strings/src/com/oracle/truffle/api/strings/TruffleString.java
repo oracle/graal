@@ -4287,7 +4287,23 @@ public final class TruffleString extends AbstractTruffleString {
                     return -1;
                 }
                 int codeRangeA = usePreciseCodeRange ? getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, encoding) : a.codeRange();
-                return byteIndex(internalNode.execute(arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex), encoding);
+
+                final int scaleForeign;
+                final int strideAIntl;
+                if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                    scaleForeign = 1;
+                    strideAIntl = 1;
+                } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                    scaleForeign = 2;
+                    strideAIntl = 2;
+                } else {
+                    scaleForeign = 0;
+                    strideAIntl = strideA;
+                }
+                final int lengthAIntl = lengthA >> scaleForeign;
+                final int fromIndexIntl = fromIndex >> scaleForeign;
+                final int toIndexIntl = toIndex >> scaleForeign;
+                return byteIndex(internalNode.execute(arrayA, offsetA, lengthAIntl, strideAIntl, codeRangeA, fromIndexIntl, toIndexIntl) << scaleForeign, encoding);
             } finally {
                 Reference.reachabilityFence(dataA);
             }

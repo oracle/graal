@@ -5737,6 +5737,11 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         AMD64Shift.ROL.miOp.emit(this, OperandSize.DWORD, dst, (byte) imm8);
     }
 
+    public final void rorw(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.ROR.miOp.emit(this, OperandSize.WORD, dst, (byte) imm8);
+    }
+
     public final void rorl(Register dst, int imm8) {
         GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
         AMD64Shift.ROR.miOp.emit(this, OperandSize.DWORD, dst, (byte) imm8);
