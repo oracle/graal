@@ -93,7 +93,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
-
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
@@ -483,7 +482,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     int[] interfaceHashTableHeapArray,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
-                    int[] declaredInstanceReferenceFieldOffsets, int afterFieldsOffset, boolean valueBased) {
+                    int[] declaredInstanceReferenceFieldOffsets,
+                    int afterFieldsOffset,
+                    boolean valueBased) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
 
         ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));

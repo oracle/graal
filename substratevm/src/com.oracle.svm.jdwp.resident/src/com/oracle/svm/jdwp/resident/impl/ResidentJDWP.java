@@ -1802,8 +1802,10 @@ public final class ResidentJDWP implements JDWP {
             case Object  -> {
                 assert !field.isWordStorage() : field; // handled above
                 Object value = readReferenceOrNull(reader);
-                if (value != null && !field.getResolvedType().getJavaClass().isInstance(value)) {
-                    throw JDWPException.raise(ErrorCode.TYPE_MISMATCH);
+                if (field.getResolvedType() != null) {
+                    if (value != null && !field.getResolvedType().getJavaClass().isInstance(value)) {
+                        throw JDWPException.raise(ErrorCode.TYPE_MISMATCH);
+                    }
                 }
                 InterpreterToVM.setFieldObject(value, receiver, field);
             }
