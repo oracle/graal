@@ -341,18 +341,24 @@ class NativeImageBenchmarkConfig:
         self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
         current_stage = vm.stages_info.current_stage
         is_shared_library = current_stage is not None and current_stage.is_layered() and current_stage.layer_info.is_shared_library
+        # base image name (used for auxiliary output files)
+        base_image_name = self.bm_suite.get_base_image_name(shared_library_layer_index=current_stage.layer_info.index if is_shared_library else None)
+        # full image name qualified with vm suffix (passed as -o argument to native-image)
+        self.final_image_name = self.bm_suite.get_full_image_name(base_image_name, vm.config_name())
+        # root directory for all output. can be overridden with -Dnative-image.benchmark.benchmark-output-dir
         self.benchmark_output_dir = self.bm_suite.benchmark_output_dir(self.benchmark_name, args)
-        executable_name, output_dir = self.get_executable_name_and_output_dir_for_stage(current_stage, vm)
-        self.executable_name: str = executable_name
-        self.output_dir: Path = output_dir
-        self.final_image_name = self.executable_name + '-' + vm.config_name()
-        self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
-        self.source_mappings_path: Path = self.output_dir / f"{self.executable_name}.sourceMappings.json"
-        self.perf_script_path: Path = self.output_dir / f"{self.executable_name}.perf.script.out"
-        self.perf_data_path: Path = self.output_dir / f"{self.executable_name}.perf.data"
+        # specific directory with output for this image build.
+        self.output_dir: Path = self.bm_suite.get_image_output_dir(self.benchmark_output_dir, self.final_image_name)
+        # path of the final executable.
+        self.image_path: Path = self.output_dir / self.bm_suite.get_image_file_name(self.final_image_name, shared_library=is_shared_library)
+        self.instrumented_image_path = self.output_dir / self.bm_suite.get_image_file_name(f"{base_image_name}-instrument")
+        self.profile_path: Path = self.output_dir / f"{base_image_name}.iprof"
+        self.source_mappings_path: Path = self.output_dir / f"{base_image_name}.sourceMappings.json"
+        self.perf_script_path: Path = self.output_dir / f"{base_image_name}.perf.script.out"
+        self.perf_data_path: Path = self.output_dir / f"{base_image_name}.perf.data"
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
-        self.ml_log_dump_path: Path = self.output_dir / f"{self.executable_name}.ml.log.csv"
+        self.ml_log_dump_path: Path = self.output_dir / f"{base_image_name}.ml.log.csv"
         base_image_build_args = ['--no-fallback']
         if not vm.pgo_use_perf:
             # Can only have debug info when not using perf, [GR-66850]
@@ -404,13 +410,6 @@ class NativeImageBenchmarkConfig:
         ]
 
         self.image_build_reports_directory: Path = self.output_dir / "reports"
-
-        # Path of the final executable
-        self.image_path = self.output_dir / self.final_image_name
-        self.instrumented_image_path = self.output_dir / f"{self.executable_name}-instrument"
-        if is_shared_library:
-            self.image_path = self.image_path.parent / f"{self.image_path.name}.so"
-            self.instrumented_image_path = self.instrumented_image_path.parent / f"{self.instrumented_image_path.name}.so"
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
@@ -464,33 +463,6 @@ class NativeImageBenchmarkConfig:
     def build_report_args(self, is_gate: bool, graalvm_edition: str):
         # Generate Build Report only when the benchmark is a part of EE gate.
         return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
-
-    def get_executable_name_and_output_dir_for_stage(self, stage: Stage, vm: NativeImageVM) -> Tuple[str, Path]:
-        executable_name = self.compute_executable_name()
-        is_shared_library = stage is not None and stage.is_layered() and stage.layer_info.is_shared_library
-        if is_shared_library:
-            # Shared library layers have to start with 'lib' and are differentiated with the layer index
-            executable_name = f"lib-layer{stage.layer_info.index}-{executable_name}"
-
-        # Form output directory
-        root_dir = Path(
-            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('sdk').get_output_root(platformDependent=False,
-                                                                                             jdkDependent=False)).absolute()
-        output_dir = root_dir / "native-image-benchmarks" / f"{executable_name}-{vm.config_name()}"
-
-        return executable_name, output_dir
-
-    def compute_executable_name(self) -> str:
-        result = self.bm_suite.executable_name()
-        if result is not None:
-            return result
-
-        parts = [self.bm_suite.benchSuiteName()]
-        if self.bm_suite.version() != "unknown":
-            parts.append(self.bm_suite.version().replace(".", "-"))
-        if self.benchmark_name:
-            parts.append(self.benchmark_name.replace(os.sep, "_"))
-        return "-".join(parts).lower()
 
     def get_build_output_json_file(self, stage: StageName) -> Path:
         """
@@ -1638,7 +1610,10 @@ class NativeImageVM(GraalVm):
                 mx.abort("Failed to find any shared library layer image stages!")
             layer_output_dirs = []
             for stage in shared_library_stages:
-                _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
+                assert isinstance(self.bmSuite, NativeImageBenchmarkMixin)
+                layer_base_image_name = self.bmSuite.get_base_image_name(shared_library_layer_index=stage.layer_info.index)
+                layer_full_image_name = self.bmSuite.get_full_image_name(layer_base_image_name, self.config_name())
+                stage_output_dir = self.bmSuite.get_image_output_dir(self.config.benchmark_output_dir, layer_full_image_name)
                 layer_output_dirs.append(stage_output_dir.absolute().as_posix())
             linker_r_path = ",".join(layer_output_dirs)
             app_layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
@@ -4196,7 +4171,7 @@ class NativeImageBenchmarkMixin(object):
         if parsed_args:
             return parsed_args[0]
         else:
-            return None
+            return mx.suite('sdk').get_output_root(platformDependent=False, jdkDependent=False)
 
     def filter_stages_with_cli_requested_stages(self, bm_suite_args: List[str], stages: List[Stage]) -> List[Stage]:
         """
@@ -4252,9 +4227,47 @@ class NativeImageBenchmarkMixin(object):
         """Return the environment to be used when executing a stage."""
         return None
 
-    def executable_name(self) -> Optional[str]:
-        """Override to allow suites to control the executable name used in image builds."""
-        return None
+    def _base_image_name(self: BenchmarkSuite | NativeImageBenchmarkMixin) -> str:
+        """
+        Returns the name to use in image builds. May be overridden.
+        Note that this name is not necessarily the full image name (there may be prefixes/suffixes added).
+        Use `get_image_path` to obtain the final image path.
+        """
+        parts = [self.benchSuiteName()]
+        if self.version() != "unknown":
+            parts.append(self.version().replace(".", "-"))
+        parts.append(self.benchmarkName())
+        return "-".join(parts).lower()
+
+    def get_base_image_name(self, shared_library_layer_index: Optional[int] = None) -> str:
+        """
+        Returns the base image name to use for auxiliary build files (e.g., iprof files).
+        """
+        base_image_name = self._base_image_name()
+        if shared_library_layer_index is not None:
+            # Shared library layers have to start with 'lib' and are differentiated with the layer index
+            base_image_name = f"lib-layer{shared_library_layer_index}-{base_image_name}"
+        return base_image_name
+
+    def get_full_image_name(self, base_image_name: str, vm_config: str) -> str:
+        """
+        Returns the base image name qualified by the vm suffix. This name is passed as the -o argument to native-image.
+        """
+        return f"{base_image_name}-{vm_config}"
+
+    def get_image_file_name(self, full_image_name: str, shared_library: bool = False) -> str:
+        """
+        Returns the file name of the generated image.
+        """
+        if shared_library:
+            return f"{full_image_name}.so"
+        return full_image_name
+
+    def get_image_output_dir(self, benchmark_output_dir: str, full_image_name: str) -> Path:
+        """
+        Returns the output directory for the given image name, as a subdirectory of the root output directory.
+        """
+        return Path(benchmark_output_dir).absolute() / "native-image-benchmarks" / full_image_name
 
 
 def measureTimeToFirstResponse(bmSuite):
