@@ -170,6 +170,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
 
+    private static final class Lazy {
+        /**
+         * True if the {@link InliningRoot} annotation is supported by the compiler.
+         */
+        private static final boolean INLINING_ROOT_SUPPORTED;
+
+        static {
+            boolean supported;
+            try {
+                HostMethodInfo.class.getDeclaredConstructor(boolean.class, boolean.class, boolean.class, boolean.class, boolean.class);
+                supported = true;
+            } catch (NoSuchMethodException e) {
+                supported = false;
+            }
+            INLINING_ROOT_SUPPORTED = supported;
+        }
+    }
+
     /**
      * Used only to reset state for native image compilation.
      */
@@ -540,7 +558,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     @Override
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        if (JAVA_SPECIFICATION_VERSION >= 26) {
+        if (Lazy.INLINING_ROOT_SUPPORTED) {
             return new HostMethodInfo(isTruffleBoundary(method),
                             isBytecodeInterpreterSwitch(method),
                             isBytecodeInterpreterSwitchBoundary(method),
