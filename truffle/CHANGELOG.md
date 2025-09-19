@@ -17,6 +17,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-67146: Bytecode DSL: Added support for user-defined yield operations using `@Yield`. These operations behave like the built-in yield but allow you to customize the yield result or perform custom logic on yield.
 * GR-69495: Bytecode DSL: Added a new `storeBytecodeIndex` attribute to all operation annotations to configure whether the bytecode index needs to be stored. When `@GenerateBytecode(storeBytecodeIndexInFrame = true)` is set and the attribute is left at its default, the DSL will emit a warning recommending explicit configuration. Additionally, introduced the `@StoreBytecodeIndex` annotation, which lets you specify bytecode index updates for individual specializations or fallbacks.
 
+* GR-68916: Added `TruffleString.MaterializeLazySubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
+* GR-68916: Added `TruffleString.MaterializeSubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
