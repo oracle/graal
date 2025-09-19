@@ -151,7 +151,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testImplicitCast");
         runTest("testNativeCall");
         runTest("testBCDSLPrologIfVersion");
-        // temporarily disabled
+        // temporarily disabled because it fails with JDK 25 (GR-69866)
         // runTest("testInliningRoot");
     }
 
