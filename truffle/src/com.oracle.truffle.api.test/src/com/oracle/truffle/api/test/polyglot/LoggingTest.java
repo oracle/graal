@@ -1389,6 +1389,7 @@ public class LoggingTest {
 
     @Test
     public void testGR49739() {
+        Assume.assumeTrue(GCUtils.isSupported());
         AtomicReference<TruffleLogger> loggerHolder = new AtomicReference<>();
         AbstractLoggingLanguage.action = (ctx, defaultLoggers) -> {
             loggerHolder.set(ctx.env.getLogger("after.close"));
