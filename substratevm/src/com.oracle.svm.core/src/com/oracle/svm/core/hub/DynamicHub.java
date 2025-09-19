@@ -482,7 +482,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     int[] interfaceHashTableHeapArray,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
-                    int[] declaredInstanceReferenceFieldOffsets, int afterFieldsOffset, boolean valueBased) {
+                    int[] declaredInstanceReferenceFieldOffsets,
+                    int afterFieldsOffset,
+                    boolean valueBased) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
 
         ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));

@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.espresso.classfile.ParserField;
+
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField implements CremaResolvedJavaField {
     public static final CremaResolvedJavaFieldImpl[] EMPTY_ARRAY = new CremaResolvedJavaFieldImpl[0];
@@ -41,6 +45,14 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
 
     public static CremaResolvedJavaFieldImpl createAtRuntime(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
         return new CremaResolvedJavaFieldImpl(declaringClass, f, offset);
+    }
+
+    public InterpreterResolvedJavaType getResolvedType() {
+        if (resolvedType == null) {
+            Class<?> cls = CremaSupport.singleton().resolveOrThrow(UnresolvedJavaType.create(getSymbolicType().toString()), getDeclaringClass());
+            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+        }
+        return resolvedType;
     }
 
     @Override
