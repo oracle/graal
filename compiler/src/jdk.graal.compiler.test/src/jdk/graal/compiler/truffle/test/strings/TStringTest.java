@@ -29,6 +29,7 @@ import java.nio.ByteOrder;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -191,5 +192,36 @@ public abstract class TStringTest extends MethodSubstitutionTest {
             longArray[i] = readValue(array, 3, i);
         }
         return longArray;
+    }
+
+    protected static byte[] byteSwapArray(byte[] array, int stride) {
+        if (stride == 0) {
+            return array;
+        }
+        byte[] ret = new byte[array.length];
+        for (int i = 0; i < array.length; i += 1 << stride) {
+            switch (stride) {
+                case 1 -> {
+                    byte b0 = array[i];
+                    byte b1 = array[i + 1];
+                    ret[i] = b1;
+                    ret[i + 1] = b0;
+                }
+                case 2 -> {
+                    byte b0 = array[i];
+                    byte b1 = array[i + 1];
+                    byte b2 = array[i + 2];
+                    byte b3 = array[i + 3];
+                    ret[i] = b3;
+                    ret[i + 1] = b2;
+                    ret[i + 2] = b1;
+                    ret[i + 3] = b0;
+                }
+                default -> {
+                    throw GraalError.shouldNotReachHereUnexpectedValue(stride);
+                }
+            }
+        }
+        return ret;
     }
 }

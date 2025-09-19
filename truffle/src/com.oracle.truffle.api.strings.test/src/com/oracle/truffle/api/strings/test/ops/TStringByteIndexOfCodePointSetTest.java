@@ -41,8 +41,14 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
-import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.BYTES;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.ISO_8859_1;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.US_ASCII;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16BE;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16LE;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32BE;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32LE;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static org.junit.runners.Parameterized.Parameter;
 
@@ -95,7 +101,7 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
             src[codeRange.ordinal()] = TruffleString.fromIntArrayUTF32Uncached(codepoints[codeRange.ordinal()]);
             Assert.assertEquals(codeRange, src[codeRange.ordinal()].getCodeRangeUncached(UTF_32));
         }
-        for (TruffleString.Encoding encoding : Encodings.PRIMARY_ENCODINGS) {
+        for (TruffleString.Encoding encoding : Encodings.PRIMARY_ENCODINGS_WITH_FOREIGN_ENDIAN) {
             TruffleString[] strings = new TruffleString[src.length];
             for (TruffleString.CodeRange codeRange : TruffleString.CodeRange.values()) {
                 strings[codeRange.ordinal()] = src[codeRange.ordinal()].switchEncodingUncached(encoding);
@@ -105,11 +111,11 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                 for (int i = 0; i < byteIndices.length; i++) {
                     byteIndices[i] = Encodings.codePointByteIndices(codepoints[i], UTF8Encoding.INSTANCE);
                 }
-            } else if (encoding == UTF_16) {
+            } else if (encoding == UTF_16LE || encoding == UTF_16BE) {
                 Arrays.fill(byteIndices, byteIndicesUTF16);
                 byteIndices[TruffleString.CodeRange.VALID.ordinal()] = Encodings.codePointByteIndices(codepoints[TruffleString.CodeRange.VALID.ordinal()], UTF16LEEncoding.INSTANCE);
                 byteIndices[TruffleString.CodeRange.BROKEN.ordinal()] = Encodings.codePointByteIndices(codepoints[TruffleString.CodeRange.BROKEN.ordinal()], UTF16LEEncoding.INSTANCE);
-            } else if (encoding == UTF_32) {
+            } else if (encoding == UTF_32LE || encoding == UTF_32BE) {
                 Arrays.fill(byteIndices, byteIndicesUTF32);
             } else {
                 Arrays.fill(byteIndices, byteIndices1Byte);
@@ -192,13 +198,16 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                                             0x61, 0x66
                             }
             }) {
-                if (!isUTF(encoding) && ranges[ranges.length - 1] > 0x7f) {
+                if ((encoding == US_ASCII || encoding == BYTES || encoding == ISO_8859_1) && ranges[ranges.length - 1] > 0x7f) {
                     continue;
                 }
                 TruffleString.CodePointSet codePointSet = TruffleString.CodePointSet.fromRanges(ranges, encoding);
+                // re-create the cached node for every codepointset, otherwise the node will always
+                // fall back to the uncached specialization
+                TruffleString.ByteIndexOfCodePointSetNode indexOfNode = node == TruffleString.ByteIndexOfCodePointSetNode.getUncached() ? node : TruffleString.ByteIndexOfCodePointSetNode.create();
                 for (int i = 0; i < strings.length; i++) {
                     int expected = indexOfRanges(codepoints[i], ranges, byteIndices[i]);
-                    int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
+                    int actual = indexOfNode.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
                     checkEqual(expected, actual);
                 }
             }
@@ -232,7 +241,7 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Test
     public void testOutOfBounds() throws Exception {
-        checkOutOfBoundsFromTo(true, 0, Encodings.PRIMARY_ENCODINGS,
+        checkOutOfBoundsFromTo(true, 0, Encodings.PRIMARY_ENCODINGS_WITH_FOREIGN_ENDIAN,
                         (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, TruffleString.CodePointSet.fromRanges(new int[]{0, 0}, encoding)));
     }
 }

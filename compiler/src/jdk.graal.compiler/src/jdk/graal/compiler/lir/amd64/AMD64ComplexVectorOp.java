@@ -519,6 +519,27 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         };
     }
 
+    /**
+     * Creates a vector mask to be used with {@code pshufb} to reverse the byte order of all
+     * elements in a vector.
+     */
+    protected byte[] getReverseBytesMask(Stride stride) {
+        byte[] mask = new byte[vectorSize.getBytes()];
+        for (int i = 0; i < XMM.getBytes(); i += stride.value) {
+            for (int j = 0; j < stride.value; j++) {
+                mask[i + j] = (byte) (i + (stride.value - (1 + j)));
+            }
+        }
+        // on AVX2, PSHUFB doesn't shuffle an entire YMM vector, instead it behaves like two
+        // adjacent XMM PSHUFB operations
+        if (mask.length > XMM.getBytes()) {
+            for (int i = XMM.getBytes(); i < mask.length; i += XMM.getBytes()) {
+                System.arraycopy(mask, 0, mask, i, XMM.getBytes());
+            }
+        }
+        return mask;
+    }
+
     protected static DataSection.Data writeToDataSection(CompilationResultBuilder crb, byte[] array) {
         int align = crb.dataBuilder.ensureValidDataAlignment(array.length);
         ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(array, align);

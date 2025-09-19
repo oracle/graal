@@ -705,27 +705,6 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
     }
 
     /**
-     * Creates a vector mask to be used with {@code pshufb} to reverse the byte order of all
-     * elements in a vector.
-     */
-    private byte[] getReverseBytesMask(Stride stride) {
-        byte[] mask = new byte[vectorSize.getBytes()];
-        for (int i = 0; i < XMM.getBytes(); i += stride.value) {
-            for (int j = 0; j < stride.value; j++) {
-                mask[i + j] = (byte) (i + (stride.value - (1 + j)));
-            }
-        }
-        // on AVX2, PSHUFB doesn't shuffle an entire YMM vector, instead it behaves like two
-        // adjacent XMM PSHUFB operations
-        if (mask.length > XMM.getBytes()) {
-            for (int i = XMM.getBytes(); i < mask.length; i += XMM.getBytes()) {
-                System.arraycopy(mask, 0, mask, i, XMM.getBytes());
-            }
-        }
-        return mask;
-    }
-
-    /**
      * Vector loop tail implementation for copy with byte order reversal.
      */
     private void emitReverseBytesTail(CompilationResultBuilder crb, AMD64MacroAssembler masm, Stride strideSrc, Stride strideDst, Register src, Register dst, Register len, Register tmp,

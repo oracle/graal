@@ -64,6 +64,17 @@ public final class Encodings {
                     TruffleString.Encoding.UTF_8,
                     UTF_16,
                     UTF_32};
+
+    public static final TruffleString.Encoding[] PRIMARY_ENCODINGS_WITH_FOREIGN_ENDIAN = {
+                    TruffleString.Encoding.US_ASCII,
+                    TruffleString.Encoding.ISO_8859_1,
+                    TruffleString.Encoding.BYTES,
+                    TruffleString.Encoding.UTF_8,
+                    TruffleString.Encoding.UTF_16LE,
+                    TruffleString.Encoding.UTF_16BE,
+                    TruffleString.Encoding.UTF_32LE,
+                    TruffleString.Encoding.UTF_32BE
+    };
     private static final int MAX_J_CODINGS_INDEX_VALUE = 0x7f;
     static final EconomicMap<String, Encoding> J_CODINGS_MAP = createJCodingsMap();
 

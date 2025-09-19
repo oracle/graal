@@ -149,8 +149,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
         super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, locationIdentity);
         GraalError.guarantee(stride.value <= 4, "unsupported stride");
+        GraalError.guarantee(!variant.isForeignEndian() || stride.value > 1, "foreign endian variants must have a stride greater than 1");
         GraalError.guarantee(variant != ArrayIndexOfVariant.MatchAny || searchValues.length > 0 && searchValues.length <= 4, "indexOfAny requires 1 - 4 search values");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.MatchRange || searchValues.length == 2 || searchValues.length == 4, "indexOfRange requires exactly two or four search values");
+        GraalError.guarantee(!variant.isMatchRange() || searchValues.length == 2 || searchValues.length == 4, "indexOfRange requires exactly two or four search values");
         GraalError.guarantee(variant != ArrayIndexOfVariant.WithMask || searchValues.length == 2, "indexOf with mask requires exactly two search values");
         GraalError.guarantee(variant != ArrayIndexOfVariant.FindTwoConsecutive || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
         GraalError.guarantee(variant != ArrayIndexOfVariant.FindTwoConsecutiveWithMask || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
@@ -186,7 +187,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                 } else {
                     return amd64FeaturesSSE41();
                 }
-            case Table:
+            case MatchRangeForeignEndian, Table, TableForeignEndian:
                 return amd64FeaturesSSE41();
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(variant); // ExcludeFromJacocoGeneratedReport
@@ -290,7 +291,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         }
-        if (variant == ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             return this;
         }
         if (ConstantReflectionUtil.isStableJavaArray(arrayPointer) &&
@@ -342,9 +343,15 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                             }
                         }
                         break;
-                    case MatchRange:
+                    case MatchRange, MatchRangeForeignEndian:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
                             int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
+                            if (variant == ArrayIndexOfVariant.MatchRangeForeignEndian) {
+                                switch (stride) {
+                                    case S2 -> value = Character.reverseBytes((char) value);
+                                    case S4 -> value = Integer.reverseBytes(value);
+                                }
+                            }
                             for (int j = 0; j < valuesConstant.length; j += 2) {
                                 if (valuesConstant[j] <= value && value <= valuesConstant[j + 1]) {
                                     return ConstantNode.forInt(i);
@@ -437,6 +444,10 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"S1", "FindTwoConsecutive"})
     @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"S2", "FindTwoConsecutive"})
     @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"S4", "FindTwoConsecutive"})
+    @GenerateStub(name = "indexOfRangeForeignEndian1S2", parameters = {"S2",
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRangeForeignEndian1S4", parameters = {"S4",
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -475,6 +486,10 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"S1", "FindTwoConsecutiveWithMask"})
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"S2", "FindTwoConsecutiveWithMask"})
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"S4", "FindTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOfRangeForeignEndian2S2", parameters = {"S2",
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRangeForeignEndian2S4", parameters = {"S4",
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -491,6 +506,8 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableForeignEndianS2", parameters = {"S2", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableForeignEndianS4", parameters = {"S4", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     public static native int optimizedArrayIndexOfTable(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,

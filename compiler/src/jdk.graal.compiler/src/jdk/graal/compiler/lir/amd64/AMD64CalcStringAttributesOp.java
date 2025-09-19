@@ -130,7 +130,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         switch (encoding) {
             case UTF_8:
                 return assumeValid ? 1 : 3;
-            case UTF_16:
+            case UTF_16, UTF_16_FOREIGN_ENDIAN:
                 return assumeValid ? 1 : 2;
             default:
                 return 0;
@@ -147,8 +147,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
                 return assumeValid ? 5 : 10;
             case UTF_16:
                 return 7;
-            case UTF_32:
+            case UTF_16_FOREIGN_ENDIAN, UTF_32:
                 return 8;
+            case UTF_32_FOREIGN_ENDIAN:
+                return 10;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
         }
@@ -209,10 +211,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             case UTF_8:
                 emitUTF8(crb, asm, arr, len, off, ret, vec1);
                 break;
-            case UTF_16:
+            case UTF_16, UTF_16_FOREIGN_ENDIAN:
                 emitUTF16(crb, asm, arr, len, off, ret, vec1);
                 break;
-            case UTF_32:
+            case UTF_32, UTF_32_FOREIGN_ENDIAN:
                 emitUTF32(crb, asm, arr, len, off, ret, vec1);
                 break;
             default:
@@ -909,6 +911,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitUTF16(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecArray) {
+        boolean foreignEndian = encoding == CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN;
         assert stride.log2 == 1 : stride.log2;
         Register vecArrayTail = asRegister(vectorTemp[1]);
         Register vecMaskAscii = asRegister(vectorTemp[2]);
@@ -916,6 +919,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Register vecMaskSurrogate = asRegister(vectorTemp[4]);
         Register vecTmp = asRegister(vectorTemp[5]);
         Register vecResult = asRegister(vectorTemp[6]);
+        Register vecANDMaskSurrogate = foreignEndian ? asRegister(vectorTemp[7]) : null;
         Register tmp = asRegister(temp[0]);
         Register retBroken = assumeValid ? null : asRegister(temp[1]);
 
@@ -949,9 +953,16 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.pxor(vectorSize, vecResult, vecResult);
         }
 
-        loadMask(crb, asm, stride, vecMaskAscii, 0xff80);
-        loadMask(crb, asm, stride, vecMaskSurrogate, assumeValid ? 0x36 : 0x1b);
-        asm.psllw(vectorSize, vecMaskLatin, vecMaskAscii, 1);
+        if (foreignEndian) {
+            loadMask(crb, asm, stride, vecMaskAscii, 0x80ff);
+            loadMask(crb, asm, stride, vecMaskLatin, 0x00ff);
+            loadMask(crb, asm, stride, vecMaskSurrogate, 0x00d8);
+            loadMask(crb, asm, stride, vecANDMaskSurrogate, assumeValid ? 0x00fc : 0x00f8);
+        } else {
+            loadMask(crb, asm, stride, vecMaskAscii, 0xff80);
+            loadMask(crb, asm, stride, vecMaskSurrogate, assumeValid ? 0x36 : 0x1b);
+            asm.psllw(vectorSize, vecMaskLatin, vecMaskAscii, 1);
+        }
         DataSection.Data maskTail = createTailMask(crb, stride);
         DataSection.Data xmmTailShuffleMask = assumeValid ? null : writeToDataSection(crb, createXMMTailShuffleMask(XMM.getBytes()));
 
@@ -971,13 +982,13 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.align(preferredLoopAlignment(crb));
         asm.bind(bmpLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
-        utf16FindSurrogatesAndTest(asm, vecArray, vecArray, vecMaskSurrogate);
+        utf16FindSurrogatesAndTest(asm, vecArray, vecArray, vecMaskSurrogate, vecANDMaskSurrogate);
         asm.jccb(NotZero, assumeValid ? labelSurrogateLoop : labelSurrogateEntry);
         asm.addqAndJcc(len, vectorLength, NotZero, bmpLoop, true);
 
         // bmp tail
         asm.bind(bmpTail);
-        utf16FindSurrogatesAndTest(asm, vecArrayTail, vecArrayTail, vecMaskSurrogate);
+        utf16FindSurrogatesAndTest(asm, vecArrayTail, vecArrayTail, vecMaskSurrogate, vecANDMaskSurrogate);
         asm.jcc(Zero, returnBMP);
         if (assumeValid) {
             // surrogate tail
@@ -989,7 +1000,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.align(preferredLoopAlignment(crb));
             asm.bind(labelSurrogateLoop);
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
-            utf16MatchSurrogates(asm, vecArray, vecMaskSurrogate);
+            utf16MatchSurrogates(asm, vecArray, vecMaskSurrogate, vecANDMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArray, tmp);
             asm.addqAndJcc(len, vectorLength, NotZero, labelSurrogateLoop, true);
 
@@ -997,7 +1008,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // surrogate tail
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
             asm.pandU(vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride), vecTmp);
-            utf16MatchSurrogates(asm, vecArrayTail, vecMaskSurrogate);
+            utf16MatchSurrogates(asm, vecArrayTail, vecMaskSurrogate, vecANDMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArrayTail, tmp);
             asm.jmp(returnValidOrBroken);
         } else {
@@ -1011,16 +1022,29 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // corner case: check if the first char is a low surrogate, and if so, set code
             // range to BROKEN
             asm.movzwl(tmp, new AMD64Address(arr, len, stride));
-            asm.shrl(tmp, 10);
-            asm.cmpl(tmp, 0x37);
+            if (foreignEndian) {
+                asm.andl(tmp, 0x00fc);
+                asm.cmpl(tmp, 0x00dc);
+            } else {
+                asm.shrl(tmp, 10);
+                asm.cmpl(tmp, 0x37);
+            }
             asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
-            // high surrogate mask: 0x1b << 1 == 0x36
-            asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
-            // mask 0xff80 >> 15 == 0x1
-            asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
-            // low surrogate mask: 0x1 | 0x36 == 0x37
-            asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
+            if (foreignEndian) {
+                // vecMaskSurrogate == 0x00d8
+                // low surrogate mask: 0x00dc
+                loadMask(crb, asm, stride, vecMaskAscii, 0x00dc);
+                // vecANDMaskSurrogate == 0x00f8 | 0x00dc = 0x00fc
+                asm.por(vectorSize, vecANDMaskSurrogate, vecMaskAscii);
+            } else {
+                // high surrogate mask: 0x1b << 1 == 0x36
+                asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
+                // mask 0xff80 >> 15 == 0x1
+                asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
+                // low surrogate mask: 0x1 | 0x36 == 0x37
+                asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
+            }
             // if there is no tail, we would read out of bounds in the loop, so remove the last
             // iteration if lengthTail is zero
             Label labelSurrogateCheckLoopCountZero = new Label();
@@ -1038,7 +1062,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             // load at current index + 1
             asm.movdqu(vectorSize, vecArrayTail, new AMD64Address(arr, len, stride, 2));
-            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
+            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecANDMaskSurrogate, vecTmp, vecResult, tmp);
             asm.addqAndJcc(len, vectorLength, NotZero, labelSurrogateLoop, true);
 
             // surrogate tail
@@ -1051,13 +1075,18 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // remove elements overlapping with the last loop vector
             asm.pandU(vectorSize, vecArray, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
             asm.pandU(vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
-            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
+            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecANDMaskSurrogate, vecTmp, vecResult, tmp);
 
             // corner case: check if last char is a high surrogate
             asm.movzwl(tmp, new AMD64Address(arr, lengthTail, stride, -2));
-            asm.shrl(tmp, 10);
+            if (foreignEndian) {
+                asm.andl(tmp, 0x00fc);
+                asm.cmpl(tmp, 0x00d8);
+            } else {
+                asm.shrl(tmp, 10);
+                asm.cmpl(tmp, 0x36);
+            }
             // if last char is a high surrogate, return BROKEN
-            asm.cmpl(tmp, 0x36);
             asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             asm.jmp(returnValidOrBroken);
@@ -1104,7 +1133,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.jcc(Zero, returnAscii);
         asm.ptest(vectorSize, vecArray, vecMaskLatin);
         asm.jcc(Zero, returnLatin1);
-        utf16FindSurrogatesAndTest(asm, vecTmp, vecArray, vecMaskSurrogate);
+        utf16FindSurrogatesAndTest(asm, vecTmp, vecArray, vecMaskSurrogate, vecANDMaskSurrogate);
         asm.jcc(Zero, returnBMP);
 
         if (assumeValid) {
@@ -1123,24 +1152,37 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // corner case: check if the last char is a high surrogate, and if so, set code
             // range to BROKEN
             asm.movzwl(tmp, new AMD64Address(arr, -2));
-            asm.shrl(tmp, 10);
-            asm.cmpl(tmp, 0x36);
+            if (foreignEndian) {
+                asm.andl(tmp, 0x00fc);
+                asm.cmpl(tmp, 0x00d8);
+            } else {
+                asm.shrl(tmp, 10);
+                asm.cmpl(tmp, 0x36);
+            }
             asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
 
             asm.bind(tailSingleVectorSurrogate);
-            // high surrogate mask: 0x1b << 1 == 0x36
-            asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
-            // mask 0xff80 >> 15 == 0x1
-            asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
-            // low surrogate mask: 0x1 | 0x36 == 0x37
-            asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
+            if (foreignEndian) {
+                // vecMaskSurrogate == 0x00d8
+                // low surrogate mask: 0x00dc
+                loadMask(crb, asm, stride, vecMaskAscii, 0x00dc);
+                // vecANDMaskSurrogate == 0x00f8 | 0x00dc = 0x00fc
+                asm.por(vectorSize, vecANDMaskSurrogate, vecMaskAscii);
+            } else {
+                // high surrogate mask: 0x1b << 1 == 0x36
+                asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
+                // mask 0xff80 >> 15 == 0x1
+                asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
+                // low surrogate mask: 0x1 | 0x36 == 0x37
+                asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
+            }
 
             // generate 2nd vector by left-shifting the entire vector by 2 bytes
             asm.pxor(vectorSize, vecTmp, vecTmp);
             prev(asm, vectorSize, vecArrayTail, vecArray, vecTmp, 2);
 
-            utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
+            utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecANDMaskSurrogate, vecTmp, vecResult, tmp);
             asm.jmpb(returnValidOrBroken);
         }
         emitExitMultiByte(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
@@ -1161,9 +1203,17 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void utf16ValidateSurrogates(AMD64MacroAssembler asm,
-                    Register ret, Register vecArray0, Register vecArray1, Register vecMaskHiSurrogate, Register vecMaskLoSurrogate, Register vecTmp, Register vecResult, Register tmp) {
-        utf16MatchSurrogates(asm, vecArray0, vecMaskHiSurrogate);
-        utf16MatchSurrogates(asm, vecArray1, vecMaskLoSurrogate);
+                    Register ret,
+                    Register vecArray0,
+                    Register vecArray1,
+                    Register vecMaskHiSurrogate,
+                    Register vecMaskLoSurrogate,
+                    Register vecANDMaskSurrogate,
+                    Register vecTmp,
+                    Register vecResult,
+                    Register tmp) {
+        utf16MatchSurrogates(asm, vecArray0, vecMaskHiSurrogate, vecANDMaskSurrogate);
+        utf16MatchSurrogates(asm, vecArray1, vecMaskLoSurrogate, vecANDMaskSurrogate);
         // identify the number of correctly encoded surrogate pairs
         asm.pand(vectorSize, vecTmp, vecArray0, vecArray1);
         // XOR the high surrogates identified at current index, with low surrogates
@@ -1180,15 +1230,23 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.subq(ret, tmp);
     }
 
-    private void utf16MatchSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate) {
+    private void utf16MatchSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate, Register vecANDMaskSurrogate) {
         // identify only high or low surrogates
-        asm.psrlw(vectorSize, vecArray, vecArray, 10);
+        if (encoding == CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN) {
+            asm.pand(vectorSize, vecArray, vecANDMaskSurrogate);
+        } else {
+            asm.psrlw(vectorSize, vecArray, vecArray, 10);
+        }
         asm.pcmpeqw(vectorSize, vecArray, vecMaskSurrogate);
     }
 
-    private void utf16FindSurrogatesAndTest(AMD64MacroAssembler asm, Register vecDst, Register vecArray, Register vecMaskSurrogate) {
+    private void utf16FindSurrogatesAndTest(AMD64MacroAssembler asm, Register vecDst, Register vecArray, Register vecMaskSurrogate, Register vecANDMaskSurrogate) {
         // identify surrogates by checking the upper 6 or 5 bits
-        asm.psrlw(vectorSize, vecDst, vecArray, assumeValid ? 10 : 11);
+        if (encoding == CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN) {
+            asm.pand(vectorSize, vecDst, vecArray, vecANDMaskSurrogate);
+        } else {
+            asm.psrlw(vectorSize, vecDst, vecArray, assumeValid ? 10 : 11);
+        }
         asm.pcmpeqw(vectorSize, vecDst, vecMaskSurrogate);
         asm.ptest(vectorSize, vecDst, vecDst);
     }
@@ -1201,6 +1259,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitUTF32(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecArray) {
+        boolean foreignEndian = encoding == CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN;
         assert stride.log2 == 2 : stride.log2;
         Register vecMaskAscii = asRegister(vectorTemp[1]);
         Register vecMaskLatin1 = asRegister(vectorTemp[2]);
@@ -1209,6 +1268,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Register vecMaskOutOfRange = asRegister(vectorTemp[5]);
         Register vecArrayTail = asRegister(vectorTemp[6]);
         Register vecArrayTmp = asRegister(vectorTemp[7]);
+        Register vecOutOfRangeShuffleMask = foreignEndian ? asRegister(vectorTemp[8]) : null;
+        Register vecMaskSurrogateAND = foreignEndian ? asRegister(vectorTemp[9]) : null;
 
         Label labelLatin1Entry = new Label();
         Label labelLatin1Tail = new Label();
@@ -1230,13 +1291,23 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Label returnAscii = new Label();
         Label end = new Label();
 
-        loadMask(crb, asm, stride, vecMaskAscii, 0xffffff80);
-        loadMask(crb, asm, stride, vecMaskSurrogate, 0x1b);
+        if (foreignEndian) {
+            loadMask(crb, asm, stride, vecMaskAscii, 0x80ffffff);
+            loadMask(crb, asm, stride, vecMaskLatin1, 0x00ffffff);
+            loadMask(crb, asm, stride, vecMaskSurrogateAND, 0x00f80000);
+            loadMask(crb, asm, stride, vecMaskSurrogate, 0x00d80000);
+            loadMask(crb, asm, vecOutOfRangeShuffleMask, utf32GetForeignEndianShuffleMask());
+            // generate bmp mask 0x0000ffff
+            asm.psrld(vectorSize, vecMaskBMP, vecMaskLatin1, 8);
+        } else {
+            loadMask(crb, asm, stride, vecMaskAscii, 0xffffff80);
+            loadMask(crb, asm, stride, vecMaskSurrogate, 0x1b);
+            // generate latin1 mask 0xffffff00
+            asm.pslld(vectorSize, vecMaskLatin1, vecMaskAscii, 1);
+            // generate bmp mask 0xffff0000
+            asm.pslld(vectorSize, vecMaskBMP, vecMaskAscii, 9);
+        }
         loadMask(crb, asm, stride, vecMaskOutOfRange, 0x10);
-        // generate latin1 mask 0xffffff00
-        asm.pslld(vectorSize, vecMaskLatin1, vecMaskAscii, 1);
-        // generate bmp mask 0xffff0000
-        asm.pslld(vectorSize, vecMaskBMP, vecMaskAscii, 9);
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, tailLessThan16, false);
 
@@ -1260,14 +1331,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.jccb(NotZero, labelAstralLoop);
         // check if any codepoints are in the forbidden UTF-16 surrogate range; if so, break
         // immediately and return BROKEN
-        utf32CheckInvalid(asm, vecArray, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
+        utf32CheckSurrogates(asm, vecArray, vecMaskSurrogate, vecMaskSurrogateAND, returnBroken);
         asm.addqAndJcc(len, vectorLength, NotZero, labelBMPLoop, true);
 
         // bmp tail
         asm.bind(labelBMPTail);
         asm.ptest(vectorSize, vecArrayTail, vecMaskBMP);
         asm.jccb(NotZero, labelAstralTail);
-        utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
+        utf32CheckSurrogates(asm, vecArrayTail, vecMaskSurrogate, vecMaskSurrogateAND, returnBroken);
         asm.jmpb(returnBMP);
 
         emitExit(asm, ret, returnBroken, end, CalcStringAttributesEncoding.CR_BROKEN, false);
@@ -1278,12 +1349,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.align(preferredLoopAlignment(crb));
         asm.bind(labelAstralLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
-        utf32CheckInvalid(asm, vecArray, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
+        utf32CheckInvalid(asm, vecArray, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, vecMaskSurrogateAND, vecOutOfRangeShuffleMask, returnBroken, true);
         asm.addqAndJcc(len, vectorLength, NotZero, labelAstralLoop, true);
 
         // astral tail
         asm.bind(labelAstralTail);
-        utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
+        utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, vecMaskSurrogateAND, vecOutOfRangeShuffleMask, returnBroken, true);
         asm.jmp(returnAstral);
 
         if (supportsAVX2AndYMM()) {
@@ -1316,7 +1387,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.jccb(Zero, returnAscii);
         asm.ptest(vectorSize, vecArray, vecMaskLatin1);
         asm.jccb(Zero, returnLatin1);
-        utf32CheckInvalid(asm, vecArrayTail, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, false);
+        utf32CheckInvalid(asm, vecArrayTail, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, vecMaskSurrogateAND, vecOutOfRangeShuffleMask, returnBroken, false);
         asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
@@ -1326,12 +1397,45 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         emitExitAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
-    private void utf32CheckInvalid(AMD64MacroAssembler asm, Register vecArrayDst, Register vecArraySrc, Register vecArrayTmp, Register vecMaskBroken, Register vecMaskOutOfRange, Label returnBroken,
+    private void utf32CheckSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate, Register vecMaskSurrogateAND, Label returnBroken) {
+        if (encoding == CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN) {
+            // AND string contents with 0x00f80000
+            asm.pand(vectorSize, vecArray, vecMaskSurrogateAND);
+        } else {
+            // right-shift string contents by 11
+            asm.psrld(vectorSize, vecArray, vecArray, 11);
+        }
+        // identify codepoints in the forbidden UTF-16 surrogate range [0xd800-0xdfff]
+        // native endian: ((codepoint >> 11) == 0x1b)
+        // foreign endian: ((codepoint & 0x00d80000) == 0x00f80000)
+        asm.pcmpeqd(vectorSize, vecArray, vecMaskSurrogate);
+        // check if a surrogate character was present
+        asm.ptest(vectorSize, vecArray, vecArray);
+        // return CR_BROKEN if a surrogate character was present
+        asm.jccb(NotZero, returnBroken);
+    }
+
+    private void utf32CheckInvalid(AMD64MacroAssembler asm,
+                    Register vecArrayDst,
+                    Register vecArraySrc,
+                    Register vecArrayTmp,
+                    Register vecMaskBroken,
+                    Register vecMaskOutOfRange,
+                    Register vecMaskSurrogateAND,
+                    Register vecOutOfRangeShuffleMask,
+                    Label returnBroken,
                     boolean isShortJmp) {
-        // right-shift string contents by 16
-        asm.psrld(vectorSize, vecArrayTmp, vecArraySrc, 16);
-        // right-shift string contents (copy) by 11
-        asm.psrld(vectorSize, vecArrayDst, vecArraySrc, 11);
+        if (encoding == CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN) {
+            // shuffle string contents equivalent to Integer.reverseBytes(x) >>> 16
+            asm.pshufb(vectorSize, vecArrayTmp, vecArraySrc, vecOutOfRangeShuffleMask);
+            // AND string contents with 0x00f80000
+            asm.pand(vectorSize, vecArrayDst, vecArraySrc, vecMaskSurrogateAND);
+        } else {
+            // right-shift string contents by 16
+            asm.psrld(vectorSize, vecArrayTmp, vecArraySrc, 16);
+            // right-shift string contents (copy) by 11
+            asm.psrld(vectorSize, vecArrayDst, vecArraySrc, 11);
+        }
         // identify codepoints larger than 0x10ffff ((codepoint >> 16) > 0x10)
         asm.pcmpgtd(vectorSize, vecArrayTmp, vecMaskOutOfRange);
         // identify codepoints in the forbidden UTF-16 surrogate range [0xd800-0xdfff]
@@ -1343,6 +1447,32 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.ptest(vectorSize, vecArrayDst, vecArrayDst);
         // return CR_BROKEN if any invalid character was present
         asm.jcc(NotZero, returnBroken, isShortJmp);
+    }
+
+    /**
+     * Generates a {@code PSHUFB} mask for the foreign endian case of {@link #utf32CheckInvalid}.
+     * The operation achieved by this mask is equivalent to {@code Integer.reverseBytes(x) >>> 16}
+     * for all elements of a given int-vector.
+     */
+    private byte[] utf32GetForeignEndianShuffleMask() {
+        byte[] mask = new byte[vectorSize.getBytes()];
+        for (int i = 0; i < XMM.getBytes(); i += 4) {
+            // Swap the two first two bytes. Since the source is in big endian, this is equivalent
+            // to Integer.reverseBytes(x) >>> 16
+            mask[i + 0] = (byte) (i + 1);
+            mask[i + 1] = (byte) (i);
+            // replace other bytes with 0
+            mask[i + 2] = (byte) -1;
+            mask[i + 3] = (byte) -1;
+        }
+        // on AVX2, PSHUFB doesn't shuffle an entire YMM vector, instead it behaves like two
+        // adjacent XMM PSHUFB operations
+        if (mask.length > XMM.getBytes()) {
+            for (int i = XMM.getBytes(); i < mask.length; i += XMM.getBytes()) {
+                System.arraycopy(mask, 0, mask, i, XMM.getBytes());
+            }
+        }
+        return mask;
     }
 
     private static void emitExit(AMD64MacroAssembler asm, Register ret, Label entry, Label labelDone, int returnValue) {
