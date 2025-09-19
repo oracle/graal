@@ -72,11 +72,11 @@ import java.lang.ref.Reference;
 import java.util.Arrays;
 import java.util.BitSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -3303,14 +3303,38 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract char execute(AbstractTruffleString a, int charIndex);
+        public final char execute(AbstractTruffleString a, int charIndex) {
+            a.checkEncoding(Encoding.UTF_16);
+            return execute(a, charIndex, true);
+        }
+
+        /**
+         * Read a single char from a UTF-16LE string.
+         *
+         * @since 26.0
+         */
+        public final char executeLE(AbstractTruffleString a, int charIndex) {
+            a.checkEncoding(Encoding.UTF_16LE);
+            return execute(a, charIndex, Encoding.UTF_16LE == Encoding.UTF_16);
+        }
+
+        /**
+         * Read a single char from a UTF-16BE string.
+         *
+         * @since 26.0
+         */
+        public final char executeBE(AbstractTruffleString a, int charIndex) {
+            a.checkEncoding(Encoding.UTF_16BE);
+            return execute(a, charIndex, Encoding.UTF_16BE == Encoding.UTF_16);
+        }
+
+        abstract char execute(AbstractTruffleString a, int charIndex, boolean nativeEndian);
 
         @Specialization
-        final char doRead(AbstractTruffleString a, int i,
+        final char doRead(AbstractTruffleString a, int i, boolean nativeEndian,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile utf16S0Profile) {
-            a.checkEncoding(Encoding.UTF_16);
             Object dataA = a.data();
             try {
                 final byte[] arrayA;
@@ -3326,15 +3350,19 @@ public final class TruffleString extends AbstractTruffleString {
                     addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
-                final int lengthA = a.length();
+                final int lengthA = nativeEndian ? a.length() : a.length() >> 1;
                 final int strideA = a.stride();
 
                 boundsCheckRawIndex(lengthA, i);
-                if (utf16S0Profile.profile(this, strideA == 0)) {
-                    return (char) TStringOps.readS0(arrayA, offsetA, lengthA, i);
+                if (nativeEndian) {
+                    if (utf16S0Profile.profile(this, strideA == 0)) {
+                        return (char) TStringOps.readS0(arrayA, offsetA, lengthA, i);
+                    } else {
+                        assert strideA == 1;
+                        return TStringOps.readS1(arrayA, offsetA, lengthA, i);
+                    }
                 } else {
-                    assert strideA == 1;
-                    return TStringOps.readS1(arrayA, offsetA, lengthA, i);
+                    return Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, lengthA, i));
                 }
             } finally {
                 Reference.reachabilityFence(dataA);
