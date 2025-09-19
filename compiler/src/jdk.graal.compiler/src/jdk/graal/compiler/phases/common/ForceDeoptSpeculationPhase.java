@@ -68,25 +68,31 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
      * speculation arguments also have to be replaced if they are not proper speculations.
      */
     final ForeignCallDescriptor deoptimizeCallDescriptor;
+    final int deoptimizeCallActionAndReasonArgumentIndex;
     final int deoptimizeCallSpeculationReasonArgumentIndex;
 
     public ForceDeoptSpeculationPhase(int recompileCount, ForeignCallDescriptor deoptimizeCallDescriptor) {
         this.recompileCount = recompileCount;
+        int actionAndReasonArgumentIndex = -1;
         int speculationReasonArgumentIndex = -1;
         if (deoptimizeCallDescriptor != null) {
             Class<?>[] argumentTypes = deoptimizeCallDescriptor.getArgumentTypes();
             for (int i = 0; i < argumentTypes.length; i++) {
-                if (SpeculationLog.SpeculationReason.class.equals(argumentTypes[i])) {
+                if (actionAndReasonArgumentIndex == -1 && long.class.equals(argumentTypes[i])) {
+                    actionAndReasonArgumentIndex = i;
+                }
+                if (speculationReasonArgumentIndex == -1 && SpeculationLog.SpeculationReason.class.equals(argumentTypes[i])) {
                     speculationReasonArgumentIndex = i;
-                    break;
                 }
             }
         }
-        if (speculationReasonArgumentIndex >= 0) {
+        if (actionAndReasonArgumentIndex >= 0 && speculationReasonArgumentIndex >= 0) {
             this.deoptimizeCallDescriptor = deoptimizeCallDescriptor;
+            this.deoptimizeCallActionAndReasonArgumentIndex = actionAndReasonArgumentIndex;
             this.deoptimizeCallSpeculationReasonArgumentIndex = speculationReasonArgumentIndex;
         } else {
             this.deoptimizeCallDescriptor = null;
+            this.deoptimizeCallActionAndReasonArgumentIndex = -1;
             this.deoptimizeCallSpeculationReasonArgumentIndex = -1;
         }
 
@@ -123,15 +129,21 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
             }
             if (deoptimizeCallDescriptor != null) {
                 if (node instanceof ForeignCallNode foreignCallNode && deoptimizeCallDescriptor.equals(foreignCallNode.getDescriptor())) {
+                    ValueNode actionAndReasonArgument = foreignCallNode.getArguments().get(deoptimizeCallActionAndReasonArgumentIndex);
                     ValueNode speculationReasonArgument = foreignCallNode.getArguments().get(deoptimizeCallSpeculationReasonArgumentIndex);
+                    assert actionAndReasonArgument.isJavaConstant() : "Action and reason argument node is not a JavaConstant";
                     assert speculationReasonArgument.isJavaConstant() : "Speculation reason argument node is not a JavaConstant";
+                    DeoptimizationAction deoptAction = context.getMetaAccess().decodeDeoptAction((JavaConstant) ((ConstantNode) actionAndReasonArgument).getValue());
                     SpeculationLog.Speculation originalSpeculation = context.getMetaAccess().decodeSpeculation((JavaConstant) ((ConstantNode) speculationReasonArgument).getValue(),
                                     graph.getSpeculationLog());
-                    if (NO_SPECULATION.equals(originalSpeculation)) {
+                    if (NO_SPECULATION.equals(originalSpeculation) && deoptAction != DeoptimizationAction.None) {
                         SpeculationLog.Speculation newSpeculation = createSpeculation(graph, signature, foreignCallNode);
                         JavaConstant speculationConstant = context.getMetaAccess().encodeSpeculation(newSpeculation);
                         ConstantNode speculationNode = graph.addOrUnique(ConstantNode.forConstant(speculationConstant, context.getMetaAccess(), graph));
-                        ((ConstantNode) speculationReasonArgument).replace(graph, speculationNode);
+                        foreignCallNode.replaceAllInputs(speculationReasonArgument, speculationNode);
+                        if (speculationReasonArgument.hasNoUsages()) {
+                            speculationReasonArgument.safeDelete();
+                        }
                     }
                 }
             }
