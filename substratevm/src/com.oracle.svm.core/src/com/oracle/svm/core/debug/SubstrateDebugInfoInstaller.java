@@ -28,200 +28,162 @@ package com.oracle.svm.core.debug;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicNobitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
+import com.oracle.svm.core.debug.gdb.GdbJitHandleAccessor;
+import com.oracle.svm.core.debug.jitdump.JitdumpProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.graal.compiler.word.Word;
 
 public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
     private final DebugContext debug;
-    private final SubstrateDebugInfoProvider substrateDebugInfoProvider;
-    private final ObjectFile objectFile;
-    private final ArrayList<ObjectFile.Element> sortedObjectFileElements;
-    private final int debugInfoSize;
+    private final NonmovableArray<Byte> debugInfoData;
 
     static final class Factory implements InstalledCodeObserver.Factory {
 
-        private final MetaAccessProvider metaAccess;
-        private final RuntimeConfiguration runtimeConfiguration;
+        private final RuntimeConfiguration runtimeConfig;
 
-        Factory(MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration) {
-            this.metaAccess = metaAccess;
-            this.runtimeConfiguration = runtimeConfiguration;
+        Factory(RuntimeConfiguration runtimeConfig) {
+            this.runtimeConfig = runtimeConfig;
         }
 
         @Override
         public InstalledCodeObserver create(DebugContext debugContext, SharedMethod method, CompilationResult compilation, Pointer code, int codeSize) {
             try {
-                return new SubstrateDebugInfoInstaller(debugContext, method, compilation, metaAccess, runtimeConfiguration, code, codeSize);
+                return new SubstrateDebugInfoInstaller(debugContext, method, compilation, runtimeConfig, code, codeSize);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             }
         }
     }
 
-    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration,
-                    Pointer code, int codeSize) {
+    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig, Pointer code, int codeSize) {
         debug = debugContext;
-        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
+        long codeAddress = code.rawValue();
 
+        // Initialize the debug info generator.
+        SubstrateDebugInfoProvider debugInfoProvider = new SubstrateDebugInfoProvider(debug, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(), codeAddress, codeSize);
+
+        // Produce a full debug info object file if needed.
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
+            debugInfoData = getDebugInfoData(debugInfoProvider);
+        } else {
+            debugInfoData = Word.nullPointer();
+        }
+
+        // Create a perf map for the current pid if it does not exist and append a new entry.
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_PERFMAP_NAME)) {
+            writePerfMap(debugInfoProvider);
+        }
+
+        // Append new records to the jitdump file.
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_JITDUMP_NAME)) {
+            writeJitdump(debugInfoProvider);
+        }
+    }
+
+    private NonmovableArray<Byte> getDebugInfoData(SubstrateDebugInfoProvider debugInfoProvider) {
+        // Set up the debug info object file.
         int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
-        objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
-        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(codeSize));
-        objectFile.installDebugInfo(substrateDebugInfoProvider);
-        sortedObjectFileElements = new ArrayList<>();
-        debugInfoSize = objectFile.bake(sortedObjectFileElements);
+        ObjectFile objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
+        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(debugInfoProvider.getCodeSize()));
 
-        if (debugContext.isLogEnabled()) {
-            dumpObjectFile();
-        }
-    }
+        // Generate debug info and bake the object file.
+        objectFile.installDebugInfo(debugInfoProvider);
+        ArrayList<ObjectFile.Element> sortedObjectFileElements = new ArrayList<>();
+        int debugInfoSize = objectFile.bake(sortedObjectFileElements);
 
-    private void dumpObjectFile() {
-        StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
-        try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
-                        StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
-                        StandardOpenOption.CREATE)) {
-            ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
-            objectFile.writeBuffer(sortedObjectFileElements, buffer);
-        } catch (IOException e) {
-            debug.log("Failed to dump %s", sb);
-        }
-    }
+        // Store the object file in a byte array -> This is now an in-memory object file.
+        NonmovableArray<Byte> debugInfoData = NonmovableArrays.createByteArray(debugInfoSize, NmtCategory.Code);
+        objectFile.writeBuffer(sortedObjectFileElements, NonmovableArrays.asByteBuffer(debugInfoData));
 
-    @RawStructure
-    private interface Handle extends InstalledCodeObserverHandle {
-        int INITIALIZED = 0;
-        int ACTIVATED = 1;
-        int RELEASED = 2;
-
-        @RawField
-        GdbJitInterface.JITCodeEntry getRawHandle();
-
-        @RawField
-        void setRawHandle(GdbJitInterface.JITCodeEntry value);
-
-        @RawField
-        NonmovableArray<Byte> getDebugInfoData();
-
-        @RawField
-        void setDebugInfoData(NonmovableArray<Byte> data);
-
-        @RawField
-        int getState();
-
-        @RawField
-        void setState(int value);
-    }
-
-    static final class GdbJitAccessor implements InstalledCodeObserverHandleAccessor {
-
-        static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
-            Handle handle = NativeMemory.malloc(SizeOf.get(Handle.class), NmtCategory.Code);
-            GdbJitInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GdbJitInterface.JITCodeEntry.class), NmtCategory.Code);
-            handle.setAccessor(ImageSingletons.lookup(GdbJitAccessor.class));
-            handle.setRawHandle(entry);
-            handle.setDebugInfoData(debugInfoData);
-            handle.setState(Handle.INITIALIZED);
-            return handle;
-        }
-
-        @Override
-        public void activate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            VMOperation.guaranteeInProgressAtSafepoint("SubstrateDebugInfoInstaller.Accessor.activate must run in a VMOperation");
-            VMError.guarantee(handle.getState() == Handle.INITIALIZED);
-
-            NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
-            CCharPointer address = NonmovableArrays.addressOf(debugInfoData, 0);
-            int size = NonmovableArrays.lengthOf(debugInfoData);
-            GdbJitInterface.registerJITCode(address, size, handle.getRawHandle());
-
-            handle.setState(Handle.ACTIVATED);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called during GC or teardown.")
-        public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
-            // Handle may still be just initialized here, so it never got registered in GDB.
-            if (handle.getState() == Handle.ACTIVATED) {
-                GdbJitInterface.unregisterJITCode(entry);
-                handle.setState(Handle.RELEASED);
-            }
-            NativeMemory.free(entry);
-            NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            NativeMemory.free(handle);
-        }
-
-        @Override
-        public void detachFromCurrentIsolate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            NonmovableArrays.untrackUnmanagedArray(handle.getDebugInfoData());
-        }
-
-        @Override
-        public void attachToCurrentIsolate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            NonmovableArrays.trackUnmanagedArray(handle.getDebugInfoData());
-        }
-    }
-
-    @Override
-    @SuppressWarnings("try")
-    public InstalledCodeObserverHandle install() {
-        NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
-        Handle handle = GdbJitAccessor.createHandle(debugInfoData);
         if (debug.isLogEnabled()) {
-            try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
-                debug.log(toString(handle));
+            // Dump the object file to the file system.
+            StringBuilder sb = new StringBuilder(debugInfoProvider.getCompilationName()).append(".debug");
+            try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
+                            StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
+                            StandardOpenOption.CREATE)) {
+                ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
+                objectFile.writeBuffer(sortedObjectFileElements, buffer);
+            } catch (IOException e) {
+                debug.log("Failed to dump %s", sb);
             }
         }
-        return handle;
+
+        return debugInfoData;
     }
 
-    private NonmovableArray<Byte> writeDebugInfoData() {
-        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(debugInfoSize, NmtCategory.Code);
-        objectFile.writeBuffer(sortedObjectFileElements, NonmovableArrays.asByteBuffer(array));
-        return array;
+    @SuppressWarnings({"unsused", "try"})
+    private synchronized void writePerfMap(SubstrateDebugInfoProvider debugInfoProvider) {
+        String methodName = debugInfoProvider.getMethod().format("%R %H.%n(%P)");
+        String perfMapFilename = "perf-" + ProcessProperties.getProcessID() + ".map";
+        Path perfMapPath = Paths.get("/tmp", perfMapFilename);
+
+        /*
+         * Create one line for the perf map write to the perf map file.
+         */
+        byte[] perfMapEntry = String.format("%x %x %s%n", debugInfoProvider.getCodeAddress(), debugInfoProvider.getCodeSize(), methodName).getBytes();
+
+        try {
+            Files.write(perfMapPath, perfMapEntry, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            debug.log("Failed to write perf map entry for %s.", methodName);
+        }
     }
 
-    private static String toString(Handle handle) {
-        return "DebugInfoHandle(handle = 0x" + Long.toHexString(handle.getRawHandle().rawValue()) +
-                        ", address = 0x" +
-                        Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +
-                        ", size = " +
-                        NonmovableArrays.lengthOf(handle.getDebugInfoData()) +
-                        ", handleState = " +
-                        handle.getState() +
-                        ")";
+    @SuppressWarnings({"unsused", "try"})
+    private void writeJitdump(SubstrateDebugInfoProvider debugInfoProvider) {
+        /*
+         * Fetch the compiled method entry for the run-time compiled method.
+         */
+        CompiledMethodEntry compiledMethodEntry = debugInfoProvider.lookupCompiledMethodEntry(debugInfoProvider.getMethod(), debugInfoProvider.getCompilation());
+
+        /*
+         * Create the records for a run-time compilation and write them to the jitdump file.
+         */
+        JitdumpProvider.writeRecords(debugInfoProvider, compiledMethodEntry);
+    }
+
+    /**
+     * Create a code observer handle if needed.
+     * <p>
+     * Only run-time debug info in an in-memory object file needs to be tracked by a handle. For
+     * other formats, the debug info generator only neds to append to a file and not clean up
+     * anything for deoptimization.
+     * 
+     * @return a code observer handle or a null pointer if it is not needed
+     */
+    @Override
+    public InstalledCodeObserverHandle install() {
+        if (SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
+            assert debugInfoData.isNonNull() : "Run-time debug info file is emtpy!";
+            return GdbJitHandleAccessor.createHandle(debug, debugInfoData);
+        } else {
+            return Word.nullPointer();
+        }
     }
 }

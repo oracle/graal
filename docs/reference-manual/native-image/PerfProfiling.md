@@ -69,11 +69,110 @@ The following command assumes that `native-image` is on the system path and avai
 If it is not installed, refer to the [Getting Started](README.md).
 
 ```bash
-native-image -g <entry_class>
+native-image -g -H:+PreserveFramePointer <entry_class>
 ```
 
 The `-g` option instructs Native Image to produce debug information for the generated binary.
 `perf` can use this debug information, for example, to provide proper names for types and methods in traces.
+The `-H:+PreserveFramePointer` options instructs Native Image to save frame pointers on the stack.
+This allows `perf` to reliably unwind stack frames and reconstruct the call hierarchy.
+
+### Profiling of Runtime-Compiled Methods
+
+Native Image can integrate runtime compilation information with perf enabling profiling of runtime compiled methods. 
+Two formats are supported:
+ - [perf-map](https://github.com/torvalds/linux/blob/46a51f4f5edade43ba66b3c151f0e25ec8b69cb6/tools/perf/Documentation/jit-interface.txt) – lightweight symbol mapping
+ - [jitdump](https://github.com/torvalds/linux/blob/46a51f4f5edade43ba66b3c151f0e25ec8b69cb6/tools/perf/Documentation/jitdump-specification.txt) – detailed runtime compilation metadata
+
+Both formats can be enabled independently or together.
+
+#### perf-map
+
+The perf-map format provides a simple mapping from code addresses to symbol names for each runtime compilation.
+The mapping file is generated at:
+
+```bash
+/tmp/perf-<pid>.map
+```
+
+Perf automatically uses this file to resolve symbols.
+
+The perf-map format supports basic symbol resolution only and does not provide detailed runtime compilation metadata like jitdump.
+
+**Note:** This is a major limitation of perf-map. 
+It does cannot distinguish between symbols for the same code address, and the first matching entry in the perf-map file is used. 
+As a consequence, if a code address is reused, perf will provide incorrect symbol mappings with perf-map.
+The only way around this limitation is to use jitdump, which uses timestamps to find the correct information for a compilation.
+
+1. Building with perf-map support
+
+   ```bash
+   native-image -g -H:+PreserveFramePointer -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=perf-map ...
+   ```
+   
+   At image-runtime, the perf-map file `/tmp/perf-<pid>.map` is created and filled with mappings from code address to symbol name.
+
+2. Record and inspect with perf
+
+   Record and inspect profiling data as described [here](#basic-operations).
+   Code addresses for runtime compilations found in the perf-map file are automatically replaced by their corresponding symbol name.
+
+
+#### jitdump
+
+The jitdump format stores detailed metadata for runtime compiled code. 
+This requires post-processing of the perf data to inject the runtime compilation information.
+
+1. Building with jitdump support
+
+   ```bash
+   native-image -g -H:+PreserveFramePointer -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump ...
+   ```
+   
+   At image-runtime, the jitdump file `<jitdump_dir>/jit-<pid>.dump` is created, and runtime compilation metadata is written to it.
+   The output directory can be configured with `-R:RuntimeJitdumpDir=<jitdump_dir>` (defaults to `./jitdump`).
+
+2. Record with perf
+
+   When recording profiling data, use the `-k 1` option to ensure time-based events are ordered correctly for injection:
+   
+   ```bash
+   perf record -k 1 -o perf.data <your-application>
+   ```
+   
+   If the perf data was not recorded with `-k 1`, injecting runtime compilation information from a jitdump file will fail.
+
+3. Inject jitdump into perf data
+
+   ```bash
+   perf inject -j -i perf.data -o perf.jit.data
+   ```
+   
+   This step:
+    - Locates the jitdump file. 
+    - Generates a .so file for each runtime compilation entry in the jitdump file. 
+    - Injects runtime compilation information into the profiling data and stores it in `perf.jit.data`.
+
+4. Inspect profiling data
+
+   ```bash
+   perf report -i perf.jit.data
+   ```
+   
+   Symbols from the jitdump file appear as coming from `jitted-<pid>-<code_id>.so`, where code_id is the index of a compilation entry in the jitdump file.
+
+#### Choosing a Format
+Use perf-map:
+ - for quick, lightweight symbol resolution of run-time compiled methods.
+ - if no detailed metadata about run-time compiled methods is required.
+ - if it is no concern that the same code address may be used multiple times (this leads to an incorrect output).
+
+Use jitdump:
+ - for accurate and detailed profiling of run-time methods.
+ - to directly inject additional information for run-time compiled methods into the perf profiling data.
+ - if the additional steps (`perf record -k 1`, `perf inject`) are affordable.
+
+While perf-map is faster to set up, jitdump is usually the preferred format, especially for in-depth analysis.
 
 ## Basic Operations
 
@@ -140,6 +239,78 @@ The `-g` option instructs Native Image to produce debug information for the gene
    ```
 
    This command generates a script that can be used for analyzing the recorded trace data.
+
+## Generating Flame Graphs from Profiling Data
+
+[FlameGraph](https://github.com/brendangregg/FlameGraph) is a tool written in perl that can be used to produce flame graphs from perf profiling data.
+Flame graphs generated by this tool visualize stack samples as interactive SVGs, making it easy to identify hot code paths in an application.
+
+1. Download the tool and record profiling data as described in [Basic Operations](#basic-operations).
+
+   Make sure the profiling data was recorded with `-g` to capture call graphs, otherwise the flame graph will be flat.
+
+2. Fold stacks:
+   ```bash
+   perf script -i perf.data | ./stackcollapse-perf.pl > perf.data.folded
+   ```
+
+3. Render an SVG:
+   ```bash
+   ./flamegraph.pl perf.data.folded > perf.data.svg
+   ```
+   
+4. Open the flame graph
+
+   Use an application to view the generated SVG file (e.g. `firefox`, `chromium`).
+   ```bash
+   firefox perf.data.svg
+   ```
+
+### Highlighting Runtime-Compiled Methods
+
+If the native image supports [profiling of runtime-compiled methods](#profiling-of-runtime-compiled-methods) and the [jitdump](#jitdump) format is enabled, it is possible to highlight runtime-compiled symbols in the flame graph.
+
+1. Build the native image with jitdump support, record profiling data and inject the jitdump information as described in [jitdump](#jitdump).
+
+2. Fold stacks:
+
+   This involves folding the stacks for the non-jitdump-injected `perf.data` and the jitdump-injected `perf.jit.data`.
+   ```bash
+   perf script -i perf.data | ./stackcollapse-perf.pl > perf.data.folded
+   perf script -i perf.jit.data | ./stackcollapse-perf.pl > perf.jit.data.folded
+   ```
+
+3. Generate a consistent color palette map:
+   
+   Use the non-jitdump-injected `perf.data.folded` to create a consistent palette map in `palette.map` for events in `perf.data`.
+   The first call with `--cp` will create the map while subsequent calls with `--cp` reuse the map for consistent coloring of known events.
+   This also produces a flame graph for the non-jitdump-injected data.
+   ```bash
+   ./flamegraph.pl --cp perf.data.folded > perf.data.svg
+   ```
+
+4. Reuse the color palette map:
+
+   Use the consistent palette for already known events with `--cp` for the jitdump-injected `perf.jit.data.folded`.
+   I.e. events already seen in the non-jitdump-injected `perf.data.folded` get a fixed coloring.
+   New events get a random coloring from the palette selected with the `--color` option (e.g. `mem`).
+   ```bash
+   ./flamegraph.pl --cp --color mem perf.jit.data.folded > perf.data.jit.svg
+   ```
+
+5. Open the flame graph:
+   ```bash
+   firefox perf.jit.data.svg
+   ```
+
+### Generate an Invocation-Time-Ordered Flame Graph
+
+Generate a stack-reversed flame graph with the topmost frames shown at the bottom of the flame graph in order of invocation time.
+Events from all threads contributing to the profiling data are shown interleaved.
+```bash
+./flamegraph.pl --reverse perf.data.folded > perf.data.svg
+firefox perf.data.svg
+```
 
 ### Related Documentation
 

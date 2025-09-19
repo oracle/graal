@@ -46,6 +46,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.debug.SubstrateDebugInfoFeature;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -284,7 +285,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                  * available in SubstrateMethods if possible.
                  */
                 LocalVariableTable localVariableTable;
-                if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+                if (SubstrateOptions.RuntimeDebugInfo.getValue() && SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
                     try {
                         localVariableTable = createLocalVariableTable(aMethod.getLocalVariableTable());
                     } catch (IllegalStateException e) {

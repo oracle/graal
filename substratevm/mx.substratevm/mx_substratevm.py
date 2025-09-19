@@ -1285,6 +1285,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         '-H:DebugInfoSourceSearchPath=' + test_source_path,
         '-H:+SourceLevelDebug',
         '-H:+RuntimeDebugInfo',
+        # We rely on '-H:RuntimeDebugInfoFormat' to default to 'objfile', which is required for this test
     ]) + args
 
     mx.log(f"native-image {' '.join(build_args)}")
@@ -1305,6 +1306,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
                 '-H:+SourceLevelDebug',
                 '-H:+RuntimeDebugInfo',
                 '-H:-LazyDeoptimization' if eager else '-H:+LazyDeoptimization',
+                # We rely on '-H:RuntimeDebugInfoFormat' to default to 'objfile', which is required for this test
             ]) +
             ['-g', '--macro:jsvm-library']
         ))
