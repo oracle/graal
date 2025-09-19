@@ -47,6 +47,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
+import com.oracle.svm.core.debug.SubstrateDebugInfoFeature;
 
 import jdk.graal.compiler.word.Word;
 
@@ -62,7 +63,7 @@ public class GdbJitInterface {
     public static class GdbJitInterfaceDirectives implements CContext.Directives {
         @Override
         public boolean isInConfiguration() {
-            return SubstrateOptions.RuntimeDebugInfo.getValue();
+            return SubstrateOptions.RuntimeDebugInfo.getValue() && SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME);
         }
 
         @Override
@@ -74,7 +75,7 @@ public class GdbJitInterface {
     private static final class IncludeForRuntimeDebugOnly implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.RuntimeDebugInfo.getValue();
+            return SubstrateOptions.RuntimeDebugInfo.getValue() && SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME);
         }
     }
 

@@ -60,6 +60,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
+import com.oracle.svm.core.debug.SubstrateDebugInfoFeature;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.debug.gdb.GdbJitInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -199,7 +200,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          * Create a global symbol for the jit debug descriptor with proper initial values for the
          * GDB JIT compilation interface.
          */
-        if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+        if (SubstrateOptions.RuntimeDebugInfo.getValue() && SubstrateDebugInfoFeature.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoFeature.DEBUG_INFO_OBJFILE_NAME)) {
             Architecture arch = ConfigurationValues.getTarget().arch;
             ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GdbJitInterface.JITDescriptor.class)).order(arch.getByteOrder());
 
