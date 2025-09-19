@@ -2,7 +2,7 @@ local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
-local repo_config = import '../../../repo-configuration.libsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
 {
@@ -570,6 +570,54 @@ local devkits = graal_common.devkits;
      ],
      timelimit: '1:00:00',
      name: 'gate-vm-native-sulong-' + self.jdk_name + '-linux-amd64',
+  },
+
+  # loading large artifacts is not fast on those machines, so avoid them
+  big_artifacts: {
+    capabilities+: ["!x82", "!x82_16_367"]
+  },
+
+  # Builds a GraalVM and publishes a pipeline artifact. Use pipelined_graalvm to declare a dependency on this build.
+  # Be careful to only declare one job per set of arguments, otherwise there will be duplicate build jobs and enumeration may fail.
+  build_graalvm(vm, os, arch)::
+    graal_common[os + "_" + arch] + graal_common["labsjdk-" + vm + "-latest"] + self.big_artifacts + graal_common.deps.proguard + graal_common.deps.windows_devkit
+  {
+    local name = "graalvm-jdklatest-" + vm + "-" + os + "-" + arch,
+    local env = vm,
+    local mx = ["mx", "--strip-jars", "--env", env],
+    name: "build-" + name,
+    run+: [
+      ["cd", repo_config.vm.suite_dir],
+      mx + ["build", "--dependencies=GRAALVM"],
+      ["mkdir", "$BUILD_DIR/artifacts"],
+      ["mv", mx + ["--quiet", "--no-warning", "graalvm-home"], "$BUILD_DIR/artifacts/graalvm"],
+    ],
+    python_version: "3",
+    publishArtifacts+: [
+      {
+        name: name,
+        dir: "../artifacts",
+        patterns: ["*"],
+      },
+    ],
+    logs+: [
+      "*/mxbuild/dists/stripped/*.map",
+    ],
+    targets: ["ondemand"],
+    timelimit: "0:30:00",
+  },
+
+  # Use this helper to request a pipelined GraalVM in the current job. The job definition will export the pipelined VM
+  # to the given environment variable. There should be a corresponding build_graalvm job somewhere in the CI config.
+  pipelined_graalvm(vm, os, arch, environment_variable = "GRAALVM_HOME"): {
+    requireArtifacts+: [{
+      name: "graalvm-jdklatest-%s-%s-%s" % [vm, os, arch],
+      dir: "../artifacts",
+      autoExtract: true,
+    }],
+    setup+: [
+      ["set-export", environment_variable, "$BUILD_DIR/artifacts/graalvm"],
+    ],
   },
 
   local builds = [
