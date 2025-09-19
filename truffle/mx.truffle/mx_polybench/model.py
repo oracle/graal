@@ -402,7 +402,7 @@ class PolybenchBenchmarkSuite(
         yield
         self._current_image = None
 
-    def executable_name(self) -> Optional[str]:
+    def _base_image_name(self) -> Optional[str]:
         """Overrides the image name used to build/run the image."""
         if self._current_image:
             return self._current_image.full_executable_name()
