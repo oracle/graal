@@ -933,7 +933,9 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract char execute(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char execute(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char executeBE(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char executeLE(com.oracle.truffle.api.strings.AbstractTruffleString,int)
 meth public static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -1171,7 +1173,7 @@ meth public int previousUncached()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
 meth public int previousUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
-hfds a,arrayA,codeRangeA,encoding,errorHandling,offsetA,rawIndex,strideA
+hfds a,arrayA,codeRangeA,encoding,errorHandling,lengthA,offsetA,rawIndex,strideA
 hcls InternalNextNode,InternalPreviousNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringIterator$NextNode
