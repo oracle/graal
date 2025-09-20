@@ -391,4 +391,9 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         masm.pop(r13);
         masm.pop(r12);
     }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
+    }
 }
