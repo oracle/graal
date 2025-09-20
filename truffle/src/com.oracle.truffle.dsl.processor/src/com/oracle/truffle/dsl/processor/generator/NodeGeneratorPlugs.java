@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.generator;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
+import static javax.lang.model.element.Modifier.PRIVATE;
 
 import java.util.List;
 
@@ -55,6 +56,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariab
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -110,6 +112,20 @@ public interface NodeGeneratorPlugs {
             }
             default -> null;
         };
+    }
+
+    default CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {
+        return factory.createInlinedAccess(frameState, null, CodeTreeBuilder.singleString(bitSet.getName() + "_"), null);
+    }
+
+    default CodeTree createStatePersist(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet, CodeTree valueTree) {
+        return factory.createInlinedAccess(frameState, null, CodeTreeBuilder.singleString(bitSet.getName() + "_"), valueTree);
+    }
+
+    @SuppressWarnings("unused")
+    default CodeVariableElement createStateField(FlatNodeGenFactory factory, BitSet bitSet) {
+        return FlatNodeGenFactory.createNodeField(PRIVATE, bitSet.getType(), bitSet.getName() + "_",
+                        ProcessorContext.types().CompilerDirectives_CompilationFinal);
     }
 
 }

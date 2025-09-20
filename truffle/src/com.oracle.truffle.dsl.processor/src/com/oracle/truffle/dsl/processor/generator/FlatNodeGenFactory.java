@@ -280,10 +280,10 @@ public class FlatNodeGenFactory {
         List<InlineFieldData> fields = new ArrayList<>();
 
         for (BitSet bitSet : state.activeState.getSets()) {
-            String name = bitSet.getName() + "_";
-            TypeMirror referenceType = types().InlineSupport_StateField;
-            CodeVariableElement var = MultiStateBitSet.createCachedField(bitSet);
-            fields.add(new InlineFieldData(var, name, referenceType, bitSet.getBitCount(), null, 0));
+            CodeVariableElement var = createStateField(bitSet);
+            if (var != null) {
+                fields.add(new InlineFieldData(var, var.getName(), types.InlineSupport_StateField, bitSet.getBitCount(), null, 0));
+            }
         }
 
         /*
@@ -465,10 +465,10 @@ public class FlatNodeGenFactory {
             }
         }
 
-        return new BitStateList(stateObjects);
+        return new BitStateList(this, stateObjects);
     }
 
-    private static BitStateList computeSpecializationState(SpecializationData specialization) {
+    private BitStateList computeSpecializationState(SpecializationData specialization) {
         List<State<?>> stateObjects = new ArrayList<>();
         if (useSpecializationClass(specialization)) {
 
@@ -498,7 +498,7 @@ public class FlatNodeGenFactory {
                 }
             }
         }
-        return new BitStateList(stateObjects);
+        return new BitStateList(this, stateObjects);
     }
 
     @SuppressWarnings("hiding")
@@ -6742,7 +6742,7 @@ public class FlatNodeGenFactory {
         return value;
     }
 
-    private static CodeTree createNodeAccess(FrameState frameState, SpecializationData specialization) {
+    private CodeTree createNodeAccess(FrameState frameState, SpecializationData specialization) {
         if (specialization != null && substituteNodeWithSpecializationClass(specialization) && !frameState.getMode().isUncached()) {
             return singleString(createSpecializationLocalName(specialization));
         } else {
@@ -6750,7 +6750,7 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static CodeTree createNodeAccess(FrameState frameState) {
+    CodeTree createNodeAccess(FrameState frameState) {
         if (frameState.isInlinedNode()) {
             return frameState.getValue(INLINED_NODE_INDEX).createReference();
         } else {
@@ -7336,8 +7336,7 @@ public class FlatNodeGenFactory {
                 if (useCacheClass(specialization, cache)) {
                     builder.string(".delegate");
                 }
-                CodeTree nodeAccess = createNodeAccess(frameState);
-                return createInlinedAccess(frameState, specialization, builder.build(), value, nodeAccess);
+                return createInlinedAccess(frameState, specialization, builder.build(), value);
             }
         } else {
             String cacheFieldName = createLocalCachedInlinedName(specialization, cache);
@@ -7489,14 +7488,15 @@ public class FlatNodeGenFactory {
     }
 
     @SuppressWarnings("unused")
-    static CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value, CodeTree nodeReference) {
+    CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(reference);
-        if (frameState != null && frameState.isInlinedNode()) {
+        if (frameState.isInlinedNode()) {
+            CodeTree nodeAccess = createNodeAccess(frameState, specialization);
             if (value == null) {
-                builder.startCall(".get").tree(nodeReference).end();
+                builder.startCall(".get").tree(nodeAccess).end();
             } else {
-                builder.startCall(".set").tree(nodeReference).tree(value).end();
+                builder.startCall(".set").tree(nodeAccess).tree(value).end();
             }
         } else {
             if (value != null) {
@@ -7504,10 +7504,6 @@ public class FlatNodeGenFactory {
             }
         }
         return builder.build();
-    }
-
-    static CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value) {
-        return createInlinedAccess(frameState, specialization, reference, value, createNodeAccess(frameState, specialization));
     }
 
     private CodeTree createAssumptionReference(FrameState frameState, SpecializationData s, AssumptionExpression a) {
@@ -7846,26 +7842,12 @@ public class FlatNodeGenFactory {
         List<CodeVariableElement> createCachedFields() {
             List<CodeVariableElement> variables = new ArrayList<>();
             for (BitSet bitSet : all) {
-                variables.add(createCachedField(bitSet));
-            }
-            return variables;
-        }
-
-        static CodeVariableElement createCachedField(BitSet bitSet) {
-            CodeVariableElement var = FlatNodeGenFactory.createNodeField(PRIVATE, bitSet.getType(), bitSet.getName() + "_",
-                            ProcessorContext.getInstance().getTypes().CompilerDirectives_CompilationFinal);
-            CodeTreeBuilder docBuilder = var.createDocBuilder();
-
-            for (BitRangedState state : bitSet.getStates().getEntries()) {
-                if (state.state.isInlined()) {
-                    GeneratorUtils.markUnsafeAccessed(var);
+                CodeVariableElement v = bitSet.createField();
+                if (v != null) {
+                    variables.add(v);
                 }
             }
-
-            docBuilder.startJavadoc();
-            FlatNodeGenFactory.addStateDoc(docBuilder, bitSet);
-            docBuilder.end();
-            return var;
+            return variables;
         }
 
         void addParametersTo(FrameState frameState, CodeExecutableElement targetMethod) {
@@ -8469,6 +8451,54 @@ public class FlatNodeGenFactory {
                 continue;
             }
             b.tree(set.createLoad(frameState));
+        }
+    }
+
+    CodeVariableElement createStateField(BitSet bitSet) {
+        CodeVariableElement var = plugs.createStateField(this, bitSet);
+        if (var == null) {
+            return null;
+        }
+        CodeTreeBuilder docBuilder = var.createDocBuilder();
+        for (BitRangedState s : bitSet.getStates().getEntries()) {
+            if (s.state.isInlined()) {
+                GeneratorUtils.markUnsafeAccessed(var);
+            }
+        }
+        docBuilder.startJavadoc();
+        FlatNodeGenFactory.addStateDoc(docBuilder, bitSet);
+        docBuilder.end();
+        return var;
+    }
+
+    CodeTree createStatePersist(FrameState frameState, BitSet bitSet, CodeTree updateReference, CodeTree value) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startStatement();
+        CodeTreeBuilder valueBuilder = CodeTreeBuilder.createBuilder();
+        if (updateReference != null) {
+            valueBuilder.tree(updateReference).string(" = ");
+        }
+        valueBuilder.tree(value);
+        CodeTree valueTree = valueBuilder.build();
+        b.tree(plugs.createStatePersist(this, frameState, bitSet, valueTree));
+        b.end(); // statement
+        return b.build();
+    }
+
+    CodeTree createStateLoad(FrameState frameState, BitSet bitSet) {
+        String localName = bitSet.getName();
+        CodeTree inlinedAccess = plugs.createStateLoad(this, frameState, bitSet);
+        LocalVariable var = frameState.get(localName);
+        if (var == null) {
+            var = new LocalVariable(bitSet.getType(), localName, null);
+            frameState.set(localName, var);
+            return var.createDeclaration(inlinedAccess);
+        } else {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.startStatement();
+            b.string(bitSet.getName()).string(" = ").tree(inlinedAccess);
+            b.end();
+            return b.build();
         }
     }
 
