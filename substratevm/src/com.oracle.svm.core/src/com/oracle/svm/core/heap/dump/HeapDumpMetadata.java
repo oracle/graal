@@ -238,13 +238,10 @@ public class HeapDumpMetadata {
         Heap.getHeap().walkImageHeapObjects(computeHubDataVisitor);
         Metaspace.singleton().walkObjects(computeHubDataVisitor);
 
-        /*
-         * Classes that are loaded at runtime don't have any declared fields at the moment. This
-         * needs to be changed once GR-60069 is merged.
-         */
         for (int i = TypeIDs.singleton().getFirstRuntimeTypeId(); i < classInfoCount; i++) {
             ClassInfo classInfo = getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
+                /* GR-69330 */
                 classInfo.setStaticFieldCount(0);
                 classInfo.setInstanceFieldCount(0);
             }

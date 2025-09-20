@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
+import java.util.ArrayList;
+
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
@@ -35,13 +42,6 @@ import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
-import java.util.ArrayList;
 
 /**
  * Instances of this class are used to represent the reflection metadata for Dynamic hubs loaded at

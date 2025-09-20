@@ -55,7 +55,6 @@ import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.ParserException;
-import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -395,15 +394,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             afterFieldsOffset = 0;
         } else {
             int superAfterFieldsOffset = CremaSupport.singleton().getAfterFieldsOffset(superHub);
-            // GR-60069: field layout
-            int numDeclaredInstanceFields = 0;
-            for (ParserField field : parsed.getFields()) {
-                if (!field.isStatic()) {
-                    numDeclaredInstanceFields += 1;
-                }
-            }
-            assert numDeclaredInstanceFields == 0;
-            afterFieldsOffset = Math.toIntExact(superAfterFieldsOffset);
+            afterFieldsOffset = dispatchTable.afterFieldsOffset(superAfterFieldsOffset);
         }
         boolean isValueBased = (parsed.getFlags() & ACC_VALUE_BASED) != 0;
 
@@ -415,7 +406,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
-                        dispatchTableLength, afterFieldsOffset, isValueBased);
+                        dispatchTableLength,
+                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 

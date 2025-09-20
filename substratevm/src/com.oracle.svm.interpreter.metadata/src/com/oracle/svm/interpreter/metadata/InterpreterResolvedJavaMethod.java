@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * also abstract methods for vtable calls.
  */
 public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
-
+    public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
 
     public static final int UNKNOWN_METHOD_ID = 0;

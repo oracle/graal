@@ -551,7 +551,7 @@ public final class Serializers {
                         int modifiers = LEB128.readUnsignedInt(in);
                         int offset = LEB128.readUnsignedInt(in);
                         JavaConstant constant = context.readReference(in);
-                        return InterpreterResolvedJavaField.create(name, modifiers, type, declaringClass, offset, constant);
+                        return InterpreterResolvedJavaField.createForInterpreter(name, modifiers, type, declaringClass, offset, constant);
                     },
                     (context, out, value) -> {
                         context.writeReference(out, value.getName());

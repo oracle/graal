@@ -44,9 +44,11 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.util.ReflectionUtil;
@@ -134,9 +136,25 @@ public class CremaFeature implements InternalFeature {
                 assert !type.getWrapped().isReachable() : "No interpreter type for " + type;
                 continue;
             }
+
+            // Setup fields info
             InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) iType;
             HostedInstanceClass instanceClass = (HostedInstanceClass) type;
             objectType.setAfterFieldsOffset(instanceClass.getAfterFieldsOffset());
+
+            initializeInterpreterFields(iUniverse, instanceClass.getInstanceFields(false));
+            initializeInterpreterFields(iUniverse, (HostedField[]) instanceClass.getStaticFields());
+        }
+    }
+
+    private void initializeInterpreterFields(BuildTimeInterpreterUniverse iUniverse, HostedField[] fields) {
+        for (HostedField hostedField : fields) {
+            InterpreterResolvedJavaField iField = iUniverse.getField(hostedField.getWrapped());
+            if (iField == null) {
+                assert !hostedField.isAccessed() : "No interpreter field for " + hostedField;
+                continue;
+            }
+            iUniverse.initializeJavaFieldFromHosted(hostedField, iField);
         }
     }
 

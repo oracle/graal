@@ -54,7 +54,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     private final InterpreterResolvedObjectType superclass;
     private final InterpreterResolvedObjectType[] interfaces;
     private InterpreterResolvedJavaMethod[] declaredMethods;
-    private InterpreterResolvedJavaField[] declaredFields;
+    protected InterpreterResolvedJavaField[] declaredFields;
     private int afterFieldsOffset;
 
     // Populated after analysis.
@@ -150,8 +150,8 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     public static CremaResolvedObjectType createForCrema(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass, boolean isWordType) {
-        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, isWordType);
+                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass) {
+        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, false);
     }
 
     @VisibleForSerialization
@@ -277,6 +277,10 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return declaredMethods;
     }
 
+    public InterpreterResolvedJavaField[] getDeclaredFields() {
+        return declaredFields;
+    }
+
     public final void setDeclaredMethods(InterpreterResolvedJavaMethod[] declaredMethods) {
         this.declaredMethods = declaredMethods;
     }
@@ -291,6 +295,21 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     public final int getAfterFieldsOffset() {
         return afterFieldsOffset;
+    }
+
+    @Override
+    public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        throw VMError.unimplemented("getInstanceFields: Likely not used until JIT added to runtime loaded classes.");
+    }
+
+    @Override
+    public InterpreterResolvedJavaField[] getStaticFields() {
+        throw VMError.unimplemented("getStaticFields: Likely not used until JIT added to runtime loaded classes.");
+    }
+
+    @Override
+    public InterpreterResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
+        throw VMError.unimplemented("findInstanceFieldWithOffset: Likely not used until JIT added to runtime loaded classes.");
     }
 
     @Override
@@ -325,7 +344,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     @Override
     public final InterpreterResolvedJavaField lookupField(Symbol<Name> name, Symbol<Type> type) {
         for (InterpreterResolvedJavaField field : this.declaredFields) {
-            if (name.equals(field.getSymbolicName()) && type.equals(field.getType().getSymbolicType())) {
+            if (name.equals(field.getSymbolicName()) && type.equals(field.getSymbolicType())) {
                 return field;
             }
         }
