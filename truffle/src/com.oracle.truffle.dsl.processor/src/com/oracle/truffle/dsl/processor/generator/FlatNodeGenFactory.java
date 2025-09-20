@@ -124,7 +124,6 @@ import com.oracle.truffle.dsl.processor.generator.BitStateList.InlinedNodeState;
 import com.oracle.truffle.dsl.processor.generator.BitStateList.SpecializationActive;
 import com.oracle.truffle.dsl.processor.generator.BitStateList.SpecializationCachesInitialized;
 import com.oracle.truffle.dsl.processor.generator.BitStateList.SpecializationExcluded;
-import com.oracle.truffle.dsl.processor.generator.BitStateList.State;
 import com.oracle.truffle.dsl.processor.generator.MultiBitSet.StateTransaction;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -207,7 +206,7 @@ public class FlatNodeGenFactory {
     private final NodeGeneratorPlugs plugs;
 
     private final GeneratorMode generatorMode;
-    private final NodeStateResult state;
+    private final NodeState state;
 
     private boolean forceFrameInExecuteAndSpecialize;
 
@@ -258,17 +257,6 @@ public class FlatNodeGenFactory {
 
     public void setForceFrameInExecuteAndSpecialize(boolean forceFrameInExecuteAndSpecialize) {
         this.forceFrameInExecuteAndSpecialize = forceFrameInExecuteAndSpecialize;
-    }
-
-    private static final class NodeStateResult {
-
-        final MultiStateBitSet activeState;
-        final MultiStateBitSet allState;
-
-        NodeStateResult(MultiStateBitSet state, MultiStateBitSet allState) {
-            this.activeState = state;
-            this.allState = allState;
-        }
     }
 
     public static List<InlineFieldData> createInlinedFields(NodeData node) {
@@ -336,7 +324,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    private static boolean isImplicitCastUsed(ExecutableTypeData executable, Collection<SpecializationData> usedSpecializations, TypeGuard guard) {
+    static boolean isImplicitCastUsed(ExecutableTypeData executable, Collection<SpecializationData> usedSpecializations, TypeGuard guard) {
         int signatureIndex = guard.getSignatureIndex();
         TypeMirror polymorphicParameter = executable.getSignatureParameters().get(signatureIndex);
         for (SpecializationData specialization : usedSpecializations) {
@@ -348,173 +336,12 @@ public class FlatNodeGenFactory {
         return false;
     }
 
-    BitStateList computeNodeState() {
-        List<State<?>> stateObjects = new ArrayList<>();
-        boolean aotStateAdded = false;
-
-        Set<String> handledCaches = new HashSet<>();
-        for (NodeData stateNode : sharingNodes) {
-            Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
-            boolean needSpecialize = stateNode.needsSpecialize();
-
-            List<SpecializationData> specializations = stateNode.getReachableSpecializations();
-            for (SpecializationData specialization : specializations) {
-                if (!aotStateAdded && needsAOTReset(node, sharingNodes)) {
-                    stateObjects.add(new AOTPreparedState(node));
-                    aotStateAdded = true;
-                }
-
-                if (needSpecialize) {
-                    stateObjects.add(new SpecializationActive(specialization));
-                }
-
-                if (hasExcludeBit(specialization)) {
-                    stateObjects.add(new SpecializationExcluded(specialization));
-                }
-
-                for (GuardExpression guard : specialization.getGuards()) {
-                    if (guardNeedsNodeStateBit(specialization, guard)) {
-                        stateObjects.add(new GuardActive(specialization, guard));
-                    }
-                }
-
-                boolean useSpecializationClass = useSpecializationClass(specialization);
-                for (CacheExpression cache : specialization.getCaches()) {
-                    if (useSpecializationClass && canCacheBeStoredInSpecialializationClass(cache)) {
-                        continue;
-                    }
-                    if (!cache.isEncodedEnum()) {
-                        continue;
-                    }
-                    String sharedGroup = cache.getSharedGroup();
-                    if (sharedGroup == null || !handledCaches.contains(sharedGroup)) {
-                        stateObjects.add(new BitStateList.EncodedEnumState(node, cache));
-                        if (sharedGroup != null) {
-                            handledCaches.add(sharedGroup);
-                        }
-                    }
-                }
-
-                int index = 0;
-                for (Parameter p : specialization.getSignatureParameters()) {
-                    TypeMirror targetType = p.getType();
-                    Collection<TypeMirror> sourceTypes = stateNode.getTypeSystem().lookupSourceTypes(targetType);
-                    if (sourceTypes.size() > 1) {
-                        implicitCasts.add(new TypeGuard(stateNode.getTypeSystem(), targetType, index));
-                    }
-                    index++;
-                }
-            }
-            for (TypeGuard cast : implicitCasts) {
-                if (isImplicitCastUsed(stateNode.getPolymorphicExecutable(), specializations, cast)) {
-                    stateObjects.add(new ImplicitCastState(stateNode, cast));
-                }
-            }
-        }
-
-        for (NodeData stateNode : sharingNodes) {
-            for (SpecializationData specialization : stateNode.getReachableSpecializations()) {
-                boolean useSpecializationClass = useSpecializationClass(specialization);
-                BitStateList specializationState = computeSpecializationState(specialization);
-                for (CacheExpression cache : specialization.getCaches()) {
-                    InlinedNodeData inline = cache.getInlinedNode();
-                    if (inline == null) {
-                        continue;
-                    }
-
-                    String cacheGroup = cache.getSharedGroup();
-                    if (cacheGroup != null) {
-                        if (handledCaches.contains(cacheGroup)) {
-                            continue;
-                        }
-                        handledCaches.add(cacheGroup);
-                    }
-
-                    if (cacheGroup == null && useSpecializationClass) {
-                        // state is handled in computeSpecializationState
-                        for (InlineFieldData fieldData : cache.getInlinedNode().getFields()) {
-                            if (fieldData.isState()) {
-                                if (!specializationState.contains(InlinedNodeState.class, fieldData)) {
-                                    throw new AssertionError("Detected unhandled state");
-                                }
-                            }
-                        }
-                        continue;
-                    }
-
-                    SpecializationData excludeSpecialization = null;
-                    if (cache.isUsedInGuard()) {
-                        /*
-                         * Inlined caches that are bound in guards must not be in the same state
-                         * bitset as the dependent specialization bits. At the end of slow-path
-                         * specialization we set the state bits of the specialization. If an inlined
-                         * node in the guard changes the state bits we would override when we set
-                         * the specialization bits. Alternatively we could re-read the state bit-set
-                         * before we specialize in such case after the bound guards were executed,
-                         * but that is very hard to get right in a thread-safe manner.
-                         */
-                        excludeSpecialization = specialization;
-                    }
-
-                    for (InlineFieldData fieldData : cache.getInlinedNode().getFields()) {
-                        if (fieldData.isState()) {
-                            stateObjects.add(new InlinedNodeState(stateNode, cache, fieldData, excludeSpecialization));
-                        }
-                    }
-                }
-            }
-        }
-
-        return new BitStateList(this, stateObjects);
-    }
-
-    private BitStateList computeSpecializationState(SpecializationData specialization) {
-        List<State<?>> stateObjects = new ArrayList<>();
-        if (useSpecializationClass(specialization)) {
-
-            for (GuardExpression guard : specialization.getGuards()) {
-                if (guardNeedsSpecializationStateBit(specialization, guard)) {
-                    stateObjects.add(new GuardActive(specialization, guard));
-                }
-            }
-
-            if (specializationNeedsInitializedBit(specialization)) {
-                stateObjects.add(new SpecializationCachesInitialized(specialization));
-            }
-
-            for (CacheExpression cache : specialization.getCaches()) {
-                if (!canCacheBeStoredInSpecialializationClass(cache)) {
-                    continue;
-                }
-
-                if (cache.getInlinedNode() != null) {
-                    for (InlineFieldData field : cache.getInlinedNode().getFields()) {
-                        if (field.isState()) {
-                            stateObjects.add(new InlinedNodeState(specialization.getNode(), cache, field, null));
-                        }
-                    }
-                } else if (cache.isEncodedEnum()) {
-                    stateObjects.add(new EncodedEnumState(specialization.getNode(), cache));
-                }
-            }
-        }
-        return new BitStateList(this, stateObjects);
-    }
-
     @SuppressWarnings("hiding")
-    NodeStateResult createNodeState() {
-        BitStateList list = computeNodeState();
-        MultiStateBitSet state = createMultiStateBitset("", node, list);
-        MultiStateBitSet allState = new MultiStateBitSet(state.all, state.all);
-        return new NodeStateResult(state, allState);
+    NodeState createNodeState() {
+        return NodeState.create(this, sharingNodes, node);
     }
 
-    private static MultiStateBitSet createMultiStateBitset(String namePrefix, NodeData activeNode, BitStateList objects) {
-        int maxBits = TruffleProcessorOptions.stateBitWidth(activeNode);
-        return objects.splitBitSets(namePrefix, activeNode, maxBits);
-    }
-
-    private static boolean needsAOTReset(NodeData node, Collection<NodeData> stateSharingNodes) {
+    static boolean needsAOTReset(NodeData node, Collection<NodeData> stateSharingNodes) {
         if (!node.isGenerateAOT()) {
             return false;
         }
@@ -890,7 +717,7 @@ public class FlatNodeGenFactory {
         return name + "Cast" + execution.getSpecification().getExecution().getIndex();
     }
 
-    private static boolean hasExcludeBit(SpecializationData specialization) {
+    static boolean hasExcludeBit(SpecializationData specialization) {
         return !specialization.getExceptions().isEmpty();
     }
 
@@ -1109,7 +936,7 @@ public class FlatNodeGenFactory {
             }
 
             for (SpecializationData specialization : node.getReachableSpecializations()) {
-                MultiStateBitSet specializationState = lookupSpecializationState(specialization);
+                MultiStateBitSet specializationState = state.lookupSpecializationState(specialization);
 
                 for (CacheExpression cache : specialization.getCaches()) {
                     if (cache.getInlinedNode() == null) {
@@ -1951,7 +1778,7 @@ public class FlatNodeGenFactory {
 
         for (SpecializationData specialization : node.getReachableSpecializations()) {
             boolean useSpecializationClass = useSpecializationClass(specialization);
-            MultiStateBitSet specializationState = lookupSpecializationState(specialization);
+            MultiStateBitSet specializationState = state.lookupSpecializationState(specialization);
 
             List<Element> specializationClassElements = useSpecializationClass ? new ArrayList<>() : nodeElements;
             for (CacheExpression cache : specialization.getCaches()) {
@@ -2208,20 +2035,6 @@ public class FlatNodeGenFactory {
             return new GeneratedTypeMirror("", createSpecializationTypeName(specialization), baseType);
         }
         return new GeneratedTypeMirror("", type.getSimpleName().toString(), type.getSuperclass());
-    }
-
-    private final Map<SpecializationData, MultiStateBitSet> specializationStates = new HashMap<>();
-
-    private MultiStateBitSet lookupSpecializationState(SpecializationData specialization) {
-        MultiStateBitSet specializationState = specializationStates.get(specialization);
-        if (!specializationStates.containsKey(specialization)) {
-            BitStateList list = computeSpecializationState(specialization);
-            if (list.getBitCount() > 0) {
-                specializationState = createMultiStateBitset(ElementUtils.firstLetterLowerCase(specialization.getId()) + "_", specialization.getNode(), list);
-            }
-            specializationStates.put(specialization, specializationState);
-        }
-        return specializationState;
     }
 
     private void createCachedFieldsImpl(
@@ -5285,7 +5098,7 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static boolean specializationNeedsInitializedBit(SpecializationData specialization) {
+    static boolean specializationNeedsInitializedBit(SpecializationData specialization) {
         if (useSpecializationClass(specialization) && specialization.isReachesFallback() && !specialization.getCaches().isEmpty()) {
             for (GuardExpression guard : specialization.getGuards()) {
                 if (guardNeedsStateBit(specialization, guard)) {
@@ -7415,7 +7228,7 @@ public class FlatNodeGenFactory {
     }
 
     private SpecializationStateReference createStateReference(FrameState frameState, SpecializationData specialization, StateQuery query) {
-        MultiStateBitSet multiSet = specialization != null ? lookupSpecializationState(specialization) : null;
+        MultiStateBitSet multiSet = specialization != null ? state.lookupSpecializationState(specialization) : null;
         BitSet foundSet = null;
         if (multiSet != null) {
             foundSet = multiSet.findSet(query);
@@ -7795,200 +7608,6 @@ public class FlatNodeGenFactory {
         ExecuteDelegationResult(CodeTree tree, boolean hasFallthrough) {
             this.tree = tree;
             this.hasFallthrough = hasFallthrough;
-        }
-
-    }
-
-    static final class MultiStateBitSet extends MultiBitSet {
-
-        /*
-         * All bitsets in used by other nodes in the same generated class. E.g. nodes in exports are
-         * all generated into the same class.
-         */
-        private final List<BitSet> all;
-
-        MultiStateBitSet(List<BitSet> all, List<BitSet> active) {
-            super(active);
-            this.all = all;
-        }
-
-        public void clearLoaded(FrameState frameState) {
-            for (BitSet state : all) {
-                state.clearLoaded(frameState);
-            }
-        }
-
-        <T> BitSet findSet(StateQuery query) {
-            for (BitSet state : all) {
-                if (state.contains(query)) {
-                    return state;
-                }
-            }
-            return null;
-        }
-
-        <T> BitSet findSet(Class<? extends State<T>> clazz, T param) {
-            return findSet(StateQuery.create(clazz, param));
-        }
-
-        int getAllCapacity() {
-            int length = 0;
-            for (BitSet a : all) {
-                length += a.getBitCount();
-            }
-            return length;
-        }
-
-        List<CodeVariableElement> createCachedFields() {
-            List<CodeVariableElement> variables = new ArrayList<>();
-            for (BitSet bitSet : all) {
-                CodeVariableElement v = bitSet.createField();
-                if (v != null) {
-                    variables.add(v);
-                }
-            }
-            return variables;
-        }
-
-        void addParametersTo(FrameState frameState, CodeExecutableElement targetMethod) {
-            for (BitSet set : getSets()) {
-                LocalVariable local = frameState.get(set.getName());
-                if (local != null) {
-                    targetMethod.addParameter(local.createParameter());
-                }
-            }
-        }
-
-        void removeParametersFrom(CodeExecutableElement targetMethod) {
-            for (VariableElement var : targetMethod.getParameters().toArray(new VariableElement[0])) {
-                for (BitSet set : getSets()) {
-                    if (var.getSimpleName().toString().equals(set.getName())) {
-                        targetMethod.getParameters().remove(var);
-                    }
-                }
-            }
-        }
-
-        void addReferencesTo(FrameState frameState, CodeTreeBuilder builder) {
-            for (BitSet set : getSets()) {
-                LocalVariable local = frameState.get(set.getName());
-                if (local != null) {
-                    builder.tree(local.createReference());
-                }
-            }
-        }
-
-        void addReferencesTo(FrameState frameState, CodeTreeBuilder builder, StateQuery... relevantQuery) {
-            for (BitSet set : getSets()) {
-                LocalVariable local = frameState.get(set.getName());
-                if (local != null) {
-                    if (set.contains(relevantQuery)) {
-                        builder.tree(local.createReference());
-                    }
-                }
-            }
-        }
-
-        CodeTree createLoad(FrameState frameState, StateQuery... relevantQuery) {
-            return createLoadImpl(getSets(), frameState, false, relevantQuery);
-        }
-
-        CodeTree createForceLoad(FrameState frameState, StateQuery... relevantQuery) {
-            return createLoadImpl(getSets(), frameState, true, relevantQuery);
-        }
-
-        private static CodeTree createLoadImpl(List<? extends BitSet> sets, FrameState frameState, boolean force, StateQuery... relevantQuery) {
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-            for (BitSet bitSet : sets) {
-                if (bitSet.contains(relevantQuery)) {
-                    builder.tree(bitSet.createLoad(frameState, force));
-                }
-            }
-            return builder.build();
-        }
-
-        CodeTree createLoadAll(FrameState frameState, StateQuery relevantQuery) {
-            return createLoadImpl(all, frameState, false, relevantQuery);
-        }
-
-        CodeTree createLoadFastPath(FrameState frameState, List<SpecializationData> specializations) {
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-            for (BitSet bitSet : getSets()) {
-                if (isRelevantForFastPath(frameState, bitSet, specializations)) {
-                    builder.tree(bitSet.createLoad(frameState));
-                }
-            }
-            return builder.build();
-        }
-
-        CodeTree createLoadSlowPath(FrameState frameState, List<SpecializationData> specializations, boolean force) {
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-
-            for (BitSet bitSet : getSets()) {
-                if (isRelevantForSlowPath(bitSet, specializations)) {
-                    builder.tree(bitSet.createLoad(frameState, force));
-                }
-            }
-            return builder.build();
-        }
-
-        static boolean isRelevantForFastPath(FrameState frameState, BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
-            if (!frameState.isSkipStateChecks() && bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
-                return true;
-            }
-            if (bitSet.getStates().contains(AOT_PREPARED)) {
-                return true;
-            }
-            for (SpecializationData specialization : usedSpecializations) {
-                if (bitSet.getStates().contains(StateQuery.create(EncodedEnumState.class, specialization.getCaches()))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @SuppressWarnings("unused")
-        static boolean isRelevantForSlowPath(BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
-            if (bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
-                return true;
-            }
-            if (bitSet.getStates().contains(StateQuery.create(SpecializationExcluded.class, usedSpecializations))) {
-                return true;
-            }
-            for (GuardActive state : bitSet.getStates().queryStates(GuardActive.class)) {
-                if (usedSpecializations.contains(state.getDependentSpecialization())) {
-                    return true;
-                }
-            }
-            for (SpecializationData specialization : usedSpecializations) {
-                if (bitSet.contains(StateQuery.create(EncodedEnumState.class, specialization.getCaches()))) {
-                    return true;
-                }
-            }
-            for (ImplicitCastState state : bitSet.getStates().queryStates(ImplicitCastState.class)) {
-                if (isImplicitCastUsed(state.node.getPolymorphicExecutable(), usedSpecializations, state.key)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @SuppressWarnings("unused")
-        static boolean isRelevantForQuickening(BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
-            if (bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
-                return true;
-            }
-            for (ImplicitCastState state : bitSet.getStates().queryStates(ImplicitCastState.class)) {
-                TypeGuard guard = state.key;
-                int signatureIndex = guard.getSignatureIndex();
-                for (SpecializationData specialization : usedSpecializations) {
-                    TypeMirror specializationType = specialization.getSignatureParameters().get(signatureIndex).getType();
-                    if (!state.node.getTypeSystem().lookupByTargetType(specializationType).isEmpty()) {
-                        return true;
-                    }
-                }
-            }
-            return false;
         }
 
     }

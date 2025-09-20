@@ -56,7 +56,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.BitSet.BitRange;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
