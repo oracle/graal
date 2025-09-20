@@ -119,7 +119,8 @@ public class Config {
             Value lowerThresholdValue = summaryGetMethod.execute("lower-threshold");
             Value upperThresholdValue = summaryGetMethod.execute("upper-threshold");
             if (!lowerThresholdValue.fitsInDouble() || !upperThresholdValue.fitsInDouble()) {
-                String msg = "Failed at parsing 'summary' benchmark member with name of '" + summaryClassName + "' due to it missing either a 'lower-threshold' or an 'upper-threshold' member!";
+                String msg = "Failed at parsing 'summary' benchmark member with name of '" + summaryClassName + "'";
+                msg += " because 'lower-threshold' or 'upper-threshold' is not present, or does not fit into a double!";
                 throw new InvalidObjectException(msg);
             }
             summary = new OutlierRemovalAverageSummary(lowerThresholdValue.asDouble(), upperThresholdValue.asDouble());

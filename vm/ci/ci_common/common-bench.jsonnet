@@ -69,13 +69,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     # Extends the provided polybench command with common arguments used in CI. We want the command at the call site
     # to be simple (i.e., a flat array of string literals) so it can be easily copied and run locally; using this
     # wrapper allows us to inject CI-specific fields without specifying them in the command.
+    hwloc_command_prefix:: if std.length(std.find('bench', self.targets)) > 0 then ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"] else [],
     polybench_wrap(command)::
       assert command[0] == 'mx' : "polybench command should start with 'mx'";
       // Dynamically import /truffle-enterprise when running on enterprise.
       local extra_imports = if is_enterprise then ['--dy', '/truffle-enterprise'] else [];
-      ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
+      self.hwloc_command_prefix + ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
       (if (fail_fast) then ['--fail-fast'] else []),
-    notify_groups:: ['polybench'],
+    notify_groups:: ['polybench']
   },
 
   polybench_vm_hpc_common: self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
@@ -103,40 +104,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ['mx', '-p', '../../polybenchmarks', 'build_benchmarks'],
     ['mx', '--dy', 'polybenchmarks', 'build', '--dependencies', 'POLYBENCHMARKS_BENCHMARKS']
   ],
-
-  polybench_vm_post_merge(os, arch, language, vm_config, name = null): vm_common.vm_base(os, arch, 'post-merge', bench=true) + self.polybench_vm_common(os, arch) + vm.vm_java_Latest + {
-    name: utils.hyphenize(['post-merge-bench-vm', vm.vm_setup.short_name, 'polybench', language, name, vm_config, utils.jdk_and_hardware(self)]),
-    setup+: [
-      ['mx', '--dy', 'graalpython', 'build']
-    ],
-    local benchmarks = ['interpreter/sieve.py', 'interpreter/fibonacci.py', 'interpreter/deltablue.py', 'interpreter/richards.py'],
-    run+: [
-      ['grep', '-q', '-E', 'polybench:' + benchmark + ' ([a-z0-9]|-)+: FAILURE', 'split-run.txt'] +
-      ['||'] +
-      ['hwloc-bind', '--cpubind', 'node:0.core:0-3.pu:0', '--membind', 'node:0', '--'] +
-      ['mx', '--env', '${VM_ENV}', '--dy', '/truffle-enterprise', '--dy', 'graalpython', '--kill-with-sigquit'] +
-      ['--java-home', '${POLYBENCH_JVM}'] +
-      ['benchmark', 'polybench:' + benchmark, '--results-file=' + self.result_file, '--append-results'] +
-      ['--', '--jvm=native-image-java-home', '--jvm-config=' + vm_config] +
-      ['-Dnative-image.benchmark.extra-image-build-argument=-R:MaxHeapSize=500m'] +
-      ['-Dnative-image.benchmark.extra-image-build-argument=-J-Xmx24g'] +
-      ['-Dnative-image.benchmark.benchmark-output-dir=mxbuild'] +
-      ['--split-run', 'split-run.txt'] +
-      ['--', '--experimental-options', '--engine.Compilation=false'] +
-      ['||'] +
-      ['echo', 'polybench:' + benchmark + ' general: FAILURE', '>>', 'split-run.txt']
-      for benchmark in benchmarks
-    ] + [
-      ['set-export', 'BENCH_EXIT_STATUS', '1'],
-      ['cat', 'split-run.txt'],
-      ['grep', '-q', 'FAILURE', 'split-run.txt', '||', 'set-export', 'BENCH_EXIT_STATUS', '0'],
-      ['exit', '$BENCH_EXIT_STATUS']
-    ],
-    teardown: [self.upload],
-    notify_groups +: ['python'],
-    notify_emails+: ['andrija.kolic@oracle.com'],
-    timelimit: '4:00:00',
-  },
 
   js_bench_compilation_throughput(pgo): self.vm_bench_common + common.heap.default + {
     local mx_libgraal = ["mx", "--env", repo_config.vm.mx_env.libgraal],
@@ -309,10 +276,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ],
       notify_groups +: ['python'],
     }
-  ] + [
-    # PR-bench Python Interpreter mx benchmark polybench jobs
-    self.polybench_vm_post_merge('linux', 'amd64', 'python', vm_config, 'interpreter')
-    for vm_config in ['default', 'g1gc']
   ] + [
     # NFI polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'nfi') + {

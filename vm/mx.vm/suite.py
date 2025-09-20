@@ -65,11 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-<<<<<<< HEAD
                 "version": "b283db0979c0d24da6f2ddd55879ab6f93c0fcbd",
-=======
-                "version": "2315bc2d2e070546bf3a356c2ca6e4ba2455c7c8",
->>>>>>> 3aa5450d718 (Introduce Summary interface and implementations to Polybench harness.)
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
