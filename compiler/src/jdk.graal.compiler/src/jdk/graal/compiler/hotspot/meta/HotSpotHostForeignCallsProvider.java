@@ -490,12 +490,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, NEW_MULTI_ARRAY_OR_NULL, c.newMultiArrayOrNullAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
 
-        if (c.supportJVMTIVThreadNotification()) {
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, c.jvmtiVThreadStart, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, c.jvmtiVThreadEnd, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, c.jvmtiVThreadMount, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, c.jvmtiVThreadUnmount, DONT_PREPEND_THREAD);
-        }
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, c.jvmtiVThreadStart, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, c.jvmtiVThreadEnd, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, c.jvmtiVThreadMount, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, c.jvmtiVThreadUnmount, DONT_PREPEND_THREAD);
 
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,

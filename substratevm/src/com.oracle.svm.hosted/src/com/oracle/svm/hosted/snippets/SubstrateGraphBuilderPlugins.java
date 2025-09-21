@@ -105,6 +105,7 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -116,7 +117,6 @@ import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
-import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
@@ -147,7 +147,6 @@ import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -158,14 +157,9 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
-import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import jdk.graal.compiler.replacements.nodes.AESNode;
-import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
-import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
-import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
-import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.vm.ci.code.Architecture;
@@ -192,15 +186,13 @@ public class SubstrateGraphBuilderPlugins {
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
                     ImageClassLoader loader,
                     InvocationPlugins plugins,
-                    Replacements replacements,
                     ParsingReason parsingReason,
-                    Architecture architecture,
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
         registerArenaPlugins(plugins);
         registerSystemPlugins(plugins);
-        registerReflectionPlugins(plugins, replacements);
+        registerReflectionPlugins(plugins);
         registerImageInfoPlugins(plugins);
         registerProxyPlugins(annotationSubstitutions, plugins, parsingReason);
         registerSerializationPlugins(loader, plugins, parsingReason);
@@ -217,8 +209,8 @@ public class SubstrateGraphBuilderPlugins {
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
         if (supportsStubBasedPlugins) {
-            registerAESPlugins(plugins, replacements, architecture);
-            registerArraysSupportPlugins(plugins, replacements, architecture);
+            registerAESPlugins(plugins);
+            registerArraysSupportPlugins(plugins);
         }
     }
 
@@ -403,8 +395,8 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection", replacements);
+    private static void registerReflectionPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection");
         r.register(new RequiredInlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1316,25 +1308,15 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-        r.registerConditional(VectorizedMismatchNode.isSupported(arch), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
-                            ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
-                ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
-                ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
-                b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
-                return true;
-            }
-        });
-        r.registerConditional(VectorizedHashCodeNode.isSupported(arch),
-                        new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin("vectorizedHashCode"));
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport");
+        r.register(new StandardGraphBuilderPlugins.VectorizedMismatchInvocationPlugin());
+        r.register(new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin());
     }
 
-    private static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
+    public static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
 
-        SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode mode) {
+        public SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode mode) {
             super(mode);
         }
 
@@ -1345,14 +1327,16 @@ public class SubstrateGraphBuilderPlugins {
 
         @Override
         protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
-            Class<?> classAESCrypt = Class.forName("com.sun.crypto.provider.AESCrypt", true, ClassLoader.getSystemClassLoader());
+            Class<?> classAESCrypt = ReflectionUtil.lookupClass("com.sun.crypto.provider.AESCrypt");
             return metaAccess.lookupJavaType(classAESCrypt);
         }
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
-        r.registerConditional(CounterModeAESNode.isSupported(arch), new CounterModeCryptPlugin() {
+    private static void registerAESPlugins(InvocationPlugins plugins) {
+        // These plugins may generate fallback invocations and thus cannot be used in runtime
+        // compilation
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode");
+        r.register(new StandardGraphBuilderPlugins.CounterModeCryptPlugin() {
             @Override
             protected boolean canApply(GraphBuilderContext b) {
                 return b instanceof BytecodeParser;
@@ -1364,15 +1348,30 @@ public class SubstrateGraphBuilderPlugins {
             }
 
             @Override
-            protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
-                Class<?> classAESCrypt = Class.forName("com.sun.crypto.provider.AESCrypt", true, ClassLoader.getSystemClassLoader());
+            protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) {
+                Class<?> classAESCrypt = ReflectionUtil.lookupClass("com.sun.crypto.provider.AESCrypt");
                 return metaAccess.lookupJavaType(classAESCrypt);
+            }
+
+            @Override
+            public boolean isRuntimeChecked(Architecture arch) {
+                return false;
             }
         });
 
-        r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
-        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.ENCRYPT));
-        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.DECRYPT));
+        r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
+        r.register(new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.ENCRYPT) {
+            @Override
+            public boolean isRuntimeChecked(Architecture arch) {
+                return false;
+            }
+        });
+        r.register(new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.DECRYPT) {
+            @Override
+            public boolean isRuntimeChecked(Architecture arch) {
+                return false;
+            }
+        });
     }
 
     private static <T> T constantObjectParameter(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, Class<T> declaredType, ValueNode classNode) {
