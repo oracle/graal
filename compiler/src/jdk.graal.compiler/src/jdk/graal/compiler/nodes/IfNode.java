@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1438,6 +1439,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (merge == falseEnd.merge() && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                 PhiNode singlePhi = null;
                 int distinct = 0;
+                boolean allConstant = true;
                 for (PhiNode phi : merge.phis()) {
                     ValueNode trueValue = phi.valueAt(trueEnd);
                     ValueNode falseValue = phi.valueAt(falseEnd);
@@ -1445,6 +1447,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         distinct++;
                         singlePhi = phi;
                     }
+                    allConstant &= (trueValue.isConstant() && falseValue.isConstant());
                 }
                 if (distinct == 0) {
                     /*
@@ -1457,14 +1460,57 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     // Fortify: Suppress Null Dereference false positive
                     assert singlePhi != null;
 
+                    boolean shouldTryToCanonicalizeConditional = true;
+                    if (!allConstant &&
+                                    predecessor() instanceof AbstractBeginNode prevBegin &&
+                                    predecessor().predecessor() instanceof IfNode precedingIf &&
+                                    precedingIf.probability(prevBegin) < VERY_FAST_PATH_PROBABILITY) {
+                        AbstractBeginNode otherSuccessor = precedingIf.successor(true) == prevBegin ? precedingIf.successor(false) : precedingIf.successor(true);
+                        if (otherSuccessor.next() instanceof AbstractEndNode otherEnd && otherEnd.merge() == merge) {
+                            /**
+                             * We have a shape like this (omitting begin/end pairs):
+                             *
+                             * <pre>
+                             *     If     // precedingIf
+                             *     | \
+                             *     | If   // this
+                             *     | | \
+                             *     | | |
+                             *     Merge
+                             * </pre>
+                             *
+                             * For example, fully unrolling a loop that has side exits can give this
+                             * shape, where all the unrolled iterations' side exits meet up at one
+                             * merge.
+                             * <p/>
+                             *
+                             * If we replace this node by a floating conditional, the preceding If
+                             * will then be in a shape where its ends meet up at the same merge, so
+                             * we will get here and turn it into a conditional too. If there are
+                             * more preceding ifs in the cascade, we would turn them into
+                             * conditionals too, and so on. Overall we would move all the code
+                             * controlled by a sequence of Ifs into one block where everything is
+                             * computed unconditionally and we then pick out the result we want.
+                             * This is unlikely to be worth it in general.
+                             * <p/>
+                             *
+                             * We only allow this transformation if all phi inputs are constants,
+                             * this allows us to cover some useful cases (see TrichotomyTest).
+                             */
+                            shouldTryToCanonicalizeConditional = false;
+                        }
+                    }
+
                     ValueNode trueValue = singlePhi.valueAt(trueEnd);
                     ValueNode falseValue = singlePhi.valueAt(falseEnd);
-                    ValueNode conditional = canonicalizeConditionalCascade(tool, trueValue, falseValue);
-                    if (conditional != null) {
-                        conditional = proxyReplacement(conditional);
-                        singlePhi.setValueAt(trueEnd, conditional);
-                        removeThroughFalseBranch(tool, merge);
-                        return true;
+                    if (shouldTryToCanonicalizeConditional) {
+                        ValueNode conditional = canonicalizeConditionalCascade(tool, trueValue, falseValue);
+                        if (conditional != null) {
+                            conditional = proxyReplacement(conditional);
+                            singlePhi.setValueAt(trueEnd, conditional);
+                            removeThroughFalseBranch(tool, merge);
+                            return true;
+                        }
                     }
                     /*-
                      * Remove this pattern:
