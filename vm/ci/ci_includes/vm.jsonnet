@@ -164,6 +164,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
     # Trigger the releaser service and notify the indexer
     self.vm_notifier_daily,
+
+    # Pipelined builds
+    vm_common.build_graalvm("ce", "linux", "amd64"),
   ],
 
   builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],

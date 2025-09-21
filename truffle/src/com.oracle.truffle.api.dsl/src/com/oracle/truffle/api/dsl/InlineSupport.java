@@ -169,7 +169,7 @@ public final class InlineSupport {
 
     /**
      * Marks a field to be accessed with unsafe. This annotation is useful to communicate fields
-     * that must not e rewritten by code obfuscation tools like Proguard.
+     * that must not be rewritten by code obfuscation tools like Proguard.
      *
      * @since 23.0
      */

@@ -78,6 +78,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
+import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -113,6 +114,8 @@ public final class NativeImageClassLoaderSupport {
     private final List<Path> buildcp;
     private final List<Path> imagemp;
     private final List<Path> buildmp;
+
+    private final Set<Path> imageProvidedJars;
 
     private final EconomicMap<URI, EconomicSet<String>> classes;
     private final EconomicMap<URI, EconomicSet<String>> packages;
@@ -245,6 +248,8 @@ public final class NativeImageClassLoaderSupport {
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
 
+        imageProvidedJars = parseImageProvidedJarsProperty();
+
         ModuleFinder modulePathsFinder = getModulePathsFinder();
         Set<String> moduleNames = modulePathsFinder.findAll().stream()
                         .map(moduleReference -> moduleReference.descriptor().name())
@@ -305,7 +310,7 @@ public final class NativeImageClassLoaderSupport {
         return classLoaders;
     }
 
-    private ModuleFinder getModulePathsFinder() {
+    public ModuleFinder getModulePathsFinder() {
         return ModuleFinder.of(imagemp.toArray(Path[]::new));
     }
 
@@ -324,7 +329,12 @@ public final class NativeImageClassLoaderSupport {
             LogUtils.warning(msg);
 
             var origin = new IncludeOptionsSupport.ExtendedOptionWithOrigin(new IncludeOptionsSupport.ExtendedOption("", PreserveOptionsSupport.PRESERVE_ALL), preserveAllOrigin);
-            getModulePathsFinder().findAll().forEach(m -> preserveSelectors.addModule(m.descriptor().name(), origin));
+            for (ModuleReference m : getModulePathsFinder().findAll()) {
+                var modulePath = m.location().map(Path::of).orElse(null);
+                if (!imageProvidedJars.contains(modulePath)) {
+                    preserveSelectors.addModule(m.descriptor().name(), origin);
+                }
+            }
             PreserveOptionsSupport.JDK_MODULES_TO_PRESERVE.forEach(moduleName -> preserveSelectors.addModule(moduleName, origin));
             preserveSelectors.addModule(ALL_UNNAMED, origin);
         }
@@ -775,6 +785,18 @@ public final class NativeImageClassLoaderSupport {
         return ((Module) module).getDescriptor().mainClass();
     }
 
+    private static Set<Path> parseImageProvidedJarsProperty() {
+        Set<Path> imageProvidedJars = new HashSet<>();
+        String args = System.getProperty(SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE, "");
+        if (!args.isEmpty()) {
+            String[] parts = args.split(File.pathSeparator);
+            for (String part : parts) {
+                imageProvidedJars.add(Path.of(part));
+            }
+        }
+        return Collections.unmodifiableSet(imageProvidedJars);
+    }
+
     private final class LoadClassHandler {
 
         private final ForkJoinPool executor;
@@ -1180,7 +1202,12 @@ public final class NativeImageClassLoaderSupport {
 
     public void setTrackAllDynamicAccess(ValueWithOrigin<String> valueWithOrigin) {
         var origin = new IncludeOptionsSupport.ExtendedOptionWithOrigin(new IncludeOptionsSupport.ExtendedOption("", DynamicAccessDetectionFeature.TRACK_ALL), valueWithOrigin);
-        getModulePathsFinder().findAll().forEach(m -> dynamicAccessSelectors.addModule(m.descriptor().name(), origin));
+        for (ModuleReference m : getModulePathsFinder().findAll()) {
+            var modulePath = m.location().map(Path::of).orElse(null);
+            if (!imageProvidedJars.contains(modulePath)) {
+                dynamicAccessSelectors.addModule(m.descriptor().name(), origin);
+            }
+        }
         dynamicAccessSelectors.addModule(ALL_UNNAMED, origin);
     }
 
@@ -1307,7 +1334,9 @@ public final class NativeImageClassLoaderSupport {
                 IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(),
                                 extendedOptionWithOrigin.valueWithOrigin());
                 for (Path path : applicationClassPath()) {
-                    classpathEntries.put(path, includeOptionsSupport);
+                    if (!imageProvidedJars.contains(path)) {
+                        classpathEntries.put(path, includeOptionsSupport);
+                    }
                 }
             } else {
                 moduleNames.put(moduleName, extendedOptionWithOrigin);

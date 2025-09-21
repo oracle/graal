@@ -57,13 +57,17 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Yield;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.asm.ClassReader;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
@@ -454,6 +458,15 @@ public class InstructionBytecodeSizeTest {
             @Specialization
             static double doDefault(double a0, double a1) {
                 return 1.0d;
+            }
+        }
+
+        // Though it is a custom operation, the yield should not be outlined.
+        @Yield
+        static final class MyYield {
+            @Specialization
+            static Object doDefault(Object result, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return result;
             }
         }
     }

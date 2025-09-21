@@ -112,6 +112,10 @@ public class AArch64HotSpotMove {
             Register resultRegister = asRegister(result);
             Register ptr = asRegister(input);
             Register base = (isRegister(baseRegister) ? asRegister(baseRegister) : zr);
+            emitCompressCode(masm, ptr, resultRegister, base, encoding, nonNull);
+        }
+
+        public static void emitCompressCode(AArch64MacroAssembler masm, Register ptr, Register resultRegister, Register base, CompressEncoding encoding, boolean nonNull) {
             // result = (ptr - base) >> shift
             if (!encoding.hasBase()) {
                 if (encoding.hasShift()) {

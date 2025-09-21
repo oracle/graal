@@ -261,13 +261,27 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
 
-        public DebugCloseable start(StructuredGraph graph, DebugContext debug) {
+        /**
+         * This can provide more detail about where GC time is spent but isn't necessary most of the
+         * time.
+         */
+        static final boolean BASE_PHASE_GC_STATISTICS = false;
+
+        private static DebugCloseable gcStatistics(DebugContext debug, Class<?> phaseClass) {
+            if (BASE_PHASE_GC_STATISTICS) {
+                return GraalServices.GCTimerScope.create(debug, "PhaseTime_", phaseClass);
+            }
+            return null;
+        }
+
+        public DebugCloseable start(StructuredGraph graph, DebugContext debug, Class<?> phaseClass) {
             if (debug.areTimersEnabled() || debug.areCountersEnabled() || debug.areMemUseTrackersEnabled()) {
                 return new DebugCloseable() {
                     final int edgesBefore = graph.getEdgeModificationCount();
                     final DebugCloseable t = timer.start(debug);
                     final DebugCloseable m = memUseTracker.start(debug);
                     final int nodeCount = graph.getNodeCount();
+                    final DebugCloseable gc = gcStatistics(debug, phaseClass);
 
                     @Override
                     public void close() {
@@ -276,6 +290,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                         edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
                         t.close();
                         m.close();
+                        if (gc != null) {
+                            gc.close();
+                        }
                     }
                 };
             }
@@ -450,7 +467,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName(), graph) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
-                        DebugCloseable a = statistics.start(graph, debug)) {
+                        DebugCloseable a = statistics.start(graph, debug, getClass())) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();

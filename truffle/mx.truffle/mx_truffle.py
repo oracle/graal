@@ -478,7 +478,7 @@ def slnative(args):
     vm_args, sl_args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
+    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False, log_host_inlining=mx.env_var_to_bool("SL_NATIVE_HOST_INLINING"))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
@@ -491,7 +491,7 @@ def _native_image(jdk):
         mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
     return native_image_path
 
-def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True):
+def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True, log_host_inlining=False):
     native_image_args = list(vm_args)
     native_image_path = _native_image(jdk)
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
@@ -499,6 +499,16 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
     if hosted_assertions:
         native_image_args += ["-J-ea", "-J-esa"]
+
+    if log_host_inlining:
+        native_image_args += [
+            "-H:+UnlockExperimentalVMOptions",
+            "-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase",
+            "-H:+TruffleHostInliningPrintExplored",
+            "-H:MethodFilter=com.oracle.truffle.sl.*.*",
+            "-H:-UnlockExperimentalVMOptions",
+            "-Dgraal.LogFile=host-inlining.txt",
+        ]
 
     # Even when Truffle is on the classpath, it is loaded as a named module due to
     # the ForceOnModulePath option in its native-image.properties
@@ -1521,8 +1531,8 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
         subst_eng.register_no_arg('languageId', prj.language_id)
         subst_eng.register_no_arg('languageIds', ', '.join([f'"{l}"' for l in prj.all_language_ids]))
         subst_eng.register_no_arg('resourceId', prj.resource_id)
-        subst_eng.register_no_arg('os', prj.os_name)
-        subst_eng.register_no_arg('arch', prj.cpu_architecture)
+        subst_eng.register_no_arg('OS', prj.os_name.upper())
+        subst_eng.register_no_arg('CPUArchitecture', prj.cpu_architecture.upper())
         file_content = subst_eng.substitute(file_content)
         target_file = _PolyglotIsolateResourceBuildTask._target_file(prj.source_gen_dir(), pkg_name)
         mx_util.ensure_dir_exists(dirname(target_file))

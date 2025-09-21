@@ -103,6 +103,7 @@ import sun.util.cldr.CLDRLocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
+import sun.util.spi.CalendarProvider;
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -430,7 +431,8 @@ public class LocalizationFeature implements InternalFeature {
                     TimeZoneNameProvider.class,
                     JavaTimeDateTimePatternProvider.class,
                     CalendarDataProvider.class,
-                    CalendarNameProvider.class);
+                    CalendarNameProvider.class,
+                    CalendarProvider.class);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addProviders() {

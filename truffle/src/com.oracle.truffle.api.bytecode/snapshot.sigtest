@@ -242,6 +242,7 @@ meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
 meth public java.lang.Object continueWith(java.lang.Object)
 meth public java.lang.Object getResult()
 meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.bytecode.ContinuationResult create(com.oracle.truffle.api.bytecode.ContinuationRootNode,com.oracle.truffle.api.frame.MaterializedFrame,java.lang.Object)
 supr java.lang.Object
 hfds frame,result,rootNode
 
@@ -256,11 +257,13 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Epilo
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.EpilogReturn
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 
 CLSS public abstract com.oracle.truffle.api.bytecode.ExceptionHandler
 cons protected init(java.lang.Object)
@@ -409,6 +412,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Instr
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean forceCached()
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 meth public abstract !hasdefault java.lang.String javadoc()
 
 CLSS public final com.oracle.truffle.api.bytecode.LocalAccessor
@@ -507,6 +511,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Opera
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean forceCached()
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>[] tags()
 meth public abstract !hasdefault java.lang.String javadoc()
 
@@ -529,6 +534,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.bytecod
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.bytecode.OperationProxy$Repeat
  outer com.oracle.truffle.api.bytecode.OperationProxy
@@ -541,6 +547,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Prolo
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean storeBytecodeIndex()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.ShortCircuitOperation
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.bytecode.ShortCircuitOperation$Repeat)
@@ -584,6 +591,11 @@ cons protected init(java.lang.Object)
 meth public abstract java.util.List<com.oracle.truffle.api.bytecode.SourceInformationTree> getChildren()
 meth public final java.lang.String toString()
 supr com.oracle.truffle.api.bytecode.SourceInformation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.StoreBytecodeIndex
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface com.oracle.truffle.api.bytecode.TagTree
 meth public abstract boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
@@ -639,6 +651,14 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Varia
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER, TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault int startOffset()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Yield
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forceCached()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>[] tags()
+meth public abstract !hasdefault java.lang.String javadoc()
 
 CLSS public abstract interface com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener
 meth public void afterInstructionExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Throwable)

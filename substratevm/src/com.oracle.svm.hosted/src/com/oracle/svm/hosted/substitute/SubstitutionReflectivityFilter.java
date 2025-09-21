@@ -24,17 +24,23 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -43,15 +49,39 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Decides whether any class, method or field should not be reflectively accessible (for example, by
  * java.lang.reflect or via JNI) due to substitutions.
  */
-public class SubstitutionReflectivityFilter {
+@AutomaticallyRegisteredFeature
+public class SubstitutionReflectivityFilter implements InternalFeature {
 
-    public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
-        if (!universe.hostVM().platformSupported(classObj)) {
+    private HostVM hostVM;
+    private AnalysisMetaAccess metaAccess;
+
+    public static SubstitutionReflectivityFilter singleton() {
+        return ImageSingletons.lookup(SubstitutionReflectivityFilter.class);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        hostVM = access.getHostVM();
+        metaAccess = access.getMetaAccess();
+    }
+
+    public boolean shouldExcludeElement(AnnotatedElement annotatedElement) {
+        return switch (annotatedElement) {
+            case Class<?> classObj -> shouldExclude(classObj);
+            case Executable method -> shouldExclude(method);
+            case Field field -> shouldExclude(field);
+            default -> false;
+        };
+    }
+
+    public boolean shouldExclude(Class<?> classObj) {
+        if (!hostVM.platformSupported(classObj)) {
             return true;
         }
         try {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
-            if (!universe.hostVM().platformSupported(analysisClass)) {
+            if (!hostVM.platformSupported(analysisClass)) {
                 return true;
             } else if (analysisClass.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -62,16 +92,16 @@ public class SubstitutionReflectivityFilter {
         return false;
     }
 
-    public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
-        if (shouldExclude(method.getDeclaringClass(), metaAccess, universe)) {
+    public boolean shouldExclude(Executable method) {
+        if (shouldExclude(method.getDeclaringClass())) {
             return true;
         }
-        if (!universe.hostVM().platformSupported(method)) {
+        if (!hostVM.platformSupported(method)) {
             return true;
         }
         try {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-            if (!universe.hostVM().platformSupported(aMethod)) {
+            if (!hostVM.platformSupported(aMethod)) {
                 return true;
             } else if (aMethod.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -93,16 +123,16 @@ public class SubstitutionReflectivityFilter {
         return false;
     }
 
-    public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
-        if (shouldExclude(field.getDeclaringClass(), metaAccess, universe)) {
+    public boolean shouldExclude(Field field) {
+        if (shouldExclude(field.getDeclaringClass())) {
             return true;
         }
-        if (!universe.hostVM().platformSupported(field)) {
+        if (!hostVM.platformSupported(field)) {
             return true;
         }
         try {
             AnalysisField aField = metaAccess.lookupJavaField(field);
-            if (!universe.hostVM().platformSupported(aField)) {
+            if (!hostVM.platformSupported(aField)) {
                 return true;
             }
             if (aField.isAnnotationPresent(Delete.class) || aField.isAnnotationPresent(InjectAccessors.class)) {

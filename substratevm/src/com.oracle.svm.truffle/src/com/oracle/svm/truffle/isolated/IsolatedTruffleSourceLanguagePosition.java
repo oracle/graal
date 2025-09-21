@@ -30,12 +30,12 @@ import java.net.URISyntaxException;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
+import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.core.graal.isolated.CompilerHandle;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.isolated.ClientHandle;
-import com.oracle.svm.graal.isolated.ClientIsolateThread;
-import com.oracle.svm.graal.isolated.CompilerHandle;
-import com.oracle.svm.graal.isolated.IsolatedCompileClient;
-import com.oracle.svm.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;

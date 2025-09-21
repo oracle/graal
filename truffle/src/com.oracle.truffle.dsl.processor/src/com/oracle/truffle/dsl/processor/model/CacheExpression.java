@@ -70,6 +70,7 @@ public final class CacheExpression extends MessageContainer {
     private boolean alwaysInitialized;
     private boolean eagerInitialize;
     private Message uncachedExpressionError;
+    private boolean requiresFrame;
     private boolean requiresBoundary;
     private boolean mergedLibrary;
     private boolean isWeakReferenceGet;
@@ -304,6 +305,14 @@ public final class CacheExpression extends MessageContainer {
     @Override
     public AnnotationMirror getMessageAnnotation() {
         return sourceAnnotationMirror;
+    }
+
+    public void setRequiresFrame(boolean requiresFrame) {
+        this.requiresFrame = requiresFrame;
+    }
+
+    public boolean isRequiresFrame() {
+        return this.requiresFrame;
     }
 
     public void setRequiresBoundary(boolean requiresBoundary) {

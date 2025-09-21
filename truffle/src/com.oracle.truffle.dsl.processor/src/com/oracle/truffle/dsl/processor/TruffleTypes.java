@@ -400,6 +400,7 @@ public class TruffleTypes {
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
     public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
+    public static final String Yield_Name = "com.oracle.truffle.api.bytecode.Yield";
 
     public static final String Instruction_Argument_Kind_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument.Kind";
     public static final String Instruction_Argument_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument";
@@ -414,6 +415,7 @@ public class TruffleTypes {
     public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.TagTree";
     public static final String TagTreeNode_Name = "com.oracle.truffle.api.bytecode.TagTreeNode";
     public static final String TagTreeNodeExports_Name = "com.oracle.truffle.api.bytecode.TagTreeNodeExports";
+    public static final String StoreBytecodeIndex_Name = "com.oracle.truffle.api.bytecode.StoreBytecodeIndex";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
@@ -464,6 +466,7 @@ public class TruffleTypes {
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
     public final DeclaredType Instrumentation = c.getDeclaredTypeOptional(Instrumentation_Name);
+    public final DeclaredType Yield = c.getDeclaredTypeOptional(Yield_Name);
 
     public final DeclaredType Instruction_Argument = c.getDeclaredTypeOptional(Instruction_Argument_Name);
     public final DeclaredType Instruction_Argument_BranchProfile = c.getDeclaredTypeOptional(Instruction_Argument_BranchProfile_Name);
@@ -478,6 +481,7 @@ public class TruffleTypes {
     public final DeclaredType TagTree = c.getDeclaredTypeOptional(TagTree_Name);
     public final DeclaredType TagTreeNode = c.getDeclaredTypeOptional(TagTreeNode_Name);
     public final DeclaredType TagTreeNodeExports = c.getDeclaredTypeOptional(TagTreeNodeExports_Name);
+    public final DeclaredType StoreBytecodeIndex = c.getDeclaredTypeOptional(StoreBytecodeIndex_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);

@@ -28,6 +28,7 @@ package com.oracle.svm.webimage.substitute.system;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.ByteArrayInputStream;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.AccessibleObject;
@@ -42,6 +43,7 @@ import java.util.logging.Logger;
 import java.util.zip.DataFormatException;
 
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
@@ -59,7 +61,6 @@ import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import org.graalvm.nativeimage.ProcessProperties;
 
 /*
  * Checkstyle: stop method name check
@@ -303,6 +304,11 @@ final class Target_java_lang_System_Web {
     @Substitute
     public static String mapLibraryName(String libname) {
         return libname;
+    }
+
+    @Substitute
+    public static Console console() {
+        return null;
     }
 }
 
@@ -914,6 +920,16 @@ final class Target_java_lang_ProcessHandleImpl_Web {
             return 0L;
         }
         return -1L;
+    }
+}
+
+@TargetClass(className = "java.lang.ProcessBuilder")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_java_lang_ProcessBuilder_Web {
+    @Substitute
+    public Process start() throws IOException {
+        // Throw IOException instead of UnsupportedOperationException to allow fallback code to run.
+        throw new IOException("Cannot run processes on Web Image yet");
     }
 }
 

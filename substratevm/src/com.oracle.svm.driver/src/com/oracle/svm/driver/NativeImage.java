@@ -351,7 +351,8 @@ public class NativeImage {
                     boolean hasGCTimeRatio,
                     boolean hasExitOnOutOfMemoryError,
                     boolean hasMaximumHeapSizePercent,
-                    boolean hasUseParallelGC) {
+                    boolean hasUseParallelGC,
+                    boolean hasUseCompressedOops) {
 
         public List<String> defaultMemoryFlags() {
             List<String> flags = new ArrayList<>();
@@ -371,6 +372,12 @@ public class NativeImage {
                  * Let the builder exit on first OutOfMemoryError to have shorter feedback loops.
                  */
                 flags.add("-XX:+ExitOnOutOfMemoryError");
+            }
+            if (hasUseCompressedOops) {
+                /*
+                 * To print a warning if the max heap size is too large for compressed oops.
+                 */
+                flags.add("-XX:+UseCompressedOops");
             }
             return flags;
         }
@@ -574,6 +581,7 @@ public class NativeImage {
             boolean hasGCTimeRatio = false;
             boolean hasExitOnOutOfMemoryError = false;
             boolean hasUseParallelGC = false;
+            boolean hasUseCompressedOops = false;
 
             ProcessBuilder pb = new ProcessBuilder();
             sanitizeJVMEnvironment(pb.environment(), Map.of());
@@ -604,6 +612,8 @@ public class NativeImage {
                             hasMaximumHeapSizePercent = true;
                         } else if (line.contains(" UseParallelGC ")) {
                             hasUseParallelGC = true;
+                        } else if (line.contains(" UseCompressedOops ")) {
+                            hasUseCompressedOops = true;
                         }
                     }
                 }
@@ -623,7 +633,8 @@ public class NativeImage {
                             hasGCTimeRatio,
                             hasExitOnOutOfMemoryError,
                             hasMaximumHeapSizePercent,
-                            hasUseParallelGC);
+                            hasUseParallelGC,
+                            hasUseCompressedOops);
         }
 
         /**
@@ -1474,6 +1485,7 @@ public class NativeImage {
             finalImageClasspath.addAll(finalImageProvidedJars);
         }
         finalImageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
+        imageBuilderJavaArgs.add("-D" + SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE + "=" + String.join(File.pathSeparator, finalImageProvidedJars.stream().map(Path::toString).toList()));
 
         if (!config.buildFallbackImage()) {
             Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionArgument(imageBuilderArgs, oHFallbackThreshold);
@@ -1910,11 +1922,8 @@ public class NativeImage {
             }
             p = pb.start();
             if (useBundle()) {
-                var internalOutputDir = bundleSupport.outputDir.toString();
-                var externalOutputDir = bundleSupport.getExternalOutputDir().toString();
-                Function<String, String> filter = line -> line.replace(internalOutputDir, externalOutputDir);
-                ProcessOutputTransformer.attach(p.getInputStream(), filter, System.out);
-                ProcessOutputTransformer.attach(p.getErrorStream(), filter, System.err);
+                ProcessOutputTransformer.attach(p.getInputStream(), bundleSupport::cleanupBuilderOutput, System.out);
+                ProcessOutputTransformer.attach(p.getErrorStream(), bundleSupport::cleanupBuilderOutput, System.err);
             }
             imageBuilderPid = p.pid();
             return p.waitFor();
@@ -1927,16 +1936,16 @@ public class NativeImage {
         }
     }
 
-    private record ProcessOutputTransformer(InputStream in, Function<String, String> filter, PrintStream out) implements Runnable {
+    private record ProcessOutputTransformer(InputStream in, Function<String, String> mapper, PrintStream out) implements Runnable {
 
-        static void attach(InputStream in, Function<String, String> filter, PrintStream out) {
-            Thread.ofVirtual().start(new ProcessOutputTransformer(in, filter, out));
+        static void attach(InputStream in, Function<String, String> mapper, PrintStream out) {
+            Thread.ofVirtual().start(new ProcessOutputTransformer(in, mapper, out));
         }
 
         @Override
         public void run() {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
-                reader.lines().map(filter).forEach(out::println);
+                reader.lines().map(mapper).forEach(out::println);
             } catch (IOException e) {
                 throw showError("Unable to process stdout/stderr of image builder process", e);
             }

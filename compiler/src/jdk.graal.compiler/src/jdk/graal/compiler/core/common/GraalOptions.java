@@ -194,6 +194,9 @@ public final class GraalOptions {
     @Option(help = "Comma separated list of registers that register allocation is limited to.", type = OptionType.Debug)
     public static final OptionKey<String> RegisterPressure = new OptionKey<>(null);
 
+    @Option(help = "Permit RegisterPressure setting to cause compilation to fail.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> BailoutOnRegisterPressureFailure = new OptionKey<>(false);
+
     @Option(help = "Eliminates redundant conditional expressions and statements where possible. " +
                    "This can improve performance because fewer logic instructions have to be executed.", type = OptionType.Expert)
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);

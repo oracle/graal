@@ -733,6 +733,7 @@ suite = {
                     "sun.nio.ch",
                     "sun.util.cldr",
                     "sun.util.locale",
+                    "sun.util.spi",
                     "sun.invoke.util",
                 ],
                 "java.management": [

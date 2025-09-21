@@ -3998,7 +3998,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         boolean isInitialized() {
-            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
                 boolean localInitialized = initialized;
                 if (initializedUnchangedAssumption.isValid()) {
                     return localInitialized;
@@ -4021,7 +4021,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         Object getLanguageContext() {
-            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
                 Object languageContext = this.context;
                 if (contextUnchangedAssumption.isValid()) {
                     return languageContext;

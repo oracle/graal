@@ -339,7 +339,7 @@ final class UnsafeAccess {
     private static final boolean USE_ARRAYCOPY = true;
 
     static void arrayCopy(Object[] from, Object[] to, int length) {
-        if (CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
             arrayCopyUnroll(from, to, length);
         } else if (USE_ARRAYCOPY) {
             UnsafeAccess.arraycopy(from, 0, to, 0, length);
@@ -364,7 +364,7 @@ final class UnsafeAccess {
     }
 
     static void arrayCopy(int[] from, int[] to, int length) {
-        if (CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
             arrayCopyUnroll(from, to, length);
         } else if (USE_ARRAYCOPY) {
             UnsafeAccess.arraycopy(from, 0, to, 0, length);

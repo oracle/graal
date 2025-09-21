@@ -104,6 +104,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final HashMap<TypeElement, CustomOperationModel> customRegularOperations = new HashMap<>();
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
+    private final List<CustomOperationModel> instrumentations = new ArrayList<>();
+    private final List<CustomOperationModel> customYieldOperations = new ArrayList<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
     // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
     public InstructionModel[] invalidateInstructions;
@@ -185,10 +187,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
     public InstructionModel tagYieldInstruction;
+    public InstructionModel tagYieldNullInstruction;
     public InstructionModel tagResumeInstruction;
     public InstructionModel clearLocalInstruction;
 
-    public final List<CustomOperationModel> instrumentations = new ArrayList<>();
     public ExportsData tagTreeNodeLibrary;
 
     /**
@@ -268,6 +270,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return !getInstrumentations().isEmpty() || !getProvidedTags().isEmpty();
     }
 
+    public boolean hasYieldOperation() {
+        return enableYield || !customYieldOperations.isEmpty();
+    }
+
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
@@ -303,16 +309,20 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel operation = new CustomOperationModel(context, this, typeElement, mirror, op);
+        CustomOperationModel customOp = new CustomOperationModel(context, this, typeElement, mirror, op);
         if (customRegularOperations.containsKey(typeElement)) {
             throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
         }
-        customRegularOperations.put(typeElement, operation);
-        operationsToCustomOperations.put(op, operation);
+
+        customRegularOperations.put(typeElement, customOp);
+        operationsToCustomOperations.put(op, customOp);
 
         if (kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             op.setInstrumentationIndex(instrumentations.size());
-            instrumentations.add(operation);
+            instrumentations.add(customOp);
+        } else if (kind == OperationKind.CUSTOM_YIELD) {
+            customOp.setCustomYield();
+            customYieldOperations.add(customOp);
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
             op.setInternal();
             if (prolog != null) {
@@ -321,7 +331,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                 return null;
             }
 
-            prolog = operation;
+            prolog = customOp;
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
             op.setInternal();
             op.setTransparent(true);
@@ -331,7 +341,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                                 getSimpleName(types.EpilogReturn));
                 return null;
             }
-            epilogReturn = operation;
+            epilogReturn = customOp;
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             op.setInternal();
             if (epilogExceptional != null) {
@@ -339,10 +349,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                                 getSimpleName(types.EpilogExceptional));
                 return null;
             }
-            epilogExceptional = operation;
+            epilogExceptional = customOp;
         }
 
-        return operation;
+        return customOp;
     }
 
     public CustomOperationModel customShortCircuitOperation(String name, String javadoc, AnnotationMirror mirror) {
@@ -350,7 +360,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel customOp = new CustomOperationModel(context, this, null, mirror, op);
+        CustomOperationModel customOp = new CustomOperationModel(context, this, this.getTemplateType(), mirror, op);
         customShortCircuitOperations.add(customOp);
         operationsToCustomOperations.put(op, customOp);
 
@@ -385,15 +395,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             throw new IllegalArgumentException("Method with name " + methodName + " not found.");
         }
 
-        TypeElement type = getTemplateType();
-        while (type != null) {
-            if (ElementUtils.findOverride(type, e) != null) {
-                return true;
-            }
-            type = ElementUtils.castTypeElement(type.getSuperclass());
-        }
-        return false;
-
+        return ElementUtils.findOverride(e, getTemplateType()) != null;
     }
 
     private InstructionModel instruction(InstructionKind kind, String name, Signature signature, String quickeningName) {
@@ -528,6 +530,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return result;
     }
 
+    public Collection<OperationModel> getCustomYieldOperations() {
+        return customYieldOperations.stream().map(customOperation -> customOperation.operation).toList();
+    }
+
     public Collection<InstructionModel> getInstructions() {
         return instructions.values();
     }
@@ -593,5 +599,4 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
     }
-
 }

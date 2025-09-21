@@ -440,6 +440,15 @@ public final class SpecializationData extends TemplateMethod {
         return reachesFallback;
     }
 
+    public boolean isAnyGuardBoundWithCache() {
+        for (GuardExpression guard : guards) {
+            if (isGuardBoundWithCache(guard)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
         for (CacheExpression cache : getBoundCaches(guardExpression.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {
@@ -862,6 +871,11 @@ public final class SpecializationData extends TemplateMethod {
                 if (cache.getDefaultExpression() != null && cache.getDefaultExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
                     return true;
                 }
+            }
+        }
+        for (CacheExpression cache : getCaches()) {
+            if (cache.isRequiresFrame()) {
+                return true;
             }
         }
         return false;

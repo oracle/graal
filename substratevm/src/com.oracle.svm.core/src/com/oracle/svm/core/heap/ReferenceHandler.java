@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.Reference;
@@ -69,7 +70,7 @@ public final class ReferenceHandler {
         }
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     static void processCleaners() {
         // Note: (sun.misc|jdk.internal).Cleaner objects are invoked in pending reference processing
 

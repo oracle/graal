@@ -37,11 +37,22 @@ import jdk.graal.compiler.phases.BasePhase;
 
 public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
 
+    private final StageFlag stage;
+
+    public WriteBarrierAdditionPhase() {
+        this(StageFlag.MID_TIER_BARRIER_ADDITION);
+    }
+
+    public WriteBarrierAdditionPhase(StageFlag stage) {
+        assert stage == StageFlag.LOW_TIER_BARRIER_ADDITION || stage == StageFlag.MID_TIER_BARRIER_ADDITION : stage;
+        this.stage = stage;
+    }
+
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
-                        NotApplicable.ifApplied(this, StageFlag.BARRIER_ADDITION, graphState),
-                        NotApplicable.unlessRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.ifApplied(this, stage, graphState),
+                        NotApplicable.unlessRunAfter(this, stage == StageFlag.MID_TIER_BARRIER_ADDITION ? StageFlag.MID_TIER_LOWERING : StageFlag.LOW_TIER_LOWERING, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState));
     }
 
@@ -49,7 +60,7 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         BarrierSet barrierSet = context.getPlatformConfigurationProvider().getBarrierSet();
-        if (barrierSet.hasWriteBarrier()) {
+        if (barrierSet.hasWriteBarrier() && barrierSet.shouldAddBarriersInStage(stage)) {
             for (FixedAccessNode n : graph.getNodes(FixedAccessNode.TYPE)) {
                 try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
                     barrierSet.addBarriers(n, context);
@@ -61,7 +72,7 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     @Override
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
-        graphState.setAfterStage(StageFlag.BARRIER_ADDITION);
+        graphState.setAfterStage(stage);
     }
 
     @Override

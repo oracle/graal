@@ -41,4 +41,10 @@ public final class SharedConstants {
      * environment variable is not set for all other builds.
      */
     public static final String REBUILD_AFTER_ANALYSIS_MARKER = "com.oracle.svm.rebuild";
+
+    /**
+     * The name of the environment variable containing paths to JAR files that are provided
+     * internally by the native image on its image class or module path.
+     */
+    public static final String IMAGE_PROVIDED_JARS_ENV_VARIABLE = "com.oracle.svm.provided";
 }

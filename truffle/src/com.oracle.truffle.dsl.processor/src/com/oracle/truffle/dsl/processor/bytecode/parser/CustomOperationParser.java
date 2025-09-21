@@ -98,6 +98,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
@@ -149,12 +150,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return false;
     }
 
+    /**
+     * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
+     * directly invoke {@link #parseCustomRegularOperation} for code gen use cases.
+     */
     @Override
     protected CustomOperationModel parse(Element element, List<AnnotationMirror> annotationMirrors) {
-        /**
-         * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
-         * directly invoke {@link parseCustomRegularOperation} for code gen use cases.
-         */
         if (!ElementUtils.typeEquals(annotationType, context.getTypes().OperationProxy_Proxyable)) {
             throw new AssertionError();
         }
@@ -177,8 +178,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         String name = getCustomOperationName(typeElement, explicitName);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
-        boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
-        OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
+
+        OperationKind kind;
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation)) {
+            kind = OperationKind.CUSTOM_INSTRUMENTATION;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
+            kind = OperationKind.CUSTOM_YIELD;
+        } else {
+            kind = OperationKind.CUSTOM;
+        }
+
         CustomOperationModel customOperation = parent.customRegularOperation(kind, name, javadoc, typeElement, mirror);
         if (customOperation == null) {
             return null;
@@ -216,18 +225,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return customOperation;
         }
 
-        if (!isProxy()) {
+        if (!isExternal(typeElement)) {
             TypeElement superType = ElementUtils.getSuperType(generatedNode);
-            TypeElement parentType = generatedNode;
             while (superType != null && !ElementUtils.isObject(superType.asType())) {
                 if (!ElementUtils.elementEquals(superType.getEnclosingElement(), this.parent.getTemplateType())) {
-                    customOperation.addError(parentType, "All super types of operation classes must be declared as static nested classes of the operation root node. " +
+                    customOperation.addError("All super types of operation classes must be declared as static nested classes of the operation root node. " +
                                     "Modify the super class '%s' to be an inner class of type '%s' to resolve this or use @OperationProxy instead.",
                                     getSimpleName(superType),
                                     getSimpleName(parent.getTemplateType()));
                     break;
                 }
-                parentType = superType;
                 superType = ElementUtils.getSuperType(superType);
             }
         }
@@ -245,12 +252,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new AssertionError("Signature could not be computed, but no error was reported");
         }
 
-        produceConstantOperandWarnings(customOperation, signature, mirror);
-        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
-        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
-                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
-        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
-
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             validateInstrumentationSignature(customOperation, signature);
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
@@ -260,6 +261,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
+            if (operation.kind == OperationKind.CUSTOM_YIELD) {
+                validateYieldSignature(customOperation, signature);
+            }
+
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
             MessageContainer modelForErrors = customOperation.getModelForMessages();
             if (!tags.isEmpty()) {
@@ -289,7 +294,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (variadicReturn != null) {
             if (kind != OperationKind.CUSTOM) {
                 customOperation.addError(variadicReturn, null,
-                                "@%s can only be used on on @%s annotated classes.",
+                                "@%s can only be used on @%s classes.",
                                 getSimpleName(types.Variadic),
                                 getSimpleName(types.Operation));
             }
@@ -316,11 +321,17 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.variadicOffset = signature.variadicOffset;
         operation.isVoid = signature.isVoid;
 
+        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
         DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
         for (int i = 0; i < dynamicOperands.length; i++) {
             dynamicOperands[i] = new DynamicOperandModel(dynamicOperandNames.get(i), false, signature.isVariadicParameter(i));
         }
         operation.dynamicOperands = dynamicOperands;
+
+        produceConstantOperandWarnings(customOperation, signature, mirror);
+        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
+        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
+                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
         operation.constantOperandBeforeNames = constantOperandBeforeNames;
         operation.constantOperandAfterNames = constantOperandAfterNames;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
@@ -328,7 +339,103 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
 
+        parseStoreBytecodeIndex(mirror, operation);
+
         return customOperation;
+    }
+
+    private boolean isExternal(TypeElement type) {
+        return !ElementUtils.isDeclaredIn(type, this.parent.getTemplateType());
+    }
+
+    private void parseStoreBytecodeIndex(AnnotationMirror mirror, OperationModel operation) {
+        if (!parent.storeBciInFrame) {
+            return;
+        }
+
+        CustomOperationModel custom = operation.customModel;
+        if (custom == null) {
+            return;
+        }
+
+        AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
+        custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
+
+        if (operation.instruction.nodeData == null) {
+            return;
+        }
+
+        if (forProxyValidation && !custom.isStoreBytecodeIndexSet()) {
+            /*
+             * We do not know whether storeBytecodeIndexInFrame is set when we validate nodes
+             * for @OperationProxy.Proxyable. Hence we emit a warning for @OperationProxy if its not
+             * yet set but needed. We then only continue validation if
+             * OperationProxy.Proxyable(storeBytecodeIndex=true|false) is explictly set. This avoids
+             * emitting warnings for all nodes even if they are not used for a root node without
+             * storeBytecodeIndexInFrame.
+             */
+            return;
+        }
+
+        if (custom.inferStoreBytecodeIndex() && !custom.isStoreBytecodeIndexSet()) {
+            MessageContainer targetMessageContainer;
+            AnnotationMirror proxyMirror;
+            AnnotationValue proxyValue;
+            if (isExternal(custom.getTemplateType())) {
+                /*
+                 * It is important to emit this warning on the proxy of the parent model so we do
+                 * not accidently emit messages outside of the current compilation scope.
+                 */
+                targetMessageContainer = parent;
+                proxyMirror = mirror;
+                proxyValue = resolveProxyableAnnotationValue(mirror);
+            } else {
+                // for internal operations
+                targetMessageContainer = custom;
+                proxyMirror = null;
+                proxyValue = null;
+            }
+            String type = getSimpleName(this.annotationType);
+            String message = String.format("For this operation it is recommended to specify @%s(storeBytecodeIndex=true|false). " +
+                            "For example, the bytecode index may need to be stored for correct stack trace locations when guest level calls are performed. " +
+                            "By default the DSL assumes that if any node receiver is bound then the bytecode index needs to be stored. " +
+                            "To store the bytecode index only for a subset of specializations, set @%s(storeBytecodeIndex=false) and use the @%s annotation on the specialization method.",
+                            type,
+                            type,
+                            getSimpleName(ProcessorContext.types().StoreBytecodeIndex));
+            targetMessageContainer.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE, proxyMirror, proxyValue, message);
+        }
+
+        if (!forProxyValidation && isExternal(custom.getTemplateType())) {
+            // no further validation for external types to avoid messages on external elements
+            return;
+        }
+
+        if (custom.isStoreBytecodeIndexSet() && custom.isStoreBytecodeIndex() && !custom.inferStoreBytecodeIndex()) {
+            custom.addSuppressableWarning(
+                            TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
+                            "The attribute @%s(storeBytecodeIndex=true) is set, but the DSL infers that this operation does need an updated bytecode index. Please suppress this warning if the DSL is wrong and the operation does need it.",
+                            getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
+        }
+
+        for (SpecializationData s : operation.instruction.nodeData.getReachableSpecializations()) {
+            ExecutableElement method = s.getMethod();
+            if (method == null) {
+                continue;
+            }
+            AnnotationMirror storeBytecodeIndex = ElementUtils.findAnnotationMirror(method, types.StoreBytecodeIndex);
+            if (storeBytecodeIndex != null) {
+                if (custom.isStoreBytecodeIndex()) {
+                    s.addWarning(storeBytecodeIndex, null, "The annotation @%s has no effect on a specialization if @%s(storeBytecodeIndex=true) is kept default or set to true.",
+                                    getSimpleName(types.StoreBytecodeIndex),
+                                    getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
+                } else if (!custom.inferStoreBytecodeIndex(s)) {
+                    s.addWarning(storeBytecodeIndex, null,
+                                    "The annotation @%s has no effect on a specialization if the DSL can infer that this specialization does not require a stored bytecode index. Remove the annotation to resolve this error.",
+                                    getSimpleName(types.StoreBytecodeIndex));
+                }
+            }
+        }
     }
 
     private static List<List<String>> collectDynamicOperandNames(List<SpecializationSignature> signatures, Signature signature) {
@@ -428,6 +535,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Remove the variadic annotation to resolve this.",
                             getSimpleName(types.Instrumentation),
                             getSimpleName(types.Variadic)));
+        }
+    }
+
+    private void validateYieldSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.isVoid) {
+            customOperation.addError("A @%s cannot be void. It must return a value, which becomes the result yielded to the caller.", getSimpleName(types.Yield));
+        }
+        if (signature.dynamicOperandCount > 1) {
+            customOperation.addError("A @%s must take zero or one dynamic operands.", getSimpleName(types.Yield));
         }
     }
 
@@ -550,6 +666,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (result == null) {
             result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomRegularOperation(mirror, typeElement, null);
         }
+
         if (result == null || result.hasErrors()) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
                             "Encountered errors using %s as a boolean converter. These errors must be resolved before the DSL can proceed.", getSimpleName(typeElement));
@@ -937,6 +1054,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandAfterName(i));
         }
 
+        if (customOperation.isCustomYield()) {
+            // Index of continuation root node.
+            instr.addImmediate(ImmediateKind.CONSTANT, "location");
+        }
+
         if (!instr.canUseNodeSingleton()) {
             instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
         }
@@ -966,7 +1088,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         NodeData result;
         try {
-            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+            NodeParser parser = NodeParser.createOperationParser(customOperation);
             result = parser.parse(generatedNode, false);
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
@@ -1070,14 +1192,30 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private boolean proxyableAllowsUncached(AnnotationMirror operationProxyMirror) {
-        if (!ElementUtils.typeEquals(operationProxyMirror.getAnnotationType(), types.OperationProxy)) {
-            throw new AssertionError();
+        return ElementUtils.getAnnotationValue(Boolean.class, resolveProxyableAnnotationMirror(operationProxyMirror), "allowUncached");
+    }
+
+    /**
+     * This returns the annotation mirror on the actual operation specification and not the proxy.
+     */
+    private AnnotationMirror resolveProxyableAnnotationMirror(AnnotationMirror mirror) {
+        AnnotationValue value = resolveProxyableAnnotationValue(mirror);
+        if (value != null) {
+            TypeMirror proxiedType = BytecodeDSLParser.getTypeMirror(context, value);
+            TypeElement proxiedElement = (TypeElement) ((DeclaredType) proxiedType).asElement();
+            return ElementUtils.findAnnotationMirror(proxiedElement, types.OperationProxy_Proxyable);
         }
-        AnnotationValue proxiedTypeValue = ElementUtils.getAnnotationValue(operationProxyMirror, "value");
-        TypeMirror proxiedType = BytecodeDSLParser.getTypeMirror(context, proxiedTypeValue);
-        TypeElement proxiedElement = (TypeElement) ((DeclaredType) proxiedType).asElement();
-        AnnotationMirror proxyableMirror = ElementUtils.findAnnotationMirror(proxiedElement, types.OperationProxy_Proxyable);
-        return ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "allowUncached");
+        return mirror;
+    }
+
+    private AnnotationValue resolveProxyableAnnotationValue(AnnotationMirror mirror) {
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.OperationProxy)) {
+            return ElementUtils.getAnnotationValue(mirror, "value");
+        } else if (ElementUtils.typeEquals(types.ShortCircuitOperation, mirror.getAnnotationType())) {
+            return ElementUtils.getAnnotationValue(mirror, "booleanConverter");
+        } else {
+            return null;
+        }
     }
 
     @Override

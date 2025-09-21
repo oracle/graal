@@ -440,12 +440,13 @@ public final class DebuggerSession implements Closeable {
 
         SuspendContextAndFrame result = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-            if (!includeInternal) {
-                if (root.isInternal()) {
-                    return null;
-                }
+            if (nodeRoot == null && !includeInternal && root.isInternal()) {
+                return null;
             }
             if (nodeRoot != null && nodeRoot != root) {
+                if (!includeInternal && root.isInternal()) {
+                    return null;
+                }
                 throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
             }
             Node callNode = frameInstance.getInstrumentableCallNode();
