@@ -250,6 +250,9 @@ suite = {
           "jdk.vm.ci.hotspot.amd64",
           "jdk.vm.ci.hotspot.aarch64",
         ],
+        "jdk.management" : [
+          "com.sun.management",
+        ],
       },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",

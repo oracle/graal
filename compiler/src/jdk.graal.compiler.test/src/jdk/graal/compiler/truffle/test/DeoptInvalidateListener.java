@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.junit.Assert;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
-
-import org.junit.Assert;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 public class DeoptInvalidateListener extends AbstractGraalTruffleRuntimeListener implements AutoCloseable {
 

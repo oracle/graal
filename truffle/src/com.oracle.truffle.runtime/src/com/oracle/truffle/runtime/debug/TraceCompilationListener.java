@@ -103,7 +103,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static final String INV_PADDING     = "                                                                                                                              ";
     private static final String DEOPT_PADDING   = "                                                                                                            ";
     private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + " " + INV_PADDING + "|UTC %s|Src %s|Reason %s";
-    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|Invalidated %5b|" + DEOPT_PADDING + "|UTC %s|Src %s";
+    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|Invalidated %5b|" + DEOPT_PADDING + "|UTC %s|Src %s|Reason %s";
     private static final String REPROF_FORMAT   = "opt reprof " + TARGET_FORMAT + "|" + INV_PADDING + "|UTC %s|Src %s";
     // @formatter:on
 

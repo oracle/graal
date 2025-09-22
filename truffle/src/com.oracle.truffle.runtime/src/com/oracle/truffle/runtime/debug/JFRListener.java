@@ -63,6 +63,7 @@ import com.oracle.truffle.runtime.jfr.CompilationStatisticsEvent;
 import com.oracle.truffle.runtime.jfr.DeoptimizationEvent;
 import com.oracle.truffle.runtime.jfr.EventFactory;
 import com.oracle.truffle.runtime.jfr.InvalidationEvent;
+import com.oracle.truffle.runtime.jfr.ProfileResetEvent;
 import com.oracle.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -132,6 +133,16 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         if (event.isEnabled()) {
             event.setRootFunction(target);
             event.setInvalidated(!target.isValid());
+            event.setReason(reason);
+            event.publish();
+        }
+    }
+
+    @Override
+    public void onProfileReset(OptimizedCallTarget target) {
+        ProfileResetEvent event = FACTORY.createProfileResetEvent();
+        if (event.isEnabled()) {
+            event.setRootFunction(target);
             event.publish();
         }
     }

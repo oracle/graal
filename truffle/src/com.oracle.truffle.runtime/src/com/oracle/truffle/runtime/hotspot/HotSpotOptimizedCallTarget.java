@@ -114,9 +114,9 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     @SuppressWarnings("unused") private static final Method getInvalidationReasonDescriptionMethodRef;
 
     static {
-        setSpeculationLog = findMethod(HotSpotNmethod.class, "setSpeculationLog", true, HotSpotSpeculationLog.class);
+        setSpeculationLog = findMethod(HotSpotNmethod.class, "setSpeculationLog", false, HotSpotSpeculationLog.class);
         invalidateInstalledCodeWithReasonMethodRef = findMethod(HotSpotNmethod.class, "invalidate", false, boolean.class, int.class);
-        invalidateInstalledCodeWithoutReasonMethodRef = findMethod(InstalledCode.class, "invalidate", true, boolean.class);
+        invalidateInstalledCodeWithoutReasonMethodRef = findMethod(InstalledCode.class, "invalidate", false, boolean.class);
         getInvalidationReasonMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReason", false);
         getInvalidationReasonDescriptionMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReasonDescription", false);
     }
