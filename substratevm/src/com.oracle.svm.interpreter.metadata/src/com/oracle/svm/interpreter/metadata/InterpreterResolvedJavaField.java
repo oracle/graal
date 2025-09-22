@@ -32,8 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -116,13 +114,16 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
     }
 
     public static InterpreterResolvedJavaField createForInterpreter(String name, int modifiers,
-                    InterpreterResolvedJavaType type, InterpreterResolvedObjectType declaringClass,
+                    JavaType type, InterpreterResolvedObjectType declaringClass,
                     int offset,
-                    JavaConstant constant) {
+                    JavaConstant constant,
+                    boolean isWordStorage) {
         MetadataUtil.requireNonNull(type);
         MetadataUtil.requireNonNull(declaringClass);
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        return new InterpreterResolvedJavaField(nameSymbol, type.getSymbolicType(), modifiers, type, declaringClass, offset, constant, type.isWordType());
+        InterpreterResolvedJavaType resolvedType = type instanceof InterpreterResolvedJavaType ? (InterpreterResolvedJavaType) type : null;
+        Symbol<Type> symbolicType = resolvedType == null ? CremaTypeAccess.jvmciNameToType(type.getName()) : resolvedType.getSymbolicType();
+        return new InterpreterResolvedJavaField(nameSymbol, symbolicType, modifiers, resolvedType, declaringClass, offset, constant, isWordStorage);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -164,7 +165,7 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public final void setResolvedType(InterpreterResolvedJavaType resolvedType) {
-        VMError.guarantee(this.resolvedType == null || this.resolvedType == resolvedType,
+        VMError.guarantee(this.resolvedType == null || this.resolvedType.equals(resolvedType),
                         "InterpreterField resolvedType should not be set twice.");
         this.resolvedType = resolvedType;
     }
@@ -199,25 +200,8 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
          * eagerly create a ResolvedJavaType for it, we would force it back in.
          */
         if (resolvedType == null) {
-            UnresolvedJavaType unresolvedJavaType = UnresolvedJavaType.create(typeSymbol.toString());
-            Class<?> cls = null;
-            /*
-             * Prevent CremaSupport from being reached from other users of
-             * InterpreterResolvedJavaField.
-             */
-            if (RuntimeClassLoading.isSupported()) {
-                /*
-                 * This should not trigger actual class loading. Instead, we query the loader
-                 * registry for an already loaded class.
-                 */
-                cls = CremaSupport.singleton().findLoadedClass(unresolvedJavaType, getDeclaringClass());
-            }
-            if (cls == null) {
-                // Not loaded: return the unresolved type
-                return unresolvedJavaType;
-            }
-            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
-
+            // Not included. return the unresolved type.
+            return UnresolvedJavaType.create(typeSymbol.toString());
         }
         return resolvedType;
     }
