@@ -115,8 +115,13 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        invokeListeners((l) -> l.onCompilationDeoptimized(target, frame));
+    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
+        invokeListeners((l) -> l.onCompilationDeoptimized(target, frame, reason));
+    }
+
+    @Override
+    public void onProfileReset(OptimizedCallTarget target) {
+        invokeListeners((l) -> l.onProfileReset(target));
     }
 
     @Override

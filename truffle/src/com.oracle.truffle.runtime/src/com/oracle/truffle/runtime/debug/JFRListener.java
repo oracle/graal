@@ -127,7 +127,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
         DeoptimizationEvent event = FACTORY.createDeoptimizationEvent();
         if (event.isEnabled()) {
             event.setRootFunction(target);
