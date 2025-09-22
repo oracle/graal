@@ -200,6 +200,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 def mx_post_parse_cmd_line(args):
     mx_sdk_vm_impl.mx_post_parse_cmd_line(args)
+    mx_sdk_benchmark.register_graalvm_vms()
 
 
 mx.update_commands(_suite, {
