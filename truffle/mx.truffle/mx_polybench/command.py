@@ -40,6 +40,7 @@
 #
 import argparse
 import contextlib
+import os
 import shlex
 from argparse import ArgumentParser
 from enum import Enum
@@ -247,7 +248,9 @@ class VMFeature(Enum):
 def _get_vm_features(args) -> Set[VMFeature]:
     def require_native(feature_name):
         if not args.is_native:
-            mx.abort(f"Feature {feature_name} is only supported on native runs, but native mode is not selected.")
+            mx.abort(
+                f"Feature {feature_name} is only supported on native runs, but native mode is not selected (enable native mode with --native)."
+            )
 
     result = set()
     if args.is_native:
@@ -264,21 +267,21 @@ def _get_vm_features(args) -> Set[VMFeature]:
 def _run_benchmark_pattern(args):
     arguments_spec = PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
     run_spec = PolybenchRunSpecification(args.benchmarks, _get_vm_features(args), arguments_spec)
-    _validate_jdk(run_spec.is_native())
+    _validate_jdk(run_spec)
     mx.logv(f"Performing polybench run: {run_spec}")
     _run_specification(
         run_spec, pattern_is_glob=args.pattern_is_glob, dry_run=args.dry_run, reuse_disk_images=args.reuse_disk_images
     )
 
 
-def _validate_jdk(is_native: bool) -> mx.JDKConfig:
+def _validate_jdk(run_spec: "PolybenchRunSpecification") -> mx.JDKConfig:
     jdk = mx.get_jdk()
+    rerun_details = (
+        'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
+        '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
+    )
     if not mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home):
-        rerun_details = (
-            'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
-            '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
-        )
-        if is_native:
+        if run_spec.is_native:
             mx.abort(
                 f"Polybench was invoked with a non-Graal JDK ({jdk.home}), but a native image run was requested. "
                 f"Re-run using a Graal JDK. " + rerun_details
@@ -288,8 +291,19 @@ def _validate_jdk(is_native: bool) -> mx.JDKConfig:
                 f"Polybench is intended to run on a Graal JDK, but it was invoked with a non-Graal JDK ({jdk.home}). "
                 f"If you encounter issues, consider re-running using a GraalVM release. " + rerun_details
             )
+
+    if VMFeature.PGO in run_spec.vm_features and not _check_vm_is_enterprise(jdk.home):
+        mx.abort(
+            "PGO was requested, but the Graal JDK specified does not appear to support PGO. Re-run using an Oracle GraalVM. "
+            + rerun_details
+        )
+
     mx.logv(f"Using GraalVM at {jdk.home}")
     return jdk
+
+
+def _check_vm_is_enterprise(jdk_home):
+    return os.path.exists(os.path.join(jdk_home, "lib", "svm", "builder", "svm-enterprise.jar"))
 
 
 def _parse_mx_benchmark_pattern(pattern: str, pattern_is_glob: bool) -> str:
