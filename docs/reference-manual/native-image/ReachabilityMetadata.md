@@ -124,7 +124,7 @@ Computing metadata in code can be achieved in two ways:
 ## Specifying Metadata with JSON
 
 All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
-The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json).
+The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.2.0.json).
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).
 The _reachability-metadata.json_ configuration contains a single object with one field for each type of metadata. Each field in the top-level object contains an array of *metadata entries*:
