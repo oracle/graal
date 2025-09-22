@@ -35,7 +35,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_sdk_vm_ng
 from mx_benchmark import DataPoints
-from mx_sdk_benchmark import GraalVm, NativeImageVM
+from mx_sdk_benchmark import GraalVm
 
 _suite = mx.suite('vm')
 
@@ -225,23 +225,6 @@ def register_graalvm_vms():
                 # needed for GraalWasm SIMD benchmarks
                 extra_launcher_args += ['--vm.-add-modules=jdk.incubator.vector']
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args + extra_launcher_args), _suite, priority)
-
-    optimization_levels = ['O0', 'O1', 'O2', 'O3', 'Os']
-    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
-
-    for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
-        if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            config_names = list()
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
-                config_names.append(f'{main_config}-{config_suffix}')
-
-            for optimization_level in optimization_levels:
-                config_names.append(f'{optimization_level}-{config_suffix}')
-                for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
-                    config_names.append(f'{main_config}-{optimization_level}-{config_suffix}')
-
-            for config_name in config_names:
-                mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
     # Add VMs for libgraal
     if mx.suite('substratevm', fatalIfMissing=False) is not None:

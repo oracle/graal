@@ -1823,9 +1823,29 @@ class NativeImageVM(GraalVm):
         return layered_stages
 
 
-# Adds JAVA_HOME VMs so benchmarks can run on GraalVM binaries without building them first.
-for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite)
+def register_graalvm_vms():
+    # a simple JVM config that runs without any custom flag
+    mx_benchmark.add_java_vm(JvmciJdkVm('server', 'vanilla', []), _suite, 2)
+
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
+        mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite)
+
+    optimization_levels = ['O0', 'O1', 'O2', 'O3', 'Os']
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
+
+    for short_name, config_suffix in [(None, ''), ('niee', '-ee'), ('ni', '-ce')]:
+        if short_name is None or any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
+            config_names = list()
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity + (['g1gc', 'pgo', 'g1gc-pgo'] if config_suffix != '-ce' else []):
+                config_names.append(f'{main_config}{config_suffix}')
+
+            for optimization_level in optimization_levels:
+                config_names.append(f'{optimization_level}{config_suffix}')
+                for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
+                    config_names.append(f'{main_config}-{optimization_level}{config_suffix}')
+
+            for config_name in config_names:
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
