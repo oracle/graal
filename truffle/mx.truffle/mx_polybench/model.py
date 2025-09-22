@@ -461,10 +461,47 @@ class PolybenchBenchmarkSuite(
         return vm_args + [PolybenchBenchmarkSuite.POLYBENCH_MAIN] + polybench_args
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        """Delegates to the super implementation then injects engine.config into every datapoint."""
         ret_code, out, dims = super().runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        dims["engine.config"] = self._get_mode(bmSuiteArgs)
+        host_vm_config = self._infer_host_vm_config(bmSuiteArgs, dims)
+        guest_vm, guest_vm_config = self._infer_guest_vm_info(benchmarks, bmSuiteArgs)
+        dims.update(
+            {
+                "host-vm-config": host_vm_config,
+                "guest-vm": guest_vm,
+                "guest-vm-config": guest_vm_config,
+            }
+        )
         return ret_code, out, dims
+
+    def _infer_host_vm_config(self, bm_suite_args, dims):
+        edition = dims.get("platform.graalvm-edition", "unknown").lower()
+        if edition not in ["ce", "ee"] or not dims.get("platform.prebuilt-vm", False):
+            raise ValueError(f"Polybench should only run with a prebuilt GraalVM. Dimensions found: {dims}")
+
+        if self.is_native_mode(bm_suite_args):
+            # patch ce/ee suffix
+            existing_config = dims["host-vm-config"]
+            existing_edition = existing_config.split("-")[-1]
+            if existing_edition in ["ce", "ee"]:
+                assert (
+                    existing_edition == edition
+                ), f"Existing host-vm-config {existing_config} conflicts with GraalVM edition {edition}"
+                return existing_config
+            return dims["host-vm-config"] + "-" + edition
+        else:
+            # assume config used when building a GraalVM distribution
+            return "graal-enterprise-libgraal-pgo" if edition == "ee" else "graal-core-libgraal"
+
+    def _infer_guest_vm_info(self, benchmarks, bm_suite_args) -> Tuple[str, str]:
+        resolved_benchmark = self._resolve_current_benchmark(benchmarks)
+        guest_vm = "-".join(sorted(resolved_benchmark.suite.languages))
+        if "--engine.Compilation=false" in self.runArgs(
+            bm_suite_args
+        ) or "-Dpolyglot.engine.Compilation=false" in self.vmArgs(bm_suite_args):
+            guest_vm_config = "interpreter"
+        else:
+            guest_vm_config = "default"
+        return guest_vm, guest_vm_config
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         metric_name = PolybenchBenchmarkSuite._get_metric_name(output)
@@ -585,14 +622,6 @@ class PolybenchBenchmarkSuite(
                 f"Polybench metric {metric_name} could not be mapped to a standardized name. Consider updating POLYBENCH_METRIC_MAPPING."
             )
             return metric_name
-
-    def _get_mode(self, bmSuiteArgs):
-        """Determines the "mode" to report in benchmark data points."""
-        if "--engine.Compilation=false" in self.runArgs(
-            bmSuiteArgs
-        ) or "-Dpolyglot.engine.Compilation=false" in self.vmArgs(bmSuiteArgs):
-            return "interpreter"
-        return "standard"
 
 
 class ExcludeWarmupRule(mx_benchmark.StdOutRule):
