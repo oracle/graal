@@ -29,6 +29,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.espresso.classfile.ParserField;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField implements CremaResolvedJavaField {
@@ -47,6 +48,32 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
         return new CremaResolvedJavaFieldImpl(declaringClass, f, offset);
     }
 
+    @Override
+    public JavaType getType() {
+        /*
+         * For fields created at build-time, the type is set if it is available. We explicitly do
+         * not want to trigger field type resolution at build-time.
+         *
+         * If the resolvedType is null, the type was not included in the image. If we were to
+         * eagerly create a ResolvedJavaType for it, we would force it back in.
+         */
+        if (resolvedType == null) {
+            UnresolvedJavaType unresolvedJavaType = UnresolvedJavaType.create(getSymbolicType().toString());
+            /*
+             * This should not trigger actual class loading. Instead, we query the loader registry
+             * for an already loaded class.
+             */
+            Class<?> cls = CremaSupport.singleton().findLoadedClass(unresolvedJavaType, getDeclaringClass());
+            if (cls == null) {
+                // Not loaded: return the unresolved type
+                return unresolvedJavaType;
+            }
+            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+        }
+        return resolvedType;
+    }
+
+    @Override
     public InterpreterResolvedJavaType getResolvedType() {
         if (resolvedType == null) {
             Class<?> cls = CremaSupport.singleton().resolveOrThrow(UnresolvedJavaType.create(getSymbolicType().toString()), getDeclaringClass());
