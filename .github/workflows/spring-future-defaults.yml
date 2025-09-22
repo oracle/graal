@@ -38,17 +38,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Weekly Reachability Metadata Tests
+name: Weekly Spring Tests (--future-defaults=all)
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/reachability-metadata-template.yml'
-      - '.github/workflows/reachability-metadata.yml'
+      - '.github/workflows/spring-template.yml'
+      - '.github/workflows/spring.yml'
   schedule:
-  - cron: '0 1 * * 1'
+  - cron: '0 4 * * 1'
   workflow_dispatch:
 
 jobs:
   call-template:
-    uses: './.github/workflows/reachability-metadata-template.yml'
+    uses: './.github/workflows/spring-template.yml'
+    with:
+      NATIVE_IMAGE_OPTIONS: '--future-defaults=all'
