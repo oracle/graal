@@ -754,6 +754,7 @@ public class SubstrateDiagnostics {
                         }
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
+                    log.string(", OS thread ").signed(VMThreads.OSThreadIdTL.get(thread)).string(" (").zhex(VMThreads.OSThreadHandleTL.get(thread)).string(")");
                     log.newline();
                     printed++;
                 }
@@ -876,7 +877,10 @@ public class SubstrateDiagnostics {
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            log.string("Containerized: ").string(String.valueOf(Container.singleton().isContainerized())).newline();
+            if (RuntimeCompilation.isEnabled()) {
+                log.string("Supports isolated compilation: ").bool(SubstrateOptions.supportCompileInIsolates()).newline();
+            }
+            log.string("Container support: ").bool(Container.isSupported()).newline();
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
@@ -898,12 +902,18 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
-            log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
+            log.string("Isolate id: ").signed(Isolates.getIsolateId());
+            if (RuntimeCompilation.isEnabled() && IsolateArgumentParser.isCompilationIsolate()) {
+                log.string(" (compilation isolate)");
+            }
+            log.newline();
+
             log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             if (SubstrateOptions.useRelativeCodePointers()) {
                 log.string("Code base: ").zhex(KnownIntrinsics.codeBase()).newline();
             }
             log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
+            log.string("Containerized: ").bool(Container.singleton().isContainerized()).newline();
 
             if (Container.singleton().isContainerized()) {
                 log.string("CPU cores (container): ");
@@ -962,6 +972,9 @@ public class SubstrateDiagnostics {
                 layerNumber++;
             } while (info.isNonNull());
 
+            if (RuntimeCompilation.isEnabled()) {
+                log.string("Compile in isolates: ").bool(SubstrateOptions.shouldCompileInIsolates()).newline();
+            }
             log.indent(false);
         }
 
