@@ -63,6 +63,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.NativeEnv;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -198,6 +199,47 @@ public final class Management extends NativeEnv {
         return threadMXBean;
     }
 
+    private record OptionalSupportRecord(
+                    boolean compTimeMonitoringSupport,
+                    boolean threadContentionMonitoringSupport,
+                    boolean currentThreadCpuTimeSupport,
+                    boolean otherThreadCpuTimeSupport,
+                    boolean threadAllocatedMemorySupport,
+                    boolean remoteDiagnosticCommandsSupport,
+                    boolean objectMonitorUsageSupport,
+                    boolean synchronizerUsageSupport) {
+    }
+
+    /**
+     * Method for synchronizing the state of the underlying JmmOptionalSupport struct between
+     * GetOptionalSupport and initOptionalSupportFields.
+     */
+    private OptionalSupportRecord getOptionalSupportRecord() {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        return new OptionalSupportRecord(
+                        /* compTimeMonitoringSupport */ false,
+                        /* threadContentionMonitoringSupport */ false,
+                        /* currentThreadCpuTimeSupport */ hostBean.isCurrentThreadCpuTimeSupported(),
+                        /* otherThreadCpuTimeSupport */ hostBean.isThreadCpuTimeSupported(),
+                        /* threadAllocatedMemorySupport */ false,
+                        /* remoteDiagnosticCommandsSupport */ false,
+                        /* objectMonitorUsageSupport */ false,
+                        /* synchronizerUsageSupport */ false);
+    }
+
+    public void initOptionalSupportFields(LibsMeta libsMeta) {
+        StaticObject staticObject = libsMeta.management.sun_management_VMManagementImpl.tryInitializeAndGetStatics();
+        OptionalSupportRecord record = getOptionalSupportRecord();
+        libsMeta.management.sun_management_VMManagementImpl_compTimeMonitoringSupport.setBoolean(staticObject, record.compTimeMonitoringSupport());
+        libsMeta.management.sun_management_VMManagementImpl_threadContentionMonitoringSupport.setBoolean(staticObject, record.threadContentionMonitoringSupport());
+        libsMeta.management.sun_management_VMManagementImpl_currentThreadCpuTimeSupport.setBoolean(staticObject, record.currentThreadCpuTimeSupport());
+        libsMeta.management.sun_management_VMManagementImpl_otherThreadCpuTimeSupport.setBoolean(staticObject, record.otherThreadCpuTimeSupport());
+        libsMeta.management.sun_management_VMManagementImpl_threadAllocatedMemorySupport.setBoolean(staticObject, record.threadAllocatedMemorySupport());
+        libsMeta.management.sun_management_VMManagementImpl_remoteDiagnosticCommandsSupport.setBoolean(staticObject, record.remoteDiagnosticCommandsSupport());
+        libsMeta.management.sun_management_VMManagementImpl_objectMonitorUsageSupport.setBoolean(staticObject, record.objectMonitorUsageSupport());
+        libsMeta.management.sun_management_VMManagementImpl_synchronizerUsageSupport.setBoolean(staticObject, record.synchronizerUsageSupport());
+    }
+
     /**
      * Procedure to support a new management version in Espresso:
      * <ul>
@@ -280,9 +322,32 @@ public final class Management extends NativeEnv {
         ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
         supportBuf.putInt(0); // clear
         JmmOptionalSupport.JmmOptionalSupportWrapper optionalSupport = getVM().getStructs().jmmOptionalSupport.wrap(getHandles(), supportPtr);
-        ThreadMXBean hostBean = getHostThreadMXBean();
-        optionalSupport.isOtherThreadCpuTimeSupported(hostBean.isThreadCpuTimeSupported() ? 1 : 0);
-        optionalSupport.isCurrentThreadCpuTimeSupported(hostBean.isCurrentThreadCpuTimeSupported() ? 1 : 0);
+
+        OptionalSupportRecord record = getOptionalSupportRecord();
+        if (record.compTimeMonitoringSupport) {
+            optionalSupport.isCompilationTimeMonitoringSupported(1);
+        }
+        if (record.threadContentionMonitoringSupport) {
+            optionalSupport.isThreadContentionMonitoringSupported(1);
+        }
+        if (record.currentThreadCpuTimeSupport) {
+            optionalSupport.isCurrentThreadCpuTimeSupported(1);
+        }
+        if (record.otherThreadCpuTimeSupport) {
+            optionalSupport.isOtherThreadCpuTimeSupported(1);
+        }
+        if (record.threadAllocatedMemorySupport) {
+            optionalSupport.isThreadAllocatedMemorySupported(1);
+        }
+        if (record.remoteDiagnosticCommandsSupport) {
+            optionalSupport.isRemoteDiagnosticCommandsSupported(1);
+        }
+        if (record.objectMonitorUsageSupport) {
+            optionalSupport.isObjectMonitorUsageSupported(1);
+        }
+        if (record.synchronizerUsageSupport) {
+            optionalSupport.isSynchronizerUsageSupported(1);
+        }
         return 0;
     }
 

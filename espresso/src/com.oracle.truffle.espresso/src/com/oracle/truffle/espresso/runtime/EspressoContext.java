@@ -596,6 +596,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
             meta.postSystemInit();
             if (language.useEspressoLibs()) {
+                libsMeta.postSystemInit();
                 truffleIO.postSystemInit();
             }
 

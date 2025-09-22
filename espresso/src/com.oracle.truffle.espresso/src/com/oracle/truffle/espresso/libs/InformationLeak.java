@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.libs;
 
 import java.io.Console;
 import java.io.IOException;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Inet4Address;
@@ -41,6 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.vm.Management;
 
 /**
  * In the context of the EspressoLibs project, this class is designed to aggregate methods and
@@ -48,6 +54,8 @@ import com.oracle.truffle.espresso.runtime.OS;
  * such information might not be preferable due to security or privacy concerns. However, it is
  * assumed that permission checks are done in the caller's of InformationLeak. Please note it leaks
  * host information, meaning return types should not be StaticObjects!
+ * <p>
+ * Also consider that at the moment the class is not complete yet (GR-70658)!
  */
 public class InformationLeak {
     private static final Method IS_TERMINAL_METHOD = getIsTerminalMethod();
@@ -183,4 +191,55 @@ public class InformationLeak {
             throw Throw.throwSocketException(e, context);
         }
     }
+
+    public @JavaType(MemoryManagerMXBean[].class) StaticObject getMemoryManagers(Management management) {
+        // todo(GR-70658) add the corresponding method in Management properly to InformationLeak
+        /*
+         * At the moment this method exceptionally returns a StaticObject since it directly calls
+         * the corresponding method in Management which was not yet added to InformationLeak.
+         */
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetMemoryManagers(StaticObject.NULL, context.getMeta());
+    }
+
+    public @JavaType(MemoryPoolMXBean[].class) StaticObject getMemoryPools(Management management) {
+        // todo(GR-70658) add the corresponding method in Management properly to InformationLeak
+        /*
+         * At the moment this method exceptionally returns a StaticObject since it directly calls
+         * the corresponding method in Management which was not yet added to InformationLeak.
+         */
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetMemoryPools(StaticObject.NULL, context.getMeta());
+    }
+
+    public @JavaType(MemoryUsage.class) StaticObject getMemoryPoolUsage(@JavaType(internalName = "Lsun/management/MemoryPoolImpl;") StaticObject self, Management management) {
+        // todo(GR-70658) add the corresponding method in Management properly to InformationLeak
+        /*
+         * At the moment this method exceptionally returns a StaticObject since it directly calls
+         * the corresponding method in Management which was not yet added to InformationLeak.
+         */
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetMemoryPoolUsage(self, context.getMeta());
+    }
+
+    public int getManagementVersion(Management management) {
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetVersion();
+    }
+
+    public void initOptionalSupportFields(Management management, LibsMeta libsMeta) {
+        assert context.getEspressoEnv().EnableManagement;
+        management.initOptionalSupportFields(libsMeta);
+    }
+
+    public boolean getBooleanManagementAttribute(Management management, int att) {
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetBoolAttribute(att);
+    }
+
+    public long getLongManagementAttribute(Management management, int att) {
+        assert context.getEspressoEnv().EnableManagement;
+        return management.GetLongAttribute(StaticObject.NULL, att);
+    }
+
 }

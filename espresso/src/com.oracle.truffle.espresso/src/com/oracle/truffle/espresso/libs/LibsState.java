@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.jni.StrongHandles;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -43,6 +44,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.Management;
 
 public class LibsState {
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
@@ -88,6 +90,23 @@ public class LibsState {
         if (!context.getEnv().isCreateProcessAllowed()) {
             throw Throw.throwSecurityException("process creation is not allowed!", context);
         }
+    }
+
+    public void checkManagement() {
+        if (!context.getEspressoEnv().EnableManagement) {
+            throw Throw.throwSecurityException("Management is disabled", context);
+        }
+    }
+
+    @TruffleBoundary
+    public Management checkAndGetManagement() {
+        checkManagement();
+        Management management = context.getVM().getManagement();
+        if (management == null) {
+            // management is only null if Management is disabled
+            throw EspressoError.shouldNotReachHere();
+        }
+        return management;
     }
 
     public final class LibsStateNet {

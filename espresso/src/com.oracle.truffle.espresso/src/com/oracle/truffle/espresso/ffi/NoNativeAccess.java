@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.Collect;
 
 public class NoNativeAccess implements NativeAccess {
@@ -119,8 +120,10 @@ public class NoNativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
-        getLogger().warning(() -> "Attempting to create native closure without native access.");
-        return null;
+        if (EspressoContext.get(null).isInitialized()) {
+            getLogger().warning(() -> "Attempting to create native closure without native access.");
+        }
+        return RawPointer.nullInstance();
     }
 
     @Override
