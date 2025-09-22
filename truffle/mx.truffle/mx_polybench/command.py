@@ -368,10 +368,17 @@ class PolybenchRunSpecification(NamedTuple):
     def is_native(self) -> bool:
         return VMFeature.NATIVE in self.vm_features
 
-    def jvm_name(self) -> str:
-        return "native-image-java-home" if self.is_native() else "java-home"
+    def jvm_and_config(self) -> Tuple[str, str]:
+        if self.is_native():
+            # The VM config misses the 'ce'/'ee' suffix. The PolybenchBenchmarkSuite
+            # patches this in the output data.
+            return "native-image", self._native_vm_config()
+        else:
+            # The vanilla configuration does not inject any additional VM arguments.
+            # The PolybenchBenchmarkSuite overwrites this config in the output data.
+            return "server", "vanilla"
 
-    def jvm_config(self) -> str:
+    def _native_vm_config(self) -> str:
         features = []
         if VMFeature.G1GC in self.vm_features:
             features.append("g1gc")
@@ -387,10 +394,11 @@ def _run_specification(
     reuse_disk_images: bool = False,
 ):
     pattern = _parse_mx_benchmark_pattern(spec.pattern, pattern_is_glob)
+    jvm_name, jvm_config = spec.jvm_and_config()
     mx_benchmark_args = (
         [f"polybench:{pattern}"]
         + spec.arguments.mx_benchmark_args
-        + ["--", f"--jvm={spec.jvm_name()}", f"--jvm-config={spec.jvm_config()}"]
+        + ["--", f"--jvm={jvm_name}", f"--jvm-config={jvm_config}", "--prebuilt-vm"]
         + spec.arguments.vm_args
         + ["--"]
         + spec.arguments.polybench_args
