@@ -157,6 +157,9 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
 
     def get_jdk(self):
+        if self.run_on_java_home():
+            # forcing the use of the default JAVA_HOME VM as runtime instead of the one pointed at by the tag
+            return mx.get_jdk()
         tag = mx.get_jdk_option().tag
         if tag and tag != JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
@@ -254,7 +257,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
             args
 
     def home(self):
-        if self.name() == 'native-image-java-home':
+        if self.run_on_java_home() or self.name() == 'native-image-java-home':
             return mx.get_jdk().home
         return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
 
