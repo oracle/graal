@@ -444,6 +444,68 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return location;
     }
 
+    public void addBranchOnNull(int location) {
+        assert location >= 0;
+        final int relativeOffset = location - (location() + 1);
+        if (relativeOffset <= 0 && relativeOffset >= -255) {
+            add1(Bytecode.MISC);
+            add1(Bytecode.BR_ON_NULL_U8);
+            // target
+            add1(-relativeOffset);
+            // profile
+            addProfile();
+        } else {
+            add1(Bytecode.MISC);
+            add1(Bytecode.BR_ON_NULL_I32);
+            // target
+            add4(relativeOffset);
+            // profile
+            addProfile();
+        }
+    }
+
+    public int addBranchOnNullLocation() {
+        add1(Bytecode.MISC);
+        add1(Bytecode.BR_ON_NULL_I32);
+        final int location = location();
+        // target
+        add4(0);
+        // profile
+        addProfile();
+        return location;
+    }
+
+    public void addBranchOnNonNull(int location) {
+        assert location >= 0;
+        final int relativeOffset = location - (location() + 1);
+        if (relativeOffset <= 0 && relativeOffset >= -255) {
+            add1(Bytecode.MISC);
+            add1(Bytecode.BR_ON_NON_NULL_U8);
+            // target
+            add1(-relativeOffset);
+            // profile
+            addProfile();
+        } else {
+            add1(Bytecode.MISC);
+            add1(Bytecode.BR_ON_NON_NULL_I32);
+            // target
+            add4(relativeOffset);
+            // profile
+            addProfile();
+        }
+    }
+
+    public int addBranchOnNonNullLocation() {
+        add1(Bytecode.MISC);
+        add1(Bytecode.BR_ON_NON_NULL_I32);
+        final int location = location();
+        // target
+        add4(0);
+        // profile
+        addProfile();
+        return location;
+    }
+
     /**
      * Adds a branch table opcode to the bytecode. If the size fits into an u8 value, a br_table_u8
      * and u8 size are added. Otherwise, a br_table_i32 and i32 size are added. In both cases, a
@@ -539,9 +601,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an indirect call instruction to the bytecode. If the nodeIndex, typeIndex, and
      * tableIndex all fit into a u8 value, a call_indirect_u8 and three u8 values are added.
-     * Otherwise, a call_indirect_i32 and three i32 values are added. In both cases, a 2-byte
-     * profile is added.
-     * 
+     * Otherwise, a call_indirect_i32 and three i32 values are added.
+     *
      * @param nodeIndex The node index of the indirect call
      * @param typeIndex The type index of the indirect call
      * @param tableIndex The table index of the indirect call
@@ -557,6 +618,28 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add4(nodeIndex);
             add4(typeIndex);
             add4(tableIndex);
+        }
+    }
+
+    /**
+     * Adds a reference call instruction to the bytecode. If the nodeIndex and typeIndex both fit
+     * into a u8 value, a call_ref_u8 and two u8 values are added. Otherwise, a call_ref_i32 and
+     * two i32 values are added.
+     *
+     * @param nodeIndex The node index of the reference call
+     * @param typeIndex The type index of the reference call
+     */
+    public void addRefCall(int nodeIndex, int typeIndex) {
+        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex)) {
+            add1(Bytecode.MISC);
+            add1(Bytecode.CALL_REF_U8);
+            add1(nodeIndex);
+            add1(typeIndex);
+        } else {
+            add1(Bytecode.MISC);
+            add1(Bytecode.CALL_REF_I32);
+            add4(nodeIndex);
+            add4(typeIndex);
         }
     }
 

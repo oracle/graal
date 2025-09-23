@@ -62,6 +62,7 @@ public enum Failure {
     DATA_COUNT_SECTION_REQUIRED(Type.MALFORMED, "data count section required"),
     ILLEGAL_OPCODE(Type.MALFORMED, "illegal opcode"),
     MALFORMED_REFERENCE_TYPE(Type.MALFORMED, "malformed reference type"),
+    MALFORMED_HEAP_TYPE(Type.MALFORMED, "malformed heap type"),
     MALFORMED_IMPORT_KIND(Type.MALFORMED, "malformed import kind"),
     END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
     UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
@@ -145,6 +146,7 @@ public enum Failure {
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
 
     NULL_REFERENCE(Type.TRAP, "defined element is ref.null"),
+    NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),

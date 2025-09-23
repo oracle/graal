@@ -113,6 +113,16 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
+    void addBranchOnNull(RuntimeBytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchOnNullLocation());
+    }
+
+    @Override
+    void addBranchOnNonNull(RuntimeBytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchOnNonNullLocation());
+    }
+
+    @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branchTargets.add(bytecode.addBranchTableItemLocation());
     }

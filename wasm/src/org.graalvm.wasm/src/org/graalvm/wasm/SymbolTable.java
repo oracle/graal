@@ -88,7 +88,8 @@ public abstract class SymbolTable {
         public enum Kind {
             Number,
             Vector,
-            Reference
+            Reference,
+            Bottom
         }
 
         public abstract boolean matches(ClosedValueType valueSubType);
@@ -126,7 +127,7 @@ public abstract class SymbolTable {
 
         @Override
         public boolean matches(ClosedValueType valueSubType) {
-            return this == valueSubType;
+            return valueSubType == BottomType.BOTTOM || valueSubType == this;
         }
 
         @Override
@@ -150,7 +151,7 @@ public abstract class SymbolTable {
 
         @Override
         public boolean matches(ClosedValueType valueSubType) {
-            return this == valueSubType;
+            return valueSubType == BottomType.BOTTOM || valueSubType == this;
         }
 
         @Override
@@ -185,7 +186,7 @@ public abstract class SymbolTable {
 
         @Override
         public boolean matches(ClosedValueType valueSubType) {
-            return valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) && this.closedHeapType.matches(referenceSubType.closedHeapType);
+            return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) && this.closedHeapType.matches(referenceSubType.closedHeapType);
         }
 
         @Override
@@ -269,6 +270,22 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Function;
+        }
+    }
+
+    public static final class BottomType extends ClosedValueType {
+        public static final BottomType BOTTOM = new BottomType();
+
+        private BottomType() {}
+
+        @Override
+        public boolean matches(ClosedValueType valueSubType) {
+            return valueSubType instanceof BottomType;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Bottom;
         }
     }
 
@@ -529,7 +546,7 @@ public abstract class SymbolTable {
     @CompilationFinal private int codeEntryCount;
 
     /**
-     * All function indices that can be references via
+     * All function indices that can be referenced via
      * {@link org.graalvm.wasm.constants.Instructions#REF_FUNC}.
      */
     @CompilationFinal private EconomicSet<Integer> functionReferences;
@@ -807,6 +824,9 @@ public abstract class SymbolTable {
             case WasmType.F64_TYPE -> NumberType.F64;
             case WasmType.V128_TYPE -> VectorType.V128;
             default -> {
+                if (WasmType.isBottomType(type)) {
+                    yield BottomType.BOTTOM;
+                }
                 assert WasmType.isReferenceType(type);
                 boolean nullable = WasmType.isNullable(type);
                 yield switch (WasmType.getAbstractHeapType(type)) {
@@ -1451,7 +1471,7 @@ public abstract class SymbolTable {
     }
 
     public void checkElemType(int elemIndex, int expectedType) {
-        assertIntEqual(expectedType, (int) elemInstances[elemIndex], Failure.TYPE_MISMATCH);
+        Assert.assertTrue(matches(expectedType, (int) elemInstances[elemIndex]), Failure.TYPE_MISMATCH);
     }
 
     private void ensureElemInstanceCapacity(int index) {

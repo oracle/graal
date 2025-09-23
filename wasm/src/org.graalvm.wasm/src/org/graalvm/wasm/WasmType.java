@@ -100,7 +100,7 @@ public class WasmType implements TruffleObject {
      */
     public static final int TOP = -0x7d;
     public static final int NULL_TYPE = -0x7e;
-    public static final int UNKNOWN_TYPE = -0x7f;
+    public static final int BOT = -0x7f;
 
     /**
      * Bytes used in the binary encoding of types.
@@ -155,19 +155,23 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isNumberType(int type) {
-        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || type == UNKNOWN_TYPE;
+        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || isBottomType(type);
     }
 
     public static boolean isVectorType(int type) {
-        return type == V128_TYPE || type == UNKNOWN_TYPE;
+        return type == V128_TYPE || isBottomType(type);
     }
 
     public static boolean isReferenceType(int type) {
-        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE || type == UNKNOWN_TYPE;
+        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE || isBottomType(type);
+    }
+
+    public static boolean isBottomType(int type) {
+        return withNullable(true, type) == BOT;
     }
 
     public static boolean isConcreteReferenceType(int type) {
-        return type >= 0;
+        return type >= 0 || isBottomType(type);
     }
 
     public static int getTypeIndex(int type) {

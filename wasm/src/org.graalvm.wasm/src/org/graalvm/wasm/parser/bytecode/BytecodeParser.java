@@ -790,6 +790,16 @@ public abstract class BytecodeParser {
                     int miscOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (miscOpcode) {
+                        case Bytecode.CALL_REF_U8: {
+                            callNodes.add(new CallNode(originalOffset));
+                            offset += 3;
+                            break;
+                        }
+                        case Bytecode.CALL_REF_I32: {
+                            callNodes.add(new CallNode(originalOffset));
+                            offset += 12;
+                            break;
+                        }
                         case Bytecode.I32_TRUNC_SAT_F32_S:
                         case Bytecode.I32_TRUNC_SAT_F32_U:
                         case Bytecode.I32_TRUNC_SAT_F64_S:
@@ -799,6 +809,11 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F64_S:
                         case Bytecode.I64_TRUNC_SAT_F64_U:
                         case Bytecode.THROW_REF: {
+                            break;
+                        }
+                        case Bytecode.BR_ON_NULL_U8:
+                        case Bytecode.BR_ON_NON_NULL_U8: {
+                            offset += 3;
                             break;
                         }
                         case Bytecode.MEMORY_FILL:
@@ -813,6 +828,11 @@ public abstract class BytecodeParser {
                         case Bytecode.TABLE_FILL:
                         case Bytecode.THROW: {
                             offset += 4;
+                            break;
+                        }
+                        case Bytecode.BR_ON_NULL_I32:
+                        case Bytecode.BR_ON_NON_NULL_I32: {
+                            offset += 6;
                             break;
                         }
                         case Bytecode.MEMORY_INIT:

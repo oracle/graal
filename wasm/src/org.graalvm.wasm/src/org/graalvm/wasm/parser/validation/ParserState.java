@@ -90,7 +90,7 @@ public class ParserState {
     private int popInternal(int expectedValueType) {
         if (availableStackSize() == 0) {
             if (isCurrentStackUnreachable()) {
-                return WasmType.UNKNOWN_TYPE;
+                return WasmType.BOT;
             } else {
                 if (expectedValueType == WasmType.TOP) {
                     throw ValidationErrors.createExpectedTopOnEmptyStack();
@@ -200,7 +200,7 @@ public class ParserState {
      */
     public int popChecked(int expectedValueType) {
         final int actualValueType = popInternal(expectedValueType);
-        if (!symbolTable.matches(expectedValueType, actualValueType) && actualValueType != WasmType.UNKNOWN_TYPE && expectedValueType != WasmType.UNKNOWN_TYPE) {
+        if (!WasmType.isBottomType(actualValueType) && !WasmType.isBottomType(expectedValueType) && !symbolTable.matches(expectedValueType, actualValueType)) {
             throw ValidationErrors.createTypeMismatch(expectedValueType, actualValueType);
         }
         return actualValueType;
@@ -210,18 +210,19 @@ public class ParserState {
      * Pops the topmost value type from the stack and checks if it is a reference type.
      *
      * @throws WasmException If the stack is empty or the value type is not a reference type.
+     * @return The reference type on top of the stack.
      */
-    public void popReferenceTypeChecked() {
+    public int popReferenceTypeChecked() {
         if (availableStackSize() != 0) {
             final int value = valueStack.popBack();
             if (WasmType.isReferenceType(value)) {
-                return;
+                return value;
             }
             // Push value back onto the stack and perform a checked pop to get the correct error
             // message
             valueStack.push(value);
         }
-        popChecked(WasmType.FUNCREF_TYPE);
+        return popChecked(WasmType.FUNCREF_TYPE);
     }
 
     /**
@@ -418,6 +419,34 @@ public class ParserState {
         frame.addBranch(bytecode);
     }
 
+    public void addBranchOnNull(int branchLabel) {
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        final int[] labelTypes = frame.labelTypes();
+        popAll(labelTypes);
+        pushAll(labelTypes);
+        frame.addBranchOnNull(bytecode);
+    }
+
+    public void addBranchOnNonNull(int branchLabel, int referenceType) {
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        final int[] labelTypes = frame.labelTypes();
+        if (labelTypes.length < 1) {
+            throw ValidationErrors.createLabelTypesMismatch(labelTypes, new int[]{referenceType});
+        }
+        if (!symbolTable.matches(labelTypes[labelTypes.length - 1], referenceType)) {
+            throw ValidationErrors.createTypeMismatch(labelTypes[labelTypes.length - 1], referenceType);
+        }
+        for (int i = labelTypes.length - 2; i >= 0; i--) {
+            popChecked(labelTypes[i]);
+        }
+        for (int i = 0; i < labelTypes.length - 1; i++) {
+            push(labelTypes[i]);
+        }
+        frame.addBranchOnNonNull(bytecode);
+    }
+
     /**
      * Performs the necessary branch checks and adds the branch table information to the extra data
      * array.
@@ -457,18 +486,34 @@ public class ParserState {
     }
 
     /**
-     * Adds the index of an indirect call node to the extra data array.
+     * Adds a reference call instruction to the bytecode, along with its immediate argument and the
+     * call node index.
      *
-     * @param nodeIndex The index of the indirect call.
+     * @param nodeIndex The index of the call node associated with this call instruction.
+     * @param typeIndex The index of the defined function type.
+     */
+    public void addRefCall(int nodeIndex, int typeIndex) {
+        bytecode.addRefCall(nodeIndex, typeIndex);
+    }
+
+    /**
+     * Adds an indirect call instruction to the bytecode, along with its immediate arguments and the
+     * call node index.
+     *
+     * @param nodeIndex The index of the call node associated with this call instruction.
+     * @param typeIndex The index of the defined function type.
+     * @param tableIndex The index of the table in which the function will be looked up.
      */
     public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
         bytecode.addIndirectCall(nodeIndex, typeIndex, tableIndex);
     }
 
     /**
-     * Adds the index of a direct call node to the extra data array.
+     * Adds a direct call instruction to the bytecode, along with its immediate argument and the
+     * call node index.
      *
-     * @param nodeIndex The index of the direct call.
+     * @param nodeIndex The index of the call node associated with this call instruction.
+     * @param functionIndex The index of the defined function.
      */
     public void addCall(int nodeIndex, int functionIndex) {
         bytecode.addCall(nodeIndex, functionIndex);
@@ -740,19 +785,6 @@ public class ParserState {
     public void checkLabelTypes(int[] expectedTypes, int[] actualTypes) {
         if (isTypeMismatch(expectedTypes, actualTypes)) {
             throw ValidationErrors.createLabelTypesMismatch(expectedTypes, actualTypes);
-        }
-    }
-
-    /**
-     * Checks if the given function type is within range.
-     *
-     * @param typeIndex The function type.
-     * @param max The number of available function types.
-     * @throws WasmException If the given function type is greater or equal to the given maximum.
-     */
-    public void checkFunctionTypeExists(int typeIndex, int max) {
-        if (compareUnsigned(typeIndex, max) >= 0) {
-            throw ValidationErrors.createMissingFunctionType(typeIndex, max - 1);
         }
     }
 

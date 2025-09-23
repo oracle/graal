@@ -277,6 +277,11 @@ public final class Instructions {
     public static final int TABLE_SIZE = 16;
     public static final int TABLE_FILL = 17;
 
+    public static final int CALL_REF = 0x14;
+    public static final int REF_AS_NON_NULL = 0xD4;
+    public static final int BR_ON_NULL = 0xD5;
+    public static final int BR_ON_NON_NULL = 0xD6;
+
     public static final int ATOMIC = 0xFE;
 
     public static final int ATOMIC_NOTIFY = 0x00;

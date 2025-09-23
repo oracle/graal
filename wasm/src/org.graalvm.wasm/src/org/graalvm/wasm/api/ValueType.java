@@ -126,6 +126,7 @@ public enum ValueType {
                     case Function -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: typed function reference");
                 };
             }
+            case Bottom -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: bottom");
         };
     }
 }

@@ -145,6 +145,10 @@ public abstract class ControlFrame {
 
     abstract void addBranchIf(RuntimeBytecodeGen bytecode);
 
+    abstract void addBranchOnNull(RuntimeBytecodeGen bytecode);
+
+    abstract void addBranchOnNonNull(RuntimeBytecodeGen bytecode);
+
     /**
      * Adds a branch table item targeting this control frame. Automatically patches the branch
      * target as soon as it is available.

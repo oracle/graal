@@ -81,6 +81,16 @@ class LoopFrame extends ControlFrame {
     }
 
     @Override
+    void addBranchOnNull(RuntimeBytecodeGen bytecode) {
+        bytecode.addBranchOnNull(labelLocation);
+    }
+
+    @Override
+    void addBranchOnNonNull(RuntimeBytecodeGen bytecode) {
+        bytecode.addBranchOnNonNull(labelLocation);
+    }
+
+    @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         bytecode.patchLocation(bytecode.addBranchTableItemLocation(), labelLocation);
     }

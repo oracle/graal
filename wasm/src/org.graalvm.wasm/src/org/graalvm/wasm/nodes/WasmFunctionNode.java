@@ -586,7 +586,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         assert functionInstanceContext == WasmContext.get(this);
 
                         // Validate that the target function type matches the expected type of the
-                        // indirect call by performing an equivalence-class check.
+                        // indirect call.
                         if (!symtab.closedTypeAt(expectedFunctionTypeIndex).matches(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
                             enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
@@ -1495,7 +1495,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final Object refType = popReference(frame, stackPointer - 1);
                         pushInt(frame, stackPointer - 1, refType == WasmConstant.NULL ? 1 : 0);
                         break;
-                    case Bytecode.REF_FUNC:
+                    case Bytecode.REF_FUNC: {
                         final int functionIndex = rawPeekI32(bytecode, offset);
                         final WasmFunction function = module.symbolTable().function(functionIndex);
                         final WasmFunctionInstance functionInstance = instance.functionInstance(function);
@@ -1503,6 +1503,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         stackPointer++;
                         offset += 4;
                         break;
+                    }
                     case Bytecode.TABLE_GET: {
                         final int tableIndex = rawPeekI32(bytecode, offset);
                         table_get(instance, frame, stackPointer, tableIndex);
@@ -1677,6 +1678,108 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 }
                                 assert exception instanceof WasmRuntimeException : "Only wasm exceptions can be thrown by throw_ref";
                                 throw (WasmRuntimeException) exception;
+                            }
+                            case Bytecode.CALL_REF_U8:
+                            case Bytecode.CALL_REF_I32: {
+                                final int callNodeIndex;
+                                final int expectedFunctionTypeIndex;
+                                if (miscOpcode == Bytecode.CALL_REF_U8) {
+                                    callNodeIndex = rawPeekU8(bytecode, offset);
+                                    expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
+                                    offset += 2;
+                                } else {
+                                    callNodeIndex = rawPeekI32(bytecode, offset);
+                                    expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
+                                    offset += 8;
+                                }
+
+                                // Extract the function object.
+                                final WasmFunctionInstance functionInstance;
+                                final CallTarget target;
+                                final WasmContext functionInstanceContext;
+                                final Object functionOrNull = popReference(frame, --stackPointer);
+                                if (functionOrNull == WasmConstant.NULL) {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
+                                } else if (functionOrNull instanceof WasmFunctionInstance) {
+                                    functionInstance = (WasmFunctionInstance) functionOrNull;
+                                    target = functionInstance.target();
+                                    functionInstanceContext = functionInstance.context();
+                                } else {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionOrNull);
+                                }
+
+                                // Target function instance must be from the same context.
+                                assert functionInstanceContext == WasmContext.get(this);
+
+                                // Invoke the resolved function.
+                                int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
+                                Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
+                                stackPointer -= paramCount;
+                                WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
+
+                                final Object result = executeIndirectCallNode(callNodeIndex, target, args);
+                                stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, WasmLanguage.get(this));
+                                CompilerAsserts.partialEvaluationConstant(stackPointer);
+                                break;
+                            }
+                            case Bytecode.REF_AS_NON_NULL: {
+                                Object reference = popReference(frame, stackPointer - 1);
+                                if (reference == WasmConstant.NULL) {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.NULL_REFERENCE, this, "Function reference is null");
+                                }
+                                pushReference(frame, stackPointer - 1, reference);
+                                break;
+                            }
+                            case Bytecode.BR_ON_NULL_U8: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 1, reference == WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekU8(bytecode, offset);
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte value. BR_ON_NULL_U8
+                                    // can never perform a forward jump.
+                                    offset -= offsetDelta;
+                                } else {
+                                    offset += 3;
+                                    pushReference(frame, stackPointer++, reference);
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NULL_I32: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 4, reference == WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekI32(bytecode, offset);
+                                    offset += offsetDelta;
+                                } else {
+                                    offset += 6;
+                                    pushReference(frame, stackPointer++, reference);
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NON_NULL_U8: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 1, reference != WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekU8(bytecode, offset);
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte value. BR_ON_NULL_U8
+                                    // can never perform a forward jump.
+                                    offset -= offsetDelta;
+                                    pushReference(frame, stackPointer++, reference);
+                                } else {
+                                    offset += 3;
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NON_NULL_I32: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 4, reference != WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekI32(bytecode, offset);
+                                    offset += offsetDelta;
+                                    pushReference(frame, stackPointer++, reference);
+                                } else {
+                                    offset += 6;
+                                }
+                                break;
                             }
                             default:
                                 throw CompilerDirectives.shouldNotReachHere();

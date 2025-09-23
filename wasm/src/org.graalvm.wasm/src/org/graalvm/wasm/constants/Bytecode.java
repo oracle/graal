@@ -376,6 +376,15 @@ public class Bytecode {
     public static final int THROW = 0x1C;
     public static final int THROW_REF = 0x1D;
 
+    // Typed function references opcodes
+    public static final int CALL_REF_U8 = 0x1E;
+    public static final int CALL_REF_I32 = 0x1F;
+    public static final int REF_AS_NON_NULL = 0x20;
+    public static final int BR_ON_NULL_U8 = 0x21;
+    public static final int BR_ON_NULL_I32 = 0x22;
+    public static final int BR_ON_NON_NULL_U8 = 0x23;
+    public static final int BR_ON_NON_NULL_I32 = 0x24;
+
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;

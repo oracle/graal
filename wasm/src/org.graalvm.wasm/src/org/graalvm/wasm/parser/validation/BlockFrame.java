@@ -96,6 +96,16 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
+    void addBranchOnNull(RuntimeBytecodeGen bytecode) {
+        branches.add(bytecode.addBranchOnNullLocation());
+    }
+
+    @Override
+    void addBranchOnNonNull(RuntimeBytecodeGen bytecode) {
+        branches.add(bytecode.addBranchOnNonNullLocation());
+    }
+
+    @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchTableItemLocation());
     }
