@@ -1686,6 +1686,7 @@ libgraal_build_args = [
 ] if mx.is_interactive() else []) + svm_experimental_options([
     "-H:LibGraalClassLoader=jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader",
     "-Dlibgraal.module.path=${.}/../../../graalvm/libgraal.jar",
+    '-H:+ClassForNameRespectsClassLoader',
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Dtruffle.TruffleRuntime=',

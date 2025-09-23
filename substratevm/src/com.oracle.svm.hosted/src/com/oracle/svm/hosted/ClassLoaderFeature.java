@@ -27,18 +27,14 @@ package com.oracle.svm.hosted;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
-
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
@@ -123,11 +119,6 @@ public class ClassLoaderFeature implements InternalFeature {
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            LibGraalLoader libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
-            if (libGraalLoader != null) {
-                ClassLoader libGraalClassLoader = (ClassLoader) libGraalLoader;
-                ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
-            }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 config.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
