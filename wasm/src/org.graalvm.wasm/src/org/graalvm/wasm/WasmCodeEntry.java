@@ -111,6 +111,11 @@ public final class WasmCodeEntry {
         return exceptionTableOffset;
     }
 
+    @SuppressWarnings("hiding")
+    public WasmCodeEntry withExceptionTableOffset(int exceptionTableOffset) {
+        return new WasmCodeEntry(function, bytecode, localTypes, resultTypes, usesMemoryZero, exceptionTableOffset);
+    }
+
     @Override
     public String toString() {
         return "wasm-code-entry:" + functionIndex();

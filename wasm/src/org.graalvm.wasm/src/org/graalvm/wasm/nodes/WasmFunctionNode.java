@@ -160,11 +160,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
      * @param notifyFunction The callback used by {@link Bytecode#NOTIFY} instructions to inform
      *            instruments about statements in the bytecode
      */
-    WasmFunctionNode(WasmFunctionNode<V128> node, byte[] bytecode, WasmNotifyFunction notifyFunction) {
+    WasmFunctionNode(WasmFunctionNode<V128> node, byte[] bytecode, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, WasmNotifyFunction notifyFunction) {
         this.module = node.module;
-        this.codeEntry = node.codeEntry;
-        this.bytecodeStartOffset = 0;
-        this.bytecodeEndOffset = bytecode.length;
+        this.codeEntry = node.codeEntry.withExceptionTableOffset(exceptionTableOffset);
+        this.bytecodeStartOffset = bytecodeStartOffset;
+        this.bytecodeEndOffset = bytecodeEndOffset;
         this.bytecode = bytecode;
         this.callNodes = new Node[node.callNodes.length];
         for (int childIndex = 0; childIndex < callNodes.length; childIndex++) {
