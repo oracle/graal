@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
@@ -77,6 +78,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -156,6 +158,7 @@ public class PolyglotGCTest {
 
     @Before
     public void setUp() {
+        Assume.assumeTrue(GCUtils.isSupported());
         testLogHandler = new TestLogHandler();
         languageInnerContextDisposed.set(false);
     }
@@ -680,6 +683,7 @@ public class PolyglotGCTest {
 
     @Test
     public void testInnerContextSPI() throws Exception {
+        Assume.assumeTrue(TruffleTestAssumptions.isWeakEncapsulation() || !OSUtils.isWindows());
         runInSubprocess(() -> {
             Context context = newContextBuilder().build();
             AbstractExecutableTestLanguage.execute(context, UnreachableInnerContextGcLanguage2.class);
