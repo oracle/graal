@@ -31,6 +31,7 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.Map;
@@ -74,7 +75,9 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected void warn(String format, Object... args) {
-        System.out.printf("Warning:" + format + "\n", args);
+        if (debug) {
+            getDebugContext().logv(DebugContext.BASIC_LEVEL, "Warning: " + format + "%n", args);
+        }
     }
 
     protected void log(String format, Object... args) {
