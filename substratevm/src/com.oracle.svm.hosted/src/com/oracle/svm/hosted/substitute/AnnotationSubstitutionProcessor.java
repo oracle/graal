@@ -46,7 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -1107,20 +1106,18 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     protected Class<?> findTargetClass(Class<?> annotatedBaseClass, TargetClass target, boolean checkOnlyWith) {
         return findTargetClass(TargetClass.class, TargetClass.NoClassNameProvider.class,
-                        annotatedBaseClass, target, target.value(), target.className(), target.classNameProvider(), target.innerClass(), target.classLoader(),
+                        annotatedBaseClass, target, target.value(), target.className(), target.classNameProvider(), target.innerClass(),
                         checkOnlyWith ? target.onlyWith() : null);
     }
 
     protected <T> Class<?> findTargetClass(Class<T> targetClass, Class<?> noClassNameProviderClass,
                     Class<?> annotatedBaseClass, T target, Class<?> value, String targetClassName, Class<? extends Function<T, String>> classNameProvider, String[] innerClasses,
-                    Class<? extends Supplier<ClassLoader>> classloaderSupplier, Class<?>[] onlyWith) {
+                    Class<?>[] onlyWith) {
         Class<?> holder;
         String className;
-        ClassLoader suppliedLoader = null;
         if (value != targetClass) {
             guarantee(targetClassName.isEmpty(), "Both class and class name specified for substitution");
             guarantee(classNameProvider == noClassNameProviderClass, "Both class and classNameProvider specified for substitution");
-            guarantee(classloaderSupplier == TargetClass.NoClassLoaderProvider.class, "Annotation attribute 'classLoader' requires use of 'className' or 'classNameProvider'");
 
             holder = value;
             className = holder.getName();
@@ -1135,13 +1132,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             } else {
                 guarantee(!targetClassName.isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
                 className = targetClassName;
-            }
-            if (classloaderSupplier != TargetClass.NoClassLoaderProvider.class) {
-                try {
-                    suppliedLoader = ReflectionUtil.newInstance(classloaderSupplier).get();
-                } catch (ReflectionUtilError ex) {
-                    throw UserError.abort(ex.getCause(), "Cannot instantiate classloaderSupplier: %s. The class must have a parameterless constructor.", classloaderSupplier.getTypeName());
-                }
             }
         }
         if (onlyWith != null) {
@@ -1172,7 +1162,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
 
         if (holder == null) {
-            var substitutionsClassLoaders = suppliedLoader != null ? List.of(suppliedLoader) : imageClassLoader.classLoaderSupport.getClassLoaders();
+            var substitutionsClassLoaders = imageClassLoader.classLoaderSupport.getClassLoaders();
             for (ClassLoader substitutionsClassLoader : substitutionsClassLoaders) {
                 try {
                     holder = Class.forName(className, false, substitutionsClassLoader);
