@@ -2417,6 +2417,7 @@ suite = {
             "dependencies" : [
                 "com.oracle.graal.pointsto.standalone.test",
             ],
+            "unittestConfig" : "standalone-pointsto-unittest",
             "distDependencies": [
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
