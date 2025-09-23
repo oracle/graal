@@ -24,8 +24,12 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import java.util.Collections;
+import java.util.Set;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 class LibGraalSubstitutions {
@@ -53,5 +57,50 @@ class LibGraalSubstitutions {
          */
         @Alias
         public static native void clean();
+    }
+
+    /*
+     * There are no String-based class-lookups happening at libgraal runtime. Thus, we can safely
+     * prune all classloading-logic out of the image.
+     */
+    @TargetClass(value = java.lang.Class.class, onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_lang_Class {
+        @Substitute
+        public static Class<?> forName(String name, boolean initialize, ClassLoader loader)
+                        throws ClassNotFoundException {
+            throw new ClassNotFoundException(name);
+        }
+
+        @Substitute
+        private static Class<?> forName(String className, Class<?> caller)
+                        throws ClassNotFoundException {
+            throw new ClassNotFoundException(className);
+        }
+
+        @Substitute
+        public static Class<?> forName(Module module, String name) {
+            return null;
+        }
+    }
+
+    @TargetClass(value = java.lang.Module.class, onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_lang_Module {
+        @Substitute
+        public Set<String> getPackages() {
+            return Collections.emptySet();
+        }
+    }
+
+    @TargetClass(value = java.lang.ClassLoader.class, onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_lang_ClassLoader {
+        @Substitute
+        public Class<?> loadClass(String name) throws ClassNotFoundException {
+            throw new ClassNotFoundException(name);
+        }
+
+        @Substitute
+        static Class<?> findBootstrapClassOrNull(String name) {
+            return null;
+        }
     }
 }
