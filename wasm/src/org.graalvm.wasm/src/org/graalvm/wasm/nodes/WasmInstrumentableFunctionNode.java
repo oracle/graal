@@ -207,7 +207,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         final CodeEntry bcInfo = bytecodePair.getLeft();
                         final byte[] bytecode = bytecodePair.getRight();
                         final WasmFunctionNode<?> functionNodeDuplicate = new WasmFunctionNode<>(functionNode, bytecode,
-                                        bcInfo.bytecodeStartOffset(), bcInfo.bytecodeEndOffset(), bcInfo.exceptionTableOffset(), support::notifyLine);
+                                        bcInfo.bytecodeStartOffset(), bcInfo.bytecodeEndOffset(), bcInfo.exceptionTableOffset(), support);
                         return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
                 } finally {
