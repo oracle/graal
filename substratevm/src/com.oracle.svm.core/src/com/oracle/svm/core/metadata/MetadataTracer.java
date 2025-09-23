@@ -139,6 +139,7 @@ public final class MetadataTracer {
 
         if (debugWriter != null) {
             debugWriter.close();
+            debugWriter = null;
         }
     }
 
@@ -236,8 +237,11 @@ public final class MetadataTracer {
      * Marks the given proxy type as reachable from reflection.
      */
     public void traceProxyType(Class<?>[] interfaces) {
-        List<String> interfaceNames = Arrays.stream(interfaces).map(Class::getTypeName).toList();
-        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
+        String[] interfaceNames = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceNames[i] = interfaces[i].getTypeName();
+        }
+        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(Arrays.asList(interfaceNames));
         traceReflectionTypeImpl(descriptor);
     }
 
@@ -407,37 +411,6 @@ public final class MetadataTracer {
     }
 
     /**
-     * Disables tracing on the current thread from instantiation until {@link #close}.
-     */
-    public sealed interface DisableTracing extends AutoCloseable {
-        @Override
-        void close();
-    }
-
-    private final class DisableTracingImpl implements DisableTracing {
-        final String oldReason;
-
-        private DisableTracingImpl(String reason) {
-            this.oldReason = disableTracingReason.get();
-            disableTracingReason.set(reason);
-        }
-
-        @Override
-        public void close() {
-            disableTracingReason.set(oldReason);
-        }
-    }
-
-    private static final class DisableTracingNoOp implements DisableTracing {
-        private static final DisableTracingNoOp INSTANCE = new DisableTracingNoOp();
-
-        @Override
-        public void close() {
-            // do nothing
-        }
-    }
-
-    /**
      * Disables tracing on the current thread from instantiation until {@link DisableTracing#close}.
      * Should be used in a try-with-resources block.
      */
@@ -538,6 +511,37 @@ public final class MetadataTracer {
             }
         };
     }
+
+    /**
+     * Disables tracing on the current thread from instantiation until {@link #close}.
+     */
+    public sealed interface DisableTracing extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    private final class DisableTracingImpl implements DisableTracing {
+        final String oldReason;
+
+        private DisableTracingImpl(String reason) {
+            this.oldReason = disableTracingReason.get();
+            disableTracingReason.set(reason);
+        }
+
+        @Override
+        public void close() {
+            disableTracingReason.set(oldReason);
+        }
+    }
+
+    private static final class DisableTracingNoOp implements DisableTracing {
+        private static final DisableTracingNoOp INSTANCE = new DisableTracingNoOp();
+
+        @Override
+        public void close() {
+            // do nothing
+        }
+    }
 }
 
 record TraceOptions(Path path, boolean merge, Path debugLog) {
@@ -629,7 +633,7 @@ class MetadataTracerFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (MetadataTracer.Options.MetadataTracingSupport.getValue()) {
             ImageSingletons.add(MetadataTracer.class, new MetadataTracer());
             RuntimeSupport.getRuntimeSupport().addInitializationHook(MetadataTracer.initializeMetadataTracingHook());

@@ -510,9 +510,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceUnsafeAllocatedType(clazz);
-        }
         RuntimeConditionSet conditionSet = null;
         for (var singleton : layeredSingletons()) {
             conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);
