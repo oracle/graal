@@ -107,15 +107,14 @@ public class WasmGCUnalignedUnsafeSupport {
         int scaledOffset = getScaledOffset(o, offset);
         int indexScale = getArrayIndexScale(o);
         int index = scaledOffset / indexScale;
-        /*
-         * The raw bits read from the array expanded to a long. The indexScale number of least
-         * significant bytes contain the actual data, the rest is not relevant.
-         */
-        int length = Array.getLength(o);
-        if(inWordRemainder(o, offset)) {
+        if (inWordRemainder(o, offset)) {
             return 0;
         }
         try {
+            /*
+             * The raw bits read from the array expanded to a long. The indexScale number of least
+             * significant bytes contain the actual data, the rest is not relevant.
+             */
             long longBits = switch (o) {
                 case boolean[] bools -> bools[index] ? 1 : 0;
                 case byte[] bytes -> bytes[index];
@@ -135,8 +134,12 @@ public class WasmGCUnalignedUnsafeSupport {
 
             int rightShift = 8 * elementByteOffset(scaledOffset, indexScale);
             return (byte) (longBits >> rightShift);
-        } catch(ArrayIndexOutOfBoundsException e) {
-            throw new RuntimeException("array type: " + o.getClass() + " index: " + index + " length: " + length + " offset: " + offset, e);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (WasmGCUnsafeSupport.includeErrorMessage()) {
+                WasmGCUnsafeSupport.fatalAccessError(o, e.toString(), offset, true);
+            }
+
+            throw e;
         }
     }
 
@@ -218,7 +221,7 @@ public class WasmGCUnalignedUnsafeSupport {
         // Byte offset within the array element value
         int valueOffset = elementByteOffset(scaledOffset, indexScale);
 
-        if(inWordRemainder(o, offset)) {
+        if (inWordRemainder(o, offset)) {
             return;
         }
         try {
@@ -230,18 +233,22 @@ public class WasmGCUnalignedUnsafeSupport {
                 case int[] ints -> ints[index] = (int) setByte(ints[index], valueOffset, value);
                 case long[] longs -> longs[index] = setByte(longs[index], valueOffset, value);
                 case float[] floats ->
-                        floats[index] = Float.intBitsToFloat((int) setByte(Float.floatToRawIntBits(floats[index]), valueOffset, value));
+                    floats[index] = Float.intBitsToFloat((int) setByte(Float.floatToRawIntBits(floats[index]), valueOffset, value));
                 case double[] doubles ->
-                        doubles[index] = Double.longBitsToDouble(setByte(Double.doubleToRawLongBits(doubles[index]), valueOffset, value));
+                    doubles[index] = Double.longBitsToDouble(setByte(Double.doubleToRawLongBits(doubles[index]), valueOffset, value));
                 default -> {
                     if (WasmGCUnsafeSupport.includeErrorMessage()) {
-                        WasmGCUnsafeSupport.fatalAccessError(o, "Unsupported type for unaligned array access", offset, true);
+                        WasmGCUnsafeSupport.fatalAccessError(o, "Unsupported type for unaligned array access", offset, false);
                     }
                     throw new UnsupportedOperationException();
                 }
             }
-        } catch(ArrayIndexOutOfBoundsException e) {
-            throw new RuntimeException("array type: " + o.getClass() + " index: " + index + " offset: " + offset, e);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (WasmGCUnsafeSupport.includeErrorMessage()) {
+                WasmGCUnsafeSupport.fatalAccessError(o, e.toString(), offset, false);
+            }
+
+            throw e;
         }
     }
 
@@ -363,13 +370,12 @@ public class WasmGCUnalignedUnsafeSupport {
         return ImageSingletons.lookup(ObjectLayout.class).getArrayIndexScale(kind);
     }
 
-    // TODO: add test case
     /**
-     * Detect out of bounds access that is still within the same word as the last element.
-     * {@link jdk.internal.misc.Unsafe#compareAndExchangeByte(java.lang.Object, long, byte, byte)} uses int accesses that are out of bounds.
-     * For example, there might be an int access at the end of a byte array of length 5.
-     * Such accesses are undefined behaviour.
-     * We may therefore fail gracefully instead of throwing an out-of-bounds exception.
+     * Detect out of bounds access that is still within the same 4-byte word as the last element.
+     * {@link jdk.internal.misc.Unsafe#compareAndExchangeByte(java.lang.Object, long, byte, byte)}
+     * uses int accesses that are out of bounds. For example, there might be an int access at the
+     * end of a byte array of length 5. Such accesses are undefined behaviour. We may therefore
+     * ignore such accesses instead of throwing an out-of-bounds exception.
      */
     private static boolean inWordRemainder(Object o, long offset) {
         int scaledOffset = getScaledOffset(o, offset);
