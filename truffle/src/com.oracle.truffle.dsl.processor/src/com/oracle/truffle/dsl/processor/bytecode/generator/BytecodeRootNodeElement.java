@@ -541,7 +541,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(byte.class)), "oldBytecodes"));
         }
 
-        // this should be at the end after all methods have been added.
+        /*
+         * These calls should occur after all methods have been added. They use the generated root
+         * node's method set to determine what method delegate/stub methods to generate.
+         */
+        if (model.hasYieldOperation()) {
+            continuationRootNodeImpl.addRootNodeDelegateMethods();
+        }
         if (model.enableSerialization) {
             addMethodStubsToSerializationRootNode();
         }
@@ -18976,9 +18982,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createIsCloningAllowed());
             this.add(createIsCloneUninitializedSupported());
             this.addOptional(createPrepareForCompilation());
-            // Should appear last. Uses current method set to determine which methods need to be
-            // implemented.
-            this.addAll(createRootNodeProxyMethods());
         }
 
         private CodeExecutableElement createExecute() {
@@ -19143,14 +19146,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private List<CodeExecutableElement> createRootNodeProxyMethods() {
-            List<CodeExecutableElement> result = new ArrayList<>();
-
-            List<ExecutableElement> existing = ElementFilter.methodsIn(continuationRootNodeImpl.getEnclosedElements());
+        private void addRootNodeDelegateMethods() {
+            List<ExecutableElement> existing = ElementFilter.methodsIn(this.getEnclosedElements());
 
             List<ExecutableElement> excludes = List.of(
+                            // Not supported (see isCloningAllowed, isCloneUninitializedSupported).
                             ElementUtils.findMethod(types.RootNode, "copy"),
-                            ElementUtils.findMethod(types.RootNode, "cloneUninitialized"));
+                            ElementUtils.findMethod(types.RootNode, "cloneUninitialized"),
+                            // User code can only obtain a continuation root by executing a yield.
+                            // Parsing is done at this point, so the root is already prepared.
+                            ElementUtils.findMethod(types.RootNode, "prepareForCall"),
+                            // The instrumenter should already know about/have instrumented the root
+                            // node by the time we try to instrument a continuation root.
+                            ElementUtils.findMethod(types.RootNode, "isInstrumentable"),
+                            ElementUtils.findMethod(types.RootNode, "prepareForInstrumentation"));
 
             outer: for (ExecutableElement rootNodeMethod : ElementUtils.getOverridableMethods((TypeElement) types.RootNode.asElement())) {
                 // Exclude methods we have already implemented.
@@ -19165,33 +19174,31 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         continue outer;
                     }
                 }
-                // Only proxy methods overridden by the template class or its parents.
-                ExecutableElement templateMethod = ElementUtils.findOverride(rootNodeMethod, model.templateType);
+                // Only delegate to methods overridden by the generated class or its parents.
+                ExecutableElement templateMethod = ElementUtils.findOverride(rootNodeMethod, BytecodeRootNodeElement.this);
                 if (templateMethod == null) {
                     continue outer;
                 }
 
-                CodeExecutableElement proxyMethod = GeneratorUtils.override(templateMethod);
-                CodeTreeBuilder b = proxyMethod.createBuilder();
+                CodeExecutableElement delegateMethod = GeneratorUtils.override(templateMethod);
+                CodeTreeBuilder b = delegateMethod.createBuilder();
 
-                boolean isVoid = ElementUtils.isVoid(proxyMethod.getReturnType());
+                boolean isVoid = ElementUtils.isVoid(delegateMethod.getReturnType());
                 if (isVoid) {
                     b.startStatement();
                 } else {
                     b.startReturn();
                 }
 
-                b.startCall("root", rootNodeMethod.getSimpleName().toString());
-                for (VariableElement param : rootNodeMethod.getParameters()) {
+                b.startCall("root", templateMethod.getSimpleName().toString());
+                for (VariableElement param : templateMethod.getParameters()) {
                     b.variable(param);
                 }
                 b.end(); // call
                 b.end(); // statement / return
 
-                result.add(proxyMethod);
+                this.add(delegateMethod);
             }
-
-            return result;
         }
     }
 
