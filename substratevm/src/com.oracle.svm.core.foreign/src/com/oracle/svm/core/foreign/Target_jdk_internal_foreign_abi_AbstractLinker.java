@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.foreign.ForeignFunctionsRuntime.LinkRequest;
 
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.AbstractLinker.UpcallStubFactory;
@@ -73,9 +74,13 @@ final class Target_jdk_internal_foreign_abi_SoftReferenceCache {
  */
 record UpcallStubFactoryDecorator(UpcallStubFactory delegate, FunctionDescriptor function, LinkerOptions options) implements UpcallStubFactory {
 
+    @SuppressWarnings({"try", "unused"})
     @Override
     public MemorySegment makeStub(MethodHandle target, Arena arena) {
-        MemorySegment segment = delegate.makeStub(target, arena);
+        MemorySegment segment;
+        try (LinkRequest ignore = LinkRequest.create(true, function, options)) {
+            segment = delegate.makeStub(target, arena);
+        }
 
         /*
          * We cannot do this in 'UpcallLinker.makeUpcallStub' because that one already gets a
@@ -95,6 +100,14 @@ record UpcallStubFactoryDecorator(UpcallStubFactory delegate, FunctionDescriptor
 @TargetClass(value = SysVx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 
+    @SuppressWarnings({"static-method", "try", "unused"})
+    @Substitute
+    MethodHandle arrangeDowncall(MethodType inferredMethodType, FunctionDescriptor function, LinkerOptions options) {
+        try (LinkRequest ignore = LinkRequest.create(false, function, options)) {
+            return jdk.internal.foreign.abi.x64.sysv.CallArranger.arrangeDowncall(inferredMethodType, function, options);
+        }
+    }
+
     @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
@@ -104,6 +117,14 @@ final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 
 @TargetClass(value = Windowsx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
+
+    @SuppressWarnings({"static-method", "try", "unused"})
+    @Substitute
+    MethodHandle arrangeDowncall(MethodType inferredMethodType, FunctionDescriptor function, LinkerOptions options) {
+        try (LinkRequest ignore = LinkRequest.create(false, function, options)) {
+            return jdk.internal.foreign.abi.x64.windows.CallArranger.arrangeDowncall(inferredMethodType, function, options);
+        }
+    }
 
     @SuppressWarnings("static-method")
     @Substitute
@@ -115,6 +136,14 @@ final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
 @TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 
+    @SuppressWarnings({"static-method", "try", "unused"})
+    @Substitute
+    MethodHandle arrangeDowncall(MethodType inferredMethodType, FunctionDescriptor function, LinkerOptions options) {
+        try (LinkRequest ignore = LinkRequest.create(false, function, options)) {
+            return jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.arrangeDowncall(inferredMethodType, function, options);
+        }
+    }
+
     @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
@@ -124,6 +153,14 @@ final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 
 @TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_linux_LinuxAArch64Linker {
+
+    @SuppressWarnings({"static-method", "try", "unused"})
+    @Substitute
+    MethodHandle arrangeDowncall(MethodType inferredMethodType, FunctionDescriptor function, LinkerOptions options) {
+        try (LinkRequest ignore = LinkRequest.create(false, function, options)) {
+            return jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.arrangeDowncall(inferredMethodType, function, options);
+        }
+    }
 
     @SuppressWarnings("static-method")
     @Substitute

@@ -26,16 +26,19 @@ package com.oracle.svm.core.foreign;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
+import java.io.IOException;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -71,6 +74,8 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.graal.compiler.word.Word;
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
@@ -85,6 +90,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
+    private final AbiUtils abiUtils;
     private final AbiUtils.TrampolineTemplate trampolineTemplate;
 
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = ImageHeapMap.create("downcallStubs");
@@ -92,6 +98,14 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = ImageHeapMap.create("upcallStubs");
     private final EconomicSet<ResolvedJavaType> neverAccessesSharedArenaTypes = EconomicSet.create();
     private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
+
+    /**
+     * A thread-safe stack of currently performed link requests (i.e. creating a downcall handle or
+     * an upcall stub). This stack is used to generate a helpful error message if the link request
+     * fails because of a missing stub. Since link requests may be created concurrently, we need to
+     * use a thread-safe collection.
+     */
+    private final Deque<LinkRequest> currentLinkRequests = new ConcurrentLinkedDeque<>();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
@@ -101,6 +115,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime(AbiUtils abiUtils) {
+        this.abiUtils = abiUtils;
         this.trampolineTemplate = new TrampolineTemplate(new byte[abiUtils.trampolineSize()]);
     }
 
@@ -178,16 +193,10 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         neverAccessesSharedArenaMethods.add(method);
     }
 
-    /**
-     * We'd rather report the function descriptor than the native method type, but we don't have it
-     * available here. One could intercept this exception in
-     * {@link jdk.internal.foreign.abi.DowncallLinker#getBoundMethodHandle} and add information
-     * about the descriptor there.
-     */
     CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
         FunctionPointerHolder holder = downcallStubs.get(nep);
         if (holder == null) {
-            throw MissingForeignRegistrationUtils.reportDowncall(nep);
+            throw reportMissingDowncall(nep);
         }
         return holder.functionPointer;
     }
@@ -195,7 +204,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
         FunctionPointerHolder holder = upcallStubs.get(jep);
         if (holder == null) {
-            throw MissingForeignRegistrationUtils.reportUpcall(jep);
+            throw reportMissingUpcall(jep);
         }
         return holder.functionPointer;
     }
@@ -270,32 +279,89 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         }
     }
 
+    /**
+     * Looks for the corresponding {@link #currentLinkRequests link request} by creating a
+     * {@link NativeEntryPointInfo} for each currently existing link request and comparing to the
+     * given one. The matching link request then contains the {@link FunctionDescriptor} and
+     * {@link LinkerOptions} that are required to produce a helpful error message for the user.
+     */
+    private MissingForeignRegistrationError reportMissingDowncall(NativeEntryPointInfo nep) {
+        LinkRequest currentLinkRequest = null;
+        for (LinkRequest linkRequest : currentLinkRequests) {
+            NativeEntryPointInfo nativeEntryPointInfo = abiUtils.makeNativeEntrypoint(linkRequest.functionDescriptor, linkRequest.linkerOptions);
+            if (nep.equals(nativeEntryPointInfo)) {
+                currentLinkRequest = linkRequest;
+                break;
+            }
+        }
+        throw MissingForeignRegistrationUtils.report(false, currentLinkRequest, nep.methodType());
+    }
+
+    /**
+     * Similar to {@link #reportMissingDowncall} but for upcalls.
+     */
+    private MissingForeignRegistrationError reportMissingUpcall(JavaEntryPointInfo jep) {
+        LinkRequest currentLinkRequest = null;
+        for (LinkRequest linkRequest : currentLinkRequests) {
+            JavaEntryPointInfo javaEntryPointInfo = abiUtils.makeJavaEntryPoint(linkRequest.functionDescriptor, linkRequest.linkerOptions);
+            if (jep.equals(javaEntryPointInfo)) {
+                currentLinkRequest = linkRequest;
+                break;
+            }
+        }
+        throw MissingForeignRegistrationUtils.report(true, currentLinkRequest, jep.handleType());
+    }
+
     public static class MissingForeignRegistrationUtils extends MissingRegistrationUtils {
-        public static MissingForeignRegistrationError reportDowncall(NativeEntryPointInfo nep) {
-            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("downcall", nep.methodType()));
-            report(mfre);
-            return mfre;
-        }
-
-        public static MissingForeignRegistrationError reportUpcall(JavaEntryPointInfo jep) {
-            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(foreignRegistrationMessage("upcall", jep.cMethodType()));
-            report(mfre);
-            return mfre;
-        }
-
-        private static String foreignRegistrationMessage(String failedAction, MethodType methodType) {
-            return registrationMessage("perform " + failedAction + " with leaf type", methodType.toString(), "", "", "foreign", "foreign");
-        }
-
         private static void report(MissingForeignRegistrationError exception) {
             StackTraceElement responsibleClass = getResponsibleClass(exception, foreignEntryPoints);
             MissingRegistrationUtils.report(exception, responsibleClass);
+        }
+
+        private static MissingForeignRegistrationError report(boolean upcall, LinkRequest linkRequest, MethodType methodType) {
+            String json = linkRequest != null ? elementToJSON(linkRequest) : "";
+            String failedAction = upcall ? "upcall" : "downcall";
+            String message = registrationMessage("perform " + failedAction + " with leaf type", methodType.toString(), json, "", "foreign", "foreign-function-and-memory-api");
+            MissingForeignRegistrationError mfre = new MissingForeignRegistrationError(message);
+            report(mfre);
+            throw mfre;
         }
 
         private static final Map<String, Set<String>> foreignEntryPoints = Map.of(
                         "jdk.internal.foreign.abi.AbstractLinker", Set.of(
                                         "downcallHandle",
                                         "upcallStub"));
+    }
+
+    record LinkRequest(boolean upcall, FunctionDescriptor functionDescriptor, LinkerOptions linkerOptions) implements AutoCloseable, JsonPrintable {
+
+        static LinkRequest create(boolean upcall, FunctionDescriptor functionDescriptor, LinkerOptions linkerOptions) {
+            LinkRequest linkRequest = new LinkRequest(upcall, functionDescriptor, linkerOptions);
+            ForeignFunctionsRuntime.singleton().currentLinkRequests.push(linkRequest);
+            return linkRequest;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(this);
+        }
+
+        @Override
+        public void close() {
+            ForeignFunctionsRuntime.singleton().currentLinkRequests.remove(this);
+        }
+
+        @Override
+        public void printJson(JsonWriter writer) throws IOException {
+            writer.printValue(upcall ? "upcalls" : "downcalls").appendFieldSeparator().appendArrayStart();
+            SubstrateForeignUtil.linkRequestToJsonPrintable(this).printJson(writer);
+            writer.appendArrayEnd();
+        }
     }
 
     /**
