@@ -96,12 +96,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         }
     }
 
-    private ClassLoader libGraalLoader;
-
-    public void setLibGraalLoader(ClassLoader libGraalLoader) {
-        this.libGraalLoader = libGraalLoader;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ClassForNameSupport currentLayer() {
         return LayeredImageSingletonSupport.singleton().lookup(ClassForNameSupport.class, false, true);
@@ -201,17 +195,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
                 ConditionalRuntimeValue<Object> existingEntry = knownClasses.get(name);
                 Object currentValue = existingEntry == null ? null : existingEntry.getValueUnconditionally();
 
-                /* TODO: Remove workaround once GR-53985 is implemented */
-                if (currentValue instanceof Class<?> currentClazz && clazz.getClassLoader() != currentClazz.getClassLoader()) {
-                    /* Ensure runtime lookup of LibGraalClassLoader classes */
-                    if (isLibGraalClass(currentClazz)) {
-                        return;
-                    }
-                    if (isLibGraalClass(clazz)) {
-                        currentValue = null;
-                    }
-                }
-
                 if (currentValue == null || // never seen
                                 currentValue == NEGATIVE_QUERY ||
                                 currentValue == clazz) {
@@ -249,11 +232,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         if (previousLayerData == null || (!previousLayerData && cond.getValueUnconditionally() != NEGATIVE_QUERY)) {
             callback.accept(knownClasses);
         }
-    }
-
-    @Platforms(HOSTED_ONLY.class)
-    private boolean isLibGraalClass(Class<?> clazz) {
-        return libGraalLoader != null && clazz.getClassLoader() == libGraalLoader;
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
