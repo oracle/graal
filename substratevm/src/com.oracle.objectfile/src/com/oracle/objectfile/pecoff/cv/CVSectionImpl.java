@@ -76,7 +76,7 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
 
     protected void warn(String format, Object... args) {
         if (debug) {
-            getDebugContext().logv(DebugContext.BASIC_LEVEL, "Warning: " + format + "%n", args);
+            getDebugContext().logv(DebugContext.BASIC_LEVEL, format, args);
         }
     }
 
