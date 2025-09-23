@@ -546,12 +546,13 @@ public final class Serializers {
     static final ValueSerializer<InterpreterResolvedJavaField> RESOLVED_FIELD = createSerializer(
                     (context, in) -> {
                         String name = context.readReference(in);
-                        InterpreterResolvedJavaType type = context.readReference(in);
+                        JavaType type = context.readReference(in);
                         InterpreterResolvedObjectType declaringClass = context.readReference(in);
                         int modifiers = LEB128.readUnsignedInt(in);
                         int offset = LEB128.readUnsignedInt(in);
                         JavaConstant constant = context.readReference(in);
-                        return InterpreterResolvedJavaField.create(name, modifiers, type, declaringClass, offset, constant);
+                        boolean isWordStorage = in.readBoolean();
+                        return InterpreterResolvedJavaField.createForInterpreter(name, modifiers, type, declaringClass, offset, constant, isWordStorage);
                     },
                     (context, out, value) -> {
                         context.writeReference(out, value.getName());
@@ -565,6 +566,7 @@ public final class Serializers {
                         } else {
                             context.writeReference(out, null);
                         }
+                        out.writeBoolean(value.isWordStorage());
                     });
 
     static final ValueSerializer<InterpreterResolvedObjectType> OBJECT_TYPE = createSerializer(

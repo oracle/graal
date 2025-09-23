@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
+import java.util.ArrayList;
+
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
@@ -35,8 +36,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Type;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import java.util.ArrayList;
-
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType {
 
     public CremaResolvedObjectType(Symbol<Type> type, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass, InterpreterResolvedObjectType[] interfaces,
@@ -45,9 +44,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedJavaField[] getDeclaredFields() {
-        // (GR-69098)
-        throw VMError.unimplemented("getDeclaredFields");
+    public CremaResolvedJavaFieldImpl[] getDeclaredFields() {
+        return (CremaResolvedJavaFieldImpl[]) declaredFields;
     }
 
     @Override

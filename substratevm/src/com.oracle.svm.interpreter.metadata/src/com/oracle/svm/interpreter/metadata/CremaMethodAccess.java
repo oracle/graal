@@ -42,6 +42,9 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public interface CremaMethodAccess extends WithModifiers, MethodAccess<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
     static LineNumberTable toJVMCI(LineNumberTableAttribute parserTable) {
+        if (parserTable == LineNumberTableAttribute.EMPTY) {
+            return null;
+        }
         List<LineNumberTableAttribute.Entry> entries = parserTable.getEntries();
         int[] bcis = new int[entries.size()];
         int[] lineNumbers = new int[entries.size()];
