@@ -248,7 +248,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * {@link SyncCloseScopeOperation}) is essentially an empty operation but kills the field
      * location of {@link Target_jdk_internal_foreign_MemorySessionImpl#state}.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)

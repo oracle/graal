@@ -327,6 +327,7 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_lang_ref_Reference$Lock = SYMBOLS.putType("Ljava/lang/ref/Reference$Lock;");
 
         public static final Symbol<Type> sun_misc_Cleaner = SYMBOLS.putType("Lsun/misc/Cleaner;");
+        public static final Symbol<Type> jdk_internal_ref_Cleaner = SYMBOLS.putType("Ljdk/internal/ref/Cleaner;");
 
         public static final Symbol<Type> java_lang_StackTraceElement = SYMBOLS.putType("Ljava/lang/StackTraceElement;");
         public static final Symbol<Type> java_lang_StackTraceElement_array = SYMBOLS.putType("[Ljava/lang/StackTraceElement;");
@@ -616,7 +617,6 @@ public class EspressoSymbols {
         public static final Symbol<Name> componentType = SYMBOLS.putName("componentType");
         public static final Symbol<Name> protectionDomain = SYMBOLS.putName("protectionDomain");
         public static final Symbol<Name> modifiers = SYMBOLS.putName("modifiers");
-        public static final Symbol<Name> classFileAccessFlags = SYMBOLS.putName("classFileAccessFlags");
         public static final Symbol<Name> primitive = SYMBOLS.putName("primitive");
         public static final Symbol<Name> signers = SYMBOLS.putName("signers");
         // j.l.ClassLoader

@@ -56,16 +56,16 @@ public final class JVMCIVersionCheck {
      */
     // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
-                    "26", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("26+13", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("26+13", 1)));
+                    "25", Map.of(
+                                    "Oracle Corporation", createLabsJDKVersion("25+37", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+37", 1)));
     // Checkstyle: resume stable iteration order check
 
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
      */
-    private static final int JAVA_MIN_RELEASE = 26;
+    private static final int JAVA_MIN_RELEASE = 25;
 
     /**
      * Convenience factory for the current version scheme that only uses the JDK version and the

@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -33,27 +34,33 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import com.oracle.svm.core.util.VMError;
 
-@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
-@SuppressWarnings({"static-method"})
-final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLookup {
+import sun.util.resources.OpenListResourceBundle;
 
-    @Alias private volatile Map<String, Object> lookup;
+@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_util_resources_ParallelListResourceBundle_SubstituteLoadLookup {
+
+    @Alias private ConcurrentMap<String, Object> lookup;
 
     @Substitute
-    private void loadLookup() {
+    private void setParallelContents(OpenListResourceBundle rb) {
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+    }
+
+    @Substitute
+    private boolean areParallelContentsComplete() {
+        return true;
+    }
+
+    @Substitute
+    private void loadLookupTablesIfNecessary() {
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentOf(this);
-        // use the supplied map implementation specified by the factory method
-        Map<String, Object> tmp = createMap(content.size());
-        tmp.putAll(content);
         synchronized (this) {
             if (lookup == null) {
-                lookup = content;
+                lookup = new ConcurrentHashMap<>(support.getBundleContentOf(this));
             }
         }
     }
-
-    @Alias
-    protected native <K, V> Map<K, V> createMap(int size);
 }

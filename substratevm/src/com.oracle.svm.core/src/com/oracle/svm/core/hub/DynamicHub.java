@@ -93,7 +93,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.SignatureUtil;
-
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
@@ -439,8 +438,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, byte hubType, ReferenceType referenceType, DynamicHub superType,
-                    DynamicHub componentHub, String sourceFileName, int modifiers, int classFileAccessFlags, short flags,
-                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
+                    DynamicHub componentHub, String sourceFileName, int modifiers, short flags, ClassLoader classLoader,
+                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType;
@@ -454,7 +453,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, classFileAccessFlags, loader, nestHost, simpleBinaryName, declaringClass, signature);
+                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     /**
@@ -474,7 +473,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, int classFileAccessFlags, short flags, ClassLoader classLoader, String simpleBinaryName, Module module,
+                    int modifiers, short flags, ClassLoader classLoader, String simpleBinaryName, Module module,
                     Object declaringClass, String signature, int typeID, int interfaceID,
                     short numClassTypes,
                     short typeIDDepth,
@@ -502,7 +501,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
 
-        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, simpleBinaryName, declaringClass,
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, simpleBinaryName, declaringClass,
                         signature);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
@@ -1144,13 +1143,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.modifiers;
     }
 
-    @Substitute
-    int getClassFileAccessFlags() {
+    public int getClassAccessFlags() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            /*
-             * Currently, layered images do not use the Class#classFileAccessFlags. This will be
-             * addressed by GR-68631.
-             */
             int classAccessFlags = 0;
             for (var reflectionMetadataSingleton : LayeredReflectionMetadataSingleton.singletons()) {
                 ImageReflectionMetadata reflectionMetadata = reflectionMetadataSingleton.getReflectionMetadata(this);
@@ -1158,8 +1152,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
             return classAccessFlags;
         } else {
-            return companion.classFileAccessFlags;
+            return getClassAccessFlags(reflectionMetadata());
         }
+    }
+
+    private int getClassAccessFlags(ReflectionMetadata reflectionMetadata) {
+        return reflectionMetadata != null ? (reflectionMetadata.getClassFlags() & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
     }
 
     @Substitute

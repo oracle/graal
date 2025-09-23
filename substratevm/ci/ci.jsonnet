@@ -140,9 +140,6 @@
         "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
     }),
-    "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": tier1 + use_oraclejdk_latest + t("30:00"),
-    }),
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),

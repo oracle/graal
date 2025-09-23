@@ -1072,6 +1072,13 @@
             "parameterTypes": [
               "java.net.DatagramPacket"
             ]
+          },
+          {
+            "name": "send",
+            "parameterTypes": [
+              "java.net.DatagramPacket",
+              "byte"
+            ]
           }
         ]
       },
@@ -2835,6 +2842,17 @@
           {
             "name": "stop",
             "parameterTypes": [
+            ]
+          }
+        ]
+      },
+      {
+        "name": "java.applet.Applet",
+        "methods": [
+          {
+            "name": "setStub",
+            "parameterTypes": [
+              "java.applet.AppletStub"
             ]
           }
         ]

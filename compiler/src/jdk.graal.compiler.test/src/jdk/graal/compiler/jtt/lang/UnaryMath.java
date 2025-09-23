@@ -26,7 +26,6 @@ package jdk.graal.compiler.jtt.lang;
 
 import jdk.graal.compiler.jtt.JTTTest;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class UnaryMath extends JTTTest {

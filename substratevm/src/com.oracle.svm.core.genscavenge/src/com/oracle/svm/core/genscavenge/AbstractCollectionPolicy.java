@@ -75,8 +75,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int INITIAL_SURVIVOR_RATIO = 8;
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L409-L411") //
     protected static final int MIN_SURVIVOR_RATIO = 3;
-    // GR-68417: adopt "JDK-8338977: Parallel: Improve heap resizing heuristics"
-    // @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342") //
     protected static final int ADAPTIVE_TIME_WEIGHT = 25;
 
     /* Constants to compute defaults for values which can be set through existing options. */
@@ -339,7 +338,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract long gcCount();
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/gc/shared/genArguments.cpp#L190-L305")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
     protected SizeParameters computeSizeParameters(SizeParameters existing) {
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden

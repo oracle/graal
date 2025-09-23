@@ -28,10 +28,10 @@ import java.util.function.Consumer;
 
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 /**
  * Emits spin wait instruction(s).
@@ -41,6 +41,10 @@ import jdk.graal.compiler.lir.SyncPort;
           sha1 = "874fea5e6191c9c19947b4dc818a434a24b33358")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/23985c29b44b489472dcd3aad2cb98d9ce003a7b/src/hotspot/cpu/aarch64/spin_wait_aarch64.cpp#L38-L52",
           sha1 = "9a1f313aa92ab513f5e8cd20fd3b037469455b77")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/ecd2d83096a1fea7d5086736306770bcffa4fdb6/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L53-L74",
+          sha1 = "6bd5ba27c0b3a8416ee5d8d495a55d86cfe1fad1")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L53-L69",
+          sha1 = "92f81ed500658553a2ef2e7c48633094d95ba974")
 // @formatter:on
 @Opcode("SPIN_WAIT")
 public final class AArch64SpinWaitOp extends AArch64LIRInstruction {

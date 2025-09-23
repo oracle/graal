@@ -43,11 +43,11 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
@@ -289,7 +289,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
-        int classFileAccessFlags = parsed.getFlags();
 
         /*
          * The TypeCheckBuilder considers interface arrays as interfaces. Since we are dealing with
@@ -413,7 +412,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength, afterFieldsOffset, isValueBased);
 

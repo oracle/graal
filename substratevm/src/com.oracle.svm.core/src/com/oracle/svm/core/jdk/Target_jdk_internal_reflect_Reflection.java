@@ -45,6 +45,11 @@ final class Target_jdk_internal_reflect_Reflection {
     }
 
     @Substitute
+    private static int getClassAccessFlags(DynamicHub cls) {
+        return cls.getClassAccessFlags();
+    }
+
+    @Substitute
     private static boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
         return DynamicHub.fromClass(currentClass).isNestmateOf(memberClass);
     }

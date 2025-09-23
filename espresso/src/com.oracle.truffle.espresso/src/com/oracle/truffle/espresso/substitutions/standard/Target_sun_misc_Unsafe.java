@@ -913,32 +913,6 @@ public final class Target_sun_misc_Unsafe {
         throw meta.throwException(meta.java_lang_InternalError);
     }
 
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    static long knownObjectFieldOffset0(@SuppressWarnings("unused") StaticObject self, @JavaType(Class.class) StaticObject c, @JavaType(String.class) StaticObject guestName,
-                    @Inject Meta meta, @Inject EspressoLanguage language) {
-        // Error code -1 is not found, -2 is static field
-        Klass k = c.getMirrorKlass(meta);
-        if (!(k instanceof ObjectKlass kl)) {
-            return -1;
-        }
-        String hostName = meta.toHostString(guestName);
-        Symbol<Name> name = meta.getNames().lookup(hostName);
-        if (name == null) {
-            return -1;
-        }
-        for (Field f : kl.getFieldTable()) {
-            if (!f.isRemoved() && f.getName() == name) {
-                return getGuestFieldOffset(f, language);
-            }
-        }
-        for (Field f : kl.getStaticFieldTable()) {
-            if (!f.isRemoved() && f.getName() == name) {
-                return -2;
-            }
-        }
-        return -1;
-    }
-
     // region UnsafeAccessors
 
     @GenerateInline
