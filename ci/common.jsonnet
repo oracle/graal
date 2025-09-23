@@ -316,7 +316,7 @@ local common_json = import "../common.json";
 
     wasm:: {
       downloads+: {
-        WABT_DIR: {name: 'wabt', version: '1.0.36', platformspecific: true},
+        WABT_DIR: {name: 'wabt', version: '1.0.37', platformspecific: true},
       },
       environment+: {
         WABT_DIR: '$WABT_DIR/bin',
@@ -325,7 +325,7 @@ local common_json = import "../common.json";
 
     wasm_ol8:: {
       downloads+: {
-        WABT_DIR: {name: 'wabt', version: '1.0.36-ol8', platformspecific: true},
+        WABT_DIR: {name: 'wabt', version: '1.0.37-ol8', platformspecific: true},
       },
       environment+: {
         WABT_DIR: '$WABT_DIR/bin',
