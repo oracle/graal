@@ -74,11 +74,11 @@ public final class InteropCallAdapterNode extends RootNode {
 
     private static final int MAX_UNROLL = 32;
 
-    private final SymbolTable.FunctionType functionType;
+    private final SymbolTable.ClosedFunctionType functionType;
     private final BranchProfile errorBranch = BranchProfile.create();
     @Child private WasmIndirectCallNode callNode;
 
-    public InteropCallAdapterNode(WasmLanguage language, SymbolTable.FunctionType functionType) {
+    public InteropCallAdapterNode(WasmLanguage language, SymbolTable.ClosedFunctionType functionType) {
         super(language);
         this.functionType = functionType;
         this.callNode = WasmIndirectCallNode.create();
@@ -109,80 +109,90 @@ public final class InteropCallAdapterNode extends RootNode {
     }
 
     private Object[] validateArguments(Object[] arguments, int offset) throws ArityException, UnsupportedTypeException {
-        final int[] paramTypes = functionType.paramTypes();
+        final SymbolTable.ClosedValueType[] paramTypes = functionType.paramTypes();
         final int paramCount = paramTypes.length;
         CompilerAsserts.partialEvaluationConstant(paramCount);
         if (arguments.length - offset != paramCount) {
             throw ArityException.create(paramCount, paramCount, arguments.length - offset);
         }
         if (CompilerDirectives.inCompiledCode() && paramCount <= MAX_UNROLL) {
-            validateArgumentsUnroll(arguments, offset, paramTypes, paramCount, functionType.symbolTable());
+            validateArgumentsUnroll(arguments, offset, paramTypes, paramCount);
         } else {
             for (int i = 0; i < paramCount; i++) {
-                validateArgument(arguments, offset, paramTypes, i, functionType.symbolTable());
+                validateArgument(arguments, offset, paramTypes, i);
             }
         }
         return arguments;
     }
 
     @ExplodeLoop
-    private static void validateArgumentsUnroll(Object[] arguments, int offset, int[] paramTypes, int paramCount, SymbolTable symbolTable) throws UnsupportedTypeException {
+    private static void validateArgumentsUnroll(Object[] arguments, int offset, SymbolTable.ClosedValueType[] paramTypes, int paramCount) throws UnsupportedTypeException {
         for (int i = 0; i < paramCount; i++) {
-            validateArgument(arguments, offset, paramTypes, i, symbolTable);
+            validateArgument(arguments, offset, paramTypes, i);
         }
     }
 
-    private static void validateArgument(Object[] arguments, int offset, int[] paramTypes, int i, SymbolTable symbolTable) throws UnsupportedTypeException {
-        int paramType = paramTypes[i];
+    private static void validateArgument(Object[] arguments, int offset, SymbolTable.ClosedValueType[] paramTypes, int i) throws UnsupportedTypeException {
+        SymbolTable.ClosedValueType paramType = paramTypes[i];
         Object value = arguments[i + offset];
-        switch (paramType) {
-            case WasmType.I32_TYPE -> {
-                if (value instanceof Integer) {
-                    return;
+        switch (paramType.kind()) {
+            case Number -> {
+                SymbolTable.NumberType numberType = (SymbolTable.NumberType) paramType;
+                switch (numberType.value()) {
+                    case WasmType.I32_TYPE -> {
+                        if (value instanceof Integer) {
+                            return;
+                        }
+                    }
+                    case WasmType.I64_TYPE -> {
+                        if (value instanceof Long) {
+                            return;
+                        }
+                    }
+                    case WasmType.F32_TYPE -> {
+                        if (value instanceof Float) {
+                            return;
+                        }
+                    }
+                    case WasmType.F64_TYPE -> {
+                        if (value instanceof Double) {
+                            return;
+                        }
+                    }
                 }
             }
-            case WasmType.I64_TYPE -> {
-                if (value instanceof Long) {
-                    return;
-                }
-            }
-            case WasmType.F32_TYPE -> {
-                if (value instanceof Float) {
-                    return;
-                }
-            }
-            case WasmType.F64_TYPE -> {
-                if (value instanceof Double) {
-                    return;
-                }
-            }
-            case WasmType.V128_TYPE -> {
+            case Vector -> {
                 if (value instanceof Vector128) {
                     return;
                 }
             }
-            default -> {
-                assert WasmType.isReferenceType(paramType);
-                boolean nullable = WasmType.isNullable(paramType);
-                switch (WasmType.getAbstractHeapType(paramType)) {
-                    case WasmType.FUNCREF_TYPE -> {
-                        if (value instanceof WasmFunctionInstance || nullable && value == WasmConstant.NULL) {
-                            return;
+            case Reference -> {
+                SymbolTable.ClosedReferenceType referenceType = (SymbolTable.ClosedReferenceType) paramType;
+                boolean nullable = referenceType.nullable();
+                SymbolTable.ClosedHeapType heapType = referenceType.heapType();
+                switch (heapType.kind()) {
+                    case Abstract -> {
+                        SymbolTable.AbstractHeapType abstractHeapType = (SymbolTable.AbstractHeapType) heapType;
+                        switch (abstractHeapType.value()) {
+                            case WasmType.FUNCREF_TYPE -> {
+                                if (value instanceof WasmFunctionInstance || nullable && value == WasmConstant.NULL) {
+                                    return;
+                                }
+                            }
+                            case WasmType.EXTERNREF_TYPE -> {
+                                if (nullable || value != WasmConstant.NULL) {
+                                    return;
+                                }
+                            }
+                            case WasmType.EXNREF_TYPE -> {
+                                if (value instanceof WasmRuntimeException || nullable && value == WasmConstant.NULL) {
+                                    return;
+                                }
+                            }
                         }
                     }
-                    case WasmType.EXTERNREF_TYPE -> {
-                        if (nullable || value != WasmConstant.NULL) {
-                            return;
-                        }
-                    }
-                    case WasmType.EXNREF_TYPE -> {
-                        if (value instanceof WasmRuntimeException || nullable && value == WasmConstant.NULL) {
-                            return;
-                        }
-                    }
-                    default -> {
-                        assert WasmType.isConcreteReferenceType(paramType);
-                        SymbolTable.ClosedFunctionType functionType = symbolTable.closedFunctionTypeAt(WasmType.getTypeIndex(paramType));
+                    case Function -> {
+                        SymbolTable.ClosedFunctionType functionType = (SymbolTable.ClosedFunctionType) heapType;
                         if (value instanceof WasmFunctionInstance instance && functionType.matches(instance.function().closedType()) || nullable && value == WasmConstant.NULL) {
                             return;
                         }
@@ -197,7 +207,7 @@ public final class InteropCallAdapterNode extends RootNode {
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
         final Object[] objectMultiValueStack = multiValueStack.objectStack();
-        final int[] resultTypes = functionType.resultTypes();
+        final SymbolTable.ClosedValueType[] resultTypes = functionType.resultTypes();
         final int resultCount = resultTypes.length;
         assert primitiveMultiValueStack.length >= resultCount;
         assert objectMultiValueStack.length >= resultCount;
@@ -214,21 +224,26 @@ public final class InteropCallAdapterNode extends RootNode {
     }
 
     @ExplodeLoop
-    private static void popMultiValueResultUnroll(Object[] values, long[] primitiveMultiValueStack, Object[] objectMultiValueStack, int[] resultTypes, int resultCount) {
+    private static void popMultiValueResultUnroll(Object[] values, long[] primitiveMultiValueStack, Object[] objectMultiValueStack, SymbolTable.ClosedValueType[] resultTypes, int resultCount) {
         for (int i = 0; i < resultCount; i++) {
             values[i] = popMultiValueResult(primitiveMultiValueStack, objectMultiValueStack, resultTypes, i);
         }
     }
 
-    private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, int[] resultTypes, int i) {
-        final int resultType = resultTypes[i];
-        return switch (resultType) {
-            case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
-            case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
-            case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
-            case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-            default -> {
-                assert resultType == WasmType.V128_TYPE || WasmType.isReferenceType(resultType);
+    private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, SymbolTable.ClosedValueType[] resultTypes, int i) {
+        final SymbolTable.ClosedValueType resultType = resultTypes[i];
+        return switch (resultType.kind()) {
+            case Number -> {
+                SymbolTable.NumberType numberType = (SymbolTable.NumberType) resultType;
+                yield switch (numberType.value()) {
+                    case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
+                    case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
+                    case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+                    case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+            }
+            case Vector, Reference -> {
                 Object obj = objectMultiValueStack[i];
                 objectMultiValueStack[i] = null;
                 yield obj;

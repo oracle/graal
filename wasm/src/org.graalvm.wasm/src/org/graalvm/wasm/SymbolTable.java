@@ -47,7 +47,6 @@ import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -85,11 +84,28 @@ public abstract class SymbolTable {
     public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
 
     public abstract static sealed class ClosedValueType {
+        // This is a workaround until we can use pattern matching in JDK 21+.
+        public enum Kind {
+            Number,
+            Vector,
+            Reference
+        }
+
         public abstract boolean matches(ClosedValueType valueSubType);
+
+        public abstract Kind kind();
     }
 
     public abstract static sealed class ClosedHeapType {
+        // This is a workaround until we can use pattern matching in JDK 21+.
+        public enum Kind {
+            Abstract,
+            Function
+        }
+
         public abstract boolean matches(ClosedHeapType heapSubType);
+
+        public abstract Kind kind();
     }
 
     public static final class NumberType extends ClosedValueType {
@@ -104,9 +120,18 @@ public abstract class SymbolTable {
             this.value = value;
         }
 
+        public int value() {
+            return value;
+        }
+
         @Override
         public boolean matches(ClosedValueType valueSubType) {
             return this == valueSubType;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Number;
         }
     }
 
@@ -119,9 +144,18 @@ public abstract class SymbolTable {
             this.value = value;
         }
 
+        public int value() {
+            return value;
+        }
+
         @Override
         public boolean matches(ClosedValueType valueSubType) {
             return this == valueSubType;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Vector;
         }
     }
 
@@ -130,6 +164,8 @@ public abstract class SymbolTable {
         public static final ClosedReferenceType NONNULL_FUNCREF = new ClosedReferenceType(false, AbstractHeapType.FUNC);
         public static final ClosedReferenceType EXTERNREF = new ClosedReferenceType(true, AbstractHeapType.EXTERN);
         public static final ClosedReferenceType NONNULL_EXTERNREF = new ClosedReferenceType(false, AbstractHeapType.EXTERN);
+        public static final ClosedReferenceType EXNREF = new ClosedReferenceType(true, AbstractHeapType.EXN);
+        public static final ClosedReferenceType NONNULL_EXNREF = new ClosedReferenceType(false, AbstractHeapType.EXN);
 
         private final boolean nullable;
         private final ClosedHeapType closedHeapType;
@@ -139,15 +175,29 @@ public abstract class SymbolTable {
             this.closedHeapType = closedHeapType;
         }
 
+        public boolean nullable() {
+            return nullable;
+        }
+
+        public ClosedHeapType heapType() {
+            return closedHeapType;
+        }
+
         @Override
         public boolean matches(ClosedValueType valueSubType) {
             return valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) && this.closedHeapType.matches(referenceSubType.closedHeapType);
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Reference;
         }
     }
 
     public static final class AbstractHeapType extends ClosedHeapType {
         public static final AbstractHeapType FUNC = new AbstractHeapType(WasmType.FUNC_HEAPTYPE);
         public static final AbstractHeapType EXTERN = new AbstractHeapType(WasmType.EXTERN_HEAPTYPE);
+        public static final AbstractHeapType EXN = new AbstractHeapType(WasmType.EXN_HEAPTYPE);
 
         private final int value;
 
@@ -155,13 +205,23 @@ public abstract class SymbolTable {
             this.value = value;
         }
 
+        public int value() {
+            return value;
+        }
+
         @Override
         public boolean matches(ClosedHeapType heapSubType) {
             return switch (this.value) {
                 case WasmType.FUNC_HEAPTYPE -> this == FUNC || heapSubType instanceof ClosedFunctionType;
                 case WasmType.EXTERN_HEAPTYPE -> this == EXTERN;
+                case WasmType.EXN_HEAPTYPE -> this == EXN;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Abstract;
         }
     }
 
@@ -169,9 +229,17 @@ public abstract class SymbolTable {
         @CompilationFinal(dimensions = 1) private final ClosedValueType[] paramTypes;
         @CompilationFinal(dimensions = 1) private final ClosedValueType[] resultTypes;
 
-        ClosedFunctionType(ClosedValueType[] paramTypes, ClosedValueType[] resultTypes) {
+        public ClosedFunctionType(ClosedValueType[] paramTypes, ClosedValueType[] resultTypes) {
             this.paramTypes = paramTypes;
             this.resultTypes = resultTypes;
+        }
+
+        public ClosedValueType[] paramTypes() {
+            return paramTypes;
+        }
+
+        public ClosedValueType[] resultTypes() {
+            return resultTypes;
         }
 
         @Override
@@ -197,88 +265,10 @@ public abstract class SymbolTable {
             }
             return true;
         }
-    }
-
-    public static final class FunctionType {
-        @CompilationFinal(dimensions = 1) private final int[] paramTypes;
-        @CompilationFinal(dimensions = 1) private final int[] resultTypes;
-        private final SymbolTable symbolTable;
-        private final int hashCode;
-
-        FunctionType(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable) {
-            this.paramTypes = paramTypes;
-            this.resultTypes = resultTypes;
-            this.symbolTable = symbolTable;
-            this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes) ^ Arrays.hashCode(symbolTable.typeData);
-        }
-
-        public static FunctionType createClosed(int[] paramTypes, int[] resultTypes) {
-            assert allClosed(paramTypes) && allClosed(resultTypes);
-            return new FunctionType(paramTypes, resultTypes, null);
-        }
-
-        private static boolean allClosed(int[] types) {
-            for (int type : types) {
-                if (WasmType.isConcreteReferenceType(type)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        public int[] paramTypes() {
-            return paramTypes;
-        }
-
-        public int[] resultTypes() {
-            return resultTypes;
-        }
-
-        public SymbolTable symbolTable() {
-            return symbolTable;
-        }
 
         @Override
-        public int hashCode() {
-            return hashCode;
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (!(object instanceof FunctionType that)) {
-                return false;
-            }
-            if (this.paramTypes.length != that.paramTypes.length) {
-                return false;
-            }
-            for (int i = 0; i < this.paramTypes.length; i++) {
-                if (this.paramTypes[i] != that.paramTypes[i]) {
-                    return false;
-                }
-            }
-            if (this.resultTypes.length != that.resultTypes.length) {
-                return false;
-            }
-            for (int i = 0; i < this.resultTypes.length; i++) {
-                if (this.resultTypes[i] != that.resultTypes[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            CompilerAsserts.neverPartOfCompilation();
-            String[] paramNames = new String[paramTypes.length];
-            for (int i = 0; i < paramTypes.length; i++) {
-                paramNames[i] = WasmType.toString(paramTypes[i]);
-            }
-            String[] resultNames = new String[resultTypes.length];
-            for (int i = 0; i < resultTypes.length; i++) {
-                resultNames[i] = WasmType.toString(resultTypes[i]);
-            }
-            return "(" + String.join(" ", paramNames) + ")->(" + String.join(" ", resultNames) + ")";
+        public Kind kind() {
+            return Kind.Function;
         }
     }
 
@@ -775,7 +765,7 @@ public abstract class SymbolTable {
         return typeData[typeOffset + 2 + paramCount + resultIndex];
     }
 
-    private int[] functionTypeParamTypesAsArray(int typeIndex) {
+    public int[] functionTypeParamTypesAsArray(int typeIndex) {
         int paramCount = functionTypeParamCount(typeIndex);
         int[] paramTypes = new int[paramCount];
         for (int i = 0; i < paramCount; ++i) {
@@ -784,7 +774,7 @@ public abstract class SymbolTable {
         return paramTypes;
     }
 
-    private int[] functionTypeResultTypesAsArray(int typeIndex) {
+    public int[] functionTypeResultTypesAsArray(int typeIndex) {
         int resultTypeCount = functionTypeResultCount(typeIndex);
         int[] resultTypes = new int[resultTypeCount];
         for (int i = 0; i < resultTypeCount; i++) {
@@ -795,10 +785,6 @@ public abstract class SymbolTable {
 
     int typeCount() {
         return typeCount;
-    }
-
-    public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeParamTypesAsArray(index), functionTypeResultTypesAsArray(index), this);
     }
 
     public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
@@ -826,6 +812,7 @@ public abstract class SymbolTable {
                 yield switch (WasmType.getAbstractHeapType(type)) {
                     case WasmType.FUNC_HEAPTYPE -> nullable ? ClosedReferenceType.FUNCREF : ClosedReferenceType.NONNULL_FUNCREF;
                     case WasmType.EXTERN_HEAPTYPE -> nullable ? ClosedReferenceType.EXTERNREF : ClosedReferenceType.NONNULL_EXTERNREF;
+                    case WasmType.EXN_HEAPTYPE -> nullable ? ClosedReferenceType.EXNREF : ClosedReferenceType.NONNULL_EXNREF;
                     default -> {
                         assert WasmType.isConcreteReferenceType(type);
                         yield new ClosedReferenceType(nullable, closedFunctionTypeAt(WasmType.getTypeIndex(type)));
@@ -833,10 +820,6 @@ public abstract class SymbolTable {
                 };
             }
         };
-    }
-
-    public boolean matches(int superType, int subType) {
-        return closedTypeAt(superType).matches(closedTypeAt(subType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -1313,7 +1296,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         addTag(index, attribute, typeIndex);
         module().addLinkAction((context, store, instance, imports) -> {
-            final WasmTag tag = new WasmTag(typeAt(typeIndex));
+            final WasmTag tag = new WasmTag(closedFunctionTypeAt(typeIndex));
             instance.setTag(index, tag);
         });
     }
@@ -1322,7 +1305,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         addTag(index, attribute, typeIndex);
         final ImportDescriptor importedTag = new ImportDescriptor(moduleName, tagName, ImportIdentifier.TAG, index, numImportedSymbols());
-        final FunctionType type = typeAt(typeIndex);
+        final ClosedFunctionType type = closedFunctionTypeAt(typeIndex);
         importedTags.put(index, importedTag);
         importSymbol(importedTag);
         module().addLinkAction((context, store, instance, imports) -> {

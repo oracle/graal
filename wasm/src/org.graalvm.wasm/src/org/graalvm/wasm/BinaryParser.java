@@ -783,7 +783,7 @@ public class BinaryParser extends BinaryStreamParser {
                     if (!multiValue) {
                         assertIntLessOrEqual(function.resultCount(), 1, Failure.INVALID_RESULT_ARITY);
                     }
-                    state.pushAll(function.type().resultTypes());
+                    state.pushAll(function.resultTypes());
                     state.addCall(callNodes.size(), callFunctionIndex);
                     callNodes.add(new CallNode(bytecode.location(), callFunctionIndex));
                     break;
@@ -885,7 +885,7 @@ public class BinaryParser extends BinaryStreamParser {
                     checkExceptionHandlingSupport(opcode);
                     final int tagIndex = readTagIndex();
                     final int typeIndex = module.tagTypeIndex(tagIndex);
-                    final int[] paramTypes = module.typeAt(typeIndex).paramTypes();
+                    final int[] paramTypes = module.functionTypeParamTypesAsArray(typeIndex);
                     state.popAll(paramTypes);
                     state.addMiscFlag();
                     state.addInstruction(Bytecode.THROW, tagIndex);
@@ -2542,7 +2542,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int label = readUnsignedInt32();
                     assertUnsignedIntLess(label, state.controlStackSize(), Failure.INVALID_CATCH_CLAUSE_LABEL);
                     final int typeIndex = module.tagTypeIndex(tag);
-                    final int[] paramTypes = module.typeAt(typeIndex).paramTypes();
+                    final int[] paramTypes = module.functionTypeParamTypesAsArray(typeIndex);
                     handlers[i] = state.enterCatchClause(opcode, tag, label);
                     state.pushAll(paramTypes);
                 }
@@ -2551,7 +2551,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int label = readUnsignedInt32();
                     assertUnsignedIntLess(label, state.controlStackSize(), Failure.INVALID_CATCH_CLAUSE_LABEL);
                     final int typeIndex = module.tagTypeIndex(tag);
-                    final int[] paramTypes = module.typeAt(typeIndex).paramTypes();
+                    final int[] paramTypes = module.functionTypeParamTypesAsArray(typeIndex);
                     handlers[i] = state.enterCatchClause(opcode, tag, label);
                     state.pushAll(paramTypes);
                     state.push(EXNREF_TYPE);

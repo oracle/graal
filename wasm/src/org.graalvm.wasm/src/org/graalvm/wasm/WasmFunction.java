@@ -76,12 +76,20 @@ public final class WasmFunction {
         return symbolTable.functionTypeParamTypeAt(typeIndex, argumentIndex);
     }
 
+    public int[] paramTypes() {
+        return symbolTable.functionTypeParamTypesAsArray(typeIndex);
+    }
+
     public int resultCount() {
         return symbolTable.functionTypeResultCount(typeIndex);
     }
 
     public int resultTypeAt(int returnIndex) {
         return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
+    }
+
+    public int[] resultTypes() {
+        return symbolTable.functionTypeResultTypesAsArray(typeIndex);
     }
 
     @Override
@@ -136,10 +144,6 @@ public final class WasmFunction {
         return typeIndex;
     }
 
-    public SymbolTable.FunctionType type() {
-        return symbolTable.typeAt(typeIndex());
-    }
-
     public SymbolTable.ClosedFunctionType closedType() {
         return symbolTable.closedFunctionTypeAt(typeIndex());
     }
@@ -172,7 +176,7 @@ public final class WasmFunction {
         CallTarget callAdapter = this.interopCallAdapter;
         if (callAdapter == null) {
             // Benign initialization race: The call target will be the same each time.
-            callAdapter = language.interopCallAdapterFor(type());
+            callAdapter = language.interopCallAdapterFor(closedType());
             this.interopCallAdapter = callAdapter;
         }
         return callAdapter;

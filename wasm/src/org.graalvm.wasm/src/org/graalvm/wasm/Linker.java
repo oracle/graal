@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.Assert.assertFunctionTypeEquals;
 import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
@@ -402,7 +401,7 @@ public class Linker {
             Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
-                    if (!function.type().equals(functionInstance.function().type())) {
+                    if (!function.closedType().matches(functionInstance.function().closedType())) {
                         throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
                     }
                     instance.setTarget(function.index(), functionInstance.target());
@@ -435,7 +434,7 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            if (!function.type().equals(importedFunction.type())) {
+            if (!function.closedType().matches(importedFunction.closedType())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
@@ -511,7 +510,7 @@ public class Linker {
         });
     }
 
-    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, SymbolTable.FunctionType type, ImportValueSupplier imports) {
+    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, SymbolTable.ClosedFunctionType type, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedTagName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
@@ -539,7 +538,7 @@ public class Linker {
                 }
                 importedTag = importedInstance.tag(exportedTagIndex);
             }
-            assertFunctionTypeEquals(type, importedTag.type(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            Assert.assertTrue(type.matches(importedTag.type()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTag(tagIndex, importedTag);
         };
         resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);

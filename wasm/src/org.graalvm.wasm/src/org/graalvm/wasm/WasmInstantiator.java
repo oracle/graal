@@ -201,7 +201,7 @@ public class WasmInstantiator {
         for (int i = 0; i < module.tagCount(); i++) {
             final int tagIndex = i;
             final int typeIndex = module.tagTypeIndex(tagIndex);
-            final SymbolTable.FunctionType type = module.typeAt(typeIndex);
+            final SymbolTable.ClosedFunctionType type = module.closedFunctionTypeAt(typeIndex);
             final ImportDescriptor tagDescriptor = module.importedTag(tagIndex);
             if (tagDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
