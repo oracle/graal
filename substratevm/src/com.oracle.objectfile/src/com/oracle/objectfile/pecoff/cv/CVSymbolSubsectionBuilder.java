@@ -221,12 +221,14 @@ final class CVSymbolSubsectionBuilder {
                         /*
                          * It could be that Graal has allocated a register that we don't know how to
                          * represent in CodeView. In that case, getCVRegister() will return a
-                         * negative number and no local variable record is issued.
+                         * negative number and no local variable record is issued; instead a warning
                          */
                         if (cvreg >= 0) {
                             currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
                                             (short) (subrange.getHi() - subrange.getLo()), cvreg);
                             addSymbolRecord(currentRecord);
+                        } else {
+                            cvDebugInfo.getCVSymbolSection().warn("Register %s unimplemented in Windows debug support", v.toString());
                         }
                     }
                     case StackValueEntry v -> {
