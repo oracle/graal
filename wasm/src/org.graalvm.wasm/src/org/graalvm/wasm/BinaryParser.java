@@ -1104,11 +1104,12 @@ public class BinaryParser extends BinaryStreamParser {
         } else {
             exceptionTableOffset = 0;
         }
-        bytecode.add(exceptionTableOffset);
-
-        final int functionEndOffset = bytecode.location();
 
         if (offsetToLineIndexMap == null) {
+            bytecode.add(exceptionTableOffset);
+
+            final int functionEndOffset = bytecode.location();
+
             bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeEndOffset - bytecodeStartOffset, locals.length, resultTypes.length);
             for (byte local : locals) {
                 bytecode.addByte(local);
