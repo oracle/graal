@@ -111,7 +111,7 @@ public class WasmInstantiator {
         final EconomicMap<Integer, ImportDescriptor> importedGlobals = module.importedGlobals();
         for (int i = 0; i < module.numGlobals(); i++) {
             final int globalIndex = i;
-            final byte globalValueType = module.globalValueType(globalIndex);
+            final int globalValueType = module.globalValueType(globalIndex);
             final byte globalMutability = module.globalMutability(globalIndex);
             if (importedGlobals.containsKey(globalIndex)) {
                 final ImportDescriptor globalDescriptor = importedGlobals.get(globalIndex);
@@ -139,7 +139,7 @@ public class WasmInstantiator {
             final int tableIndex = i;
             final int tableMinSize = module.tableInitialSize(tableIndex);
             final int tableMaxSize = module.tableMaximumSize(tableIndex);
-            final byte tableElemType = module.tableElementType(tableIndex);
+            final int tableElemType = module.tableElementType(tableIndex);
             final ImportDescriptor tableDescriptor = module.importedTable(tableIndex);
             if (tableDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
@@ -331,11 +331,22 @@ public class WasmInstantiator {
             final int elemIndex = i;
             final int elemOffset = module.elemInstanceOffset(elemIndex);
             final int encoding = bytecode[elemOffset];
-            final int typeAndMode = bytecode[elemOffset + 1];
+            final int typeLengthAndMode = bytecode[elemOffset + 1];
             int effectiveOffset = elemOffset + 2;
 
-            final int elemMode = typeAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
+            final int elemMode = typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
 
+            switch (typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_TYPE_MASK) {
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I8:
+                    effectiveOffset++;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I16:
+                    effectiveOffset += 2;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I32:
+                    effectiveOffset += 4;
+                    break;
+            }
             final int elemCount;
             switch (encoding & BytecodeBitEncoding.ELEM_SEG_COUNT_MASK) {
                 case BytecodeBitEncoding.ELEM_SEG_COUNT_U8:
@@ -500,7 +511,7 @@ public class WasmInstantiator {
         }
     }
 
-    private static FrameDescriptor createFrameDescriptor(byte[] localTypes, int maxStackSize) {
+    private static FrameDescriptor createFrameDescriptor(int[] localTypes, int maxStackSize) {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(localTypes.length);
         builder.addSlots(localTypes.length + maxStackSize, FrameSlotKind.Static);
         return builder.build();

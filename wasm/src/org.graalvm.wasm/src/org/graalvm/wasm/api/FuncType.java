@@ -85,17 +85,17 @@ public final class FuncType {
     }
 
     public static FuncType fromFunctionType(SymbolTable.FunctionType functionType) {
-        final byte[] paramTypes = functionType.paramTypes();
-        final byte[] resultTypes = functionType.resultTypes();
+        final int[] paramTypes = functionType.paramTypes();
+        final int[] resultTypes = functionType.resultTypes();
 
         final ValueType[] params = new ValueType[paramTypes.length];
         final ValueType[] results = new ValueType[resultTypes.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
-            params[i] = ValueType.fromByteValue(paramTypes[i]);
+            params[i] = ValueType.fromValue(paramTypes[i]);
         }
         for (int i = 0; i < resultTypes.length; i++) {
-            results[i] = ValueType.fromByteValue(resultTypes[i]);
+            results[i] = ValueType.fromValue(resultTypes[i]);
         }
         return new FuncType(params, results);
     }
@@ -117,16 +117,16 @@ public final class FuncType {
     }
 
     public SymbolTable.FunctionType toFunctionType() {
-        final byte[] paramTypes = new byte[params.length];
-        final byte[] resultTypes = new byte[results.length];
+        final int[] paramTypes = new int[params.length];
+        final int[] resultTypes = new int[results.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
-            paramTypes[i] = params[i].byteValue();
+            paramTypes[i] = params[i].value();
         }
         for (int i = 0; i < resultTypes.length; i++) {
-            resultTypes[i] = results[i].byteValue();
+            resultTypes[i] = results[i].value();
         }
-        return SymbolTable.FunctionType.create(paramTypes, resultTypes);
+        return SymbolTable.FunctionType.createClosed(paramTypes, resultTypes);
     }
 
     public String toString(StringBuilder b) {

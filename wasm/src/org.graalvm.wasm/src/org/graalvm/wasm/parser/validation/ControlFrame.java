@@ -48,8 +48,8 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  * Represents the scope of a block structure during module validation.
  */
 public abstract class ControlFrame {
-    private final byte[] paramTypes;
-    private final byte[] resultTypes;
+    private final int[] paramTypes;
+    private final int[] resultTypes;
 
     private final int initialStackSize;
     private boolean unreachable;
@@ -61,7 +61,7 @@ public abstract class ControlFrame {
      * @param initialStackSize The size of the value stack when entering this block structure.
      * @param unreachable If the block structure should be declared unreachable.
      */
-    ControlFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
+    ControlFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
@@ -69,11 +69,11 @@ public abstract class ControlFrame {
         commonResultType = WasmType.getCommonValueType(resultTypes);
     }
 
-    protected byte[] paramTypes() {
+    protected int[] paramTypes() {
         return paramTypes;
     }
 
-    public byte[] resultTypes() {
+    public int[] resultTypes() {
         return resultTypes;
     }
 
@@ -91,7 +91,7 @@ public abstract class ControlFrame {
     /**
      * @return The types that must be on the value stack when branching to this frame.
      */
-    abstract byte[] labelTypes();
+    abstract int[] labelTypes();
 
     protected int labelTypeLength() {
         return labelTypes().length;

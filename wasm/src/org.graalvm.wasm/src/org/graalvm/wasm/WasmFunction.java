@@ -49,7 +49,6 @@ public final class WasmFunction {
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
-    @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
     /** Interop call adapter for argument and return value validation and conversion. */
@@ -63,7 +62,6 @@ public final class WasmFunction {
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.typeIndex = typeIndex;
-        this.typeEquivalenceClass = -1;
     }
 
     public String moduleName() {
@@ -74,7 +72,7 @@ public final class WasmFunction {
         return symbolTable.functionTypeParamCount(typeIndex);
     }
 
-    public byte paramTypeAt(int argumentIndex) {
+    public int paramTypeAt(int argumentIndex) {
         return symbolTable.functionTypeParamTypeAt(typeIndex, argumentIndex);
     }
 
@@ -82,12 +80,8 @@ public final class WasmFunction {
         return symbolTable.functionTypeResultCount(typeIndex);
     }
 
-    public byte resultTypeAt(int returnIndex) {
+    public int resultTypeAt(int returnIndex) {
         return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
-    }
-
-    void setTypeEquivalenceClass(int typeEquivalenceClass) {
-        this.typeEquivalenceClass = typeEquivalenceClass;
     }
 
     @Override
@@ -146,8 +140,8 @@ public final class WasmFunction {
         return symbolTable.typeAt(typeIndex());
     }
 
-    public int typeEquivalenceClass() {
-        return typeEquivalenceClass;
+    public SymbolTable.ClosedFunctionType closedType() {
+        return symbolTable.closedFunctionTypeAt(typeIndex());
     }
 
     public int index() {

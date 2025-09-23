@@ -49,7 +49,7 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 public class TryTableFrame extends BlockFrame {
     private final ExceptionTable table;
 
-    TryTableFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int startOffset, ExceptionHandler[] handlers) {
+    TryTableFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable, int startOffset, ExceptionHandler[] handlers) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         this.table = new ExceptionTable(startOffset, handlers);
     }

@@ -40,8 +40,8 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertFunctionTypeEquals;
+import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -55,10 +55,8 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI8;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
-import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
 import static org.graalvm.wasm.WasmType.F32_TYPE;
 import static org.graalvm.wasm.WasmType.F64_TYPE;
-import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
@@ -89,7 +87,6 @@ import org.graalvm.wasm.Linker.ResolutionDag.ImportTagSym;
 import org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
-import org.graalvm.wasm.SymbolTable.FunctionType;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.Vector128;
@@ -196,7 +193,12 @@ public class Linker {
                 ArrayList<Throwable> failures = new ArrayList<>();
                 final int maxStartFunctionIndex = runLinkActions(store, instances, importValues, failures);
                 linkTopologically(store, failures, maxStartFunctionIndex);
-                assignTypeEquivalenceClasses(store);
+                for (WasmInstance instance : instances.values()) {
+                    WasmModule module = instance.module();
+                    if (instance.isLinkInProgress() && !module.isParsed()) {
+                        module.setParsed();
+                    }
+                }
                 resolutionDag = null;
                 runStartFunctions(instances, failures);
                 checkFailures(failures);
@@ -240,39 +242,6 @@ public class Linker {
         for (String moduleName : moduleOrdering) {
             store.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
             i++;
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmStore store) {
-        final Map<String, WasmInstance> instances = store.moduleInstances();
-        for (WasmInstance instance : instances.values()) {
-            WasmModule module = instance.module();
-            if (instance.isLinkInProgress() && !module.isParsed()) {
-                assignTypeEquivalenceClasses(module, store.language());
-            }
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
-        var lock = module.getLock();
-        lock.lock();
-        try {
-            if (module.isParsed()) {
-                return;
-            }
-            final SymbolTable symtab = module.symbolTable();
-            for (int index = 0; index < symtab.typeCount(); index++) {
-                FunctionType type = symtab.typeAt(index);
-                int equivalenceClass = language.equivalenceClassFor(type);
-                symtab.setEquivalenceClass(index, equivalenceClass);
-            }
-            for (int index = 0; index < symtab.numFunctions(); index++) {
-                final WasmFunction function = symtab.function(index);
-                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
-            }
-            module.setParsed();
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -332,7 +301,7 @@ public class Linker {
         }
     }
 
-    void resolveGlobalImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability,
+    void resolveGlobalImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, int valueType, byte mutability,
                     ImportValueSupplier imports) {
         instance.globals().setInitialized(globalIndex, false);
         final String importedGlobalName = importDescriptor.memberName();
@@ -340,10 +309,10 @@ public class Linker {
         final Runnable resolveAction = () -> {
             assert instance.module().globalImported(globalIndex) && globalIndex == importDescriptor.targetIndex() : importDescriptor;
             WasmGlobal externalGlobal = lookupImportObject(instance, importDescriptor, imports, WasmGlobal.class);
-            final byte exportedValueType;
+            final int exportedValueType;
             final byte exportedMutability;
             if (externalGlobal != null) {
-                exportedValueType = externalGlobal.getValueType().byteValue();
+                exportedValueType = externalGlobal.getValueType().value();
                 exportedMutability = externalGlobal.getMutability();
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
@@ -393,7 +362,7 @@ public class Linker {
         assert !instance.globals().isInitialized(globalIndex) : globalIndex;
         SymbolTable symbolTable = instance.symbolTable();
         if (symbolTable.globalExternal(globalIndex)) {
-            var global = new WasmGlobal(ValueType.fromByteValue(symbolTable.globalValueType(globalIndex)), symbolTable.isGlobalMutable(globalIndex), initValue);
+            var global = new WasmGlobal(ValueType.fromValue(symbolTable.globalValueType(globalIndex)), symbolTable.isGlobalMutable(globalIndex), initValue);
             instance.setExternalGlobal(globalIndex, global);
         } else {
             instance.globals().store(symbolTable.globalValueType(globalIndex), symbolTable.globalAddress(globalIndex), initValue);
@@ -586,7 +555,7 @@ public class Linker {
 
     private static Object lookupGlobal(WasmInstance instance, int index) {
         final SymbolTable symbolTable = instance.symbolTable();
-        final byte type = symbolTable.globalValueType(index);
+        final int type = symbolTable.globalValueType(index);
         final int globalAddress = symbolTable.globalAddress(index);
         final GlobalRegistry globals = instance.globals();
         if (!globals.isInitialized(index)) {
@@ -598,8 +567,10 @@ public class Linker {
             case I64_TYPE -> globals.loadAsLong(globalAddress);
             case F64_TYPE -> globals.loadAsDouble(globalAddress);
             case V128_TYPE -> globals.loadAsVector128(globalAddress);
-            case FUNCREF_TYPE, EXTERNREF_TYPE -> globals.loadAsReference(globalAddress);
-            default -> throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Global variable cannot have the void type.");
+            default -> {
+                assert WasmType.isReferenceType(type);
+                yield globals.loadAsReference(globalAddress);
+            }
         };
     }
 
@@ -820,7 +791,7 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType,
+    void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, int elemType,
                     ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
             WasmTable externalTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
@@ -856,7 +827,7 @@ public class Linker {
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
             assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertByteEqual(elemType, importedTable.elemType(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertIntEqual(elemType, importedTable.elemType(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
         Sym[] dependencies = new Sym[]{new ExportTableSym(importDescriptor.moduleName(), importDescriptor.memberName())};

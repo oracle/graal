@@ -47,8 +47,6 @@ import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 /**
  * A data structure for generating the GraalWasm runtime bytecode.
  */
@@ -72,6 +70,10 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     private static boolean fitsIntoUnsignedByte(long value) {
         return Long.compareUnsigned(value, 255) <= 0;
+    }
+
+    private static boolean fitsIntoSignedShort(int value) {
+        return value >= Short.MIN_VALUE && value <= Short.MAX_VALUE;
     }
 
     private static boolean fitsIntoUnsignedShort(int value) {
@@ -297,7 +299,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param resultCount The number of results of the block.
      * @param stackSize The stack size at the start of the block.
      * @param commonResultType The most common result type of the result types of the block. See
-     *            {@link WasmType#getCommonValueType(byte[])}.
+     *            {@link WasmType#getCommonValueType(int[])}.
      * @return The location of the label in the bytecode.
      */
     public int addLabel(int resultCount, int stackSize, int commonResultType) {
@@ -342,7 +344,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param resultCount The number of results of the loop.
      * @param stackSize The stack size at the start of the loop.
      * @param commonResultType The most common result type of the result types of the loop. See
-     *            {@link WasmType#getCommonValueType(byte[])}.
+     *            {@link WasmType#getCommonValueType(int[])}.
      * @return The location of the loop label in the bytecode.
      */
     public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
@@ -692,20 +694,26 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param offsetAddress The offset address of the elem segment, -1 if missing
      * @return The location after the header in the bytecode
      */
-    public int addElemHeader(int mode, int count, byte elemType, int tableIndex, byte[] offsetBytecode, int offsetAddress) {
+    public int addElemHeader(int mode, int count, int elemType, int tableIndex, byte[] offsetBytecode, int offsetAddress) {
         assert offsetBytecode == null || offsetAddress == -1 : "elem header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE : "invalid segment mode in elem header";
         assert WasmType.isReferenceType(elemType) : "invalid elem type in elem header";
-        int location = location();
+        int flagsLocation = location();
         add1(0);
-        final int type = switch (elemType) {
-            case WasmType.FUNCREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_FUNREF;
-            case WasmType.EXTERNREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_EXTERNREF;
-            case WasmType.EXNREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_EXNREF;
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        add1(type | mode);
+        int modeLocation = location();
+        add1(0);
 
+        int typeLengthAndMode = mode;
+        if (fitsIntoSignedByte(elemType)) {
+            typeLengthAndMode |= BytecodeBitEncoding.ELEM_SEG_TYPE_I8;
+            add1(elemType);
+        } else if (fitsIntoSignedShort(elemType)) {
+            typeLengthAndMode |= BytecodeBitEncoding.ELEM_SEG_TYPE_I16;
+            add2(elemType);
+        } else {
+            typeLengthAndMode |= BytecodeBitEncoding.ELEM_SEG_TYPE_I32;
+            add4(elemType);
+        }
         int flags = 0;
         if (fitsIntoUnsignedByte(count)) {
             flags |= BytecodeBitEncoding.ELEM_SEG_COUNT_U8;
@@ -754,7 +762,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
                 add4(offsetAddress);
             }
         }
-        set(location, (byte) flags);
+        set(flagsLocation, (byte) flags);
+        set(modeLocation, (byte) typeLengthAndMode);
         return location();
     }
 
@@ -765,6 +774,15 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      */
     public void addByte(byte value) {
         add1(value);
+    }
+
+    /**
+     * Adds a value type to the bytecode.
+     *
+     * @param type The value type that should be added
+     */
+    public void addType(int type) {
+        add4(type);
     }
 
     /**

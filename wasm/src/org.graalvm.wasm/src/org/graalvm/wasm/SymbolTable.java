@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -84,30 +83,159 @@ public abstract class SymbolTable {
     private static final byte GLOBAL_FUNCTION_INITIALIZER_BIT = 0x20;
 
     public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
-    private static final int NO_EQUIVALENCE_CLASS = 0;
-    static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
-    public static final class FunctionType {
-        @CompilationFinal(dimensions = 1) private final byte[] paramTypes;
-        @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
-        private final int hashCode;
+    public abstract static sealed class ClosedValueType {
+        public abstract boolean matches(ClosedValueType valueSubType);
+    }
 
-        FunctionType(byte[] paramTypes, byte[] resultTypes) {
+    public abstract static sealed class ClosedHeapType {
+        public abstract boolean matches(ClosedHeapType heapSubType);
+    }
+
+    public static final class NumberType extends ClosedValueType {
+        public static final NumberType I32 = new NumberType(WasmType.I32_TYPE);
+        public static final NumberType I64 = new NumberType(WasmType.I64_TYPE);
+        public static final NumberType F32 = new NumberType(WasmType.F32_TYPE);
+        public static final NumberType F64 = new NumberType(WasmType.F64_TYPE);
+
+        private final int value;
+
+        private NumberType(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean matches(ClosedValueType valueSubType) {
+            return this == valueSubType;
+        }
+    }
+
+    public static final class VectorType extends ClosedValueType {
+        public static final VectorType V128 = new VectorType(WasmType.V128_TYPE);
+
+        private final int value;
+
+        private VectorType(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean matches(ClosedValueType valueSubType) {
+            return this == valueSubType;
+        }
+    }
+
+    public static final class ClosedReferenceType extends ClosedValueType {
+        public static final ClosedReferenceType FUNCREF = new ClosedReferenceType(true, AbstractHeapType.FUNC);
+        public static final ClosedReferenceType NONNULL_FUNCREF = new ClosedReferenceType(false, AbstractHeapType.FUNC);
+        public static final ClosedReferenceType EXTERNREF = new ClosedReferenceType(true, AbstractHeapType.EXTERN);
+        public static final ClosedReferenceType NONNULL_EXTERNREF = new ClosedReferenceType(false, AbstractHeapType.EXTERN);
+
+        private final boolean nullable;
+        private final ClosedHeapType closedHeapType;
+
+        public ClosedReferenceType(boolean nullable, ClosedHeapType closedHeapType) {
+            this.nullable = nullable;
+            this.closedHeapType = closedHeapType;
+        }
+
+        @Override
+        public boolean matches(ClosedValueType valueSubType) {
+            return valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) && this.closedHeapType.matches(referenceSubType.closedHeapType);
+        }
+    }
+
+    public static final class AbstractHeapType extends ClosedHeapType {
+        public static final AbstractHeapType FUNC = new AbstractHeapType(WasmType.FUNC_HEAPTYPE);
+        public static final AbstractHeapType EXTERN = new AbstractHeapType(WasmType.EXTERN_HEAPTYPE);
+
+        private final int value;
+
+        private AbstractHeapType(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean matches(ClosedHeapType heapSubType) {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> this == FUNC || heapSubType instanceof ClosedFunctionType;
+                case WasmType.EXTERN_HEAPTYPE -> this == EXTERN;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+    }
+
+    public static final class ClosedFunctionType extends ClosedHeapType {
+        @CompilationFinal(dimensions = 1) private final ClosedValueType[] paramTypes;
+        @CompilationFinal(dimensions = 1) private final ClosedValueType[] resultTypes;
+
+        ClosedFunctionType(ClosedValueType[] paramTypes, ClosedValueType[] resultTypes) {
             this.paramTypes = paramTypes;
             this.resultTypes = resultTypes;
-            this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
         }
 
-        public static FunctionType create(byte[] paramTypes, byte[] resultTypes) {
-            return new FunctionType(paramTypes, resultTypes);
+        @Override
+        public boolean matches(ClosedHeapType heapSubType) {
+            if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
+                return false;
+            }
+            if (this.paramTypes.length != functionSubType.paramTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.paramTypes.length; i++) {
+                if (!functionSubType.paramTypes[i].matches(this.paramTypes[i])) {
+                    return false;
+                }
+            }
+            if (this.resultTypes.length != functionSubType.resultTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.resultTypes.length; i++) {
+                if (!this.resultTypes[i].matches(functionSubType.resultTypes[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    public static final class FunctionType {
+        @CompilationFinal(dimensions = 1) private final int[] paramTypes;
+        @CompilationFinal(dimensions = 1) private final int[] resultTypes;
+        private final SymbolTable symbolTable;
+        private final int hashCode;
+
+        FunctionType(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable) {
+            this.paramTypes = paramTypes;
+            this.resultTypes = resultTypes;
+            this.symbolTable = symbolTable;
+            this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes) ^ Arrays.hashCode(symbolTable.typeData);
         }
 
-        public byte[] paramTypes() {
+        public static FunctionType createClosed(int[] paramTypes, int[] resultTypes) {
+            assert allClosed(paramTypes) && allClosed(resultTypes);
+            return new FunctionType(paramTypes, resultTypes, null);
+        }
+
+        private static boolean allClosed(int[] types) {
+            for (int type : types) {
+                if (WasmType.isConcreteReferenceType(type)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public int[] paramTypes() {
             return paramTypes;
         }
 
-        public byte[] resultTypes() {
+        public int[] resultTypes() {
             return resultTypes;
+        }
+
+        public SymbolTable symbolTable() {
+            return symbolTable;
         }
 
         @Override
@@ -162,7 +290,7 @@ public abstract class SymbolTable {
      *            might have a lower internal max allowed size in practice.
      * @param elemType The element type of the table.
      */
-    public record TableInfo(int initialSize, int maximumSize, byte elemType) {
+    public record TableInfo(int initialSize, int maximumSize, int elemType) {
     }
 
     /**
@@ -214,16 +342,6 @@ public abstract class SymbolTable {
      */
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
-    /**
-     * Stores the type equivalence class.
-     * <p>
-     * Since multiple types have the same shape, each type is mapped to an equivalence class, so
-     * that two types can be quickly compared.
-     * <p>
-     * The equivalence classes are computed globally for all the modules, during linking.
-     */
-    @CompilationFinal(dimensions = 1) private int[] typeEquivalenceClasses;
-
     @CompilationFinal private int typeDataSize;
     @CompilationFinal private int typeCount;
 
@@ -269,14 +387,18 @@ public abstract class SymbolTable {
     @CompilationFinal private int startFunctionIndex;
 
     /**
-     * A global type is the value type of the global, followed by its mutability. This is encoded as
-     * two bytes -- the lowest (0th) byte is the value type. The 1st byte is organized like this:
+     * Value types of globals.
+     */
+    @CompilationFinal(dimensions = 1) private int[] globalTypes;
+
+    /**
+     * Mutability flags of globals. These are encoded like this:
      * <p>
      * <code>
      * | . | . | . | functionOrIndex flag | reference flag | initialized flag | exported flag | mutable flag |
      * </code>
      */
-    @CompilationFinal(dimensions = 1) private byte[] globalTypes;
+    @CompilationFinal(dimensions = 1) private byte[] globalFlags;
 
     /**
      * The values or indices used for initializing globals.
@@ -426,7 +548,6 @@ public abstract class SymbolTable {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
-        this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
         this.importedSymbols = new ArrayList<>();
@@ -438,7 +559,8 @@ public abstract class SymbolTable {
         this.exportedFunctions = EconomicMap.create();
         this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
-        this.globalTypes = new byte[2 * INITIAL_GLOBALS_SIZE];
+        this.globalTypes = new int[INITIAL_GLOBALS_SIZE];
+        this.globalFlags = new byte[INITIAL_GLOBALS_SIZE];
         this.globalInitializers = new Object[INITIAL_GLOBALS_SIZE];
         this.globalInitializersBytecode = new byte[INITIAL_GLOBALS_BYTECODE_SIZE][];
         this.importedGlobals = EconomicMap.create();
@@ -509,9 +631,9 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have enough
-     * space to store the data for the type at {@code index}. If there is not enough space, then a
-     * reallocation of the array takes place, doubling its capacity.
+     * Ensure that the {@link #typeOffsets} array has enough space to store the data for the type at
+     * {@code index}. If there is not enough space, then a reallocation of the array takes place,
+     * doubling its capacity.
      * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
@@ -520,7 +642,6 @@ public abstract class SymbolTable {
         if (typeOffsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
             typeOffsets = reallocate(typeOffsets, typeCount, newLength);
-            typeEquivalenceClasses = reallocate(typeEquivalenceClasses, typeCount, newLength);
         }
     }
 
@@ -542,7 +663,7 @@ public abstract class SymbolTable {
         return typeIdx;
     }
 
-    public int allocateFunctionType(byte[] paramTypes, byte[] resultTypes, boolean isMultiValue) {
+    public int allocateFunctionType(int[] paramTypes, int[] resultTypes, boolean isMultiValue) {
         checkNotParsed();
         final int typeIdx = allocateFunctionType(paramTypes.length, resultTypes.length, isMultiValue);
         for (int i = 0; i < paramTypes.length; i++) {
@@ -554,28 +675,16 @@ public abstract class SymbolTable {
         return typeIdx;
     }
 
-    void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
+    void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, int type) {
         checkNotParsed();
         int idx = 2 + typeOffsets[funcTypeIdx] + paramIdx;
         typeData[idx] = type;
     }
 
-    void registerFunctionTypeResultType(int funcTypeIdx, int resultIdx, byte type) {
+    void registerFunctionTypeResultType(int funcTypeIdx, int resultIdx, int type) {
         checkNotParsed();
         int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + resultIdx;
         typeData[idx] = type;
-    }
-
-    public int equivalenceClass(int typeIndex) {
-        return typeEquivalenceClasses[typeIndex];
-    }
-
-    void setEquivalenceClass(int index, int eqClass) {
-        checkNotParsed();
-        if (typeEquivalenceClasses[index] != NO_EQUIVALENCE_CLASS) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Type at index " + index + " already has an equivalence class.");
-        }
-        typeEquivalenceClasses[index] = eqClass;
     }
 
     private void ensureFunctionsCapacity(int index) {
@@ -655,29 +764,29 @@ public abstract class SymbolTable {
 
     protected abstract WasmModule module();
 
-    public byte functionTypeParamTypeAt(int typeIndex, int i) {
+    public int functionTypeParamTypeAt(int typeIndex, int paramIndex) {
         int typeOffset = typeOffsets[typeIndex];
-        return (byte) typeData[typeOffset + 2 + i];
+        return typeData[typeOffset + 2 + paramIndex];
     }
 
-    public byte functionTypeResultTypeAt(int typeIndex, int resultIndex) {
+    public int functionTypeResultTypeAt(int typeIndex, int resultIndex) {
         int typeOffset = typeOffsets[typeIndex];
         int paramCount = typeData[typeOffset];
-        return (byte) typeData[typeOffset + 2 + paramCount + resultIndex];
+        return typeData[typeOffset + 2 + paramCount + resultIndex];
     }
 
-    private byte[] functionTypeParamTypesAsArray(int typeIndex) {
+    private int[] functionTypeParamTypesAsArray(int typeIndex) {
         int paramCount = functionTypeParamCount(typeIndex);
-        byte[] paramTypes = new byte[paramCount];
+        int[] paramTypes = new int[paramCount];
         for (int i = 0; i < paramCount; ++i) {
             paramTypes[i] = functionTypeParamTypeAt(typeIndex, i);
         }
         return paramTypes;
     }
 
-    private byte[] functionTypeResultTypesAsArray(int typeIndex) {
+    private int[] functionTypeResultTypesAsArray(int typeIndex) {
         int resultTypeCount = functionTypeResultCount(typeIndex);
-        byte[] resultTypes = new byte[resultTypeCount];
+        int[] resultTypes = new int[resultTypeCount];
         for (int i = 0; i < resultTypeCount; i++) {
             resultTypes[i] = functionTypeResultTypeAt(typeIndex, i);
         }
@@ -689,7 +798,45 @@ public abstract class SymbolTable {
     }
 
     public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeParamTypesAsArray(index), functionTypeResultTypesAsArray(index));
+        return new FunctionType(functionTypeParamTypesAsArray(index), functionTypeResultTypesAsArray(index), this);
+    }
+
+    public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
+        ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(typeIndex)];
+        for (int i = 0; i < paramTypes.length; i++) {
+            paramTypes[i] = closedTypeAt(functionTypeParamTypeAt(typeIndex, i));
+        }
+        ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(typeIndex)];
+        for (int i = 0; i < resultTypes.length; i++) {
+            resultTypes[i] = closedTypeAt(functionTypeResultTypeAt(typeIndex, i));
+        }
+        return new ClosedFunctionType(paramTypes, resultTypes);
+    }
+
+    public ClosedValueType closedTypeAt(int type) {
+        return switch (type) {
+            case WasmType.I32_TYPE -> NumberType.I32;
+            case WasmType.I64_TYPE -> NumberType.I64;
+            case WasmType.F32_TYPE -> NumberType.F32;
+            case WasmType.F64_TYPE -> NumberType.F64;
+            case WasmType.V128_TYPE -> VectorType.V128;
+            default -> {
+                assert WasmType.isReferenceType(type);
+                boolean nullable = WasmType.isNullable(type);
+                yield switch (WasmType.getAbstractHeapType(type)) {
+                    case WasmType.FUNC_HEAPTYPE -> nullable ? ClosedReferenceType.FUNCREF : ClosedReferenceType.NONNULL_FUNCREF;
+                    case WasmType.EXTERN_HEAPTYPE -> nullable ? ClosedReferenceType.EXTERNREF : ClosedReferenceType.NONNULL_EXTERNREF;
+                    default -> {
+                        assert WasmType.isConcreteReferenceType(type);
+                        yield new ClosedReferenceType(nullable, closedFunctionTypeAt(WasmType.getTypeIndex(type)));
+                    }
+                };
+            }
+        };
+    }
+
+    public boolean matches(int superType, int subType) {
+        return closedTypeAt(superType).matches(closedTypeAt(subType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -758,11 +905,14 @@ public abstract class SymbolTable {
 
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalInitializers.length) {
-            final byte[] nGlobalTypes = new byte[globalTypes.length * 2];
+            final int[] nGlobalTypes = new int[globalTypes.length * 2];
+            final byte[] nGlobalFlags = new byte[globalFlags.length * 2];
             final Object[] nGlobalInitializers = new Object[globalInitializers.length * 2];
             System.arraycopy(globalTypes, 0, nGlobalTypes, 0, globalTypes.length);
+            System.arraycopy(globalFlags, 0, nGlobalFlags, 0, globalFlags.length);
             System.arraycopy(globalInitializers, 0, nGlobalInitializers, 0, globalInitializers.length);
             globalTypes = nGlobalTypes;
+            globalFlags = nGlobalFlags;
             globalInitializers = nGlobalInitializers;
         }
     }
@@ -779,8 +929,7 @@ public abstract class SymbolTable {
      * Allocates a global index in the symbol table, for a global variable that was already
      * allocated.
      */
-    void allocateGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean imported, byte[] initBytecode, Object initialValue) {
-        assert (valueType & 0xff) == valueType;
+    void allocateGlobal(int index, int valueType, byte mutability, boolean initialized, boolean imported, byte[] initBytecode, Object initialValue) {
         checkNotParsed();
         ensureGlobalsCapacity(index);
         numGlobals = maxUnsigned(index + 1, numGlobals);
@@ -808,8 +957,8 @@ public abstract class SymbolTable {
             globalInitializersBytecode[initBytecodeIndex] = initBytecode;
             globalInitializers[index] = initBytecodeIndex;
         }
-        globalTypes[2 * index] = valueType;
-        globalTypes[2 * index + 1] = flags;
+        globalTypes[index] = valueType;
+        globalFlags[index] = flags;
     }
 
     /**
@@ -817,7 +966,7 @@ public abstract class SymbolTable {
      * default, but may be exported using {@link #exportGlobal}. Imported globals are declared using
      * {@link #importGlobal} instead. This method may only be called during parsing, before linking.
      */
-    void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
+    void declareGlobal(int index, int valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
         assert initialized == (initBytecode == null) : index;
         allocateGlobal(index, valueType, mutability, initialized, false, initBytecode, initialValue);
         module().addLinkAction((context, store, instance, imports) -> {
@@ -828,7 +977,7 @@ public abstract class SymbolTable {
     /**
      * Declares an imported global. May be re-exported.
      */
-    void importGlobal(String moduleName, String globalName, int index, byte valueType, byte mutability) {
+    void importGlobal(String moduleName, String globalName, int index, int valueType, byte mutability) {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, globalName, ImportIdentifier.GLOBAL, index, numImportedSymbols());
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
@@ -879,12 +1028,12 @@ public abstract class SymbolTable {
         return globalMutability(index) == GlobalModifier.MUTABLE;
     }
 
-    public byte globalValueType(int index) {
-        return globalTypes[2 * index];
+    public int globalValueType(int index) {
+        return globalTypes[index];
     }
 
     private byte globalFlags(int index) {
-        return globalTypes[2 * index + 1];
+        return globalFlags[index];
     }
 
     public boolean globalInitialized(int index) {
@@ -929,14 +1078,14 @@ public abstract class SymbolTable {
         if (!globalExternal(index)) {
             numExternalGlobals++;
         }
-        globalTypes[2 * index + 1] |= GLOBAL_EXPORTED_BIT;
+        globalFlags[index] |= GLOBAL_EXPORTED_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveGlobalExport(instance.module(), name, index);
         });
     }
 
-    public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, Object value) {
+    public void declareExportedGlobalWithValue(String name, int index, int valueType, byte mutability, Object value) {
         checkNotParsed();
         declareGlobal(index, valueType, mutability, true, null, value);
         exportGlobal(name, index);
@@ -950,7 +1099,7 @@ public abstract class SymbolTable {
         }
     }
 
-    public void allocateTable(int index, int declaredMinSize, int declaredMaxSize, byte elemType, boolean referenceTypes) {
+    public void allocateTable(int index, int declaredMinSize, int declaredMaxSize, int elemType, boolean referenceTypes) {
         checkNotParsed();
         addTable(index, declaredMinSize, declaredMaxSize, elemType, referenceTypes);
         module().addLinkAction((context, store, instance, imports) -> {
@@ -968,7 +1117,7 @@ public abstract class SymbolTable {
         });
     }
 
-    void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, byte elemType, boolean referenceTypes) {
+    void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, int elemType, boolean referenceTypes) {
         checkNotParsed();
         addTable(index, initSize, maxSize, elemType, referenceTypes);
         final ImportDescriptor importedTable = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE, index, numImportedSymbols());
@@ -980,7 +1129,7 @@ public abstract class SymbolTable {
         });
     }
 
-    void addTable(int index, int minSize, int maxSize, byte elemType, boolean referenceTypes) {
+    void addTable(int index, int minSize, int maxSize, int elemType, boolean referenceTypes) {
         if (!referenceTypes) {
             assertTrue(importedTables.isEmpty(), "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
             assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
@@ -1040,7 +1189,7 @@ public abstract class SymbolTable {
         return table.maximumSize;
     }
 
-    public byte tableElementType(int index) {
+    public int tableElementType(int index) {
         final TableInfo table = tables[index];
         assert table != null;
         return table.elemType;
@@ -1314,8 +1463,8 @@ public abstract class SymbolTable {
         assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
     }
 
-    public void checkElemType(int elemIndex, byte expectedType) {
-        assertByteEqual(expectedType, (byte) elemInstances[elemIndex], Failure.TYPE_MISMATCH);
+    public void checkElemType(int elemIndex, int expectedType) {
+        assertIntEqual(expectedType, (int) elemInstances[elemIndex], Failure.TYPE_MISMATCH);
     }
 
     private void ensureElemInstanceCapacity(int index) {
@@ -1328,9 +1477,9 @@ public abstract class SymbolTable {
         }
     }
 
-    void setElemInstance(int index, int offset, byte elemType) {
+    void setElemInstance(int index, int offset, int elemType) {
         ensureElemInstanceCapacity(index);
-        elemInstances[index] = (long) offset << 32 | (elemType & 0xFF);
+        elemInstances[index] = (long) offset << 32 | (elemType & 0xFFFF_FFFFL);
         elemSegmentCount++;
     }
 

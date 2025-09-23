@@ -102,7 +102,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class WasmJsApiSuite {
     private static final String REF_TYPES_OPTION = "wasm.BulkMemoryAndRefTypes";
 
-    private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, byte[] paramTypes, byte[] resultTypes, RootNode functionRootNode) {
+    private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, int[] paramTypes, int[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
         module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
         WasmFunction func = module.declareFunction(0);
@@ -111,7 +111,6 @@ public class WasmJsApiSuite {
         // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
         // Functions need to have type equivalence classes assigned for indirect calls.
         moduleInstance.store().linker().tryLink(moduleInstance);
-        assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
         return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
     }
 

@@ -267,7 +267,7 @@ public class WebAssembly extends Dictionary {
             } else if (f != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
             } else if (globalIndex != null) {
-                String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
+                String valueType = ValueType.fromValue(module.globalValueType(globalIndex)).toString();
                 String mutability = module.isGlobalMutable(globalIndex) ? "mut" : "con";
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType + " " + mutability));
             } else if (tagIndex != null) {
@@ -319,7 +319,7 @@ public class WebAssembly extends Dictionary {
                     break;
                 case ImportIdentifier.GLOBAL:
                     final Integer globalIndex = importedGlobalDescriptors.get(descriptor);
-                    String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
+                    String valueType = ValueType.fromValue(module.globalValueType(globalIndex)).toString();
                     list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.global.name(), valueType));
                     break;
                 case ImportIdentifier.TAG:
@@ -449,7 +449,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
-        return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue(), initialValue);
+        return new WasmTable(initial, maximum, maxAllowedSize, elemKind.value(), initialValue);
     }
 
     private static Object tableGrow(Object[] args) {
@@ -571,7 +571,7 @@ public class WebAssembly extends Dictionary {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromByteValue(f.paramTypeAt(i)));
+            typeInfo.append(ValueType.fromValue(f.paramTypeAt(i)));
         }
         typeInfo.append(')');
 
@@ -580,7 +580,7 @@ public class WebAssembly extends Dictionary {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromByteValue(f.resultTypeAt(i)));
+            typeInfo.append(ValueType.fromValue(f.resultTypeAt(i)));
         }
         return typeInfo.toString();
     }

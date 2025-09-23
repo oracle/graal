@@ -49,15 +49,15 @@ import java.util.List;
 public final class CodeEntry {
     private final int functionIndex;
     private final int maxStackSize;
-    private final byte[] localTypes;
-    private final byte[] resultTypes;
+    private final int[] localTypes;
+    private final int[] resultTypes;
     private final List<CallNode> callNodes;
     private final int bytecodeStartOffset;
     private final int bytecodeEndOffset;
     private final boolean usesMemoryZero;
     private final int exceptionTableOffset;
 
-    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset, boolean usesMemoryZero,
+    public CodeEntry(int functionIndex, int maxStackSize, int[] localTypes, int[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset, boolean usesMemoryZero,
                     int exceptionTableOffset) {
         this.functionIndex = functionIndex;
         this.maxStackSize = maxStackSize;
@@ -78,11 +78,11 @@ public final class CodeEntry {
         return functionIndex;
     }
 
-    public byte[] localTypes() {
+    public int[] localTypes() {
         return localTypes;
     }
 
-    public byte[] resultTypes() {
+    public int[] resultTypes() {
         return resultTypes;
     }
 

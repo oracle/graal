@@ -51,13 +51,13 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 class LoopFrame extends ControlFrame {
     private final int labelLocation;
 
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
+    LoopFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         this.labelLocation = labelLocation;
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return paramTypes();
     }
 

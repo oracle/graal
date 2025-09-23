@@ -582,14 +582,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                         }
 
-                        int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
-
                         // Target function instance must be from the same context.
                         assert functionInstanceContext == WasmContext.get(this);
 
                         // Validate that the target function type matches the expected type of the
                         // indirect call by performing an equivalence-class check.
-                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                        if (!symtab.closedTypeAt(expectedFunctionTypeIndex).matches(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
                             enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
@@ -3359,7 +3357,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     // Checkstyle: stop method name check
 
     private void global_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final byte type = module.globalValueType(index);
+        final int type = module.globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         // For global.set, we don't need to make sure that the referenced global is
         // mutable.
@@ -3369,60 +3367,34 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final GlobalRegistry globals = instance.globals();
 
         switch (type) {
-            case WasmType.I32_TYPE:
-                globals.storeInt(globalAddress, popInt(frame, stackPointer));
-                break;
-            case WasmType.F32_TYPE:
-                globals.storeFloat(globalAddress, popFloat(frame, stackPointer));
-                break;
-            case WasmType.I64_TYPE:
-                globals.storeLong(globalAddress, popLong(frame, stackPointer));
-                break;
-            case WasmType.F64_TYPE:
-                globals.storeDouble(globalAddress, popDouble(frame, stackPointer));
-                break;
-            case WasmType.V128_TYPE:
-                globals.storeVector128(globalAddress, vector128Ops().toVector128(popVector128(frame, stackPointer)));
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-            case WasmType.EXNREF_TYPE:
+            case WasmType.I32_TYPE -> globals.storeInt(globalAddress, popInt(frame, stackPointer));
+            case WasmType.F32_TYPE -> globals.storeFloat(globalAddress, popFloat(frame, stackPointer));
+            case WasmType.I64_TYPE -> globals.storeLong(globalAddress, popLong(frame, stackPointer));
+            case WasmType.F64_TYPE -> globals.storeDouble(globalAddress, popDouble(frame, stackPointer));
+            case WasmType.V128_TYPE -> globals.storeVector128(globalAddress, vector128Ops().toVector128(popVector128(frame, stackPointer)));
+            default -> {
+                assert WasmType.isReferenceType(type);
                 globals.storeReference(globalAddress, popReference(frame, stackPointer));
-                break;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
+            }
         }
     }
 
     private void global_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final byte type = module.symbolTable().globalValueType(index);
+        final int type = module.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         final int globalAddress = module.symbolTable().globalAddress(index);
         final GlobalRegistry globals = instance.globals();
 
         switch (type) {
-            case WasmType.I32_TYPE:
-                pushInt(frame, stackPointer, globals.loadAsInt(globalAddress));
-                break;
-            case WasmType.F32_TYPE:
-                pushFloat(frame, stackPointer, globals.loadAsFloat(globalAddress));
-                break;
-            case WasmType.I64_TYPE:
-                pushLong(frame, stackPointer, globals.loadAsLong(globalAddress));
-                break;
-            case WasmType.F64_TYPE:
-                pushDouble(frame, stackPointer, globals.loadAsDouble(globalAddress));
-                break;
-            case WasmType.V128_TYPE:
-                pushVector128(frame, stackPointer, vector128Ops().fromVector128(globals.loadAsVector128(globalAddress)));
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-            case WasmType.EXNREF_TYPE:
+            case WasmType.I32_TYPE -> pushInt(frame, stackPointer, globals.loadAsInt(globalAddress));
+            case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, globals.loadAsFloat(globalAddress));
+            case WasmType.I64_TYPE -> pushLong(frame, stackPointer, globals.loadAsLong(globalAddress));
+            case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, globals.loadAsDouble(globalAddress));
+            case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128(globals.loadAsVector128(globalAddress)));
+            default -> {
+                assert WasmType.isReferenceType(type);
                 pushReference(frame, stackPointer, globals.loadAsReference(globalAddress));
-                break;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
+            }
         }
     }
 
@@ -4547,7 +4519,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             Object arg = switch (type) {
                 case WasmType.I32_TYPE -> popInt(frame, stackPointer);
@@ -4555,8 +4527,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
                 case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
                 case WasmType.V128_TYPE -> vector128Ops().toVector128(popVector128(frame, stackPointer));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> popReference(frame, stackPointer);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    yield popReference(frame, stackPointer);
+                }
             };
             WasmArguments.setArgument(args, i, arg);
         }
@@ -4577,7 +4551,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         int stackPointer = stackPointerOffset;
         for (int i = numFields - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             final Object arg = switch (type) {
                 case WasmType.I32_TYPE -> popInt(frame, stackPointer);
@@ -4585,8 +4559,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
                 case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
                 case WasmType.V128_TYPE -> vector128Ops().toVector128(popVector128(frame, stackPointer));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> popReference(frame, stackPointer);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    yield popReference(frame, stackPointer);
+                }
             };
             fields[i] = arg;
         }
@@ -4601,7 +4577,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final Object[] fields = e.fields();
         int stackPointer = stackPointerOffset;
         for (int i = 0; i < numFields; i++) {
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             switch (type) {
                 case WasmType.I32_TYPE -> pushInt(frame, stackPointer, (int) fields[i]);
@@ -4609,8 +4585,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) fields[i]);
                 case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) fields[i]);
                 case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128((Vector128) fields[i]));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> pushReference(frame, stackPointer, fields[i]);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    pushReference(frame, stackPointer, fields[i]);
+                }
             }
             stackPointer++;
         }
@@ -4787,7 +4765,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (resultCount == 0) {
             return stackPointer;
         } else if (resultCount == 1) {
-            final byte resultType = function.resultTypeAt(0);
+            final int resultType = function.resultTypeAt(0);
             pushResult(frame, stackPointer, resultType, result);
             return stackPointer + 1;
         } else {
@@ -4803,7 +4781,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (resultCount == 0) {
             return stackPointer;
         } else if (resultCount == 1) {
-            final byte resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
+            final int resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
             pushResult(frame, stackPointer, resultType, result);
             return stackPointer + 1;
         } else {
@@ -4812,7 +4790,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         }
     }
 
-    private void pushResult(VirtualFrame frame, int stackPointer, byte resultType, Object result) {
+    private void pushResult(VirtualFrame frame, int stackPointer, int resultType, Object result) {
         CompilerAsserts.partialEvaluationConstant(resultType);
         switch (resultType) {
             case WasmType.I32_TYPE -> pushInt(frame, stackPointer, (int) result);
@@ -4820,9 +4798,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) result);
             case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) result);
             case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128((Vector128) result));
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> pushReference(frame, stackPointer, result);
             default -> {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+                assert WasmType.isReferenceType(resultType);
+                pushReference(frame, stackPointer, result);
             }
         }
     }
@@ -4845,7 +4823,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
         final Object[] objectMultiValueStack = multiValueStack.objectStack();
         for (int i = 0; i < resultCount; i++) {
-            final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+            final int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE -> pushInt(frame, stackPointer + i, (int) primitiveMultiValueStack[i]);
@@ -4856,13 +4834,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     pushVector128(frame, stackPointer + i, vector128Ops().fromVector128((Vector128) objectMultiValueStack[i]));
                     objectMultiValueStack[i] = null;
                 }
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> {
+                default -> {
+                    assert WasmType.isReferenceType(resultType);
                     pushReference(frame, stackPointer + i, objectMultiValueStack[i]);
                     objectMultiValueStack[i] = null;
-                }
-                default -> {
-                    enterErrorBranch();
-                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                 }
             }
         }

@@ -167,7 +167,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.MALFORMED),
                         binaryCase(
                                         "Table - import with invalid elemtype",
-                                        "Invalid element type for table import: 0x6F should = 0x70",
+                                        "Invalid element type for table import: -17 should = -16",
                                         // (import "a" "b" (table 0 1 externref))
                                         "00 61 73 6D 01 00 00 00 02 09 01 01 61 01 62 01 6F 00 01",
                                         Failure.Type.MALFORMED),

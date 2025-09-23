@@ -56,13 +56,13 @@ public enum ValueType {
     externref(WasmType.EXTERNREF_TYPE),
     exnref(WasmType.EXNREF_TYPE);
 
-    private final byte byteValue;
+    private final int value;
 
-    ValueType(byte byteValue) {
-        this.byteValue = byteValue;
+    ValueType(int value) {
+        this.value = value;
     }
 
-    public static ValueType fromByteValue(byte value) {
+    public static ValueType fromValue(int value) {
         CompilerAsserts.neverPartOfCompilation();
         return switch (value) {
             case WasmType.I32_TYPE -> i32;
@@ -73,13 +73,12 @@ public enum ValueType {
             case WasmType.FUNCREF_TYPE -> anyfunc;
             case WasmType.EXTERNREF_TYPE -> externref;
             case WasmType.EXNREF_TYPE -> exnref;
-            default ->
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
         };
     }
 
-    public byte byteValue() {
-        return byteValue;
+    public int value() {
+        return value;
     }
 
     public static boolean isNumberType(ValueType valueType) {

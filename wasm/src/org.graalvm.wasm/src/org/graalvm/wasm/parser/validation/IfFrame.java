@@ -59,7 +59,7 @@ class IfFrame extends ControlFrame {
     private int falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
+    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         branchTargets = new IntArrayList();
         exceptionHandlers = new ArrayList<>();
@@ -68,7 +68,7 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return resultTypes();
     }
 

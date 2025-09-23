@@ -55,14 +55,14 @@ class BlockFrame extends ControlFrame {
     private final IntArrayList branches;
     private final ArrayList<ExceptionHandler> exceptionHandlers;
 
-    BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
+    BlockFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         branches = new IntArrayList();
         exceptionHandlers = new ArrayList<>();
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return resultTypes();
     }
 

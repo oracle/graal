@@ -56,7 +56,8 @@ import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmStore;
-import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -226,11 +227,22 @@ public abstract class BytecodeParser {
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemOffset = module.elemInstanceOffset(i);
             final int flags = bytecode[elemOffset];
-            final int typeAndMode = bytecode[elemOffset + 1];
+            final int typeLengthAndMode = bytecode[elemOffset + 1];
             int effectiveOffset = elemOffset + 2;
 
-            final int elemMode = typeAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
+            final int elemMode = typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
 
+            switch (typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_TYPE_MASK) {
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I8:
+                    effectiveOffset++;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I16:
+                    effectiveOffset += 2;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I32:
+                    effectiveOffset += 4;
+                    break;
+            }
             final int elemCount;
             switch (flags & BytecodeBitEncoding.ELEM_SEG_COUNT_MASK) {
                 case BytecodeBitEncoding.ELEM_SEG_COUNT_U8:
@@ -406,26 +418,26 @@ public abstract class BytecodeParser {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        final byte[] locals;
+        final int[] locals;
         if ((flags & BytecodeBitEncoding.CODE_ENTRY_LOCALS_FLAG) != 0) {
-            ByteArrayList localsList = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                localsList.add(bytecode[effectiveOffset]);
+            IntArrayList localsList = new IntArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset += 4) {
+                localsList.add(BinaryStreamParser.peek4(bytecode, effectiveOffset));
             }
             effectiveOffset++;
             locals = localsList.toArray();
         } else {
-            locals = Bytecode.EMPTY_BYTES;
+            locals = WasmType.VOID_TYPE_ARRAY;
         }
-        final byte[] results;
+        final int[] results;
         if ((flags & BytecodeBitEncoding.CODE_ENTRY_RESULT_FLAG) != 0) {
-            ByteArrayList resultsList = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                resultsList.add(bytecode[effectiveOffset]);
+            IntArrayList resultsList = new IntArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset += 4) {
+                resultsList.add(BinaryStreamParser.peek4(bytecode, effectiveOffset));
             }
             results = resultsList.toArray();
         } else {
-            results = Bytecode.EMPTY_BYTES;
+            results = WasmType.VOID_TYPE_ARRAY;
         }
         final int endOffset;
         if (exceptionTableOffset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {

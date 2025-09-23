@@ -48,7 +48,7 @@ import java.util.ArrayList;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.Vector128;
-import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -59,10 +59,10 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  * additional information used to generate parser nodes.
  */
 public class ParserState {
-    private static final byte[] EMPTY_ARRAY = new byte[0];
-    private static final byte ANY = 0;
+    private static final int[] EMPTY_ARRAY = new int[0];
+    private static final int ANY = 0;
 
-    private final ByteArrayList valueStack;
+    private final IntArrayList valueStack;
     private final ControlStack controlStack;
     private final RuntimeBytecodeGen bytecode;
     private final ArrayList<ExceptionTable> exceptionTables;
@@ -71,7 +71,7 @@ public class ParserState {
     private boolean usesMemoryZero;
 
     public ParserState(RuntimeBytecodeGen bytecode) {
-        this.valueStack = new ByteArrayList();
+        this.valueStack = new IntArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
         this.exceptionTables = new ArrayList<>();
@@ -85,7 +85,7 @@ public class ParserState {
      * @param expectedValueType The expectedValueType used for error generation.
      * @return The top of the stack or -1.
      */
-    private byte popInternal(byte expectedValueType) {
+    private int popInternal(int expectedValueType) {
         if (availableStackSize() == 0) {
             if (isCurrentStackUnreachable()) {
                 return WasmType.UNKNOWN_TYPE;
@@ -110,10 +110,10 @@ public class ParserState {
      * @param expectedValueTypes Value types expected on the stack.
      * @return The maximum of available stack values smaller than the length of expectedValueTypes.
      */
-    private byte[] popAvailableUnchecked(byte[] expectedValueTypes) {
+    private int[] popAvailableUnchecked(int[] expectedValueTypes) {
         int availableStackSize = availableStackSize();
         int availableSize = Math.min(availableStackSize, expectedValueTypes.length);
-        byte[] popped = new byte[availableSize];
+        int[] popped = new int[availableSize];
         for (int i = availableSize - 1; i >= 0; i--) {
             popped[i] = popInternal(expectedValueTypes[i]);
         }
@@ -125,9 +125,9 @@ public class ParserState {
      *
      * @return The maximum of available stack values.
      */
-    private byte[] popAvailableUnchecked() {
+    private int[] popAvailableUnchecked() {
         int availableStackSize = availableStackSize();
-        byte[] popped = new byte[availableStackSize];
+        int[] popped = new int[availableStackSize];
         int j = 0;
         for (int i = availableStackSize - 1; i >= 0; i--) {
             popped[j] = popInternal(ANY);
@@ -143,7 +143,7 @@ public class ParserState {
      * @param actualTypes The actual value types.
      * @return True if both are equivalent.
      */
-    private boolean isTypeMismatch(byte[] expectedTypes, byte[] actualTypes) {
+    private boolean isTypeMismatch(int[] expectedTypes, int[] actualTypes) {
         if (expectedTypes.length != actualTypes.length) {
             return true;
         }
@@ -163,8 +163,8 @@ public class ParserState {
      *
      * @param valueType The value type that should be added.
      */
-    public void push(byte valueType) {
-        valueStack.push(valueType);
+    public void push(int valueType) {
+        valueStack.add(valueType);
         maxStackSize = Math.max(valueStack.size(), maxStackSize);
     }
 
@@ -173,8 +173,8 @@ public class ParserState {
      *
      * @param valueTypes The value types that should be added.
      */
-    public void pushAll(byte[] valueTypes) {
-        for (byte valueType : valueTypes) {
+    public void pushAll(int[] valueTypes) {
+        for (int valueType : valueTypes) {
             push(valueType);
         }
     }
@@ -185,7 +185,7 @@ public class ParserState {
      * @return The value type on top of the stack or -1.
      * @throws WasmException If the stack is empty.
      */
-    public byte pop() {
+    public int pop() {
         return popInternal(ANY);
     }
 
@@ -196,8 +196,8 @@ public class ParserState {
      * @return The value type on top of the stack.
      * @throws WasmException If the stack is empty or the value types do not match.
      */
-    public byte popChecked(byte expectedValueType) {
-        final byte actualValueType = popInternal(expectedValueType);
+    public int popChecked(int expectedValueType) {
+        final int actualValueType = popInternal(expectedValueType);
         if (actualValueType != expectedValueType && actualValueType != WasmType.UNKNOWN_TYPE && expectedValueType != WasmType.UNKNOWN_TYPE) {
             throw ValidationErrors.createTypeMismatch(expectedValueType, actualValueType);
         }
@@ -211,7 +211,7 @@ public class ParserState {
      */
     public void popReferenceTypeChecked() {
         if (availableStackSize() != 0) {
-            final byte value = valueStack.popBack();
+            final int value = valueStack.popBack();
             if (WasmType.isReferenceType(value)) {
                 return;
             }
@@ -230,8 +230,8 @@ public class ParserState {
      * @return The value types on top of the stack.
      * @throws WasmException If the stack is empty or the value types do not match.
      */
-    public byte[] popAll(byte[] expectedValueTypes) {
-        byte[] popped = new byte[expectedValueTypes.length];
+    public int[] popAll(int[] expectedValueTypes) {
+        int[] popped = new int[expectedValueTypes.length];
         for (int i = expectedValueTypes.length - 1; i >= 0; i--) {
             popped[i] = popChecked(expectedValueTypes[i]);
         }
@@ -264,7 +264,7 @@ public class ParserState {
         }
     }
 
-    public void enterFunction(byte[] resultTypes) {
+    public void enterFunction(int[] resultTypes) {
         enterBlock(EMPTY_ARRAY, resultTypes);
     }
 
@@ -275,7 +275,7 @@ public class ParserState {
      * @param paramTypes The param types of the block that was entered.
      * @param resultTypes The result types of the block that was entered.
      */
-    public void enterBlock(byte[] paramTypes, byte[] resultTypes) {
+    public void enterBlock(int[] paramTypes, int[] resultTypes) {
         ControlFrame frame = new BlockFrame(paramTypes, resultTypes, valueStack.size(), false);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -288,7 +288,7 @@ public class ParserState {
      * @param paramTypes The param types of the loop that was entered.
      * @param resultTypes The result types of the loop that was entered.
      */
-    public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
+    public void enterLoop(int[] paramTypes, int[] resultTypes) {
         final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(resultTypes));
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
@@ -302,7 +302,7 @@ public class ParserState {
      * @param paramTypes The param types of the if and else branch that was entered.
      * @param resultTypes The result type of the if and else branch that was entered.
      */
-    public void enterIf(byte[] paramTypes, byte[] resultTypes) {
+    public void enterIf(int[] paramTypes, int[] resultTypes) {
         final int fixupLocation = bytecode.addIfLocation();
         ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, fixupLocation);
         controlStack.push(frame);
@@ -326,7 +326,7 @@ public class ParserState {
      * @param resultTypes The result types of the try table that was entered.
      * @param handlers The exception handlers of the try table that was entered.
      */
-    public void enterTryTable(byte[] paramTypes, byte[] resultTypes, ExceptionHandler[] handlers) {
+    public void enterTryTable(int[] paramTypes, int[] resultTypes, ExceptionHandler[] handlers) {
         final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), false, bytecode.location(), handlers);
         controlStack.push(frame);
 
@@ -396,7 +396,7 @@ public class ParserState {
     public void addConditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        final byte[] labelTypes = frame.labelTypes();
+        final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
         frame.addBranchIf(bytecode);
@@ -411,7 +411,7 @@ public class ParserState {
     public void addUnconditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        final byte[] labelTypes = frame.labelTypes();
+        final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         frame.addBranch(bytecode);
     }
@@ -427,11 +427,11 @@ public class ParserState {
         int branchLabel = branchLabels[branchLabels.length - 1];
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        byte[] branchLabelReturnTypes = frame.labelTypes();
+        int[] branchLabelReturnTypes = frame.labelTypes();
         for (int otherBranchLabel : branchLabels) {
             checkLabelExists(otherBranchLabel);
             frame = getFrame(otherBranchLabel);
-            byte[] otherBranchLabelReturnTypes = frame.labelTypes();
+            int[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             pushAll(popAll(otherBranchLabelReturnTypes));
             frame.addBranchTableItem(bytecode);
@@ -633,10 +633,10 @@ public class ParserState {
      * 
      * @return The types of the return values of the current frame.
      */
-    public byte[] exit(boolean multiValue) {
+    public int[] exit(boolean multiValue) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
-        byte[] resultTypes = frame.resultTypes();
+        int[] resultTypes = frame.resultTypes();
         frame.exit(bytecode);
         checkStackAfterFrameExit(frame, resultTypes);
 
@@ -653,9 +653,9 @@ public class ParserState {
      * @param frame The frame that is exited.
      * @param resultTypes The expected return types of the frame.
      */
-    void checkStackAfterFrameExit(ControlFrame frame, byte[] resultTypes) {
+    void checkStackAfterFrameExit(ControlFrame frame, int[] resultTypes) {
         if (availableStackSize() > resultTypes.length) {
-            byte[] actualTypes = popAvailableUnchecked();
+            int[] actualTypes = popAvailableUnchecked();
             if (isTypeMismatch(resultTypes, actualTypes)) {
                 throw ValidationErrors.createResultTypesMismatch(resultTypes, actualTypes);
             }
@@ -687,11 +687,11 @@ public class ParserState {
      *             stack.
      */
     private void checkResultTypes(ControlFrame frame) {
-        byte[] resultTypes = frame.resultTypes();
+        int[] resultTypes = frame.resultTypes();
         if (isCurrentStackUnreachable()) {
             popAll(resultTypes);
         } else {
-            byte[] actualTypes = popAvailableUnchecked(resultTypes);
+            int[] actualTypes = popAvailableUnchecked(resultTypes);
             if (isTypeMismatch(resultTypes, actualTypes)) {
                 throw ValidationErrors.createResultTypesMismatch(resultTypes, actualTypes);
             }
@@ -705,11 +705,11 @@ public class ParserState {
      * @throws WasmException If the parameter value types and the vale types on the stack do not
      *             match.
      */
-    public void checkParamTypes(byte[] paramTypes) {
+    public void checkParamTypes(int[] paramTypes) {
         if (isCurrentStackUnreachable()) {
             popAll(paramTypes);
         } else {
-            byte[] actualTypes = popAvailableUnchecked(paramTypes);
+            int[] actualTypes = popAvailableUnchecked(paramTypes);
             if (isTypeMismatch(paramTypes, actualTypes)) {
                 throw ValidationErrors.createParamTypesMismatch(paramTypes, actualTypes);
             }
@@ -735,7 +735,7 @@ public class ParserState {
      * @param actualTypes The value types that should be checked.
      * @throws WasmException If the provided sets of value types do not match.
      */
-    public void checkLabelTypes(byte[] expectedTypes, byte[] actualTypes) {
+    public void checkLabelTypes(int[] expectedTypes, int[] actualTypes) {
         if (isTypeMismatch(expectedTypes, actualTypes)) {
             throw ValidationErrors.createLabelTypesMismatch(expectedTypes, actualTypes);
         }

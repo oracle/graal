@@ -108,7 +108,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             if (resultCount == 0) {
                 return WasmConstant.VOID;
             } else if (resultCount == 1) {
-                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
+                int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
                 return convertResult(result, resultType);
             } else {
                 pushMultiValueResult(result, resultCount);
@@ -125,16 +125,27 @@ public final class ExecuteHostFunctionNode extends RootNode {
      * of the correct boxed type because they're already converted on the JS side, so we only need
      * to unbox and can forego InteropLibrary.
      */
-    private Object convertResult(Object result, byte resultType) throws UnsupportedMessageException {
+    private Object convertResult(Object result, int resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
         return switch (resultType) {
             case WasmType.I32_TYPE -> asInt(result);
             case WasmType.I64_TYPE -> asLong(result);
             case WasmType.F32_TYPE -> asFloat(result);
             case WasmType.F64_TYPE -> asDouble(result);
-            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> result;
+            case WasmType.V128_TYPE -> {
+                if (!(result instanceof Vector128)) {
+                    errorBranch.enter();
+                    throw WasmException.create(Failure.TYPE_MISMATCH);
+                }
+                yield result;
+            }
             default -> {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+                assert WasmType.isReferenceType(resultType);
+                if (!WasmType.isNullable(resultType) && result == WasmConstant.NULL) {
+                    errorBranch.enter();
+                    throw WasmException.create(Failure.TYPE_MISMATCH);
+                }
+                yield result;
             }
         };
     }
@@ -157,7 +168,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
             final Object[] objectMultiValueStack = multiValueStack.objectStack();
             for (int i = 0; i < resultCount; i++) {
-                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+                int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {
@@ -172,10 +183,12 @@ public final class ExecuteHostFunctionNode extends RootNode {
                         }
                         objectMultiValueStack[i] = value;
                     }
-                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> objectMultiValueStack[i] = value;
                     default -> {
-                        errorBranch.enter();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+                        assert WasmType.isReferenceType(resultType);
+                        if (!WasmType.isNullable(resultType) && value == WasmConstant.NULL) {
+                            throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
+                        }
+                        objectMultiValueStack[i] = value;
                     }
                 }
             }
