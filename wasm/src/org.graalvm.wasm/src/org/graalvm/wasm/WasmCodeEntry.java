@@ -54,9 +54,8 @@ public final class WasmCodeEntry {
     private final int numLocals;
     private final int resultCount;
     private final boolean usesMemoryZero;
-    private final int exceptionTableOffset;
 
-    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero, int exceptionTableOffset) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero) {
         this.function = function;
         this.bytecode = bytecode;
         this.localTypes = localTypes;
@@ -64,7 +63,6 @@ public final class WasmCodeEntry {
         this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
         this.usesMemoryZero = usesMemoryZero;
-        this.exceptionTableOffset = exceptionTableOffset;
     }
 
     public WasmFunction function() {
@@ -105,10 +103,6 @@ public final class WasmCodeEntry {
 
     public boolean usesMemoryZero() {
         return usesMemoryZero;
-    }
-
-    public int exceptionTableOffset() {
-        return exceptionTableOffset;
     }
 
     @Override

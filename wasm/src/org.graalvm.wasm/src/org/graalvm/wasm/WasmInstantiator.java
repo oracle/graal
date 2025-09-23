@@ -527,11 +527,11 @@ public class WasmInstantiator {
     }
 
     private WasmFunctionRootNode instantiateCodeEntryRootNode(WasmStore store, WasmModule module, CodeEntry codeEntry, WasmFunction function) {
-        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero(),
-                        codeEntry.exceptionTableOffset());
+        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final Node[] callNodes = setupCallNodes(module, codeEntry);
-        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(), callNodes);
+        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(),
+                        codeEntry.exceptionTableOffset(), callNodes);
         final WasmFunctionRootNode rootNode;
         if (store.getContextOptions().memoryOverheadMode()) {
             rootNode = new WasmMemoryOverheadModeFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
