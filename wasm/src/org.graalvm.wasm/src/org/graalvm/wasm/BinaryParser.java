@@ -1089,6 +1089,12 @@ public class BinaryParser extends BinaryStreamParser {
                 fail(Failure.SECTION_SIZE_MISMATCH, "END opcode expected");
             }
         }
+
+        if (offsetToLineIndexMap != null) {
+            // Make sure we notify a statement exit before leaving the function
+            bytecode.addNotify(-1, -1);
+        }
+
         final int bytecodeEndOffset = bytecode.location();
 
         final int exceptionTableOffset;
@@ -1098,11 +1104,12 @@ public class BinaryParser extends BinaryStreamParser {
         } else {
             exceptionTableOffset = 0;
         }
-        bytecode.add(exceptionTableOffset);
-
-        final int functionEndOffset = bytecode.location();
 
         if (offsetToLineIndexMap == null) {
+            bytecode.add(exceptionTableOffset);
+
+            final int functionEndOffset = bytecode.location();
+
             bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeEndOffset - bytecodeStartOffset, locals.length, resultTypes.length);
             for (byte local : locals) {
                 bytecode.addByte(local);
@@ -1119,9 +1126,6 @@ public class BinaryParser extends BinaryStreamParser {
 
             // Do not override the code entry offset when rereading the function.
             module.setCodeEntryOffset(codeEntryIndex, functionEndOffset);
-        } else {
-            // Make sure we notify a statement exit before leaving the function
-            bytecode.addNotify(-1, -1);
         }
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset, state.usesMemoryZero(), exceptionTableOffset);
     }
@@ -3405,13 +3409,13 @@ public class BinaryParser extends BinaryStreamParser {
      *            index map
      */
     @TruffleBoundary
-    public byte[] createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
+    public Pair<CodeEntry, byte[]> createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
         final int codeEntryIndex = functionIndex - module.numImportedFunctions();
         final CodeEntry codeEntry = BytecodeParser.readCodeEntry(module, module.bytecode(), codeEntryIndex);
         offset = module.functionSourceCodeInstructionOffset(functionIndex);
         final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
-        readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, offsetToLineIndexMap);
-        return bytecode.toArray();
+        final CodeEntry result = readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, offsetToLineIndexMap);
+        return Pair.create(result, bytecode.toArray());
     }
 }
