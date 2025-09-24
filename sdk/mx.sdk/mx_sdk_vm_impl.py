@@ -138,6 +138,8 @@ def registered_graalvm_components(stage1=False):
             components = dependencies[:]
             while components:
                 component = components.pop(0)
+                if component.stage1_only and not stage1:
+                    continue
                 if component.final_stage_only and stage1:
                     continue
                 if component not in components_to_build and not (excludes and is_excluded(component)):
