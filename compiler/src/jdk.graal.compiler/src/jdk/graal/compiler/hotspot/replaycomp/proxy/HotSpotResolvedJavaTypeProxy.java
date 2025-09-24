@@ -355,6 +355,14 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isMemberMethod, isMemberInvokable);
     }
 
+    private static final SymbolicMethod getDeclaredTypesMethod = method("getDeclaredTypes");
+    private static final InvokableMethod getDeclaredTypesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods();
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return (ResolvedJavaType[]) handle(getDeclaredTypesMethod, getDeclaredTypesInvokable);
+    }
+
     private static final SymbolicMethod getEnclosingTypeMethod = method("getEnclosingType");
     private static final InvokableMethod getEnclosingTypeInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingType();
 

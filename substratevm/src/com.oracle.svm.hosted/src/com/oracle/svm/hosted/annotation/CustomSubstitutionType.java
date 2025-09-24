@@ -160,6 +160,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return original.getDeclaredTypes();
+    }
+
+    @Override
     public ResolvedJavaType getSingleImplementor() {
         return original.getSingleImplementor();
     }
