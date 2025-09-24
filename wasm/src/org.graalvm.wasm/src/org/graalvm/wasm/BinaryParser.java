@@ -450,14 +450,17 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.TAG: {
-                    final byte attribute = read1();
+                    if (!exceptions) {
+                        fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02x", importType);
+                    }
+                    final byte attribute = readTagAttribute();
                     final int typeIndex = readTypeIndex();
                     final int tagIndex = module.symbolTable().tagCount();
                     module.symbolTable().importTag(moduleName, memberName, tagIndex, attribute, typeIndex);
                     break;
                 }
                 default: {
-                    fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02X", importType);
+                    fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02x", importType);
                 }
             }
         }
@@ -2932,12 +2935,15 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.TAG: {
+                    if (!exceptions) {
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Invalid export type identifier: 0x%02x", exportType);
+                    }
                     final int index = readTagIndex();
                     module.symbolTable().exportTag(index, exportName);
                     break;
                 }
                 default: {
-                    fail(Failure.UNSPECIFIED_MALFORMED, "Invalid export type identifier: 0x%02X", exportType);
+                    fail(Failure.UNSPECIFIED_MALFORMED, "Invalid export type identifier: 0x%02x", exportType);
                 }
             }
         }
@@ -2950,8 +2956,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int tagIndex = startingTagIndex; tagIndex != startingTagIndex + tagCount; tagIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             // 0x00 means exception
-            final byte attribute = read1();
-            assertByteEqual(attribute, (byte) WasmTag.Attribute.EXCEPTION, Failure.MALFORMED_TAG_ATTRIBUTE);
+            final byte attribute = readTagAttribute();
             final int type = readTypeIndex();
 
             module.symbolTable().allocateTag(tagIndex, attribute, type);

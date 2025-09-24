@@ -205,7 +205,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.MALFORMED),
                         binaryCase(
                                         "Global - invalid modified",
-                                        "Invalid mutability flag: 2",
+                                        "Invalid mutability flag: 0x02",
                                         "00 61 73 6D 01 00 00 00 06 06 01 7F 02 41 00 0B",
                                         Failure.Type.MALFORMED),
                         binaryCase(
@@ -993,7 +993,24 @@ public class ValidationSuite extends WasmFileSuite {
                                         "Data Count Section - not supported",
                                         "invalid section ID: 12",
                                         "00 61 73 6D 01 00 00 00 0C 00",
-                                        Failure.Type.MALFORMED));
+                                        Failure.Type.MALFORMED),
+
+                        // Tag section
+                        binaryCase(
+                                        "Tag section - invalid attribute",
+                                        "Invalid tag attribute: 0x01",
+                                        "00 61 73 6d 01 00 00 00 " +
+                                                        "01 04 01 60 00 00 " + // type section
+                                                        "0d 03 01 01 00", // tag section
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Tag section - non-empty result type",
+                                        "non-empty tag result type: 1 should = 0",
+                                        // (module (tag (result i32)))
+                                        "00 61 73 6d 01 00 00 00 " +
+                                                        "01 05 01 60 00 01 7f " + // type section
+                                                        "0d 03 01 00 00", // tag section
+                                        Failure.Type.INVALID));
     }
 
     private final String expectedErrorMessage;

@@ -1184,6 +1184,7 @@ public abstract class SymbolTable {
     }
 
     void addTag(int index, byte attribute, int typeIndex) {
+        assertIntEqual(functionTypeResultCount(typeIndex), 0, Failure.NON_EMPTY_TAG_RESULT_TYPE);
         ensureTagCapacity(index);
         final TagInfo tag = new TagInfo(attribute, typeIndex);
         tags[index] = tag;
