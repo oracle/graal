@@ -2294,12 +2294,6 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return 'Building {}'.format(self.subject.name)
 
 
-def _get_component_stability(component):
-    if mx_sdk_vm.base_jdk_version() not in (17, 20):
-        return "experimental"
-    return component.stability
-
-
 def default_jvm_components():
     """
     Components that, for now, must be included in the JVM.
@@ -3245,7 +3239,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
     for component in sorted(graalvm_dist.components, key=lambda c: c.name):
-        print(" - {} ('{}', /{}, {})".format(component.name, component.short_name, component.dir_name, _get_component_stability(component)))
+        print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
     if forced_graalvm_dist is None:
         # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.
