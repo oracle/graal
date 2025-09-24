@@ -74,7 +74,6 @@
       "aarch64"+: common.linux_aarch64,
     },
     "darwin"+: {
-      "amd64"+: common.darwin_amd64,
       "aarch64"+: common.darwin_aarch64,
     },
     "windows"+:{
@@ -90,6 +89,7 @@
   })),
 
   local all_jobs = {
+    "darwin:amd64"+: exclude,
     "windows:aarch64"+: exclude,
     "*:*:jdk19"+: exclude,
   },

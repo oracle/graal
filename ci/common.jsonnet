@@ -363,9 +363,7 @@ local common_json = import "../common.json";
           pcre2: '==10.37',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
         } + if (std.objectHasAll(self, 'os_distro') && self['os_distro'] == 'ol' && std.objectHasAll(self, 'os_distro_version') && self['os_distro_version'] == '9') then {curl: '==7.78.0'} else {curl: '==7.50.1'}
-        else if (self.os == "darwin" && self.arch == "amd64") then {
-          'pcre2': '==10.37',
-        } else {},
+        else {},
       environment+:
         if (self.os == "linux" && self.arch == "amd64") then {
           TZDIR: '/usr/share/zoneinfo',
@@ -376,25 +374,14 @@ local common_json = import "../common.json";
           GNUR_HOME_BINARY: '/cm/shared/apps/gnur/4.0.3_gcc4.8.5_pcre2-10.37/R-4.0.3',
           FASTR_RELEASE: 'true',
         }
-        else if (self.os == "darwin" && self.arch == "amd64") then {
-          FASTR_FC: '/cm/shared/apps/gcc/8.3.0/bin/gfortran',
-          FASTR_CC: '/cm/shared/apps/gcc/8.3.0/bin/gcc',
-          TZDIR: '/usr/share/zoneinfo',
-          PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include',
-          PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib',
-          FASTR_RELEASE: 'true',
-        } else {},
+        else {},
       downloads+:
         if (self.os == "linux" && self.arch == "amd64") then {
           BLAS_LAPACK_DIR: { name: 'fastr-403-blas-lapack-gcc', version: '4.8.5', platformspecific: true },
           F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
           FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
         }
-        else if (self.os == "darwin" && self.arch == "amd64") then {
-          BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
-          F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
-          FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
-        } else {},
+        else {},
       catch_files+: if (self.os != "windows" && self.arch == "amd64") then [
         'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
         'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
@@ -550,7 +537,6 @@ local common_json = import "../common.json";
 
     linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu", os_distro_version:: "22" },
 
-    darwin_amd64: darwin + amd64,
     darwin_aarch64: darwin + aarch64,
 
     windows_amd64: windows + amd64,
@@ -581,7 +567,6 @@ local common_json = import "../common.json";
 
   linux_amd64_ubuntu: self.bare.linux_amd64_ubuntu + common,
 
-  darwin_amd64: self.bare.darwin_amd64 + common,
   darwin_aarch64: self.bare.darwin_aarch64 + common,
 
   windows_amd64: self.bare.windows_amd64 + common,

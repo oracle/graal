@@ -27,7 +27,6 @@ These two kinds of calls are referred to as "downcalls" and "upcalls", respectiv
 > Currently supported platforms for downcalls and upcalls are:
 >
 > * Linux/x64
-> * macOS/x64
 > * Windows/x64
 > * macOS/AArch64
 > * Linux/AArch64

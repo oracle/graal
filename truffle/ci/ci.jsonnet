@@ -5,7 +5,6 @@
   local top_level_ci = utils.top_level_ci,
   local devkits = common.devkits,
 
-  local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
@@ -215,9 +214,6 @@
         linux_aarch64    + tier3  + jdk + truffle_test_lite_gate,
         darwin_aarch64   + tier3  + jdk + truffle_test_lite_gate,
         windows_amd64    + tier3  + jdk + truffle_test_lite_gate + winDevKit(jdk),
-
-        # we do have very few resources for Darwin AMD64 so only run weekly
-        darwin_amd64     + weekly + jdk + truffle_test_lite_gate,
       ]
     ),
 
@@ -227,7 +223,6 @@
         linux_amd64      + tier3  + jdk + simple_language_maven_project_gate,
 
         linux_aarch64    + weekly + jdk + simple_language_maven_project_gate,
-        darwin_amd64     + weekly + jdk + simple_language_maven_project_gate,
         darwin_aarch64   + weekly + jdk + simple_language_maven_project_gate,
 
         # GR-68277 currently unsupported
@@ -241,7 +236,6 @@
         linux_amd64      + tier3  + jdk + simple_tool_maven_project_gate,
 
         linux_aarch64    + weekly + jdk + simple_tool_maven_project_gate,
-        darwin_amd64     + weekly + jdk + simple_tool_maven_project_gate,
         darwin_aarch64   + weekly + jdk + simple_tool_maven_project_gate,
 
         # GR-68277 currently unsupported
