@@ -49,7 +49,6 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.Instruction.InstructionIterable;
 import com.oracle.truffle.api.dsl.Bind;
@@ -57,6 +56,7 @@ import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -445,6 +445,41 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     public abstract TagTree getTagTree();
+
+    /**
+     * Returns a {@link BytecodeFrame} capturing the materialized interpreter state. Note that
+     * materialized frames <strong>may become invalid</strong> once the interpreter resumes; see the
+     * {@link BytecodeFrame} javadoc for more info.
+     * <p>
+     * Prefer to capture the frame using this method (rather than {@link #createCopiedFrame}) when
+     * capturing the frame is a frequent operation or when future updates to the frame should be
+     * observable.
+     *
+     * @param bytecodeIndex the current bytecode index
+     * @param frame the current materialized frame
+     * @return the captured bytecode frame
+     * @since 25.1
+     */
+    public final BytecodeFrame createMaterializedFrame(int bytecodeIndex, MaterializedFrame frame) {
+        return new BytecodeFrame(frame, this, bytecodeIndex);
+    }
+
+    /**
+     * Returns a {@link BytecodeFrame} capturing a copy of the interpreter state. The copy is always
+     * valid, but will not observe subsequent changes to the frame.
+     * <p>
+     * Prefer to capture the frame using this method (rather than {@link #createMaterializedFrame})
+     * when capturing the frame is an infrequent operation or when the frame does not need to
+     * observe future updates.
+     *
+     * @param bytecodeIndex the current bytecode index
+     * @param frame the current frame
+     * @return the captured bytecode frame
+     * @since 25.1
+     */
+    public final BytecodeFrame createCopiedFrame(int bytecodeIndex, Frame frame) {
+        return new BytecodeFrame(BytecodeFrame.copyFrame(frame), this, bytecodeIndex);
+    }
 
     /**
      * Returns a new array containing the current value of each local in the frame. This method
@@ -1216,8 +1251,9 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #getLocalValues(int, Frame)
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
-     * @return a new array of local values, or null if the frame instance does not correspond to an
+     * @return a new array of local values, or null if the frame instance does not correspond to a
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
@@ -1226,7 +1262,7 @@ public abstract class BytecodeNode extends Node {
         if (bytecode == null) {
             return null;
         }
-        Frame frame = resolveFrame(frameInstance, FrameAccess.READ_ONLY);
+        Frame frame = bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_ONLY);
         int bci = bytecode.findBytecodeIndexImpl(frame, frameInstance.getCallNode());
         return bytecode.getLocalValues(bci, frame);
     }
@@ -1236,8 +1272,9 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #getLocalNames(int)
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
-     * @return a new array of names, or null if the frame instance does not correspond to an
+     * @return a new array of names, or null if the frame instance does not correspond to a
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
@@ -1255,6 +1292,7 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #setLocalValues(int, Frame, Object[])
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
      * @return whether the locals could be set with the information available in the frame instance
      * @since 24.2
@@ -1265,16 +1303,41 @@ public abstract class BytecodeNode extends Node {
             return false;
         }
         int bci = bytecode.findBytecodeIndex(frameInstance);
-        bytecode.setLocalValues(bci, resolveFrame(frameInstance, FrameAccess.READ_WRITE), values);
+        bytecode.setLocalValues(bci, bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_WRITE), values);
         return true;
     }
 
-    private static Frame resolveFrame(FrameInstance frameInstance, FrameAccess access) {
-        Frame frame = frameInstance.getFrame(access);
-        if (frameInstance.getCallTarget() instanceof RootCallTarget root && root.getRootNode() instanceof ContinuationRootNode continuation) {
-            frame = continuation.findFrame(frame);
-        }
-        return frame;
+    /**
+     * Internal method to be overridden by generated code.
+     *
+     * @since 25.1
+     */
+    protected abstract Frame resolveFrameImpl(FrameInstance frameInstance, FrameInstance.FrameAccess access);
+
+    /**
+     * Internal method to be overridden by generated code.
+     * <p>
+     * By default, frames are unavailable in stack trace elements unless
+     * {@link GenerateBytecode#captureFramesForTrace()} is set.
+     *
+     * @since 25.1
+     */
+    @SuppressWarnings("unused")
+    protected Frame resolveFrameImpl(TruffleStackTraceElement element) {
+        return null;
+    }
+
+    /**
+     * Internal method to be overridden by generated code.
+     * <p>
+     * By default, frames are unavailable in stack trace elements unless
+     * {@link GenerateBytecode#captureFramesForTrace()} is set.
+     *
+     * @since 25.1
+     */
+    @SuppressWarnings("unused")
+    protected Frame resolveNonVirtualFrameImpl(TruffleStackTraceElement element) {
+        return null;
     }
 
     /**
@@ -1302,8 +1365,7 @@ public abstract class BytecodeNode extends Node {
      */
     @ExplodeLoop
     public static BytecodeNode get(Node node) {
-        Node location = node;
-        for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {
+        for (Node currentNode = node; currentNode != null; currentNode = currentNode.getParent()) {
             if (currentNode instanceof BytecodeNode bytecodeNode) {
                 return bytecodeNode;
             }

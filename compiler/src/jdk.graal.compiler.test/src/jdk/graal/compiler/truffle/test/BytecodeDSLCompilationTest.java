@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.createNodes;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -44,11 +45,13 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeFrame;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
@@ -56,6 +59,7 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInter
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -955,6 +959,176 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertEquals(43, c.get());
         assertEquals(1, c2.get());
         assertCompiled(target);
+    }
+
+    @Test
+    public void testCaptureFrame() {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(run, BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginCaptureFrame();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endCaptureFrame();
+            b.endReturn();
+            BasicInterpreter callee = b.endRoot();
+            callee.setName("callee");
+
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+            b.beginInvoke();
+            b.emitLoadConstant(callee);
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endInvoke();
+            b.endRoot().setName("caller");
+        });
+        BasicInterpreter caller = rootNodes.getNode(1);
+
+        OptimizedCallTarget target = (OptimizedCallTarget) caller.getCallTarget();
+
+        // The callee frame (the top of the stack) should never be accessible.
+        assertNull(target.call(0, FrameInstance.FrameAccess.READ_ONLY));
+
+        // In the interpreter the caller frame should always be accessible.
+        assertNotCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.READ_ONLY), false);
+        assertNotCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.READ_WRITE), false);
+        assertNotCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.MATERIALIZE), false);
+
+        // Force transition to cached.
+        caller.getBytecodeNode().setUncachedThreshold(0);
+        target.call(0, FrameInstance.FrameAccess.READ_ONLY);
+        assertEquals(BytecodeTier.CACHED, caller.getBytecodeNode().getTier());
+
+        // In compiled code the caller frame should always be accessible, but may be a copy.
+        // Requesting the frame should not invalidate compiled code.
+        target.compile(true);
+        assertCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.READ_ONLY), true);
+        assertCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.READ_WRITE), false);
+        assertCompiled(target);
+        checkCallerBytecodeFrame((BytecodeFrame) target.call(1, FrameInstance.FrameAccess.MATERIALIZE), false);
+        assertCompiled(target);
+    }
+
+    @Test
+    public void testCaptureNonVirtualFrame() {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(run, BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginCaptureNonVirtualFrame();
+            b.emitLoadArgument(0);
+            b.endCaptureNonVirtualFrame();
+            b.endReturn();
+            BasicInterpreter callee = b.endRoot();
+            callee.setName("callee");
+
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+            b.beginInvoke();
+            b.emitLoadConstant(callee);
+            b.emitLoadArgument(0);
+            b.endInvoke();
+            b.endRoot().setName("caller");
+        });
+        BasicInterpreter caller = rootNodes.getNode(1);
+
+        OptimizedCallTarget target = (OptimizedCallTarget) caller.getCallTarget();
+
+        // The callee frame (the top of the stack) should never be accessible.
+        assertNull(target.call(0));
+
+        // In the interpreter the non-virtual caller frame should be accessible.
+        assertNotCompiled(target);
+        BytecodeFrame nonVirtualFrame = (BytecodeFrame) target.call(1);
+        assertNotCompiled(target);
+        checkCallerBytecodeFrame(nonVirtualFrame, false);
+
+        // Force transition to cached.
+        caller.getBytecodeNode().setUncachedThreshold(0);
+        target.call(0);
+        assertEquals(BytecodeTier.CACHED, caller.getBytecodeNode().getTier());
+
+        // In compiled code the non-virtual caller frame should be inaccessible.
+        target.compile(true);
+        assertCompiled(target);
+        assertNull(target.call(1));
+        assertCompiled(target);
+    }
+
+    @Test
+    public void testCaptureNonVirtualFrameAfterMaterialization() {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(run, BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginCaptureNonVirtualFrame();
+            b.emitLoadArgument(0);
+            b.endCaptureNonVirtualFrame();
+            b.endReturn();
+            BasicInterpreter callee = b.endRoot();
+            callee.setName("callee");
+
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.beginBlackhole();
+            b.emitMaterializeFrame(); // force materialize frame.
+            b.endBlackhole();
+
+            b.beginInvoke();
+            b.emitLoadConstant(callee);
+            b.emitLoadArgument(0);
+            b.endInvoke();
+            b.endRoot().setName("caller");
+        });
+        BasicInterpreter caller = rootNodes.getNode(1);
+
+        OptimizedCallTarget target = (OptimizedCallTarget) caller.getCallTarget();
+
+        // The callee frame (the top of the stack) should never be accessible.
+        assertNull(target.call(0));
+
+        // In the interpreter the non-virtual caller frame should be accessible.
+        assertNotCompiled(target);
+        BytecodeFrame nonVirtualFrame = (BytecodeFrame) target.call(1);
+        assertNotCompiled(target);
+        checkCallerBytecodeFrame(nonVirtualFrame, false);
+
+        // Force transition to cached.
+        caller.getBytecodeNode().setUncachedThreshold(0);
+        target.call(0);
+        assertEquals(BytecodeTier.CACHED, caller.getBytecodeNode().getTier());
+
+        // In compiled code the frame should be accessible because it was materialized already.
+        target.compile(true);
+        assertCompiled(target);
+        nonVirtualFrame = (BytecodeFrame) target.call(1);
+        checkCallerBytecodeFrame(nonVirtualFrame, false);
+        assertCompiled(target);
+    }
+
+    private void checkCallerBytecodeFrame(BytecodeFrame bytecodeFrame, boolean isCopy) {
+        assertNotNull(bytecodeFrame);
+        assertEquals(1, bytecodeFrame.getLocalCount());
+        if (isCopy || AbstractBasicInterpreterTest.hasRootScoping(run.interpreterClass())) {
+            assertEquals(123, bytecodeFrame.getLocalValue(0));
+        } else {
+            // the local gets cleared on exit.
+            assertEquals(AbstractBasicInterpreterTest.getDefaultLocalValue(run.interpreterClass()), bytecodeFrame.getLocalValue(0));
+        }
     }
 
     @TruffleInstrument.Registration(id = BytecodeDSLCompilationTestInstrumentation.ID, services = Instrumenter.class)

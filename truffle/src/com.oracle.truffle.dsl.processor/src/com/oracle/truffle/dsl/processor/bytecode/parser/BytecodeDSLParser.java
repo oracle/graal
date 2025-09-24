@@ -238,6 +238,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableMaterializedLocalAccesses = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableMaterializedLocalAccesses");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
+        model.captureFramesForTrace = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "captureFramesForTrace");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");

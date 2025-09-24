@@ -853,10 +853,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private Element createIsCaptureFramesForTrace() {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "isCaptureFramesForTrace", new String[]{"compiled"}, new TypeMirror[]{type(boolean.class)});
         CodeTreeBuilder b = ex.createBuilder();
-        if (model.storeBciInFrame) {
+        if (model.captureFramesForTrace) {
+            b.lineComment("GenerateBytecode#captureFramesForTrace is true.");
             b.statement("return true");
-        } else {
+        } else if (model.storeBciInFrame) {
+            b.lineComment("GenerateBytecode#storeBytecodeIndexInFrame is true, so the frame is needed for location computations.");
+            b.statement("return true");
+        } else if (model.enableUncachedInterpreter) {
+            b.lineComment("The uncached interpreter (which is never compiled) needs the frame for location computations.");
+            b.lineComment("This may capture the frame in more situations than strictly necessary, but doing so in the interpreter is inexpensive.");
             b.statement("return !compiled");
+        } else {
+            b.lineComment("GenerateBytecode#captureFramesForTrace is not true, and the interpreter does not need the frame for location lookups.");
+            b.statement("return false");
         }
         return ex;
     }
@@ -12544,6 +12553,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createGetLocalInfo());
             this.add(createGetLocals());
 
+            this.add(createResolveFrameImplFrameInstance());
+            if (model.captureFramesForTrace) {
+                this.add(createResolveFrameImplTruffleStackTraceElement());
+                this.add(createResolveNonVirtualFrameImpl());
+            }
+
             if (model.enableTagInstrumentation) {
                 this.add(createGetTagNodes());
             }
@@ -12952,6 +12967,63 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocals");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().startNew("LocalVariableList").string("this").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveFrameImplFrameInstance() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveFrameImpl", new String[]{"frameInstance", "access"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.startIf().string("frameInstance.getCallTarget() instanceof ").type(types.RootCallTarget).string(" root && root.getRootNode() instanceof ").type(
+                                continuationRootNodeImpl.asType()).string(" continuation").end().startBlock();
+                b.lineComment("Continuations use materialized frames, which support all access modes.");
+                b.startReturn().startCall("continuation.findFrame").startCall("frameInstance.getFrame");
+                b.staticReference(types.FrameInstance_FrameAccess, "READ_ONLY");
+                b.end(3);
+                b.end(); // if
+            }
+            b.startReturn().string("frameInstance.getFrame(access)").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveFrameImplTruffleStackTraceElement() {
+            if (!model.captureFramesForTrace) {
+                throw new AssertionError("should not generate resolveFrameImpl(TruffleStackTraceElement) if frames are not captured.");
+            }
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveFrameImpl", new String[]{"element"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.declaration(types.Frame, "frame", "element.getFrame()");
+                b.startIf().string("frame != null && element.getTarget().getRootNode() instanceof ").type(continuationRootNodeImpl.asType()).string(
+                                " continuation").end().startBlock();
+                b.statement("frame = continuation.findFrame(frame)");
+                b.end();
+                b.startReturn().string("frame").end();
+            } else {
+                b.startReturn().string("element.getFrame()").end();
+            }
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveNonVirtualFrameImpl() {
+            if (!model.captureFramesForTrace) {
+                throw new AssertionError("should not generate resolveNonVirtualFrameImpl(TruffleStackTraceElement) if frames are not captured.");
+            }
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveNonVirtualFrameImpl", new String[]{"element"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.declaration(types.Frame, "frame", "element.getFrame()");
+                b.startIf().string("frame != null && element.getTarget().getRootNode() instanceof ").type(continuationRootNodeImpl.asType()).string(
+                                " continuation").end().startBlock();
+                b.lineComment("Continuation frames are always materialized.");
+                b.startReturn().string("continuation.findFrame(frame)").end();
+                b.end();
+            }
+            b.lineComment("Frames obtained in stack walks are always read-only.");
+            b.startReturn().string("null").end();
             return ex;
         }
 
