@@ -494,7 +494,15 @@ class PolybenchBenchmarkSuite(
 
     def _infer_guest_vm_info(self, benchmarks, bm_suite_args) -> Tuple[str, str]:
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
-        guest_vm = "-".join(sorted(resolved_benchmark.suite.languages))
+        # Eventually this must check for exact match for each language and map it to the corresponding guest-vm
+        # Here, we just infer it based on the presence of some language in a list. This must be made more robust
+        # and more generic to handle the case when multiple languages are used.
+        if "js" in resolved_benchmark.suite.languages:
+            guest_vm = "graal-js"
+        elif "python" in resolved_benchmark.suite.languages:
+            guest_vm = "graalpython"
+        else:
+            guest_vm = "none"
         if "--engine.Compilation=false" in self.runArgs(
             bm_suite_args
         ) or "-Dpolyglot.engine.Compilation=false" in self.vmArgs(bm_suite_args):
