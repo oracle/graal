@@ -573,7 +573,7 @@ def base_jdk(stage1=True):
             try:
                 # attempt to initialize JVMCI related attributes
                 jdk_enables_jvmci_by_default(_base_jdk_final)
-            except Exception as e:
+            except AssertionError as e:
                 assert "Could not execute" in e.args[0]
 
                 # ._probe_jvmci_info() and .get_modules() need a working java launcher, which might not be the case for FINAL_STAGE_JAVA_HOME.
@@ -600,7 +600,7 @@ def _probe_jvmci_info(jdk, attribute_name):
         sink = lambda x: x
         rc = mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink, nonZeroIsFatal=False)
         if rc != 0:
-            raise Exception(f"Could not execute {jdk.java}")
+            raise AssertionError(f"Could not execute {jdk.java}")
         enableJVMCI = False
         jvmciThreadsPerNativeLibraryRuntime = None
         for line in out.lines:
