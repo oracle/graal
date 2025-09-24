@@ -126,7 +126,7 @@
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
-    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+    "basics": mxgate("build,helloworld,native_unittests,standalone_pointsto_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
