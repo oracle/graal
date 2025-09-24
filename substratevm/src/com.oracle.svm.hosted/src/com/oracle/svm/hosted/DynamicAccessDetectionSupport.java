@@ -26,8 +26,7 @@ package com.oracle.svm.hosted;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -51,7 +50,16 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.Set;
+
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.loader.BuiltinClassLoader;
+import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Support class that caches a predetermined set of dynamic-access methods which may require
@@ -91,6 +99,7 @@ public class DynamicAccessDetectionSupport {
 
     public DynamicAccessDetectionSupport(AnalysisMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
+        boolean jdkUnsupportedModulePresent = ModuleLayer.boot().findModule("jdk.unsupported").isPresent();
 
         put(reflectionMethods, Class.class, Set.of(
                         new MethodSignature("forName", String.class),
@@ -174,9 +183,11 @@ public class DynamicAccessDetectionSupport {
                         new MethodSignature("resolveConstantDesc", MethodHandles.Lookup.class)));
         put(reflectionMethods, MethodHandleProxies.class, Set.of(
                         new MethodSignature("asInterfaceInstance", Class.class, MethodHandle.class)));
-        put(reflectionMethods, jdk.internal.misc.Unsafe.class, Set.of(
+        put(reflectionMethods, JavaLangAccess.class, Set.of(
+                        new MethodSignature("getDeclaredPublicMethods", Class.class, String.class, Class[].class)));
+        put(reflectionMethods, Unsafe.class, Set.of(
                         new MethodSignature("allocateInstance", Class.class)));
-        if (ModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+        if (jdkUnsupportedModulePresent) {
             Class<?> sunMiscUnsafeClass = ReflectionUtil.lookupClass("sun.misc.Unsafe");
             put(reflectionMethods, sunMiscUnsafeClass, Set.of(
                             new MethodSignature("allocateInstance", Class.class)));
@@ -192,6 +203,15 @@ public class DynamicAccessDetectionSupport {
                         new MethodSignature("readUnshared")));
         put(reflectionMethods, ObjectStreamClass.class, Set.of(
                         new MethodSignature("lookup", Class.class)));
+        put(reflectionMethods, ReflectionFactory.class, Set.of(
+                        new MethodSignature("newConstructorForSerialization", Class.class),
+                        new MethodSignature("newConstructorForSerialization", Class.class, Constructor.class)));
+        if (jdkUnsupportedModulePresent) {
+            Class<?> sunReflectReflectionFactoryClass = ReflectionUtil.lookupClass("sun.reflect.ReflectionFactory");
+            put(reflectionMethods, sunReflectReflectionFactoryClass, Set.of(
+                            new MethodSignature("newConstructorForSerialization", Class.class),
+                            new MethodSignature("newConstructorForSerialization", Class.class, Constructor.class)));
+        }
 
         put(reflectionMethods, Proxy.class, Set.of(
                         new MethodSignature("getProxyClass", ClassLoader.class, Class[].class),
@@ -209,6 +229,20 @@ public class DynamicAccessDetectionSupport {
         put(resourceMethods, Class.class, Set.of(
                         new MethodSignature("getResource", String.class),
                         new MethodSignature("getResourceAsStream", String.class)));
+        put(resourceMethods, ResourceBundle.class, Set.of(
+                        new MethodSignature("getBundle", String.class),
+                        new MethodSignature("getBundle", String.class, ResourceBundle.Control.class),
+                        new MethodSignature("getBundle", String.class, Locale.class),
+                        new MethodSignature("getBundle", String.class, Module.class),
+                        new MethodSignature("getBundle", String.class, Locale.class, Module.class),
+                        new MethodSignature("getBundle", String.class, Locale.class, ResourceBundle.Control.class),
+                        new MethodSignature("getBundle", String.class, Locale.class, ClassLoader.class),
+                        new MethodSignature("getBundle", String.class, Locale.class, ClassLoader.class, ResourceBundle.Control.class)));
+        put(resourceMethods, BuiltinClassLoader.class, Set.of(
+                        new MethodSignature("findResource", String.class),
+                        new MethodSignature("findResource", String.class, String.class),
+                        new MethodSignature("findResources", String.class),
+                        new MethodSignature("findResourceAsStream", String.class, String.class)));
 
         put(foreignMethods, Linker.class, Set.of(
                         new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
