@@ -420,6 +420,11 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         Class<?> enclosingClass = DynamicHub.toClass(hub).getEnclosingClass();
         if (enclosingClass == null) {

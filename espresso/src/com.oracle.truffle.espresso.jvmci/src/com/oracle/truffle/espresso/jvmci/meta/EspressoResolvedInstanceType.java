@@ -43,6 +43,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -450,6 +451,18 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     @Override
     public boolean isMember() {
         return getMirror().isMemberClass();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        Class<?>[] declaredClasses = getMirror().getDeclaredClasses();
+        ResolvedJavaType[] declaredTypes = new ResolvedJavaType[declaredClasses.length];
+        MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
+        for (int i = 0; i != declaredTypes.length; i++) {
+            declaredTypes[i] = metaAccess.lookupJavaType(declaredClasses[i]);
+        }
+        return declaredTypes;
+
     }
 
     @Override
