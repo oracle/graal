@@ -64,6 +64,7 @@ import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
@@ -100,7 +101,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Resolved non-primitive, non-array types in Espresso.
  */
-public final class ObjectKlass extends Klass {
+public final class ObjectKlass extends Klass implements AttributedElement {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
     public static final KlassVersion[] EMPTY_KLASSVERSION_ARRAY = new KlassVersion[0];
@@ -176,6 +177,7 @@ public final class ObjectKlass extends Klass {
     private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
     // endregion
 
+    @Override
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
     }

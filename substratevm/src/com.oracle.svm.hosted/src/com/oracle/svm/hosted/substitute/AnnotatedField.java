@@ -26,12 +26,13 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -40,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
 
     private final ResolvedJavaField original;
-    private final AnnotationValue[] injectedAnnotations;
+    private final List<AnnotationValue> injectedAnnotations;
 
     public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
         this.original = original;
@@ -53,7 +54,7 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return injectedAnnotations;
     }
 
@@ -96,7 +97,7 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
 
     @Override
     public String toString() {
-        return "AnnotatedField<original " + original.toString() + ", annotation: " + injectedAnnotations[0].getType() + ">";
+        return "AnnotatedField<original " + original.toString() + ", annotation: " + injectedAnnotations.getFirst().getAnnotationType() + ">";
     }
 
     @Override

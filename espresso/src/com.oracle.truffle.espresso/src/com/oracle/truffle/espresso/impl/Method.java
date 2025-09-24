@@ -87,6 +87,7 @@ import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
@@ -141,7 +142,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
 public final class Method extends Member<Signature> implements MethodRef, TruffleObject, ContextAccess,
-                MethodAccess<Klass, Method, Field> {
+                MethodAccess<Klass, Method, Field>, AttributedElement {
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
     public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
@@ -274,6 +275,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getMethodVersion().getRefKind();
     }
 
+    @Override
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getParserMethod().getAttribute(attrName);
     }

@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
@@ -36,10 +37,10 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.Constant;
@@ -57,7 +58,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
-    private final AnnotationValue[] injectedAnnotations;
+    private final List<AnnotationValue> injectedAnnotations;
 
     public AnnotatedMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
         this.original = original;
@@ -190,7 +191,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return injectedAnnotations;
     }
 

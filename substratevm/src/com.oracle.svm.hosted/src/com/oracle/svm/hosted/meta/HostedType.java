@@ -42,7 +42,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
@@ -144,7 +146,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
      * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
      * cannot be strengthened.
-     * 
+     *
      * For open world the strengthen stamp type is equal to this type itself if the type is not a
      * leaf type, i.e., it cannot be extended.
      */
@@ -359,6 +361,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
+    }
+
+    @Override
     public final boolean hasFinalizer() {
         /* We just ignore finalizers. */
         return false;
@@ -516,8 +523,22 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
+        for (int i = 0; i < declaredTypes.length; i++) {
+            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+        }
+        return declaredTypes;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -554,6 +575,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public void link() {
         wrapped.link();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
     }
 
     @Override

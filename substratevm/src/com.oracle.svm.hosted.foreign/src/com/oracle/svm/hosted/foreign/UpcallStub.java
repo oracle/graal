@@ -63,11 +63,11 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -122,13 +122,13 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  * customized calling convention.
  * <p>
  * The method type is of the form (<>: argument; []: optional argument)
- * 
+ *
  * <pre>
  * {@code
  *      <actual arg 1> <actual arg 2> ...
  * }
  * </pre>
- * 
+ *
  * with the following arguments being passed using special registers:
  * <ul>
  * <li>The {@link MethodHandle} to call in {@link AbiUtils#upcallSpecialArgumentsRegisters()}</li>
@@ -266,12 +266,12 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
 
     private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(LowLevelUpcallStub.class, "annotationsHolder");
 
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     AnnotationAccess.getAnnotation(ANNOTATIONS_HOLDER, ExplicitCallingConvention.class),
                     Uninterruptible.Utils.getAnnotation(ANNOTATIONS_HOLDER));
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return INJECTED_ANNOTATIONS;
     }
 
@@ -379,7 +379,7 @@ class HighLevelDirectUpcallStub extends UpcallStub {
          * has a specialized signature (i.e. no longer takes 'Object[]') and so we omit boxing.
          * Further, this method is annotated with 'LambdaForm.Compiled' and recognized by
          * InlineBeforeAnalysis as method handle intrinsification root.
-         * 
+         *
          * If resolving does not work, a call to a generic invocation method will be emitted (same
          * as in 'UpcallStub'). We will still use the constant method handle as receiver to enable
          * some optimizations but the method handle will most certainly still be interpreted.

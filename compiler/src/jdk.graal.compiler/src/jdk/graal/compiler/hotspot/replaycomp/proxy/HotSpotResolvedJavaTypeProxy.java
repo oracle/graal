@@ -49,6 +49,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -289,6 +290,14 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isPrimitiveMethod, isPrimitiveInvokable);
     }
 
+    private static final SymbolicMethod isRecordMethod = method("isRecord");
+    private static final InvokableMethod isRecordInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isRecord();
+
+    @Override
+    public boolean isRecord() {
+        return (boolean) handle(isRecordMethod, isRecordInvokable);
+    }
+
     public static final SymbolicMethod getJavaKindMethod = method("getJavaKind");
     public static final InvokableMethod getJavaKindInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getJavaKind();
 
@@ -355,12 +364,28 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isMemberMethod, isMemberInvokable);
     }
 
+    private static final SymbolicMethod getDeclaredTypesMethod = method("getDeclaredTypes");
+    private static final InvokableMethod getDeclaredTypesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods();
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return (ResolvedJavaType[]) handle(getDeclaredTypesMethod, getDeclaredTypesInvokable);
+    }
+
     private static final SymbolicMethod getEnclosingTypeMethod = method("getEnclosingType");
     private static final InvokableMethod getEnclosingTypeInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingType();
 
     @Override
     public final HotSpotResolvedObjectType getEnclosingType() {
         return (HotSpotResolvedObjectType) handle(getEnclosingTypeMethod, getEnclosingTypeInvokable);
+    }
+
+    private static final SymbolicMethod getRecordComponentsMethod = method("getRecordComponents");
+    private static final InvokableMethod getRecordComponentsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getRecordComponents();
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        return (ResolvedJavaRecordComponent[]) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
     private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");

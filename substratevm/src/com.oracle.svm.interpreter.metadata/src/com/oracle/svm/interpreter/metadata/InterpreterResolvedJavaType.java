@@ -44,7 +44,9 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
@@ -214,6 +216,16 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
+    public final boolean isRecord() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public final boolean isInitialized() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -265,6 +277,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
 
     @Override
     public final Assumptions.AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         throw VMError.intentionallyUnimplemented();
     }
 
@@ -325,6 +342,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
 
     @Override
     public final Annotation[] getDeclaredAnnotations() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
         throw VMError.intentionallyUnimplemented();
     }
 

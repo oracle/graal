@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,42 +24,13 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import sun.reflect.annotation.ExceptionProxy;
-
-public final class AnnotationExceptionProxyValue extends AnnotationMemberValue {
-    private final ExceptionProxy exceptionProxy;
-    private JavaConstant objectConstant;
-
-    AnnotationExceptionProxyValue(ExceptionProxy exceptionProxy) {
-        this.exceptionProxy = exceptionProxy;
+@SuppressWarnings("serial")
+public final class AnnotationExtractionError extends Error {
+    AnnotationExtractionError(Object targetElement, Throwable cause) {
+        super("Failed to process '%s': %s".formatted(targetElement, cause), cause);
     }
 
-    public JavaConstant getObjectConstant(SnippetReflectionProvider snippetReflection) {
-        if (objectConstant == null && snippetReflection != null) {
-            objectConstant = snippetReflection.forObject(exceptionProxy);
-        }
-        return Objects.requireNonNull(objectConstant);
+    AnnotationExtractionError(Object targetElement, String message) {
+        super("Failed to process '%s': %s".formatted(targetElement, message));
     }
-
-    @Override
-    public char getTag() {
-        return 'E';
-    }
-
-    @Override
-    public Object get(Class<?> memberType) {
-        return exceptionProxy;
-    }
-
-    @Override
-    public List<Class<?>> getTypes() {
-        return Collections.singletonList(exceptionProxy.getClass());
-    }
-
 }

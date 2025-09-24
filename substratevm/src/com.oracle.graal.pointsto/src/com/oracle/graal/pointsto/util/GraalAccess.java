@@ -24,7 +24,13 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.util.Objects;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
@@ -32,10 +38,11 @@ import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -63,6 +70,22 @@ public final class GraalAccess {
 
     public static Providers getOriginalProviders() {
         return originalProviders;
+    }
+
+    public static ResolvedJavaType lookupType(Class<?> cls) {
+        return originalProviders.getMetaAccess().lookupJavaType(cls);
+    }
+
+    public static ResolvedJavaMethod lookupMethod(Executable exe) {
+        return originalProviders.getMetaAccess().lookupJavaMethod(exe);
+    }
+
+    public static ResolvedJavaField lookupField(Field field) {
+        return originalProviders.getMetaAccess().lookupJavaField(field);
+    }
+
+    public static ResolvedJavaRecordComponent lookupRecordComponent(RecordComponent rc) {
+        return originalProviders.getMetaAccess().lookupJavaRecordComponent(rc);
     }
 
     public static SnippetReflectionProvider getOriginalSnippetReflection() {

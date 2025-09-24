@@ -263,10 +263,16 @@ suite = {
                     "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.runtime",
                 ],
             },
-            "javaCompliance": "8+",
+            "javaCompliance": "21+",
+            # Direct reference to jdk.vm.ci.meta.annotation and
+            # jdk.vm.ci.meta.ResolvedJavaRecordComponent causes
+            # spotbugs analysis to fail with "missing class" error.
+            "spotbugs": "false",
+
             "checkstyle": "com.oracle.truffle.espresso",
         },
 

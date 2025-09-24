@@ -35,7 +35,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * This type is used in the context of Layered Image, when loading a base layer in another layer.
@@ -56,6 +58,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private final int modifiers;
     private final boolean isInterface;
     private final boolean isEnum;
+    private final boolean isRecord;
     private final boolean isInitialized;
     private final boolean isLinked;
     private final String sourceFileName;
@@ -67,7 +70,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private ResolvedJavaField[] instanceFields;
     private ResolvedJavaField[] instanceFieldsWithSuper;
 
-    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked,
+    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isRecord, boolean isInitialized, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
                     Annotation[] annotations) {
         super(annotations);
@@ -76,6 +79,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
         this.modifiers = modifiers;
         this.isInterface = isInterface;
         this.isEnum = isEnum;
+        this.isRecord = isRecord;
         this.isInitialized = isInitialized;
         this.isLinked = isLinked;
         this.sourceFileName = sourceFileName;
@@ -233,6 +237,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         /*
          * For now, the base layer types have no methods. If they are needed, a BaseLayerMethod can
@@ -267,6 +276,16 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public boolean isRecord() {
+        return isRecord;
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent[] getRecordComponents() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
@@ -283,6 +302,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public boolean isMember() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
