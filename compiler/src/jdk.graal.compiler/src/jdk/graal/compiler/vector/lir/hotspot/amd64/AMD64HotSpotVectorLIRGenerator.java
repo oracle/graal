@@ -63,7 +63,7 @@ public class AMD64HotSpotVectorLIRGenerator extends AMD64HotSpotLIRGenerator {
         super(new AMD64HotSpotSimdLIRKindTool(),
                         AMD64VectorArithmeticLIRGenerator.create(null, providers.getCodeCache().getTarget().arch),
                         getBarrierSet(config, providers),
-                        new AMD64VectorMoveFactory(new AMD64HotSpotMoveFactory(backupSlotProvider), backupSlotProvider,
+                        new AMD64VectorMoveFactory(new AMD64HotSpotMoveFactory(backupSlotProvider, providers.getRegisters().getZeroValueRegister(config)), backupSlotProvider,
                                         AMD64SIMDInstructionEncoding.forFeatures(((AMD64) providers.getCodeCache().getTarget().arch).getFeatures())),
                         providers, config, lirGenRes);
     }

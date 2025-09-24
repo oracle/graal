@@ -1546,6 +1546,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return super.createStackLoad(dst, src);
         }
 
+        @Override
+        public Register getPreferredGeneralPurposeScratchRegister() {
+            return ReservedRegisters.singleton().getCodeBaseRegister();
+        }
+
         protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
             if (ReferenceAccess.singleton().haveCompressedReferences()) {
                 RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
