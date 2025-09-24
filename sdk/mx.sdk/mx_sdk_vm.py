@@ -78,7 +78,8 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_base_jdk = None
+_base_jdk_stage1 = None
+_base_jdk_final = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
@@ -552,16 +553,42 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
 
+def base_jdk(stage1=True):
+    global _base_jdk_stage1, _base_jdk_final
 
-def base_jdk():
-    global _base_jdk
-    if _base_jdk is None:
-        _base_jdk = mx.get_jdk(tag='default')
-    return _base_jdk
+    if _base_jdk_stage1 is None:
+        _base_jdk_stage1 = mx.get_jdk(tag='default')
+
+    if stage1:
+        return _base_jdk_stage1
+
+    if _base_jdk_final is None:
+        final_stage_java_home = mx.get_env('FINAL_STAGE_JAVA_HOME')
+        if final_stage_java_home:
+            _base_jdk_final = mx.JDKConfig(final_stage_java_home)
+
+            assert _base_jdk_stage1.version == _base_jdk_final.version, f"version of JAVA_HOME ({_base_jdk_stage1.version}) and FINAL_STAGE_JAVA_HOME ({_base_jdk_final.version}) must match"
+            assert _base_jdk_stage1.release_dict['MODULES'] == _base_jdk_final.release_dict['MODULES'], "JAVA_HOME and FINAL_STAGE_JAVA_HOME do not include the same set of modules"
+
+            try:
+                # attempt to initialize JVMCI related attributes
+                jdk_enables_jvmci_by_default(_base_jdk_final)
+            except Exception as e:
+                assert "could not execute" in e.args[0]
+
+                # ._probe_jvmci_info() and .get_modules() need a working java launcher, which might not be the case for FINAL_STAGE_JAVA_HOME.
+                # Copy infos from stage1 JAVA_HOME instead.
+                setattr(_base_jdk_final, '.enables_jvmci_by_default', jdk_enables_jvmci_by_default(_base_jdk_stage1))
+                setattr(_base_jdk_final, '.jvmciThreadsPerNativeLibraryRuntime', get_JVMCIThreadsPerNativeLibraryRuntime(_base_jdk_stage1))
+
+                setattr(_base_jdk_final, '.modules', _base_jdk_stage1.get_modules())
+        else:
+            _base_jdk_final = _base_jdk_stage1
+    return _base_jdk_final
 
 
-def base_jdk_version():
-    return base_jdk().javaCompliance.value
+def base_jdk_version(stage1=True):
+    return base_jdk(stage1=True).javaCompliance.value
 
 def get_jdk_version_for_profiles():
     jdk_version = mx.get_jdk().javaCompliance.value
@@ -571,7 +598,9 @@ def _probe_jvmci_info(jdk, attribute_name):
     if not hasattr(jdk, '.enables_jvmci_by_default'):
         out = mx.LinesOutputCapture()
         sink = lambda x: x
-        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        rc = mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink, nonZeroIsFatal=False)
+        if rc != 0:
+            raise Exception(f"Could not execute {jdk.java}")
         enableJVMCI = False
         jvmciThreadsPerNativeLibraryRuntime = None
         for line in out.lines:
@@ -606,7 +635,7 @@ def _read_java_base_hashes(jdk):
     """
     hashes = {}
     out = mx.LinesOutputCapture()
-    mx.run([jdk.exe_path('jmod'), 'describe', join(jdk.home, 'jmods', 'java.base.jmod')], out=out)
+    mx.run([base_jdk(stage1=True).exe_path('jmod'), 'describe', join(jdk.home, 'jmods', 'java.base.jmod')], out=out)
     lines = out.lines
     for line in lines:
         if line.startswith('hashes'):
@@ -955,7 +984,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
                     with open(module_info_java, 'w') as fp:
                         fp.write(module_info)
-                    mx.run([jdk.javac, '-d', module_build_dir,
+                    mx.run([base_jdk(stage1=True).javac, '-d', module_build_dir,
                             '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
                             '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
                             module_info_java])
@@ -965,14 +994,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if exists(jmd.get_jmod_path()):
                         os.remove(jmd.get_jmod_path())
                     if not use_upgrade_module_path:
-                        mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
+                        mx.run([base_jdk(stage1=True).exe_path('jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
                 modules.extend(synthetic_modules.keys())
                 module_names = frozenset((m.name for m in modules))
                 all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
         # Now build the new JDK image with jlink
-        jlink = [jdk.javac.replace('javac', 'jlink')]
+        jlink = [base_jdk(stage1=True).exe_path('jlink')]
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
@@ -1107,6 +1136,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
             if "Shared spaces are not supported in this VM" in out.data:
                 # GR-37047: CDS support in darwin-aarch64 jdk11 is missing.
                 assert mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64' and jdk.javaCompliance == '11'
+            elif base_jdk(stage1=True) != jdk:
+                mx.log("Cross build, skip -Xshare.  FINAL_STAGE_JAVA_HOME might not run on the build host")
             else:
                 mx.log(out.data)
                 mx.abort('Error generating CDS shared archive')
@@ -1189,7 +1220,7 @@ def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
                 base_name=mx_sdk_vm_impl._graalvm_base_name,
                 delimiter='_' if dist_name else '',
                 dist_name=dist_name,
-                jdk_version=mx_sdk_vm_impl._src_jdk_version
+                jdk_version=base_jdk_version(stage1=False)
             ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 
