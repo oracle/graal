@@ -79,9 +79,12 @@ def create_ni_standalone(base_standalone_name, register_distribution):
         if _find_native_image_command(espresso_java_home.java_home):
             # ESPRESSO_JAVA_HOME has native-image, keep that
             pass
-        elif has_component('ni') and espresso_java_home.java_home == mx_sdk_vm.base_jdk().home:
+        elif has_component('ni'):
             if graalvm_skip_archive():
                 mx.abort("Cannot build NI standalones with GRAALVM_SKIP_ARCHIVE enabled")
+
+            if espresso_java_home.java_home != mx_sdk_vm.base_jdk(stage1=False).home:
+                mx.abort(f"ESPRESSO_JAVA_HOME(={espresso_java_home.java_home}) must match JAVA_HOME (={mx_sdk_vm.base_jdk(stage1=True).home}) (or FINAL_STAGE_JAVA_HOME (={mx_sdk_vm.base_jdk(stage1=False).home}) if set)")
 
             # substratevm is available and ESPRESSO_JAVA_HOME is JAVA_HOME, use GraalVM
             layout['./'][0]['source_type'] = 'extracted-dependency'
