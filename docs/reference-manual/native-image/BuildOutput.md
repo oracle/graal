@@ -316,6 +316,14 @@ Unassociated types are displayed when certain types (such as classes, interfaces
 If these types contain vulnerabilities, SBOM scanning will not detect them.
 To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
 
+Hashes are computed for JAR inputs and GraalVM internal components if the `hashes` option is used.
+Hashes are not computed for directories.
+If `hashes` is enabled and hashes cannot be computed, the number of components without hashes is displayed.
+To list these components, use:
+```bash
+jq '.components[] | select(.hashes == null)' /path/to/app.sbom.json
+```
+
 Use the [build report](BuildReport.md) to view included components, their dependencies, and any unassociated types.
 For more information, see [Software Bill of Materials (SBOM) in Native Image](../../security/SBOM.md).
 
