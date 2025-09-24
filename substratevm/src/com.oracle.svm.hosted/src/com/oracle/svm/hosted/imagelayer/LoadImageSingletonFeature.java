@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -128,29 +127,13 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        BiFunction<GraphBuilderContext, ValueNode, ValueNode> loadMultiLayeredImageSingleton = (b, classNode) -> {
-            Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
-
-            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                /*
-                 * Load reference to the proper slot within the cross-layer singleton table.
-                 */
-                return LoadImageSingletonFactory.loadLayeredImageSingleton(key, b.getMetaAccess());
-            } else {
-                /*
-                 * Can directly load the array of all objects
-                 */
-                JavaConstant multiLayerArray = getMultiLayerConstant(key, b.getMetaAccess(), b.getSnippetReflection());
-                return ConstantNode.forConstant(multiLayerArray, 1, true, b.getMetaAccess());
-            }
-        };
 
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), MultiLayeredImageSingleton.class);
         r.register(new InvocationPlugin.RequiredInvocationPlugin("getAllLayers", Class.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
-                b.addPush(JavaKind.Object, loadMultiLayeredImageSingleton.apply(b, classNode));
+                b.addPush(JavaKind.Object, loadMultiLayeredImageSingleton(b, classNode));
                 return true;
             }
         });
@@ -159,7 +142,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode, ValueNode indexNode) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode layerArray = b.add(loadMultiLayeredImageSingleton.apply(b, classNode));
+                    ValueNode layerArray = b.add(loadMultiLayeredImageSingleton(b, classNode));
 
                     helper.intrinsicArrayRangeCheck(layerArray, indexNode, ConstantNode.forInt(1));
                     var arrayElem = LoadIndexedNode.create(null, layerArray, indexNode, null, JavaKind.Object, b.getMetaAccess(), b.getConstantReflection());
@@ -179,6 +162,23 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         boolean nullEntriesAllowed = AnnotationAccess.isAnnotationPresent(key, MultiLayeredAllowNullEntries.class);
         UserError.guarantee(nullEntriesAllowed,
                         "This MultiLayeredSingleton requires an entry to be installed in every layer. Please see the javadoc within MultiLayeredAllowNullEntries for more details.");
+    }
+
+    public ValueNode loadMultiLayeredImageSingleton(GraphBuilderContext b, ValueNode classNode) {
+        Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
+
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+            /*
+             * Load reference to the proper slot within the cross-layer singleton table.
+             */
+            return LoadImageSingletonFactory.loadLayeredImageSingleton(key, b.getMetaAccess());
+        } else {
+            /*
+             * Can directly load the array of all objects
+             */
+            JavaConstant multiLayerArray = getMultiLayerConstant(key, b.getMetaAccess(), b.getSnippetReflection());
+            return ConstantNode.forConstant(multiLayerArray, 1, true, b.getMetaAccess());
+        }
     }
 
     /**

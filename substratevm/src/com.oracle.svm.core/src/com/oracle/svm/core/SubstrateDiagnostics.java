@@ -50,6 +50,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.DumpCodeCacheHistory;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpDeoptStubPointer;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRecentDeoptimizations;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRuntimeCodeInfoMemory;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -67,7 +68,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -912,7 +912,15 @@ public class SubstrateDiagnostics {
             if (SubstrateOptions.useRelativeCodePointers()) {
                 log.string("Code base: ").zhex(KnownIntrinsics.codeBase()).newline();
             }
-            log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
+            CGlobalDataPointerSingleton[] layeredSingletons = CGlobalDataPointerSingleton.allLayers();
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                for (int i = 0; i < layeredSingletons.length; ++i) {
+                    log.string("CGlobalData base for layer ").unsigned(i).string(": ").zhex(layeredSingletons[i].getRuntimeBaseAddress().getPointer()).newline();
+                }
+            } else {
+                BoxedRelocatedPointer baseAddress = layeredSingletons[0].getRuntimeBaseAddress();
+                log.string("CGlobalData base: ").zhex(baseAddress.getPointer()).newline();
+            }
             log.string("Containerized: ").bool(Container.singleton().isContainerized()).newline();
 
             if (Container.singleton().isContainerized()) {
