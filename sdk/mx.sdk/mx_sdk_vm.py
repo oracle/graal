@@ -574,7 +574,7 @@ def base_jdk(stage1=True):
                 # attempt to initialize JVMCI related attributes
                 jdk_enables_jvmci_by_default(_base_jdk_final)
             except Exception as e:
-                assert "could not execute" in e.args[0]
+                assert "Could not execute" in e.args[0]
 
                 # ._probe_jvmci_info() and .get_modules() need a working java launcher, which might not be the case for FINAL_STAGE_JAVA_HOME.
                 # Copy infos from stage1 JAVA_HOME instead.
