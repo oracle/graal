@@ -450,6 +450,9 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.TAG: {
+                    if (!exceptions) {
+                        fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02X", importType);
+                    }
                     final byte attribute = read1();
                     final int typeIndex = readTypeIndex();
                     final int tagIndex = module.symbolTable().tagCount();
@@ -2932,6 +2935,9 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.TAG: {
+                    if (!exceptions) {
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Invalid export type identifier: 0x%02X", exportType);
+                    }
                     final int index = readTagIndex();
                     module.symbolTable().exportTag(index, exportName);
                     break;
