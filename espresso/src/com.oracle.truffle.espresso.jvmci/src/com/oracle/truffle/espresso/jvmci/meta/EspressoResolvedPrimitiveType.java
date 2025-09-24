@@ -241,6 +241,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return new ResolvedJavaType[0];
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         return null;
     }

@@ -296,6 +296,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         throw new UnsupportedOperationException();
     }

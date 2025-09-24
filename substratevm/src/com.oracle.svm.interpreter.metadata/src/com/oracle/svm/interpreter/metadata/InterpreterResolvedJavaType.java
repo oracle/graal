@@ -328,5 +328,10 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
         throw VMError.intentionallyUnimplemented();
     }
 
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
     // endregion Unimplemented methods
 }

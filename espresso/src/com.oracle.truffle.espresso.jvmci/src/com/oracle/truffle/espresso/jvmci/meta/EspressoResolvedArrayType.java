@@ -273,6 +273,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return new ResolvedJavaType[0];
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         return null;
     }
