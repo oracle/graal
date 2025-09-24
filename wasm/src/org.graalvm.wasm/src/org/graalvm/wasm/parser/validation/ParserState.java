@@ -46,6 +46,7 @@ import static java.lang.Integer.compareUnsigned;
 import java.util.ArrayList;
 
 import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.IntArrayList;
@@ -60,21 +61,22 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  */
 public class ParserState {
     private static final int[] EMPTY_ARRAY = new int[0];
-    private static final int ANY = 0;
 
     private final IntArrayList valueStack;
     private final ControlStack controlStack;
     private final RuntimeBytecodeGen bytecode;
     private final ArrayList<ExceptionTable> exceptionTables;
+    private final SymbolTable symbolTable;
 
     private int maxStackSize;
     private boolean usesMemoryZero;
 
-    public ParserState(RuntimeBytecodeGen bytecode) {
+    public ParserState(RuntimeBytecodeGen bytecode, SymbolTable symbolTable) {
         this.valueStack = new IntArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
         this.exceptionTables = new ArrayList<>();
+        this.symbolTable = symbolTable;
 
         this.maxStackSize = 0;
     }
@@ -90,8 +92,8 @@ public class ParserState {
             if (isCurrentStackUnreachable()) {
                 return WasmType.UNKNOWN_TYPE;
             } else {
-                if (expectedValueType == ANY) {
-                    throw ValidationErrors.createExpectedAnyOnEmptyStack();
+                if (expectedValueType == WasmType.TOP) {
+                    throw ValidationErrors.createExpectedTopOnEmptyStack();
                 } else {
                     throw ValidationErrors.createExpectedTypeOnEmptyStack(expectedValueType);
                 }
@@ -101,7 +103,7 @@ public class ParserState {
     }
 
     /**
-     * Pops the maximum available values form the current stack frame. If the number of values on
+     * Pops the maximum available values from the current stack frame. If the number of values on
      * the stack is smaller than the number of expectedValueTypes, only the remaining stack values
      * are returned. If the number of values on the stack is greater or equal to the number of
      * expectedValueTypes, the values equal to the number of expectedValueTypes is popped from the
@@ -130,7 +132,7 @@ public class ParserState {
         int[] popped = new int[availableStackSize];
         int j = 0;
         for (int i = availableStackSize - 1; i >= 0; i--) {
-            popped[j] = popInternal(ANY);
+            popped[j] = popInternal(WasmType.TOP);
             j++;
         }
         return popped;
@@ -151,7 +153,7 @@ public class ParserState {
             return false;
         }
         for (int i = 0; i < expectedTypes.length; i++) {
-            if (expectedTypes[i] != actualTypes[i]) {
+            if (!symbolTable.matches(expectedTypes[i], actualTypes[i])) {
                 return true;
             }
         }
@@ -186,7 +188,7 @@ public class ParserState {
      * @throws WasmException If the stack is empty.
      */
     public int pop() {
-        return popInternal(ANY);
+        return popInternal(WasmType.TOP);
     }
 
     /**
@@ -198,7 +200,7 @@ public class ParserState {
      */
     public int popChecked(int expectedValueType) {
         final int actualValueType = popInternal(expectedValueType);
-        if (actualValueType != expectedValueType && actualValueType != WasmType.UNKNOWN_TYPE && expectedValueType != WasmType.UNKNOWN_TYPE) {
+        if (!symbolTable.matches(expectedValueType, actualValueType) && actualValueType != WasmType.UNKNOWN_TYPE && expectedValueType != WasmType.UNKNOWN_TYPE) {
             throw ValidationErrors.createTypeMismatch(expectedValueType, actualValueType);
         }
         return actualValueType;

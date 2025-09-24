@@ -822,6 +822,10 @@ public abstract class SymbolTable {
         };
     }
 
+    public boolean matches(int expectedType, int actualType) {
+        return closedTypeAt(expectedType).matches(closedTypeAt(actualType));
+    }
+
     public void importSymbol(ImportDescriptor descriptor) {
         checkNotParsed();
         assert importedSymbols.size() == descriptor.importedSymbolIndex();

@@ -602,7 +602,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private CodeEntry readFunction(int functionIndex, int[] locals, int[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode,
                     int codeEntryIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
-        final ParserState state = new ParserState(bytecode);
+        final ParserState state = new ParserState(bytecode, module);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
         state.enterFunction(resultTypes);
@@ -2597,7 +2597,7 @@ public class BinaryParser extends BinaryStreamParser {
         // Read the constant expression.
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
-        final ParserState state = new ParserState(bytecode);
+        final ParserState state = new ParserState(bytecode, module);
 
         final List<Object> stack = new ArrayList<>();
         boolean calculable = true;

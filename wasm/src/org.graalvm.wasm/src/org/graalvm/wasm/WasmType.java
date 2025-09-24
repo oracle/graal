@@ -98,6 +98,7 @@ public class WasmType implements TruffleObject {
     /**
      * Implementation-specific Types.
      */
+    public static final int TOP = -0x7d;
     public static final int NULL_TYPE = -0x7e;
     public static final int UNKNOWN_TYPE = -0x7f;
 

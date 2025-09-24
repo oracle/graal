@@ -101,8 +101,8 @@ public class ValidationErrors {
     }
 
     @TruffleBoundary
-    public static WasmException createExpectedAnyOnEmptyStack() {
-        return WasmException.create(Failure.TYPE_MISMATCH, "Expected type [any], but got [].");
+    public static WasmException createExpectedTopOnEmptyStack() {
+        return WasmException.create(Failure.TYPE_MISMATCH, "Expected type [top], but got [].");
     }
 
     @TruffleBoundary
