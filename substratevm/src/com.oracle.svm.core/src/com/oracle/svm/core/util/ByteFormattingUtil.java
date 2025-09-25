@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core.util;
 
 public class ByteFormattingUtil {
     // "123.12KiB".length() = 9, holds as long as it's not >= 1000GiB
@@ -65,5 +65,4 @@ public class ByteFormattingUtil {
         assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value;
         return string;
     }
-
 }
