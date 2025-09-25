@@ -47,8 +47,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
@@ -337,6 +339,40 @@ public class StackTraceTest extends AbstractInstructionTest {
         }
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testCaptureWithLimit() {
+        int depth = run.depth;
+        assumeTrue("Cannot test stack trace limits with less than two frames in the trace.", depth >= 2);
+        int stackTraceLimit = depth / 2;
+        StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
+            b.beginRoot();
+            b.emitDummy();
+            b.beginReturn();
+            b.emitCaptureStackWithLimit(stackTraceLimit);
+            b.endReturn();
+            b.endRoot();
+        }, true, false);
+        StackTraceTestRootNode outer = nodes[nodes.length - 1];
+
+        // First, invoke as usual. The stack trace should consist of the top stackTraceLimit frames.
+        StackTraceTestRootNode[] topFrames = Arrays.copyOfRange(nodes, 0, stackTraceLimit);
+        for (int repeat = 0; repeat < REPEATS; repeat++) {
+            List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) outer.getCallTarget().call();
+            assertStackElements(topFrames, elements, "c.CaptureStackWithLimit", "c.Call", false);
+        }
+
+        // Next, mark the top (depth - stackTraceLimit) roots as internal so they do not "count".
+        for (int i = 0; i < depth - stackTraceLimit; i++) {
+            nodes[i].internal = true;
+        }
+        // Since they do not "count", we should capture every frame.
+        for (int repeat = 0; repeat < REPEATS; repeat++) {
+            List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) outer.getCallTarget().call();
+            assertStackElements(nodes, elements, "c.CaptureStackWithLimit", "c.Call", false);
+        }
+    }
+
     private void assertStackElements(StackTraceTestRootNode[] nodes, List<TruffleStackTraceElement> elements, String firstElementInstruction, String chainedElementInstruction, boolean checkSources) {
         assertEquals(nodes.length, elements.size());
         assertStackElement(elements.get(0), nodes[0], firstElementInstruction, checkSources);
@@ -515,6 +551,7 @@ public class StackTraceTest extends AbstractInstructionTest {
 
         public String name;
         public int depth;
+        public boolean internal = false;
 
         public void setName(String name) {
             this.name = name;
@@ -523,6 +560,11 @@ public class StackTraceTest extends AbstractInstructionTest {
         @Override
         public String getName() {
             return name;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return internal;
         }
 
         @Override
@@ -602,6 +644,17 @@ public class StackTraceTest extends AbstractInstructionTest {
             @Specialization
             static Object doDefault(@Bind Node node) {
                 TestException ex = new TestException(node);
+                return TruffleStackTrace.getStackTrace(ex);
+            }
+        }
+
+        @Operation(storeBytecodeIndex = true)
+        @ConstantOperand(type = int.class, name = "stackTraceLimit")
+        static final class CaptureStackWithLimit {
+
+            @Specialization
+            static Object doDefault(int stackTraceLimit, @Bind Node node) {
+                TestException ex = new TestException(node, stackTraceLimit);
                 return TruffleStackTrace.getStackTrace(ex);
             }
         }
@@ -687,6 +740,10 @@ public class StackTraceTest extends AbstractInstructionTest {
 
         TestException(Node location) {
             super(resolveLocation(location));
+        }
+
+        TestException(Node location, int stackTraceElementLimit) {
+            super(null, null, stackTraceElementLimit, resolveLocation(location));
         }
 
         private static Node resolveLocation(Node location) {

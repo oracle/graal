@@ -500,7 +500,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createInvalidate());
 
         this.add(createGetRootNodes());
-        this.addOptional(createCountTowardsStackTraceLimit());
         this.add(createGetSourceSection());
         CodeExecutableElement translateStackTraceElement = this.addOptional(createTranslateStackTraceElement());
         if (translateStackTraceElement != null) {
@@ -1134,28 +1133,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.string("stackTraceElement");
         b.end();
         b.end();
-        return ex;
-    }
-
-    private CodeExecutableElement createCountTowardsStackTraceLimit() {
-        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "countsTowardsStackTraceLimit"), model.templateType);
-        if (executable != null) {
-            return null;
-        }
-        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "countsTowardsStackTraceLimit");
-        if (ex.getModifiers().contains(Modifier.FINAL)) {
-            // already overridden by the root node.
-            return null;
-        }
-
-        ex.getModifiers().remove(Modifier.ABSTRACT);
-        ex.getModifiers().add(Modifier.FINAL);
-        CodeTreeBuilder b = ex.createBuilder();
-        /*
-         * We do override with false by default to avoid materialization of sources during stack
-         * walking.
-         */
-        b.returnTrue();
         return ex;
     }
 
