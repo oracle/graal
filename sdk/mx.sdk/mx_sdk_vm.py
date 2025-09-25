@@ -588,7 +588,7 @@ def base_jdk(stage1=True):
 
 
 def base_jdk_version(stage1=True):
-    return base_jdk(stage1=True).javaCompliance.value
+    return base_jdk(stage1=stage1).javaCompliance.value
 
 def get_jdk_version_for_profiles():
     jdk_version = mx.get_jdk().javaCompliance.value
