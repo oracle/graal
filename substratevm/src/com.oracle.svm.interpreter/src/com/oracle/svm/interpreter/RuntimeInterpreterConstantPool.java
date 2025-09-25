@@ -109,7 +109,6 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         }
     }
 
-    @SuppressWarnings("try")
     private InterpreterResolvedJavaField resolveFieldRefConstant(int fieldIndex, InterpreterResolvedObjectType accessingClass) {
         assert accessingClass != null;
         assert tagAt(fieldIndex) == Tag.FIELD_REF;

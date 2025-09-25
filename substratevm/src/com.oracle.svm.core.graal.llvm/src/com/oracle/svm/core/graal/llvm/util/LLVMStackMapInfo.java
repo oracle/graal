@@ -220,7 +220,7 @@ public class LLVMStackMapInfo {
                 assert record.patchpointID == DEFAULT_PATCHPOINT_ID || patchpointToFunction.get(record.patchpointID) == function;
             }
             patchpointToFunction.put(record.patchpointID, function);
-            patchpointsByID.computeIfAbsent(record.patchpointID, v -> new HashSet<>()).add(record);
+            patchpointsByID.computeIfAbsent(record.patchpointID, _ -> new HashSet<>()).add(record);
         }
 
         LLVM.LLVMDisposeRelocationIterator(relocationIteratorRef);

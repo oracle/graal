@@ -269,14 +269,13 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
-    @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         ClassLoader libGraalLoader = (ClassLoader) loader.classLoaderSupport.getLibGraalLoader();
         ClassLoader cl = clazz.getClassLoader();
         // Graal and JVMCI make use of ServiceLoader which uses the
         // context class loader so it needs to be the libgraal loader.
         ClassLoader libGraalCCL = libGraalLoader == cl ? cl : null;
-        try (var ignore = new ContextClassLoaderScope(libGraalCCL)) {
+        try (var _ = new ContextClassLoaderScope(libGraalCCL)) {
             loader.watchdog.recordActivity();
             /*
              * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless

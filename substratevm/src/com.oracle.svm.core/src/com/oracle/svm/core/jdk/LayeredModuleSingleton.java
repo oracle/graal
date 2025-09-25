@@ -98,9 +98,9 @@ public abstract class LayeredModuleSingleton implements LayeredImageSingleton {
             throw UserError.abort("Layered images require all modules to have a different name because their identity hash code is not consistent across layers. " +
                             "The modules %s and %s have the same name and were added to the %s packages", module, oldValue, mode);
         }
-        Map<String, Set<String>> namesMap = modulePackages.computeIfAbsent(module.getName(), k -> new HashMap<>());
+        Map<String, Set<String>> namesMap = modulePackages.computeIfAbsent(module.getName(), _ -> new HashMap<>());
         for (var entry : packages.entrySet()) {
-            Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), k -> new HashSet<>());
+            Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), _ -> new HashSet<>());
             modules.addAll(entry.getValue().stream().map(Module::getName).toList());
             modules.remove(null);
             if (entry.getValue().contains(allUnnamedModule)) {

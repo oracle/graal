@@ -613,7 +613,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                          * know which annotated field that was, so we need to iterate the whole
                          * field substitution registry and look for the matching value.
                          */
-                        fieldSubstitutions.replaceAll((key, value) -> value.equals(existingAlias) ? computedAlias : value);
+                        fieldSubstitutions.replaceAll((_, value) -> value.equals(existingAlias) ? computedAlias : value);
                     } else {
                         /*
                          * Both the current and the previous registration have

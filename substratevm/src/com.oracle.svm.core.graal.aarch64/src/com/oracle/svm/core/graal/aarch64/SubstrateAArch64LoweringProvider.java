@@ -67,10 +67,9 @@ public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProv
         }
     }
 
-    @SuppressWarnings("try")
     public void lowerCodeSynchronizationNode(CodeSynchronizationNode node) {
         StructuredGraph graph = node.graph();
-        try (DebugCloseable position = node.withNodeSourcePosition()) {
+        try (DebugCloseable _ = node.withNodeSourcePosition()) {
             AArch64ISBNode replacement = graph.add(new AArch64ISBNode());
             graph.replaceFixed(node, replacement);
         }

@@ -231,10 +231,10 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
     private HostedProviders analysisProviders = null;
-    private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+    private AllowInliningPredicate allowInliningPredicate = (_, _) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
     private boolean allowInliningPredicateUpdated = false;
     private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
-    private Consumer<CallTreeInfo> blocklistChecker = (ignore) -> {
+    private Consumer<CallTreeInfo> blocklistChecker = _ -> {
     };
 
     public HostedProviders getHostedProviders() {
@@ -689,7 +689,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             return config;
         }
 
-        @SuppressWarnings("try")
         private Object parseRuntimeCompiledMethod(BigBang bb, DebugContext debug, AnalysisMethod method) {
 
             boolean parsed = false;
@@ -711,10 +710,10 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                                  */
                                 .recordInlinedMethods(true).build();
             }
-            try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph, method)) {
+            try (DebugContext.Scope _ = debug.scope("RuntimeCompile", graph, method)) {
                 if (parsed) {
                     // enable this logging to get log output in compilation passes
-                    try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
+                    try (Indent _ = debug.logAndIndent("parse graph phases")) {
                         RuntimeCompiledMethodSupport.RuntimeGraphBuilderPhase.createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts).apply(graph);
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
@@ -740,7 +739,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         private void recordFailed(AnalysisMethod method) {
             // Will need to create post to invalidate other MethodTypeFlows (if they exist)
-            invalidForRuntimeCompilation.computeIfAbsent(method, (m) -> "generic failure");
+            invalidForRuntimeCompilation.computeIfAbsent(method, _ -> "generic failure");
         }
 
         @Override

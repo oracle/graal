@@ -82,7 +82,7 @@ public final class CEntryPointCallStubSupport {
     }
 
     public AnalysisMethod registerStubForMethod(AnalysisMethod method, Supplier<CEntryPointData> entryPointDataSupplier) {
-        return methodToStub.compute(method, (key, existingValue) -> {
+        return methodToStub.compute(method, (_, existingValue) -> {
             AnalysisMethod value = existingValue;
             if (value == null) {
                 assert !bb.getUniverse().sealed();
@@ -97,7 +97,7 @@ public final class CEntryPointCallStubSupport {
     }
 
     public AnalysisMethod registerJavaStubForMethod(AnalysisMethod method) {
-        return methodToJavaStub.compute(method, (key, existingValue) -> {
+        return methodToJavaStub.compute(method, (_, existingValue) -> {
             AnalysisMethod value = existingValue;
             if (value == null) {
                 assert !bb.getUniverse().sealed();

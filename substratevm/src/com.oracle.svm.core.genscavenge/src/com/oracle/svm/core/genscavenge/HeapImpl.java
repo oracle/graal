@@ -982,6 +982,7 @@ public final class HeapImpl extends Heap {
             HeapChunkLogging.logChunk(log, chunk, bottom, top, end, true, "I", false);
         }
 
+        @Override
         public void visitUnalignedChunk(UnalignedHeader chunk) {
             Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
             Pointer top = HeapChunk.getTopPointer(chunk);

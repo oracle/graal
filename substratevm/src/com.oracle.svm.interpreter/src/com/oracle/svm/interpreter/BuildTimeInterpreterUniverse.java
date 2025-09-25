@@ -573,26 +573,26 @@ public final class BuildTimeInterpreterUniverse {
         if (imageHeapConstant.isBackedByHostedObject()) {
             Object value = snippetReflectionProvider.asObject(Object.class, imageHeapConstant.getHostedObject());
             if (value != null) {
-                return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromNonNullReference(value));
+                return objectConstants.computeIfAbsent(imageHeapConstant, _ -> ReferenceConstant.createFromNonNullReference(value));
             }
         }
-        return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
+        return objectConstants.computeIfAbsent(imageHeapConstant, _ -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
     }
 
     public PrimitiveConstant primitiveConstant(int value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forInt(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forInt(value));
     }
 
     public PrimitiveConstant primitiveConstant(long value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forLong(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forLong(value));
     }
 
     public PrimitiveConstant primitiveConstant(float value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forFloat(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forFloat(value));
     }
 
     public PrimitiveConstant primitiveConstant(double value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forDouble(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forDouble(value));
     }
 
     public String stringConstant(String value) {
@@ -628,7 +628,7 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     public InterpreterUnresolvedSignature unresolvedSignature(Signature signature) {
-        return signatures.computeIfAbsent(MetadataUtil.toUniqueString(signature), key -> createUnresolvedSignature(signature));
+        return signatures.computeIfAbsent(MetadataUtil.toUniqueString(signature), _ -> createUnresolvedSignature(signature));
     }
 
     public JavaType typeOrUnresolved(JavaType type) {
@@ -660,7 +660,7 @@ public final class BuildTimeInterpreterUniverse {
             // declaring type.
             JavaType holder = primitiveOrUnresolvedType(field.getDeclaringClass());
             JavaType type = primitiveOrUnresolvedType(field.getType());
-            result = unresolvedFields.computeIfAbsent(MetadataUtil.toUniqueString(field), key -> new UnresolvedJavaField(holder, dedup(field.getName()), type));
+            result = unresolvedFields.computeIfAbsent(MetadataUtil.toUniqueString(field), _ -> new UnresolvedJavaField(holder, dedup(field.getName()), type));
         }
         return result;
     }
@@ -673,7 +673,7 @@ public final class BuildTimeInterpreterUniverse {
             // Do not trust incoming unresolved method, it may have resolved holder.
             JavaType holder = primitiveOrUnresolvedType(method.getDeclaringClass());
             Signature signature = unresolvedSignature(method.getSignature());
-            result = unresolvedMethods.computeIfAbsent(MetadataUtil.toUniqueString(method), key -> new UnresolvedJavaMethod(dedup(method.getName()), signature, holder));
+            result = unresolvedMethods.computeIfAbsent(MetadataUtil.toUniqueString(method), _ -> new UnresolvedJavaMethod(dedup(method.getName()), signature, holder));
         }
         return result;
     }

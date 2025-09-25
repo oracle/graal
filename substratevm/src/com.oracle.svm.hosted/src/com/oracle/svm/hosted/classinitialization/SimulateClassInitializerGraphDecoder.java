@@ -123,7 +123,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
     protected final EconomicMap<AnalysisField, Boolean> isStaticFinalFieldInitializedStates = EconomicMap.create();
 
     protected SimulateClassInitializerGraphDecoder(BigBang bb, SimulateClassInitializerPolicy policy, SimulateClassInitializerClusterMember clusterMember, StructuredGraph graph) {
-        super(bb, policy, graph, clusterMember.cluster.providers, unused -> LoopExplosionKind.FULL_UNROLL);
+        super(bb, policy, graph, clusterMember.cluster.providers, _ -> LoopExplosionKind.FULL_UNROLL);
 
         this.support = clusterMember.cluster.support;
         this.clusterMember = clusterMember;

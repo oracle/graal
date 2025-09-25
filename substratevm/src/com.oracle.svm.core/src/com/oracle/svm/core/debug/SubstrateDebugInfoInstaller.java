@@ -196,12 +196,11 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     }
 
     @Override
-    @SuppressWarnings("try")
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
         Handle handle = GdbJitAccessor.createHandle(debugInfoData);
         if (debug.isLogEnabled()) {
-            try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
+            try (DebugContext.Scope _ = debug.scope("RuntimeCompilation")) {
                 debug.log(toString(handle));
             }
         }

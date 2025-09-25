@@ -505,7 +505,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
         String unresolvedTableSymbol;
         if (resolvedMethod != null) {
-            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> symbolNameSupplier.get());
+            unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, _ -> symbolNameSupplier.get());
         } else {
             unresolvedTableSymbol = symbolNameSupplier.get();
         }

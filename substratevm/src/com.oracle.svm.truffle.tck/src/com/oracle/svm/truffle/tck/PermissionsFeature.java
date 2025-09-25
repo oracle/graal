@@ -341,7 +341,7 @@ public class PermissionsFeature implements Feature {
                         CONFIG,
                         Options.TruffleTCKPermissionsExcludeFiles.getValue().values(),
                         List.of());
-        languageAllowList = allowListparser.getMethods().stream().collect(Collectors.toMap(Function.identity(), key -> false));
+        languageAllowList = allowListparser.getMethods().stream().collect(Collectors.toMap(Function.identity(), _ -> false));
 
         PrivilegedListParser privilegedListParser = new PrivilegedListParser(accessImpl.getImageClassLoader(), bb, ModuleLayer.boot().modules());
         ConfigurationParserUtils.parseAndRegisterConfigurations(privilegedListParser, accessImpl.getImageClassLoader(), "featureName",
@@ -377,7 +377,6 @@ public class PermissionsFeature implements Feature {
     }
 
     @Override
-    @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try {
             Files.deleteIfExists(reportFilePath);
@@ -387,7 +386,7 @@ public class PermissionsFeature implements Feature {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
         CollectMode collectMode = Options.TruffleTCKCollectMode.getValue();
-        try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
+        try (DebugContext.Scope _ = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
             List<List<BaseMethodNode>> report = new ArrayList<>();
@@ -508,7 +507,7 @@ public class PermissionsFeature implements Feature {
                 current = current.getCaller();
             }
             if (!foundSystemClass) {
-                visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
+                visited.computeIfAbsent(inlinedUnsafeCall, _ -> new HashSet<>()).add(mNode);
                 return;
             }
         }
@@ -737,7 +736,7 @@ public class PermissionsFeature implements Feature {
         if (platformAllowList.contains(methodNode)) {
             return true;
         }
-        return languageAllowList.computeIfPresent(methodNode, (n, v) -> true) != null;
+        return languageAllowList.computeIfPresent(methodNode, (_, _) -> true) != null;
     }
 
     /**

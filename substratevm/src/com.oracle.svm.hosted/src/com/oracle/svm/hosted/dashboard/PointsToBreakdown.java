@@ -498,10 +498,10 @@ class PointsToBreakdown {
         private static final Map<Class<?>, Map<Integer, Map<Integer, Map<String, WrapperClazz>>>> clazzes = new HashMap<>();
 
         static WrapperClazz get(Class<?> clazz, int inputs, int uses, String name) {
-            return clazzes.computeIfAbsent(clazz, c -> new HashMap<>())
-                            .computeIfAbsent(inputs, s -> new HashMap<>())
-                            .computeIfAbsent(uses, s -> new HashMap<>())
-                            .computeIfAbsent(name, n -> new WrapperClazz(clazz, inputs, uses, name));
+            return clazzes.computeIfAbsent(clazz, _ -> new HashMap<>())
+                            .computeIfAbsent(inputs, _ -> new HashMap<>())
+                            .computeIfAbsent(uses, _ -> new HashMap<>())
+                            .computeIfAbsent(name, _ -> new WrapperClazz(clazz, inputs, uses, name));
         }
 
         private WrapperClazz(Class<?> wrappedClass, int inputs, int uses, String name) {

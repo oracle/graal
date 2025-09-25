@@ -263,7 +263,7 @@ public class InfoTreeBuilder {
                     structAccessorInfos.add(accessorInfo);
                 } else {
                     Map<String, List<AccessorInfo>> map = bitfieldAnnotation != null ? bitfieldAccessorInfos : fieldAccessorInfos;
-                    List<AccessorInfo> accessorInfos = map.computeIfAbsent(fieldName, k -> new ArrayList<>());
+                    List<AccessorInfo> accessorInfos = map.computeIfAbsent(fieldName, _ -> new ArrayList<>());
                     accessorInfos.add(accessorInfo);
                 }
 
@@ -329,7 +329,7 @@ public class InfoTreeBuilder {
                 if (fieldName == null) {
                     structAccessorInfos.add(accessorInfo);
                 } else {
-                    List<AccessorInfo> accessorInfos = fieldAccessorInfos.computeIfAbsent(fieldName, k -> new ArrayList<>());
+                    List<AccessorInfo> accessorInfos = fieldAccessorInfos.computeIfAbsent(fieldName, _ -> new ArrayList<>());
                     accessorInfos.add(accessorInfo);
                 }
 

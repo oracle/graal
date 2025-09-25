@@ -690,15 +690,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * reachable at run time", therefore we need to make sure that each serviceClass is
          * processed only once.
          */
-        processedServiceClasses.computeIfAbsent(serviceType, k -> {
+        processedServiceClasses.computeIfAbsent(serviceType, _ -> {
             doRegisterServices(access, trigger, serviceType);
             return true;
         });
     }
 
-    @SuppressWarnings("try")
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
-        try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
+        try (TracingAutoCloseable _ = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
             VMError.guarantee(services != null);
             for (Service service : services) {
@@ -723,7 +722,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
                 if (isValid(s)) {
-                    availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                    availableServices.computeIfAbsent(s.getType(), _ -> new HashSet<>()).add(s);
                 }
             }
         }
@@ -849,11 +848,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    @SuppressWarnings("try")
     private void registerService(DuringAnalysisAccess a, Service service) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
-            try (TracingAutoCloseable ignored = trace(service)) {
+            try (TracingAutoCloseable _ = trace(service)) {
                 registerForReflection(serviceClassResult.get());
 
                 Class<?> ctrParamClass = ctrParamClassAccessor.apply(service.getType());

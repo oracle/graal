@@ -69,7 +69,7 @@ public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMa
 
     private <K, V> void registerWithScanner(ObservableMap<K, V> map) {
         /* Scan map values when they are added. */
-        map.addObserver((key, value) -> heapScanner.rescanObject(value));
+        map.addObserver((_, value) -> heapScanner.rescanObject(value));
     }
 }
 

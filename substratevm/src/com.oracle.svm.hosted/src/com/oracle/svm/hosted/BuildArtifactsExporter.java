@@ -74,7 +74,7 @@ public class BuildArtifactsExporter {
         buildArtifacts.forEach((artifactType, paths) -> {
             String key = artifactType.getJsonKey();
             List<String> value = paths.stream().map(p -> buildPath.relativize(p.toAbsolutePath()).toString()).toList();
-            jsonMap.computeIfAbsent(key, k -> new ArrayList<>()).addAll(value);
+            jsonMap.computeIfAbsent(key, _ -> new ArrayList<>()).addAll(value);
         });
 
         try (JsonWriter writer = new JsonWriter(targetPath)) {
@@ -115,7 +115,7 @@ public class BuildArtifactsExporter {
 
         @Override
         public void add(ArtifactType type, Path artifact) {
-            buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact);
+            buildArtifacts.computeIfAbsent(type, _ -> new ArrayList<>()).add(artifact);
         }
 
         @Override

@@ -144,10 +144,9 @@ public class SubstrateGraalUtils {
                 }
             }
 
-            @SuppressWarnings("try")
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
-                try (CompilationWatchDog watchdog = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, COMPILATION_WATCH_DOG_EVENT_HANDLER, null)) {
+                try (CompilationWatchDog _ = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, COMPILATION_WATCH_DOG_EVENT_HANDLER, null)) {
                     StructuredGraph graph = TruffleRuntimeCompilationSupport.decodeGraph(debug, null, compilationId, method, null);
                     return compileGraph(runtimeConfig, TruffleRuntimeCompilationSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
                 }
@@ -207,7 +206,6 @@ public class SubstrateGraalUtils {
         public static final RuntimeOptionKey<Boolean> ForceDumpGraphsBeforeCompilation = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
     }
 
-    @SuppressWarnings("try")
     private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
@@ -223,12 +221,12 @@ public class SubstrateGraalUtils {
         String methodName = method.format("%h.%n");
 
         try (DebugContext debug = graph.getDebug();
-                        Indent indent = debug.logAndIndent("compile graph %s for method %s", graph, methodName)) {
+                        Indent _ = debug.logAndIndent("compile graph %s for method %s", graph, methodName)) {
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
 
             final Backend backend = runtimeConfig.lookupBackend(method);
 
-            try (Indent indent2 = debug.logAndIndent("do compilation")) {
+            try (Indent _ = debug.logAndIndent("do compilation")) {
                 SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
                 Providers providers = backend.getProviders();
                 GraalCompiler.compile(new GraalCompiler.Request<>(graph,

@@ -140,7 +140,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public void layoutMethods(DebugContext debug, BigBang bb) {
 
-        try (Indent indent = debug.logAndIndent("layout methods")) {
+        try (Indent _ = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.
             HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
             Map<HostedMethod, Integer> curOffsetMap = trampolineSupport.mayNeedTrampolines() ? new HashMap<>() : null;
@@ -256,7 +256,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 curPos = addOffset(curPos, compilation.getTargetCodeSize());
                 int newEnd = curPos;
 
-                Map<HostedMethod, Integer> trampolines = trampolineMap.computeIfAbsent(caller, k -> new HashMap<>());
+                Map<HostedMethod, Integer> trampolines = trampolineMap.computeIfAbsent(caller, _ -> new HashMap<>());
 
                 // update curPos to account for current trampolines
                 for (int j = 0; j < trampolines.size(); j++) {
@@ -320,7 +320,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      * @param relocs a relocation map
      */
     @Override
-    @SuppressWarnings("try")
     public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
 
         /*
@@ -430,7 +429,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 patchesHandled++;
             }
             VMError.guarantee(patchesHandled == patches.size(), "Not all patches applied.");
-            try (DebugContext.Scope ds = debug.scope("After Patching", method.asJavaMethod())) {
+            try (DebugContext.Scope _ = debug.scope("After Patching", method.asJavaMethod())) {
                 debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);

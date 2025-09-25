@@ -341,13 +341,12 @@ public final class MetadataTracer {
      * Main entrypoint for debug logging. Emits a JSON object to the debug log with the given
      * message and element.
      */
-    @SuppressWarnings("try")
     private void debug(String message, Object element) {
         if (debugWriter == null) {
             return;
         }
         assert enabledAtRunTime();
-        try (var ignored = new DisableTracingImpl("debug logging")) {
+        try (var _ = new DisableTracingImpl("debug logging")) {
             EconomicMap<String, Object> entry = EconomicMap.create();
             entry.put("message", message);
             entry.put("element", element);
@@ -603,7 +602,7 @@ record TraceOptions(Path path, boolean merge, Path debugLog) {
         T parse(String argumentKey, String argumentValue);
     }
 
-    private static final ArgumentParser<Path> PATH_PARSER = ((argumentKey, argumentValue) -> Paths.get(argumentValue).toAbsolutePath());
+    private static final ArgumentParser<Path> PATH_PARSER = ((_, argumentValue) -> Paths.get(argumentValue).toAbsolutePath());
     private static final ArgumentParser<Boolean> BOOLEAN_PARSER = ((argumentKey, argumentValue) -> switch (argumentValue) {
         case "true" -> true;
         case "false" -> false;

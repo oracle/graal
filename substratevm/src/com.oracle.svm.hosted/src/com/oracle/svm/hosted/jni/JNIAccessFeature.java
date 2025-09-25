@@ -228,7 +228,7 @@ public class JNIAccessFeature implements Feature {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "JNI access"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, _ -> newClasses.add(clazz));
         }
 
         @Override
@@ -236,7 +236,7 @@ public class JNIAccessFeature implements Feature {
             requireNonNull(executables, "executable", "JNI access");
             abortIfSealed();
             if (!queriedOnly) {
-                registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
+                registerConditionalConfiguration(condition, _ -> newMethods.addAll(Arrays.asList(executables)));
             }
         }
 
@@ -244,7 +244,7 @@ public class JNIAccessFeature implements Feature {
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
             requireNonNull(fields, "field", "JNI access");
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
+            registerConditionalConfiguration(condition, _ -> registerFields(finalIsWritable, fields));
         }
 
         private void registerFields(boolean finalIsWritable, Field[] fields) {
@@ -269,7 +269,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
-                newNegativeFieldLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(fieldName);
+                newNegativeFieldLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(fieldName);
             }
         }
 
@@ -278,7 +278,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(Pair.create(methodName, parameterTypes));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create(methodName, parameterTypes));
             }
         }
 
@@ -287,7 +287,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(Pair.create("<init>", parameterTypes));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create("<init>", parameterTypes));
             }
         }
 
@@ -421,7 +421,7 @@ public class JNIAccessFeature implements Feature {
         if (reflectivityFilter.shouldExclude(classObj)) {
             return null;
         }
-        return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
+        return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, _ -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             analysisClass.registerAsReachable("is accessed via JNI");
             return new JNIAccessibleClass(classObj);
@@ -438,7 +438,7 @@ public class JNIAccessFeature implements Feature {
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-        jniClass.addMethodIfAbsent(descriptor, d -> {
+        jniClass.addMethodIfAbsent(descriptor, _ -> {
             AnalysisUniverse universe = access.getUniverse();
             MetaAccessProvider originalMetaAccess = universe.getOriginalMetaAccess();
             ResolvedJavaMethod targetMethod = originalMetaAccess.lookupJavaMethod(method);
@@ -480,7 +480,7 @@ public class JNIAccessFeature implements Feature {
     private void addNegativeMethodLookup(Class<?> declaringClass, String methodName, Class<?>[] parameterTypes, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(methodName, parameterTypes);
-        jniClass.addMethodIfAbsent(descriptor, d -> JNIAccessibleMethod.negativeMethodQuery(jniClass));
+        jniClass.addMethodIfAbsent(descriptor, _ -> JNIAccessibleMethod.negativeMethodQuery(jniClass));
     }
 
     private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, ResolvedSignature<ResolvedJavaType> wrapperSignature, boolean nonVirtual, Executable method) {
@@ -509,7 +509,7 @@ public class JNIAccessFeature implements Feature {
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
-        jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers()));
+        jniClass.addFieldIfAbsent(field.getName(), _ -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers()));
         field.registerAsRead("it is registered for as JNI accessed");
         if (writable) {
             field.registerAsWritten("it is registered as JNI writable");
@@ -517,7 +517,7 @@ public class JNIAccessFeature implements Feature {
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
-                access.registerReachabilityHandler(a -> fieldType.registerAsInstantiated("Is accessed via JNI."),
+                access.registerReachabilityHandler(_ -> fieldType.registerAsInstantiated("Is accessed via JNI."),
                                 (fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {
@@ -531,7 +531,7 @@ public class JNIAccessFeature implements Feature {
 
     private void addNegativeFieldLookup(Class<?> declaringClass, String fieldName, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
-        jniClass.addFieldIfAbsent(fieldName, d -> JNIAccessibleField.negativeFieldQuery(jniClass));
+        jniClass.addFieldIfAbsent(fieldName, _ -> JNIAccessibleField.negativeFieldQuery(jniClass));
     }
 
     @Override

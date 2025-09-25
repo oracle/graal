@@ -482,7 +482,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             }
             SingletonTraitMap candidateTraitMap = traitMap;
             candidateTraitMap.seal();
-            traitMap = singletonToTraitMap.computeIfAbsent(value, k -> candidateTraitMap);
+            traitMap = singletonToTraitMap.computeIfAbsent(value, _ -> candidateTraitMap);
             addSingletonToMap(key, value, traitMap);
         }
 

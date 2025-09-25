@@ -86,9 +86,8 @@ public abstract class NativeImageViaCC extends NativeImage {
     }
 
     @Override
-    @SuppressWarnings("try")
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
-        try (Indent indent = debug.logAndIndent("Writing native image")) {
+        try (Indent _ = debug.logAndIndent("Writing native image")) {
             // 0. Free codecache to make space for writing the objectFile
             codeCache.purge();
 

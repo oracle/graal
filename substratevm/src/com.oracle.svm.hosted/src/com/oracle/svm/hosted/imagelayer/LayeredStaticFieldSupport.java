@@ -152,13 +152,13 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
 
     public void ensureInitializedFromFieldData(AnalysisField aField, SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Reader fieldData) {
         Integer priorInstalledLayerNum = fieldData.getPriorInstalledLayerNum();
-        Object result = priorInstalledLayerMap.computeIfAbsent(aField, f -> priorInstalledLayerNum);
+        Object result = priorInstalledLayerMap.computeIfAbsent(aField, _ -> priorInstalledLayerNum);
         assert priorInstalledLayerNum.equals(result) : result;
         LayerAssignmentStatus assignmentStatus = LayerAssignmentStatus.values()[fieldData.getAssignmentStatus()];
-        result = assignmentStatusMap.computeIfAbsent(aField, f -> assignmentStatus);
+        result = assignmentStatusMap.computeIfAbsent(aField, _ -> assignmentStatus);
         assert assignmentStatus.equals(result);
         Integer priorInstalledLocation = fieldData.getLocation();
-        result = priorInstalledLocationMap.computeIfAbsent(aField, f -> priorInstalledLocation);
+        result = priorInstalledLocationMap.computeIfAbsent(aField, _ -> priorInstalledLocation);
         assert priorInstalledLocation.equals(result);
     }
 
@@ -215,7 +215,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
     }
 
     public LayerAssignmentStatus getAssignmentStatus(AnalysisField analysisField) {
-        return assignmentStatusMap.computeIfAbsent(analysisField, (f) -> {
+        return assignmentStatusMap.computeIfAbsent(analysisField, _ -> {
             if (!(inAppLayer && analysisField.isInBaseLayer())) {
                 return LayerAssignmentStatus.UNDECIDED;
             }

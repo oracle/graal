@@ -523,7 +523,7 @@ public final class ReflectionPlugins {
         }
     }
 
-    private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
+    private static final Predicate<Object[]> alwaysAllowConstantFolding = _ -> true;
 
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean subjectToStrictDynamicAccessInference) {
         registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, subjectToStrictDynamicAccessInference);

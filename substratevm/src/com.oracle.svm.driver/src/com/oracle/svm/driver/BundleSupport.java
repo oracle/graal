@@ -275,7 +275,7 @@ final class BundleSupport {
         }
     }
 
-    private long readSizeLimit(String optionKey, String optionValue) {
+    private static long readSizeLimit(String optionKey, String optionValue) {
         if (optionValue != null) {
             try {
                 long limit = Long.parseLong(optionValue);
@@ -473,7 +473,6 @@ final class BundleSupport {
         }
     }
 
-    @SuppressWarnings("try")
     private Path substitutePath(Path origPath, Path destinationDir) {
         assert destinationDir.startsWith(rootDir);
 

@@ -107,7 +107,7 @@ public class SourceCache {
                         ArrayList<Path> rootsList = new ArrayList<>();
                         specialSrcRoots.put(specialRootModule, rootsList);
                         Path specialModuleRoot = root.resolve(specialRootModule);
-                        Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
+                        Files.find(specialModuleRoot, 2, (path, _) -> path.endsWith("src")).forEach(rootsList::add);
                     }
                 }
             } catch (IOException | FileSystemNotFoundException ioe) {

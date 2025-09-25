@@ -118,7 +118,7 @@ public final class RuntimeDynamicHubMetadata implements DynamicHubMetadata {
         }
     }
 
-    public Class<?> getNestHost(DynamicHub declaringClass) {
+    public static Class<?> getNestHost(DynamicHub declaringClass) {
         /* (GR-69095) type.getNestHost() */
         return DynamicHub.toClass(declaringClass);
     }

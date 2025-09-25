@@ -132,7 +132,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
 
     private int getPriorInstalledOffset(AnalysisMethod aMethod) {
         if (aMethod.isInBaseLayer()) {
-            return priorInstalledOffsetCache.computeIfAbsent(aMethod, method -> {
+            return priorInstalledOffsetCache.computeIfAbsent(aMethod, _ -> {
                 var methodData = HostedImageLayerBuildingSupport.singleton().getLoader();
                 return methodData.getHostedMethodData(aMethod).getInstalledOffset();
             });
@@ -179,7 +179,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     @Override
     public CGlobalDataInfo getSymbolForDelayedMethod(SharedMethod targetMethod) {
         String symbolName = localSymbolNameForMethod(targetMethod);
-        var symbol = delayedMethodSymbols.computeIfAbsent(symbolName, key -> CGlobalDataFactory.forSymbol(symbolName));
+        var symbol = delayedMethodSymbols.computeIfAbsent(symbolName, _ -> CGlobalDataFactory.forSymbol(symbolName));
         delayedMethodIds.add(((HostedMethod) targetMethod).wrapped.getId());
         return CGlobalDataFeature.singleton().registerAsAccessedOrGet(symbol);
     }

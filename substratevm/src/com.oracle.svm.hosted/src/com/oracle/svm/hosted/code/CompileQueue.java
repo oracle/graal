@@ -419,11 +419,10 @@ public class CompileQueue {
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true, new GraphEncoder(ConfigurationValues.getTarget().arch));
     }
 
-    @SuppressWarnings("try")
     public void finish(DebugContext debug) {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printParsing()) {
                 parseAll();
             }
 
@@ -449,7 +448,7 @@ public class CompileQueue {
             if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
                 ImageSingletons.lookup(HostedHeapDumpFeature.class).beforeInlining();
             }
-            try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printInlining()) {
                 inlineTrivialMethods(debug);
             }
             if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
@@ -458,7 +457,7 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printCompiling()) {
                 compileAll();
                 notifyAfterCompile();
             }
@@ -747,14 +746,13 @@ public class CompileQueue {
         return !method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(graph);
     }
 
-    @SuppressWarnings("try")
     protected void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
         int round = 0;
         do {
             ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
-            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
+            try (Indent _ = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
                 runOnExecutor(() -> {
                     universe.getMethods().forEach(method -> {
                         assert method.isOriginalMethod();
@@ -839,7 +837,6 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
          * Before doing any work, check if there is any potential for inlining.
@@ -860,7 +857,7 @@ public class CompileQueue {
         }
         var providers = runtimeConfig.lookupBackend(method).getProviders();
         var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
-        try (var s = debug.scope("InlineTrivial", graph, method, this)) {
+        try (var _ = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
             new TrivialInlinePhase(decoder, method).apply(graph);
@@ -1097,7 +1094,6 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
@@ -1108,7 +1104,7 @@ public class CompileQueue {
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
 
         StructuredGraph graph = graphTransplanter.transplantGraph(debug, method, reason);
-        try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
+        try (DebugContext.Scope _ = debug.scope("Parsing", graph, method, this)) {
 
             try {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
@@ -1356,7 +1352,6 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config,
                     boolean fallback) {
 
@@ -1390,8 +1385,8 @@ public class CompileQueue {
             /* Check that graph is in good shape before compilation. */
             assert GraphOrder.assertSchedulableGraph(graph);
 
-            try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this);
-                            DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
+            try (DebugContext.Scope _ = debug.scope("Compiling", graph, method, this);
+                            DebugCloseable _ = GraalServices.GCTimerScope.create(debug)) {
 
                 if (deoptimizeAll && method.compilationInfo.canDeoptForTesting) {
                     DeoptimizationUtils.insertDeoptTests(method, graph);
@@ -1423,7 +1418,7 @@ public class CompileQueue {
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
-                try (Indent indent = debug.logAndIndent("compile %s", method)) {
+                try (Indent _ = debug.logAndIndent("compile %s", method)) {
                     Providers providers = backend.getProviders();
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts();
                     GraalCompiler.compile(new GraalCompiler.Request<>(graph,

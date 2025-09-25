@@ -130,7 +130,7 @@ public class ClassLoaderFeature implements InternalFeature {
             }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                config.registerObjectReachableCallback(ClassLoader.class, (a1, classLoader, reason) -> {
+                config.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
                     if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(classLoader)) {
                         registry.registerHeapConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(classLoader), classLoader);
                     }

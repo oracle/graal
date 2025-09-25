@@ -41,10 +41,9 @@ public class EnterHSEventHandler implements EventHandler {
         this.jdwpEventHandler = jdwpEventHandler;
     }
 
-    @SuppressWarnings("try")
     @Override
     public void onEventAt(Thread thread, ResolvedJavaMethod method, int bci, Object returnValue, int eventKindFlags) {
-        try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::onEventAt", DebuggingOnDemandHandler.currentThreadJniEnv())) {
+        try (JNIMethodScope _ = new JNIMethodScope("JDWPServer::onEventAt", DebuggingOnDemandHandler.currentThreadJniEnv())) {
             long threadId = JDWPBridgeImpl.getIds().toId(thread);
             long methodId = JDWPBridgeImpl.getIds().toId(method);
             ResolvedJavaType declaringType = method.getDeclaringClass();

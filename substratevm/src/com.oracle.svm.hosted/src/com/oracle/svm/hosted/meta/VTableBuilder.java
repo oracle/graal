@@ -62,10 +62,10 @@ public final class VTableBuilder {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
+            hUniverse.methods.forEach((_, v) -> v.finalizeIndirectCallVTableIndex());
         } else {
             builder.buildOpenTypeWorldDispatchTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
+            hUniverse.methods.forEach((_, v) -> v.finalizeIndirectCallVTableIndex());
             assert builder.verifyOpenTypeWorldDispatchTables();
         }
     }
@@ -648,7 +648,7 @@ public final class VTableBuilder {
         for (HostedMethod impl : method.implementations) {
             markSlotAsUsed(resultSlot, impl.getDeclaringClass(), vtablesMap, usedSlotsMap);
 
-            vtablesSlots.computeIfAbsent(impl, k -> new HashSet<>()).add(resultSlot);
+            vtablesSlots.computeIfAbsent(impl, _ -> new HashSet<>()).add(resultSlot);
         }
 
         return resultSlot;

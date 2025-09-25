@@ -102,7 +102,7 @@ public class OptionClassFilterBuilder {
                         throw UserError.abort("Option '%s' provided by %s contains '%s'. No such package or class name found in '%s'.",
                                         SubstrateOptionsParser.commandArgument(baseOption, value), origin, entry, container);
                     }
-                    requireCompletePackageOrClass.computeIfAbsent(entry, unused -> new HashSet<>()).add(origin);
+                    requireCompletePackageOrClass.computeIfAbsent(entry, _ -> new HashSet<>()).add(origin);
                 } else {
                     throw UserError.abort("Entry '%s' in option '%s' provided by %s is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(baseOption, value), origin);
