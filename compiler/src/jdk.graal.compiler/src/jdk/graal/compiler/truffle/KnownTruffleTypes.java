@@ -91,6 +91,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType CompilerDirectives = lookupType("com.oracle.truffle.api.CompilerDirectives");
     public final ResolvedJavaType CompilerDirectives_CompilationFinal = lookupType("com.oracle.truffle.api.CompilerDirectives$CompilationFinal");
     public final ResolvedJavaType CompilerDirectives_TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
+    public final ResolvedJavaType CompilerDirectives_ValueType = lookupType("com.oracle.truffle.api.CompilerDirectives$ValueType");
     public final ResolvedJavaType CompilerAsserts = lookupType("com.oracle.truffle.api.CompilerAsserts");
     public final ResolvedJavaType ExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType HostCompilerDirectives = lookupType("com.oracle.truffle.api.HostCompilerDirectives");

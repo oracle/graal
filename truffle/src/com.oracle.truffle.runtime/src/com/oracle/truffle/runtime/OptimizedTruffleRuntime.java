@@ -431,6 +431,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         CompilerDirectives.class,
                         CompilerDirectives.CompilationFinal.class,
                         CompilerDirectives.TruffleBoundary.class,
+                        CompilerDirectives.ValueType.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitch.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,
                         HostCompilerDirectives.InliningCutoff.class,

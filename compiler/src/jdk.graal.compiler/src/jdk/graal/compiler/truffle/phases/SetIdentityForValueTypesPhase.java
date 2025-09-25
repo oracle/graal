@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.truffle.phases;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -38,12 +38,12 @@ public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierCo
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        TruffleCompilerRuntime rt = context.runtime();
+        KnownTruffleTypes types = context.types();
         for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualInstanceNode) {
                 VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
                 ResolvedJavaType type = virtualInstanceNode.type();
-                if (rt.isValueType(type)) {
+                if (AnnotationValueSupport.getDeclaredAnnotationValue(types.CompilerDirectives_ValueType, type) != null) {
                     virtualInstanceNode.setIdentity(false);
                 }
             }
