@@ -53,6 +53,7 @@ import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 import com.oracle.svm.core.util.VMError;
 
@@ -280,8 +281,12 @@ final class Util_java_lang_invoke_MethodHandle {
         return getConstructorAccessor(constructor);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private static SubstrateConstructorAccessor getConstructorAccessor(Constructor<?> constructor) {
-        return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_Constructor.class).acquireConstructorAccessor(), SubstrateConstructorAccessor.class);
+        Target_java_lang_reflect_Constructor internalConstructor = SubstrateUtil.cast(constructor, Target_java_lang_reflect_Constructor.class);
+        Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor = internalConstructor.constructorAccessor;
+        var result = constructorAccessor == null ? internalConstructor.acquireConstructorAccessor() : constructorAccessor;
+        return SubstrateUtil.cast(result, SubstrateConstructorAccessor.class);
     }
 
     private static <T extends AccessibleObject & Member> void checkMember(T member, boolean isStatic) {
