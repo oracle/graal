@@ -391,9 +391,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     }
                     case Bytecode.BR_U8: {
                         final int offsetDelta = rawPeekU8(bytecode, offset);
-                        // BR_U8 encodes the back jump value as a positive byte value. BR_U8 can
-                        // never
-                        // perform a forward jump.
+                        /*
+                         * BR_U8 encodes the back jump value as a positive byte value. BR_U8 can
+                         * never perform a forward jump.
+                         */
                         offset -= offsetDelta;
                         break;
                     }
@@ -406,9 +407,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         stackPointer--;
                         if (profileCondition(bytecode, offset + 1, popBoolean(frame, stackPointer))) {
                             final int offsetDelta = rawPeekU8(bytecode, offset);
-                            // BR_IF_U8 encodes the back jump value as a positive byte value.
-                            // BR_IF_U8
-                            // can never perform a forward jump.
+                            /*
+                             * BR_IF_U8 encodes the back jump value as a positive byte value.
+                             * BR_IF_U8 can never perform a forward jump.
+                             */
                             offset -= offsetDelta;
                         } else {
                             offset += 3;
@@ -444,14 +446,15 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             offset = indexOffset + offsetDelta;
                             break;
                         } else {
-                            // This loop is implemented to create a separate path for every index.
-                            // This
-                            // guarantees that all values inside the if statement are treated as
-                            // compile
-                            // time constants, since the loop is unrolled.
-                            // We keep track of the sum of the preceding profiles to adjust the
-                            // independent probabilities to conditional ones. This gets explained in
-                            // profileBranchTable().
+                            /*
+                             * This loop is implemented to create a separate path for every index.
+                             * This guarantees that all values inside the if statement are treated
+                             * as compile time constants, since the loop is unrolled.
+                             *
+                             * We keep track of the sum of the preceding profiles to adjust the
+                             * independent probabilities to conditional ones. This gets explained in
+                             * profileBranchTable().
+                             */
                             int precedingSum = 0;
                             for (int i = 0; i < size; i++) {
                                 final int indexOffset = offset + 3 + i * 6;
@@ -485,9 +488,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             offset = indexOffset + offsetDelta;
                             break;
                         } else {
-                            // This loop is implemented to create a separate path for every index.
-                            // This guarantees that all values inside the if statement are treated
-                            // as compile time constants, since the loop is unrolled.
+                            /*
+                             * This loop is implemented to create a separate path for every index.
+                             * This guarantees that all values inside the if statement are treated
+                             * as compile time constants, since the loop is unrolled.
+                             */
                             int precedingSum = 0;
                             for (int i = 0; i < size; i++) {
                                 final int indexOffset = offset + 6 + i * 6;
@@ -1658,11 +1663,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 final int numFields = module.functionTypeParamCount(functionTypeIndex);
                                 final Object[] fields = createFieldsForException(frame, functionTypeIndex, numFields, stackPointer);
                                 stackPointer -= numFields;
+                                offset += 4;
                                 throw createException(instance.tag(tagIndex), fields);
                             }
                             case Bytecode.THROW_REF: {
                                 codeEntry.exceptionBranch();
-                                final Object exception = frame.getObjectStatic(stackPointer - 1);
+                                final Object exception = popReference(frame, stackPointer - 1);
                                 stackPointer--;
                                 assert exception != null : "Exception object has to be a valid exception or wasm null";
                                 if (exception == WasmConstant.NULL) {
@@ -1732,11 +1738,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  * The source of the exception, i.e., the throw/throw_ref raising the exception or
                  * the call that forwarded the exception.
                  */
-                final int source = offset;
+                final int sourceOffset = offset;
 
                 offset = this.exceptionTableOffset;
 
-                if (offset == 0) {
+                if (offset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
                     // no exception table, directly throw to the next function on the call stack
                     throw e;
                 }
@@ -1770,7 +1776,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     offset += 4;
                     final int to = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    if (from < source && source <= to) {
+                    if (from < sourceOffset && sourceOffset <= to) {
                         final int type = rawPeekU8(bytecode, offset);
                         offset++;
                         switch (type) {

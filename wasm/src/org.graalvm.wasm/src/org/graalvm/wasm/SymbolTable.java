@@ -1199,7 +1199,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         exportSymbol(name);
         if (!checkExistingTagIndex(tagIndex)) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No tag with the specified index has been declared or imported, so it cannot be exported.");
+            throw WasmException.create(Failure.UNKNOWN_TAG, "No tag with the specified index has been declared or imported, so it cannot be exported.");
         }
         exportedTags.put(name, tagIndex);
         module().addLinkAction((context, store, instance, imports) -> {

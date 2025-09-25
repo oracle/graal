@@ -66,29 +66,22 @@ public final class FuncType {
         if (leftPar == -1 || rightPar == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid function type format");
         }
-        final String paramTypesString = s.substring(leftPar + 1, rightPar);
-        final ValueType[] params;
-        if (paramTypesString.isEmpty()) {
-            params = EMTPY;
-        } else {
-            final String[] paramTypes = s.substring(leftPar + 1, rightPar).split("\\s");
-            params = new ValueType[paramTypes.length];
-            for (int i = 0; i < paramTypes.length; i++) {
-                params[i] = ValueType.valueOf(paramTypes[i]);
-            }
-        }
-        final String resultTypesString = s.substring(rightPar + 1);
-        final ValueType[] results;
-        if (resultTypesString.isEmpty()) {
-            results = EMTPY;
-        } else {
-            final String[] resultTypes = s.substring(rightPar + 1).split("\\s");
-            results = new ValueType[resultTypes.length];
-            for (int i = 0; i < resultTypes.length; i++) {
-                results[i] = ValueType.valueOf(resultTypes[i]);
-            }
-        }
+        final ValueType[] params = parseTypeString(s, leftPar + 1, rightPar);
+        final ValueType[] results = parseTypeString(s, rightPar + 1, s.length());
         return new FuncType(params, results);
+    }
+
+    private static ValueType[] parseTypeString(String typesString, int start, int end) {
+        if (start >= end) {
+            return EMTPY;
+        } else {
+            String[] typeNames = typesString.substring(start, end).split(" ");
+            ValueType[] types = new ValueType[typeNames.length];
+            for (int i = 0; i < typeNames.length; i++) {
+                types[i] = ValueType.valueOf(typeNames[i]);
+            }
+            return types;
+        }
     }
 
     public static FuncType fromFunctionType(SymbolTable.FunctionType functionType) {

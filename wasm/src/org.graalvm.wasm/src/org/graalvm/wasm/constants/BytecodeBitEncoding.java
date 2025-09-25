@@ -180,4 +180,8 @@ public class BytecodeBitEncoding {
 
     public static final int CODE_ENTRY_LOCALS_FLAG = 0b0000_0010;
     public static final int CODE_ENTRY_RESULT_FLAG = 0b0000_0001;
+
+    // Exception handlers
+
+    public static final int INVALID_EXCEPTION_TABLE_OFFSET = -1;
 }
