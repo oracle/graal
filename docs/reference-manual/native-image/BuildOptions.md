@@ -140,7 +140,7 @@ GraalVM 25 introduces the `-H:Preserve` option. This lets you instruct the `nati
 
 You can use `-H:Preserve` in the following ways:
 
-* `-H:Preserve=all`: preserves all elements from the JDK and from the classpath
+* `-H:Preserve=all`: preserves all elements from the entire JDK and classpath. This creates larger images but ensures all code is included, which can help resolve missing metadata issues.
 * `-H:Preserve=module=<module>`: preserves all elements from a given module
 * `-H:Preserve=module=ALL-UNNAMED`: preserves all elements from the classpath (provided with `-cp`).
 * `-H:Preserve=package=<package>`: preserves all elements from a given package
@@ -151,7 +151,19 @@ You must explicitly configure multi-interface proxy classes, arrays of dimension
 
 If you get errors related to `--initialize-at-build-time`, follow the suggestions in the error messages.
 
+> **Note:** Using `-H:Preserve=all` requires significant memory and will result in much larger native images. Use the `-Os` flag to reduce image size. For more information, see [Optimizations and Performance](OptimizationsAndPerformance.md).
+
 For a practical demonstration, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
+
+#### Memory Requirements
+
+Native Image compilation is memory-intensive, particularly when building large projects or when using -`H:Preserve=all` or `--pgo-instrument`.
+
+If you encounter `OutOfMemoryError: Java heap space` you can:
+
+* use the `-Os` flag to reduce image size. For more information, see [Optimizations and Performance](OptimizationsAndPerformance.md)
+* use more specific preservation options like `-H:Preserve=package=<package>` instead of `-H:Preserve=all`
+* use more RAM by increasing the heap size with `-J-Xmx<n>g` where `<n>` varies based on your machine's available memory and build requirements
 
 ## System Properties
 
