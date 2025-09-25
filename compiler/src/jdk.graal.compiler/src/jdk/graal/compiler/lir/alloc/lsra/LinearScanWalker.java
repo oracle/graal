@@ -152,8 +152,8 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     void setUsePos(Interval interval, int intersects, boolean onlyProcessUsePos) {
+        assert isActiveRegister(interval) : "caller should have checked";
         int i = asRegister(interval.location()).number;
-        assert isActiveRegister(i) : "should have been check";
         if (intersects != -1) {
             assert intersects != 0 : "must use excludeFromUse to set usePos to 0";
             if (usePos[i] > intersects) {
@@ -167,7 +167,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     private void setUsePosAtIntersection(Interval interval, Interval current) {
-        assert isActiveRegister(interval) : "called should have checked";
+        assert isActiveRegister(interval) : "caller should have checked";
         int i = asRegister(interval.location()).number;
         int savedUsePos = usePos[i];
         int intersects = interval.currentIntersectsAtLimit(current, savedUsePos);
