@@ -51,6 +51,7 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return An array of {@code CremaResolvedJavaMethod} objects representing all the declared
      *         constructors of this type
      */
+    @Override
     CremaResolvedJavaMethod[] getDeclaredConstructors();
 
     /**

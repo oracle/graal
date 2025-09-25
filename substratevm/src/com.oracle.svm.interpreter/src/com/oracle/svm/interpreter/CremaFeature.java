@@ -147,7 +147,7 @@ public class CremaFeature implements InternalFeature {
         }
     }
 
-    private void initializeInterpreterFields(BuildTimeInterpreterUniverse iUniverse, HostedField[] fields) {
+    private static void initializeInterpreterFields(BuildTimeInterpreterUniverse iUniverse, HostedField[] fields) {
         for (HostedField hostedField : fields) {
             InterpreterResolvedJavaField iField = iUniverse.getField(hostedField.getWrapped());
             if (iField == null) {

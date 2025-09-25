@@ -176,7 +176,7 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
      *             {@link Throwable#getMessage()}.
      */
     public void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean ignoreUnrecognized) {
-        Predicate<OptionKey<?>> isHosted = optionKey -> false;
+        Predicate<OptionKey<?>> isHosted = _ -> false;
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),

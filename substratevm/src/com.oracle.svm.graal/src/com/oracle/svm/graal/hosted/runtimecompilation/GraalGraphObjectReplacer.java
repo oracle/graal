@@ -269,12 +269,12 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                  * be the target of an invokeinterface, which doesn't necessarily correspond to an
                  * actual declared method, so normal resolution will not work.
                  */
-                beforeAnalysisAccess.registerSubtypeReachabilityHandler((a, reachableSubtype) -> {
+                beforeAnalysisAccess.registerSubtypeReachabilityHandler((_, reachableSubtype) -> {
                     AnalysisType subtype = beforeAnalysisAccess.getMetaAccess().lookupJavaType(reachableSubtype);
                     if (!subtype.equals(baseType)) {
                         AnalysisMethod resolvedOverride = subtype.resolveConcreteMethod(baseMethod, null);
                         if (resolvedOverride != null) {
-                            resolvedOverride.registerImplementationInvokedCallback((analysisAccess) -> createMethod(resolvedOverride));
+                            resolvedOverride.registerImplementationInvokedCallback(_ -> createMethod(resolvedOverride));
                         }
                     }
                 }, baseType.getJavaClass());
@@ -476,7 +476,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
      * Therefore all substrate VM related data has to be updated after building the substrate
      * universe.
      */
-    @SuppressWarnings("try")
     public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, Providers providers) {
 
         if (Options.GuaranteeSubstrateTypesLinked.getValue()) {

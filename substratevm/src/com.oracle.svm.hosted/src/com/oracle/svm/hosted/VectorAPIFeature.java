@@ -172,18 +172,18 @@ public class VectorAPIFeature implements InternalFeature {
         for (LaneType laneType : laneTypes) {
             Method species = ReflectionUtil.lookupMethod(laneType.vectorClass(), "species", vectorShapeClass);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(laneType.vectorClass(), "SPECIES_PREFERRED"),
-                            (receiver, originalValue) -> ReflectionUtil.invokeMethod(species, null, preferredShape));
+                            (_, _) -> ReflectionUtil.invokeMethod(species, null, preferredShape));
 
             Class<?> maxVectorClass = vectorClass(laneType, shapes[shapes.length - 1]);
             int laneCount = VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass());
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VSIZE"),
-                            (receiver, originalValue) -> maxVectorBits);
+                            (_, _) -> maxVectorBits);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VLENGTH"),
-                            (receiver, originalValue) -> laneCount);
+                            (_, _) -> laneCount);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "ZERO"),
-                            (receiver, originalValue) -> makeZeroVector(maxVectorClass, laneType.elementClass(), laneCount));
+                            (_, _) -> makeZeroVector(maxVectorClass, laneType.elementClass(), laneCount));
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "IOTA"),
-                            (receiver, originalValue) -> makeIotaVector(maxVectorClass, laneType.elementClass(), laneCount));
+                            (_, _) -> makeIotaVector(maxVectorClass, laneType.elementClass(), laneCount));
         }
 
         for (LaneType laneType : laneTypes) {
@@ -224,7 +224,7 @@ public class VectorAPIFeature implements InternalFeature {
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::vectorByteSize));
         access.registerFieldValueTransformer(dummyVectorField, new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::dummyVector));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneType"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneType));
-        access.registerFieldValueTransformer(cachesField, (receiver, originalValue) -> speciesCache);
+        access.registerFieldValueTransformer(cachesField, (_, _) -> speciesCache);
 
         access.allowStableFieldFoldingBeforeAnalysis(dummyVectorField);
         access.allowStableFieldFoldingBeforeAnalysis(ReflectionUtil.lookupField(speciesClass, "indexSpecies"));
@@ -249,13 +249,13 @@ public class VectorAPIFeature implements InternalFeature {
                     int laneCount = VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass());
                     Class<?> shuffleElement = (laneType.elementClass() == float.class ? int.class : laneType.elementClass() == double.class ? long.class : laneType.elementClass());
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "VLENGTH"),
-                                    (receiver, originalValue) -> laneCount);
+                                    (_, _) -> laneCount);
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "IOTA"),
-                                    (receiver, originalValue) -> makeIotaVector(shuffleClass, shuffleElement, laneCount));
+                                    (_, _) -> makeIotaVector(shuffleClass, shuffleElement, laneCount));
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(maskClass, "TRUE_MASK"),
-                                    (receiver, originalValue) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, true));
+                                    (_, _) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, true));
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(maskClass, "FALSE_MASK"),
-                                    (receiver, originalValue) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, false));
+                                    (_, _) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, false));
                 }
             }
         }

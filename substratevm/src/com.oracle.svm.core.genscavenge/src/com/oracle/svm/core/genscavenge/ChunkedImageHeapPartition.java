@@ -147,7 +147,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         for (ImageHeapObject obj : objects) {
             long objSize = obj.getSize();
             assert objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
-            Queue<ImageHeapObject> q = map.computeIfAbsent(objSize, k -> new ArrayDeque<>());
+            Queue<ImageHeapObject> q = map.computeIfAbsent(objSize, _ -> new ArrayDeque<>());
             q.add(obj);
         }
         return map;

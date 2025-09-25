@@ -505,7 +505,7 @@ class ObjectInfoGraph {
         if (nodes.containsKey(a)) {
             return nodes.get(a);
         }
-        return nodes.computeIfAbsent(a, objectInfo -> new NodeData(nodes.size()));
+        return nodes.computeIfAbsent(a, _ -> new NodeData(nodes.size()));
     }
 
     Set<ObjectInfo> getNodesSet() {

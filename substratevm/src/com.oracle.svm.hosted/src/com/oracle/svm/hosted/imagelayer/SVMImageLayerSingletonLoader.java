@@ -127,7 +127,7 @@ public class SVMImageLayerSingletonLoader {
                 assert singletonObjId != SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Create image singletons should be linked to an object";
                 Object singletonObject = singletonObjects.get(singletonObjId);
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
-                singletonInitializationMap.computeIfAbsent(singletonObject, (k) -> new HashSet<>());
+                singletonInitializationMap.computeIfAbsent(singletonObject, _ -> new HashSet<>());
                 singletonInitializationMap.get(singletonObject).add(clazz);
             } else if (persistInfo == PersistFlags.FORBIDDEN) {
                 assert singletonObjId == SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Unrestored image singleton should not be linked to an object";
@@ -141,7 +141,7 @@ public class SVMImageLayerSingletonLoader {
                 } else {
                     forbiddenObject = forbiddenObjectCreator.apply(SingletonTrait.EMPTY_ARRAY);
                 }
-                singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
+                singletonInitializationMap.computeIfAbsent(forbiddenObject, _ -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else if (persistInfo == PersistFlags.CALLBACK_ON_REGISTRATION) {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);

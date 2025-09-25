@@ -596,7 +596,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     protected abstract JavaField lookupField(ConstantPool constantPool, int cpi, int opcode, ResolvedJavaMethod caller);
 
     private List<T> popOperands(AbstractFrame.OperandStack<T> stack, int n) {
-        return IntStream.range(0, n).mapToObj(i -> stack.pop()).toList().reversed();
+        return IntStream.range(0, n).mapToObj(_ -> stack.pop()).toList().reversed();
     }
 
     private void handleConstant(InstructionContext<T> context, Object value, boolean needsTwoSlots) {

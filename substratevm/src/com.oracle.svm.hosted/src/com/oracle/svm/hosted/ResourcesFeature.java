@@ -215,7 +215,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, cnd -> {
+            registerConditionalConfiguration(condition, _ -> {
                 addResourceEntry(module, resourcePath, origin);
                 addCondition(condition, module, resourcePath);
             });
@@ -250,7 +250,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void ignoreResources(ConfigurationCondition condition, String pattern, Object origin) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> {
+            registerConditionalConfiguration(condition, _ -> {
                 excludedResourcePatterns.add(new ConditionalPattern(condition, pattern, origin));
             });
         }
@@ -264,7 +264,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+            registerConditionalConfiguration(condition, _ -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
         }
 
         @Override

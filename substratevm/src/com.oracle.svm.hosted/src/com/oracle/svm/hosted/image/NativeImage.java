@@ -427,9 +427,8 @@ public abstract class NativeImage extends AbstractImage {
      * Create the image sections for code, constants, and the heap.
      */
     @Override
-    @SuppressWarnings("try")
     public void build(String imageName, DebugContext debug) {
-        try (DebugContext.Scope buildScope = debug.scope("NativeImage.build")) {
+        try (DebugContext.Scope _ = debug.scope("NativeImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
@@ -487,7 +486,7 @@ public abstract class NativeImage extends AbstractImage {
             cGlobals.writeData(rwDataBuffer,
                             (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
                                             isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
-                            (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
+                            (offset, symbolName, _) -> defineRelocationForSymbol(symbolName, offset));
 
             // - Write the heap to its own section.
             long imageHeapSize = getImageHeapSize();
@@ -979,9 +978,8 @@ public abstract class NativeImage extends AbstractImage {
 
         protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
 
-        @SuppressWarnings("try")
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
-            try (Indent ignored = debug.logAndIndent("TextImpl.writeTextSection")) {
+            try (Indent _ = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
                  * Write the text content. For slightly complicated reasons, we now call
                  * patchMethods in two places -- but it only happens once for any given image build.

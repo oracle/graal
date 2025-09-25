@@ -253,7 +253,7 @@ public final class NativeIsolate {
             }
         } finally {
             if (success) {
-                isolates.computeIfPresent(isolateId, (id, nativeIsolate) -> (nativeIsolate == NativeIsolate.this ? null : nativeIsolate));
+                isolates.computeIfPresent(isolateId, (_, nativeIsolate) -> (nativeIsolate == NativeIsolate.this ? null : nativeIsolate));
             }
         }
         return success;

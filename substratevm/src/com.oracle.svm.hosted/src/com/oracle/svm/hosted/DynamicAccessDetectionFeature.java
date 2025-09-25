@@ -138,14 +138,14 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     }
 
     public void addCall(String entry, DynamicAccessDetectionPhase.DynamicAccessKind accessKind, String call, String callLocation) {
-        MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
-        CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, k -> new CallLocationsByMethod());
-        ConcurrentSkipListSet<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ConcurrentSkipListSet<>());
+        MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, _ -> new MethodsByAccessKind());
+        CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, _ -> new CallLocationsByMethod());
+        ConcurrentSkipListSet<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, _ -> new ConcurrentSkipListSet<>());
         callLocations.add(callLocation);
     }
 
     public MethodsByAccessKind getMethodsByAccessKind(String entry) {
-        return callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
+        return callsBySourceEntry.computeIfAbsent(entry, _ -> new MethodsByAccessKind());
     }
 
     public EconomicSet<String> getSourceEntries() {
