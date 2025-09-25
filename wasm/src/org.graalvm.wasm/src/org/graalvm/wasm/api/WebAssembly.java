@@ -119,6 +119,7 @@ public class WebAssembly extends Dictionary {
         addMember("tag_type", new Executable(WebAssembly::tagType));
 
         addMember("exn_alloc", new Executable(this::exnAlloc));
+        addMember("exn_tag", new Executable(WebAssembly::exnTag));
         addMember("exn_read", new Executable(WebAssembly::exnRead));
 
         addMember("module_imports", new Executable(WebAssembly::moduleImports));
@@ -445,7 +446,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be a reftype");
         }
         if (!refTypes && (elemKind == TableKind.externref || elemKind == TableKind.exnref)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable reference types to support externref");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
         return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue(), initialValue);
@@ -1004,12 +1005,22 @@ public class WebAssembly extends Dictionary {
         return new WasmRuntimeException(null, tag, fields);
     }
 
+    public static Object exnTag(Object[] args) {
+        checkArgumentCount(args, 1);
+        if (!(args[0] instanceof WasmRuntimeException exn)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm exception");
+        }
+        return exn.tag();
+    }
+
     public static Object exnRead(Object[] args) {
         checkArgumentCount(args, 1);
         if (!(args[0] instanceof WasmRuntimeException exn)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm exception");
         }
-        return exn.tag();
+        // Should return exn.fields.
+        // WasmRuntimeException already exposes its fields as array elements.
+        return exn;
     }
 
     private static Object instanceExport(Object[] args) {

@@ -201,8 +201,8 @@ public final class ModuleLimits {
         }
     }
 
-    public void checkTagCount(int size) {
-        assertUnsignedIntLessOrEqual(size, tagCountLimit, Failure.TAG_COUNT_LIMIT_EXCEEDED);
+    public void checkTagCount(int count) {
+        assertUnsignedIntLessOrEqual(count, tagCountLimit, Failure.TAG_COUNT_LIMIT_EXCEEDED);
     }
 
     public int tableInstanceSizeLimit() {

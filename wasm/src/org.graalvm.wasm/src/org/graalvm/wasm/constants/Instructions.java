@@ -55,7 +55,7 @@ public final class Instructions {
     public static final int ELSE = 0x05;
 
     public static final int THROW = 0x08;
-    public static final int THROW_REF = 0xA;
+    public static final int THROW_REF = 0x0A;
 
     public static final int END = 0x0B;
 

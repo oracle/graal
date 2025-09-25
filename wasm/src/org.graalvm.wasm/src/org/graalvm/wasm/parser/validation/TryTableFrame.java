@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
+
 /**
  * Representation of a wasm try table during module validation.
  */
@@ -54,5 +56,12 @@ public class TryTableFrame extends BlockFrame {
 
     ExceptionTable table() {
         return table;
+    }
+
+    @Override
+    void exit(RuntimeBytecodeGen bytecode) {
+        super.exit(bytecode);
+
+        table.setTo(bytecode.location());
     }
 }

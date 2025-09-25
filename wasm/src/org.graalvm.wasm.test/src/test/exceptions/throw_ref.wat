@@ -42,7 +42,6 @@
     (type $t0 (func))
 
     (tag $e0 (type $t0))
-    (tag $e1 (type $t0))
 
     (func $throw_e0 (param i32)
         local.get 0

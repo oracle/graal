@@ -329,6 +329,8 @@ public class ParserState {
     public void enterTryTable(byte[] paramTypes, byte[] resultTypes, ExceptionHandler[] handlers) {
         final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), false, bytecode.location(), handlers);
         controlStack.push(frame);
+
+        exceptionTables.add(frame.table());
     }
 
     /**
@@ -637,12 +639,6 @@ public class ParserState {
         byte[] resultTypes = frame.resultTypes();
         frame.exit(bytecode);
         checkStackAfterFrameExit(frame, resultTypes);
-
-        if (frame instanceof TryTableFrame e) {
-            final ExceptionTable t = e.table();
-            t.setTo(bytecode.location());
-            exceptionTables.add(t);
-        }
 
         controlStack.pop();
         if (!multiValue) {
