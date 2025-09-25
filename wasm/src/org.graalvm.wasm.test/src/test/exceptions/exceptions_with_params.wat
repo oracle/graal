@@ -47,7 +47,7 @@
         block $h (result i32)
             try_table (result i32) (catch $e0 $h)
                 block $h1 (result i32)
-                    try_table (result i32) (catch $e1 $h)
+                    try_table (result i32) (catch $e1 $h1)
                         i32.const 4
                         throw $e0
                         i32.const 42

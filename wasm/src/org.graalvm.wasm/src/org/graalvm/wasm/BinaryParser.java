@@ -78,6 +78,7 @@ import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.Vector128Shape;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -1103,9 +1104,10 @@ public class BinaryParser extends BinaryStreamParser {
         final int exceptionTableOffset;
         if (state.needsExceptionTable()) {
             exceptionTableOffset = bytecode.location();
+            assert exceptionTableOffset != BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET;
             state.generateExceptionTable();
         } else {
-            exceptionTableOffset = 0;
+            exceptionTableOffset = BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET;
         }
 
         if (offsetToLineIndexMap == null) {

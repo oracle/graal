@@ -428,7 +428,7 @@ public abstract class BytecodeParser {
             results = Bytecode.EMPTY_BYTES;
         }
         final int endOffset;
-        if (exceptionTableOffset == 0) {
+        if (exceptionTableOffset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
             // no exception table
             endOffset = (codeEntryOffset - 4);
         } else {
@@ -798,7 +798,8 @@ public abstract class BytecodeParser {
                         case Bytecode.ELEM_DROP:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
-                        case Bytecode.TABLE_FILL: {
+                        case Bytecode.TABLE_FILL:
+                        case Bytecode.THROW: {
                             offset += 4;
                             break;
                         }
@@ -809,8 +810,7 @@ public abstract class BytecodeParser {
                         case Bytecode.MEMORY64_COPY_D64_S32:
                         case Bytecode.MEMORY64_COPY_D64_S64:
                         case Bytecode.TABLE_INIT:
-                        case Bytecode.TABLE_COPY:
-                        case Bytecode.THROW: {
+                        case Bytecode.TABLE_COPY: {
                             offset += 8;
                             break;
                         }
