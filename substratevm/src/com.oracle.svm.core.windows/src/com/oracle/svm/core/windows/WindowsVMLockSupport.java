@@ -26,7 +26,6 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(VMLockSupport.class)
 public final class WindowsVMLockSupport extends VMLockSupport {
@@ -78,7 +79,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
 
     @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
-    private static void fatalError(String functionName) {
+    static void fatalError(String functionName) {
         /*
          * Functions are called very early and late during our execution, so there is not much we
          * can do when they fail.
@@ -296,14 +297,18 @@ final class WindowsVMSemaphore extends VMSemaphore {
     @Override
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public int destroy() {
-        int errorCode = WinBase.CloseHandle(hSemaphore);
+        int result = WinBase.CloseHandle(hSemaphore);
         hSemaphore = Word.nullPointer();
-        return errorCode;
+        return result != 0 ? 0 : 1;
     }
 
     @Override
     public void await() {
-        WindowsVMLockSupport.checkResult(SynchAPI.WaitForSingleObject(hSemaphore, SynchAPI.INFINITE()), "WaitForSingleObject");
+        int result = SynchAPI.WaitForSingleObject(hSemaphore, SynchAPI.INFINITE());
+        if (result != SynchAPI.WAIT_OBJECT_0()) {
+            assert result == SynchAPI.WAIT_FAILED() : result;
+            WindowsVMLockSupport.fatalError("WaitForSingleObject");
+        }
     }
 
     @Override
