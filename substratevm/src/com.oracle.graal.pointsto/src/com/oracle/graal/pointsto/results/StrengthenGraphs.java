@@ -244,23 +244,26 @@ public abstract class StrengthenGraphs {
 
     protected abstract void persistStrengthenGraph(AnalysisMethod method);
 
-    /*
+    /**
      * Returns a type that can replace the original type in stamps as an exact type. When the
      * returned type is the original type itself, the original type has no subtype and can be used
      * as an exact type.
-     *
-     * Returns null if there is no single implementor type.
+     * <p>
+     * Returns {@code null} if there is no optimization potential, i.e., if the original type
+     * doesn't have a unique implementor type, or we cannot prove that it has a unique implementor
+     * type due to open-world analysis.
      */
     protected abstract AnalysisType getSingleImplementorType(AnalysisType originalType);
 
-    /*
+    /**
      * Returns a type that can replace the original type in stamps.
-     *
-     * Returns null if the original type has no assignable type that is instantiated, i.e., the code
-     * using the type is unreachable.
-     *
+     * <p>
+     * Returns {@code null} if the original type has no assignable type that is instantiated, i.e.,
+     * the code using the type is unreachable.
+     * <p>
      * Returns the original type itself if there is no optimization potential, i.e., if the original
-     * type itself is instantiated or has more than one instantiated direct subtype.
+     * type itself is instantiated or has more than one instantiated direct subtype, or we cannot
+     * prove that it doesn't have any instantiated subtype due to open-world analysis.
      */
     protected abstract AnalysisType getStrengthenStampType(AnalysisType originalType);
 

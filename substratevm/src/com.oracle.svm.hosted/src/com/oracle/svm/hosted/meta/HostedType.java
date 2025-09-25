@@ -65,7 +65,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     boolean loadedFromPriorLayer;
     protected int typeID;
-    protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
 
     // region closed-world only fields
@@ -140,13 +139,27 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     // endregion open-world only fields
 
     /**
-     * A more precise subtype that can replace this type as the declared type of values. Null if
-     * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
-     * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
-     * cannot be strengthened.
-     * 
-     * For open world the strengthen stamp type is equal to this type itself if the type is not a
-     * leaf type, i.e., it cannot be extended.
+     * The unique implementor of this type that can replace it in stamps as an exact type.
+     * <p>
+     * A {@code null} value means there is no unique implementor that can replace this type. The
+     * field is set to this type itself if it has no instantiated subtypes to enable its usage as an
+     * exact type, e.g., in places where the original stamp was non-exact.
+     * <p>
+     * In open-world analysis the field is set to {@code null} for non-leaf types since we have to
+     * assume that there may be some instantiated subtypes that we haven't seen yet.
+     */
+    protected HostedType uniqueConcreteImplementation;
+
+    /**
+     * A more precise subtype that can replace this type as the declared type of values.
+     * <p>
+     * A {@code null} value means that this type is never instantiated and does not have any
+     * instantiated subtype, i.e., no value of this type can ever exist and the code using this type
+     * is unreachable. It is set to this type if this type is itself instantiated or has more than
+     * one instantiated direct subtype, i.e, this type cannot be strengthened.
+     * <p>
+     * In open-world analysis the field is set to this type itself for non-leaf types since we have
+     * to assume that there may be some instantiated subtypes that we haven't seen yet.
      */
     protected HostedType strengthenStampType;
 
