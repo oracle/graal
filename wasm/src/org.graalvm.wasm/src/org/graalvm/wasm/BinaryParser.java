@@ -2504,7 +2504,7 @@ public class BinaryParser extends BinaryStreamParser {
         final int length = readLength();
         final ExceptionHandler[] handlers = new ExceptionHandler[length];
 
-        for (int i = 0; i < length; i += 2) {
+        for (int i = 0; i < length; i++) {
             final int opcode = read1() & 0xFF;
             switch (opcode) {
                 case ExceptionHandlerType.CATCH -> {
