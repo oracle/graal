@@ -39,15 +39,12 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
@@ -95,17 +92,7 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
     @Override
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        long methodHandle = HotSpotJVMCIRuntime.runtime().translate(method);
-        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetPartialEvaluationMethodInfo(calls, env(), getHandle(), methodHandle);
-        CCharPointer buffer = StackValue.get(5);
-        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 5, buffer);
-        BinaryInput in = BinaryInput.create(buffer, 5);
-        LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[in.readByte()];
-        InlineKind peInlineKind = InlineKind.values()[in.readByte()];
-        InlineKind inlineKind = InlineKind.values()[in.readByte()];
-        boolean inlineable = in.readBoolean();
-        boolean isSpecializationMethod = in.readBoolean();
-        return new PartialEvaluationMethodInfo(loopExplosionKind, peInlineKind, inlineKind, inlineable, isSpecializationMethod);
+        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getMethodInfo()");
     }
 
     @Override
@@ -152,7 +139,7 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        throw new UnsupportedOperationException("Use TruffleCompilerRuntime#getConstantFieldInfo()");
+        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getConstantFieldInfo()");
     }
 
     @Override

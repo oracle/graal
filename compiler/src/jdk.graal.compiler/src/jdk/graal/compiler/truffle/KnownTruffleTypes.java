@@ -84,9 +84,13 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
                     lookupType(JavaKind.Short.toBoxedJavaClass()));
     public final ResolvedJavaField Reference_referent = findField(lookupTypeCached(Reference.class), "referent");
 
+    // jdk.jfr
+    public final ResolvedJavaType Event = lookupTypeOptional("jdk.internal.event.Event");
+
     // truffle.api
     public final ResolvedJavaType CompilerDirectives = lookupType("com.oracle.truffle.api.CompilerDirectives");
     public final ResolvedJavaType CompilerDirectives_CompilationFinal = lookupType("com.oracle.truffle.api.CompilerDirectives$CompilationFinal");
+    public final ResolvedJavaType CompilerDirectives_TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
     public final ResolvedJavaType CompilerAsserts = lookupType("com.oracle.truffle.api.CompilerAsserts");
     public final ResolvedJavaType ExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType HostCompilerDirectives = lookupType("com.oracle.truffle.api.HostCompilerDirectives");
@@ -100,6 +104,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField Node_parent = findField(Node, "parent");
     public final ResolvedJavaType UnexpectedResultException = lookupType("com.oracle.truffle.api.nodes.UnexpectedResultException");
     public final ResolvedJavaType SlowPathException = lookupType("com.oracle.truffle.api.nodes.SlowPathException");
+    public final ResolvedJavaType ExplodeLoop = lookupType("com.oracle.truffle.api.nodes.ExplodeLoop");
 
     // truffle.api.frame
     public final ResolvedJavaType VirtualFrame = lookupType("com.oracle.truffle.api.frame.VirtualFrame");
@@ -158,6 +163,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType BaseOSRRootNode = lookupTypeCached("com.oracle.truffle.runtime.BaseOSRRootNode");
     public final ResolvedJavaField BaseOSRRootNode_loopNode = findField(BaseOSRRootNode, "loopNode");
     public final ResolvedJavaType CompilationState = lookupType("com.oracle.truffle.runtime.CompilationState");
+    public final ResolvedJavaType TruffleCallBoundary = lookupType("com.oracle.truffle.runtime.TruffleCallBoundary");
 
     public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
     public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", Object_Array);
@@ -177,6 +183,9 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaType OptimizedAssumption = lookupType("com.oracle.truffle.runtime.OptimizedAssumption");
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
+
+    // truffle.dsl
+    public final ResolvedJavaType Specialization = lookupType("com.oracle.truffle.api.dsl.Specialization");
 
     /**
      * JDK 22+24 introduced JFR tracing in Java code of the constructors for {@link Throwable} and

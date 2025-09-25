@@ -471,6 +471,9 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         InlineSupport.LongField.class,
                         InlineSupport.DoubleField.class,
                         InlineSupport.ReferenceField.class,
+                        ExplodeLoop.class,
+                        Specialization.class,
+                        TruffleCallBoundary.class,
         }) {
             m.put(c.getName(), c);
         }

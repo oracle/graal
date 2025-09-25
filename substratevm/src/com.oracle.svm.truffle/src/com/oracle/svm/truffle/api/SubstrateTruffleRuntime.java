@@ -60,7 +60,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
@@ -177,12 +176,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
          * installed.
          */
         return null;
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        return super.getPartialEvaluationMethodInfo(method);
     }
 
     @Override

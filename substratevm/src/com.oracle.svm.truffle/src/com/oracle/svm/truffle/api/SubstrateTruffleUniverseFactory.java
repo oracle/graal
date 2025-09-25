@@ -67,7 +67,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateMethod createMethod(AnalysisMethod aMethod, ImageCodeInfo imageCodeInfo, HostedStringDeduplication stringTable) {
-        PartialEvaluationMethodInfo peInfo = createPartialEvaluationMethodInfo(truffleRuntime, aMethod);
+        PartialEvaluationMethodInfo peInfo = createPartialEvaluationMethodInfo(truffleRuntime, aMethod, types);
         PartialEvaluationMethodInfo canonicalPeInfo = canonicalMethodInfos.computeIfAbsent(peInfo, k -> k);
         /*
          * A collection of all the flags that Truffle needs for partial evaluation. Most of this
@@ -88,13 +88,16 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method) {
-        var info = runtime.getPartialEvaluationMethodInfo(method);
+    static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method,
+                    KnownTruffleTypes types) {
+        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
+        List<AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) method);
+        var info = PartialEvaluator.computePartialEvaluationMethodInfo(method, annotations, types);
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
-                return new PartialEvaluationMethodInfo(info.loopExplosion(),
+                info = new PartialEvaluationMethodInfo(info.loopExplosion(),
                                 info.inlineForPartialEvaluation(),
                                 info.inlineForTruffleBoundary(),
                                 // override inlinable for uninterruptible methods here

@@ -28,6 +28,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.annotation.EnumElement;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
@@ -36,6 +37,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -197,6 +199,62 @@ public abstract class PartialEvaluator {
             return ConstantFieldInfo.forDimensions(dimensions);
         }
         return null;
+    }
+
+    public static PartialEvaluationMethodInfo computePartialEvaluationMethodInfo(ResolvedJavaMethod method,
+                    Collection<AnnotationValue> annotationValues,
+                    KnownTruffleTypes types) {
+        AnnotationValue truffleBoundary = getAnnotationValue(types.CompilerDirectives_TruffleBoundary, annotationValues);
+        AnnotationValue truffleCallBoundary = getAnnotationValue(types.TruffleCallBoundary, annotationValues);
+        boolean specialization = hasAnnotationValue(types.Specialization, annotationValues);
+
+        return new PartialEvaluationMethodInfo(getLoopExplosionKind(annotationValues, types),
+                        getInlineKind(truffleBoundary, truffleCallBoundary, method, true, types),
+                        getInlineKind(truffleBoundary, truffleCallBoundary, method, false, types),
+                        method.canBeInlined(),
+                        specialization);
+    }
+
+    private static LoopExplosionKind getLoopExplosionKind(Collection<AnnotationValue> annotationValues,
+                    KnownTruffleTypes types) {
+        AnnotationValue value = getAnnotationValue(types.ExplodeLoop, annotationValues);
+        if (value == null) {
+            return LoopExplosionKind.NONE;
+        }
+        String kind = value.get("kind", EnumElement.class).name;
+        return switch (kind) {
+            case "FULL_UNROLL" -> LoopExplosionKind.FULL_UNROLL;
+            case "FULL_UNROLL_UNTIL_RETURN" -> LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
+            case "FULL_EXPLODE" -> LoopExplosionKind.FULL_EXPLODE;
+            case "FULL_EXPLODE_UNTIL_RETURN" -> LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+            case "MERGE_EXPLODE" -> LoopExplosionKind.MERGE_EXPLODE;
+            default -> throw new InternalError(String.format("Unknown Truffle LoopExplosionKind %s", kind));
+        };
+    }
+
+    private static InlineKind getInlineKind(AnnotationValue truffleBoundary, AnnotationValue truffleCallBoundary,
+                    ResolvedJavaMethod method, boolean duringPartialEvaluation,
+                    KnownTruffleTypes types) {
+        if (truffleBoundary != null) {
+            if (duringPartialEvaluation) {
+                // Since this method is invoked by the bytecode parser plugins, which can be invoked
+                // by the partial evaluator, we want to prevent inlining across the boundary during
+                // partial evaluation,
+                // even if the TruffleBoundary allows inlining after partial evaluation.
+                if (truffleBoundary.get("transferToInterpreterOnException", Boolean.class)) {
+                    return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
+                } else {
+                    return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+            } else if (!truffleBoundary.get("allowInlining", Boolean.class)) {
+                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
+        } else if (truffleCallBoundary != null) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        } else if (FlightRecorderInstrumentation.isInstrumented(method, types)) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        }
+        return InlineKind.INLINE;
     }
 
     public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);

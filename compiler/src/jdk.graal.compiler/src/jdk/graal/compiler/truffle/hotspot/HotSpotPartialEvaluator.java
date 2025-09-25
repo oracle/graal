@@ -179,7 +179,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
-            PartialEvaluationMethodInfo methodInfo = config.runtime().getPartialEvaluationMethodInfo(method);
+            Collection<AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(method).values();
+            PartialEvaluationMethodInfo methodInfo = computePartialEvaluationMethodInfo(method, declaredAnnotationValues, getTypes());
             /*
              * We can canonicalize the instances to reduce space required in the cache. There are
              * only a small number of possible instances of PartialEvaluationMethodInfo as it just
