@@ -204,7 +204,25 @@ public abstract class BinaryStreamParser {
         } else if (mut == GlobalModifier.MUTABLE) {
             return mut;
         } else {
-            throw Assert.fail(Failure.MALFORMED_MUTABILITY, "Invalid mutability flag: " + mut);
+            throw Assert.fail(Failure.MALFORMED_MUTABILITY, "Invalid mutability flag: 0x%02x", mut);
+        }
+    }
+
+    /**
+     * Reads the attribute of a tag (uint8).
+     */
+    protected byte readTagAttribute() {
+        final byte attribute = peekTagAttribute();
+        offset++;
+        return attribute;
+    }
+
+    protected byte peekTagAttribute() {
+        final byte attribute = peek1();
+        if (attribute == WasmTag.Attribute.EXCEPTION) {
+            return attribute;
+        } else {
+            throw Assert.fail(Failure.MALFORMED_TAG_ATTRIBUTE, "Invalid tag attribute: 0x%02x", attribute);
         }
     }
 

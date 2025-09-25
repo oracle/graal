@@ -76,6 +76,7 @@ public enum Failure {
     UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
     TYPE_MISMATCH(Type.INVALID, "type mismatch"),
     INVALID_RESULT_ARITY(Type.INVALID, "invalid result arity"),
+    NON_EMPTY_TAG_RESULT_TYPE(Type.INVALID, "non-empty tag result type"),
     MULTIPLE_MEMORIES(Type.INVALID, "multiple memories"),
     MULTIPLE_TABLES(Type.INVALID, "multiple tables"),
     LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
