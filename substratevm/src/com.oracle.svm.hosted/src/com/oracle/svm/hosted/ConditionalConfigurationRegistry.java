@@ -53,7 +53,7 @@ public abstract class ConditionalConfigurationRegistry {
 
     protected void runConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
         if (universe != null) {
-            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(debugContext -> task.accept(cnd)));
+            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(_ -> task.accept(cnd)));
         } else {
             pendingConditionalTasks.add(new ConditionalTask(condition, task));
             VMError.guarantee(universe == null, "There shouldn't be a race condition on Feature.duringSetup.");
@@ -63,7 +63,7 @@ public abstract class ConditionalConfigurationRegistry {
     protected void setUniverse(AnalysisUniverse analysisUniverse) {
         this.universe = analysisUniverse;
         for (var conditionalTask : pendingConditionalTasks) {
-            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
+            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(_ -> conditionalTask.task.accept(cnd)));
         }
         pendingConditionalTasks.clear();
     }
@@ -90,10 +90,10 @@ public abstract class ConditionalConfigurationRegistry {
                 runtimeCondition = ConfigurationCondition.alwaysTrue();
             }
             if (beforeAnalysisAccess == null) {
-                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), _ -> new ConcurrentLinkedQueue<>());
                 handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
-                beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());
+                beforeAnalysisAccess.registerReachabilityHandler(_ -> consumer.accept(runtimeCondition), condition.getType());
             }
 
         }
@@ -104,7 +104,7 @@ public abstract class ConditionalConfigurationRegistry {
         VMError.guarantee(this.beforeAnalysisAccess == null, "Analysis access can be set only once.");
         this.beforeAnalysisAccess = Objects.requireNonNull(beforeAnalysisAccess);
         for (Map.Entry<Class<?>, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
-            this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
+            this.beforeAnalysisAccess.registerReachabilityHandler(_ -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
         }
         pendingReachabilityHandlers.clear();
     }

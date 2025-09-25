@@ -834,7 +834,7 @@ public class SVMHost extends HostVM {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
             } else if (n instanceof ReachabilityRegistrationNode node) {
-                bb.postTask(debug -> node.getRegistrationTask().ensureDone());
+                bb.postTask(_ -> node.getRegistrationTask().ensureDone());
             }
         }
     }

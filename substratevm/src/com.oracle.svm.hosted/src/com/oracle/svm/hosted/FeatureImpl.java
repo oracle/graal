@@ -327,7 +327,7 @@ public class FeatureImpl {
 
         @Override
         public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
-            ObjectReachableCallback<T> wrapper = (access, obj, reason) -> callback.accept(obj);
+            ObjectReachableCallback<T> wrapper = (_, obj, _) -> callback.accept(obj);
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
         }
 

@@ -62,7 +62,7 @@ class ClassInfo {
         String methodSignature = MethodInfoRecordKeeper.getJavaStringAndFreeNativeString(methodSignaturePtr.read());
         String methodNameAndSignature = combineMethodNameAndSignature(methodName, methodSignature);
 
-        nameAndSignatureToMethodInfoMap.computeIfAbsent(methodNameAndSignature, nameAndSignature -> new MethodInfo(methodName, methodSignature, className));
+        nameAndSignatureToMethodInfoMap.computeIfAbsent(methodNameAndSignature, _ -> new MethodInfo(methodName, methodSignature, className));
         return nameAndSignatureToMethodInfoMap.get(methodNameAndSignature);
     }
 

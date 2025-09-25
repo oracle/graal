@@ -195,19 +195,19 @@ public abstract class NativeImageCodeCache {
         /* We force this method to be at code offset 0 to make that offset and address invalid. */
         HostedMethod invalidMethod = getInvalidCodeAddressHandler(imageHeap.hMetaAccess);
 
-        var orderedCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
+        var ordCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
         if (invalidMethod != null) {
-            orderedCompilations.add(Pair.create(invalidMethod, compilations.get(invalidMethod)));
+            ordCompilations.add(Pair.create(invalidMethod, compilations.get(invalidMethod)));
         }
 
         var orderedMethods = doLayout(compilations, ImageSingletons.lookup(CodeSectionLayouter.class));
         for (Pair<HostedMethod, CompilationResult> pair : orderedMethods) {
             HostedMethod method = pair.getLeft();
             if (!Objects.equals(invalidMethod, method)) {
-                orderedCompilations.add(pair);
+                ordCompilations.add(pair);
             }
         }
-        return orderedCompilations;
+        return ordCompilations;
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> doLayout(Map<HostedMethod, CompilationResult> compilationMap, CodeSectionLayouter layouter) {
@@ -444,14 +444,14 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
-        configurationFields.forEach((declaringClass, classFields) -> classFields.forEach((analysisField, reflectField) -> {
+        configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
                 runtimeMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
             }
         }));
 
-        configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
+        configurationExecutables.forEach((_, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
@@ -723,7 +723,7 @@ public abstract class NativeImageCodeCache {
             executor.start();
             for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
                 HostedMethod method = pair.getLeft();
-                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
+                executor.execute(_ -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
             }
             executor.complete();
         } catch (InterruptedException e) {

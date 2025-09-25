@@ -165,7 +165,7 @@ public final class FieldValueInterceptionSupport {
         if (computer != null) {
             VMError.guarantee(oField != null, "Cannot have a @UnknownObjectField or @UnknownPrimitiveField annotation on synthetic field %s", field);
 
-            var interceptor = fieldValueInterceptors.computeIfAbsent(oField, k -> computer);
+            var interceptor = fieldValueInterceptors.computeIfAbsent(oField, _ -> computer);
             /*
              * There can be a race with another thread, so `interceptor` might not be the same
              * object as `computer`. But that is not a problem because they are equivalent
@@ -185,7 +185,7 @@ public final class FieldValueInterceptionSupport {
              * If no field value transformer was registered beforehand, install our marker value so
              * that later registration of a field value transformer is reported as an error.
              */
-            result = fieldValueInterceptors.computeIfAbsent(oField, k -> INTERCEPTOR_ACCESSED_MARKER);
+            result = fieldValueInterceptors.computeIfAbsent(oField, _ -> INTERCEPTOR_ACCESSED_MARKER);
         } else {
             /*
              * This is a synthetic field, so it is not possible to install a field value transformer

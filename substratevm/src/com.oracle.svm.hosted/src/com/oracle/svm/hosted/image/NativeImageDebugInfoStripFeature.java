@@ -56,11 +56,10 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         return SubstrateOptions.StripDebugInfo.getValue();
     }
 
-    @SuppressWarnings("try")
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
         AfterImageWriteAccessImpl accessImpl = (AfterImageWriteAccessImpl) access;
-        try (Indent indent = accessImpl.getDebugContext().logAndIndent("Stripping debuginfo")) {
+        try (Indent _ = accessImpl.getDebugContext().logAndIndent("Stripping debuginfo")) {
             switch (ObjectFile.getNativeFormat()) {
                 case ELF:
                     hasStrippedSuccessfully = stripLinux(accessImpl);

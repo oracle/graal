@@ -226,7 +226,6 @@ public final class NativeImageHeap implements ImageHeap {
         return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
     }
 
-    @SuppressWarnings("try")
     public void addInitialObjects() {
         addObjectsPhase.allow();
         internStringsPhase.allow();

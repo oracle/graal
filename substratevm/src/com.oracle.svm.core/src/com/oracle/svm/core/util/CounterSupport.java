@@ -52,7 +52,7 @@ public class CounterSupport {
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
-        return (isFirstIsolate) -> CounterSupport.singleton().logValues(Log.log());
+        return _ -> CounterSupport.singleton().logValues(Log.log());
     }
 
     /**

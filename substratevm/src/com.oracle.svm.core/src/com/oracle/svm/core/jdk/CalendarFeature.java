@@ -38,7 +38,7 @@ public class CalendarFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         // GregorianCalendar might use JulianCalendar via reflection
-        access.registerReachabilityHandler(a -> {
+        access.registerReachabilityHandler(_ -> {
             RuntimeReflection.register(JulianCalendar.class);
             RuntimeReflection.registerForReflectiveInstantiation(JulianCalendar.class);
         }, GregorianCalendar.class);

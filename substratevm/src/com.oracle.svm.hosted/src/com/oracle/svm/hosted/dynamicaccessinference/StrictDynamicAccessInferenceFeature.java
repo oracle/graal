@@ -180,7 +180,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
         if (field == null) {
             return;
         }
-        access.registerReachabilityHandler(a -> RuntimeReflection.register(field), clazz);
+        access.registerReachabilityHandler(_ -> RuntimeReflection.register(field), clazz);
     }
 
     @Override

@@ -209,7 +209,7 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
 
-        var loaderPackages = registeredPackages.computeIfAbsent(runtimeClassLoader, k -> new ConcurrentHashMap<>());
+        var loaderPackages = registeredPackages.computeIfAbsent(runtimeClassLoader, _ -> new ConcurrentHashMap<>());
         Object previous = loaderPackages.putIfAbsent(packageName, packageValue);
         if (previous == null) {
             /* Scan the class loader packages if the new package was missing. */

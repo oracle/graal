@@ -135,7 +135,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> {
+        postTask(_ -> {
             type.getInitializeMetaDataTask().ensureDone();
             if (type.isInBaseLayer()) {
                 /*
@@ -221,7 +221,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             }
 
             var uniqueFallbackMethod = fallbackMethods.computeIfAbsent(new FallbackDescriptor(resolvingType, method.getName(), method.getSignature()),
-                            (k) -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+                            _ -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
             return getUniverse().lookup(uniqueFallbackMethod);
         }
         return super.fallbackResolveConcreteMethod(resolvingType, method);

@@ -278,7 +278,7 @@ public class SubstrateOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Predicate<String> makeFilter(List<String> definedFilters) {
         if (definedFilters.isEmpty()) {
-            return javaName -> true;
+            return _ -> true;
         }
         return javaName -> {
             for (String wildCard : definedFilters) {

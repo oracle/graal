@@ -61,7 +61,7 @@ public final class CGlobalDataInfo {
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
     @Platforms(HOSTED_ONLY.class) private byte[] bytes;
 
-    private final int layerNum;
+    @SuppressWarnings("unused") private final int layerNum;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public CGlobalDataInfo(CGlobalDataImpl<?> data, boolean definedAsGlobalInPriorLayer, int layerNum) {
