@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -58,8 +57,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -71,7 +68,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVersionRef;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
-public final class DebuggerController implements ContextsListener {
+public final class DebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
@@ -91,15 +88,14 @@ public final class DebuggerController implements ContextsListener {
     private volatile HandshakeController hsController = null;
     private final Lock resetting = new ReentrantLock();
     private volatile boolean isClosing;
-    private JDWPOptions options;
-    private DebuggerSession debuggerSession;
-    private Ids<Object> ids;
-    private Debugger debugger;
+    private final JDWPOptions options;
+    private final DebuggerSession debuggerSession;
+    private final Ids<Object> ids;
+    private final Debugger debugger;
     private final GCPrevention gcPrevention;
     private final ThreadSuspension threadSuspension;
     private final EventFilters eventFilters;
-    private VMEventListener eventListener;
-    private TruffleContext truffleContext;
+    private final VMEventListener eventListener;
     private Object initialThread;
     private final TruffleLogger jdwpLogger;
     private DebuggerConnection connection;
@@ -110,14 +106,11 @@ public final class DebuggerController implements ContextsListener {
     // itself, it must check this field and exit the context if set.
     private volatile Throwable lateStartupError;
 
-    public DebuggerController(TruffleLogger logger) {
+    public DebuggerController(TruffleLogger logger, Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
         this.jdwpLogger = logger;
-    }
-
-    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
         this.debugger = debug;
         this.options = jdwpOptions;
         this.context = jdwpContext;
@@ -154,9 +147,7 @@ public final class DebuggerController implements ContextsListener {
 
     public void reInitialize() {
         // create a new DebuggerController instance
-        DebuggerController newController = new DebuggerController(jdwpLogger);
-        newController.truffleContext = truffleContext;
-        newController.initialize(debugger, options, context, initialThread, eventListener);
+        DebuggerController newController = new DebuggerController(jdwpLogger, debugger, options, context, initialThread, eventListener);
         context.replaceController(newController);
         assert newController.setupState != null;
 
@@ -678,23 +669,7 @@ public final class DebuggerController implements ContextsListener {
         return eventListener;
     }
 
-    public Object enterTruffleContext() {
-        assert truffleContext != null;
-        return truffleContext.enter(null);
-    }
-
-    public void leaveTruffleContext(Object previous) {
-        assert truffleContext != null;
-        truffleContext.leave(null, previous);
-    }
-
-    @Override
-    public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-        if (!"java".equals(language.getId())) {
-            return;
-        }
-        truffleContext = con;
-
+    public void onLanguageContextInitialized() {
         // With the Espresso context initialized, we can now complete the JDWP setup and establish
         // the connection.
         assert setupState != null;
@@ -1275,31 +1250,6 @@ public final class DebuggerController implements ContextsListener {
 
     public void severe(String message, Throwable error) {
         jdwpLogger.log(Level.SEVERE, message, error);
-    }
-
-    @Override
-    public void onContextCreated(@SuppressWarnings("unused") TruffleContext con) {
-
-    }
-
-    @Override
-    public void onLanguageContextCreated(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onLanguageContextFinalized(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onLanguageContextDisposed(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
-
-    }
-
-    @Override
-    public void onContextClosed(@SuppressWarnings("unused") TruffleContext con) {
-
     }
 
 }
