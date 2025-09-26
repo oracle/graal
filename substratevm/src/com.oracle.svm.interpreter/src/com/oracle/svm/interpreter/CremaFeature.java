@@ -40,15 +40,17 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.util.ReflectionUtil;
@@ -117,6 +119,15 @@ public class CremaFeature implements InternalFeature {
         HostedUniverse hUniverse = accessImpl.getUniverse();
         BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
         Field vtableHolderField = ReflectionUtil.lookupField(InterpreterResolvedObjectType.class, "vtableHolder");
+
+        for (HostedMethod method : hUniverse.getMethods()) {
+            if (method.hasVTableIndex()) {
+                InterpreterResolvedJavaMethod iMethod = iUniverse.getMethod(method);
+                if (iMethod != null) {
+                    iMethod.setVTableIndex(method.getVTableIndex());
+                }
+            }
+        }
 
         for (HostedType hType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
