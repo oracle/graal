@@ -150,6 +150,7 @@ import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.access.JavaLangReflectAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.CallerSensitiveAdapter;
@@ -452,8 +453,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.flags = flags;
 
         Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        Object classData = SharedSecrets.getJavaLangAccess().classData(hostedJavaClass);
         this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature);
+                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature, classData);
     }
 
     /**
@@ -2327,6 +2329,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     native boolean casAnnotationType(AnnotationType oldType, AnnotationType newType);
+
+    @Substitute
+    Object getClassData() {
+        return companion.classData;
+    }
 
     /*
      * We need to filter out hiding and negative elements at the last moment. This ensures that the
