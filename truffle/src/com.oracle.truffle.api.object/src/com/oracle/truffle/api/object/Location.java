@@ -293,7 +293,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @since 0.8 or earlier
      * @deprecated Use {@link #isAssumedFinal()} instead or replace by {@code false}.
      */
-    @Deprecated(since = "26.0")
+    @Deprecated(since = "25.1")
     public boolean isFinal() {
         return false;
     }

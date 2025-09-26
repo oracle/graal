@@ -205,7 +205,7 @@ public abstract class LibraryFactory<T extends Library> {
     /**
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
      *
-     * @since 26.0
+     * @since 25.1
      */
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages, boolean dynamicDispatchEnabled) {

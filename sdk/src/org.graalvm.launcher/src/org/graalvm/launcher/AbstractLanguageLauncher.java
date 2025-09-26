@@ -390,14 +390,14 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     /**
      * The return value used to specify what languages should be available by default when not using
-     * --polyglot. --polyglot is default since 26.0 so this is no longer used. Note that
+     * --polyglot. --polyglot is default since 25.1 so this is no longer used. Note that
      * TruffleLanguage.Registration#dependentLanguages() should be preferred in most cases.
      *
      * @deprecated no longer has any effect, all languages are always available for
      *             AbstractLanguageLauncher.
      * @return an array of required language ids
      */
-    @Deprecated(since = "26.0")
+    @Deprecated(since = "25.1")
     protected String[] getDefaultLanguages() {
         return new String[]{getLanguageId()};
     }
