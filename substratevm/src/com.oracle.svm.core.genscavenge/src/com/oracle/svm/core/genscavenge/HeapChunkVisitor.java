@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.Pointer;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 
-import jdk.graal.compiler.api.replacements.Fold;
+public interface HeapChunkVisitor {
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
+    void visitAlignedChunk(AlignedHeader chunk);
 
-public interface AuxiliaryImageHeap {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AuxiliaryImageHeap.class);
-    }
-
-    @Fold
-    static AuxiliaryImageHeap singleton() {
-        return ImageSingletons.lookup(AuxiliaryImageHeap.class);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObject(Pointer address);
-
-    void walkObjects(ObjectVisitor visitor);
-
-    void walkHeapChunks(HeapChunkVisitor visitor);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
-
-    ImageHeapInfo getImageHeapInfo();
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
+    void visitUnalignedChunk(UnalignedHeader chunk);
 }
