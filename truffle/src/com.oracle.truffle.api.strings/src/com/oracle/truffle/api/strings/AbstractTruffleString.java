@@ -628,10 +628,10 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
      *
-     * @deprecated since 26.0, use {@link #materializeUncached(Encoding)} instead.
+     * @deprecated since 25.1, use {@link #materializeUncached(Encoding)} instead.
      * @since 23.1
      */
-    @Deprecated(since = "26.0")
+    @Deprecated(since = "25.1")
     @TruffleBoundary
     public void materializeUncached(AbstractTruffleString a, Encoding expectedEncoding) {
         TruffleString.MaterializeNode.getUncached().execute(a, expectedEncoding);
@@ -640,7 +640,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
      *
-     * @since 26.0
+     * @since 25.1
      */
     @TruffleBoundary
     public void materializeUncached(Encoding expectedEncoding) {
@@ -650,7 +650,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.MaterializeSubstringNode}.
      *
-     * @since 26.0
+     * @since 25.1
      */
     @TruffleBoundary
     public TruffleString materializeSubstringUncached(Encoding expectedEncoding) {

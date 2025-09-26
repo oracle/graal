@@ -1618,7 +1618,7 @@ public final class Shape {
     /**
      * {@return a string representation of the object}
      * 
-     * @since 26.0
+     * @since 25.1
      */
     @Override
     public String toString() {

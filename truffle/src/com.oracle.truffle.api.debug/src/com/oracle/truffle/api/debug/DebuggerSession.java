@@ -689,7 +689,7 @@ public final class DebuggerSession implements Closeable {
      * If this is called in combination with {@link #resume(Thread)} or {@link #resumeAll()}, be
      * sure to {@link #disposeStepping(Thread) dispose stepping} first and then resume.
      *
-     * @since 26.0
+     * @since 25.1
      */
     public void disposeStepping(Thread t) {
         if (Debugger.TRACE) {
