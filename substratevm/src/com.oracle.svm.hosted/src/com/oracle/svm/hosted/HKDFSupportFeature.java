@@ -41,7 +41,7 @@ public class HKDFSupportFeature implements InternalFeature {
                         ReflectionUtil.lookupClass("com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA384"),
                         ReflectionUtil.lookupClass("com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA512")
         };
-        access.registerReachabilityHandler(duringAnalysisAccess -> {
+        access.registerReachabilityHandler(_ -> {
             for (Class<?> hkdf : hkdfClasses) {
                 RuntimeReflection.register(hkdf);
                 RuntimeReflection.register(hkdf.getConstructors());

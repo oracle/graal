@@ -170,7 +170,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
                         APIOptionGroup g = group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
                         String groupName = APIOption.Utils.groupName(group);
-                        GroupInfo groupInfo = groupInfos.computeIfAbsent(groupName, (n) -> new GroupInfo(g));
+                        GroupInfo groupInfo = groupInfos.computeIfAbsent(groupName, _ -> new GroupInfo(g));
                         if (group.helpText() == null || group.helpText().isEmpty()) {
                             VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
                         }

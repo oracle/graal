@@ -139,7 +139,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void writeBitcode(BatchExecutor executor) {
         methodIndex = new HostedMethod[getOrderedCompilations().size()];
         AtomicInteger num = new AtomicInteger(-1);
-        executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
+        executor.forEach(getOrderedCompilations(), pair -> _ -> {
             int id = num.incrementAndGet();
             methodIndex[id] = pair.getLeft();
 
@@ -167,7 +167,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             /* Avoid empty batches with small batch sizes */
             numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
 
-            executor.forEach(numBatches, batchId -> (debugContext) -> {
+            executor.forEach(numBatches, batchId -> _ -> {
                 List<String> batchInputs = IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).mapToObj(this::getBitcodeFilename)
                                 .collect(Collectors.toList());
                 llvmLink(debug, getBatchBitcodeFilename(batchId), batchInputs, basePath, this::getFunctionName);
@@ -180,7 +180,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void compileBitcodeBatches(BatchExecutor executor, DebugContext debug, int numBatches) {
         stackMapDumper.startDumpingFunctions();
 
-        executor.forEach(numBatches, batchId -> (debugContext) -> {
+        executor.forEach(numBatches, batchId -> _ -> {
             llvmOptimize(debug, getBatchOptimizedFilename(batchId), getBatchBitcodeFilename(batchId), basePath, this::getFunctionName);
             llvmCompile(debug, getBatchCompiledFilename(batchId), getBatchOptimizedFilename(batchId), basePath, this::getFunctionName);
 
@@ -195,7 +195,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         LLVMTextSectionInfo textSectionInfo = objectFileReader.parseCode(getLinkedPath());
 
-        executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
+        executor.forEach(getOrderedCompilations(), pair -> _ -> {
             HostedMethod method = pair.getLeft();
             int offset = textSectionInfo.getOffset(method.getUniqueShortName());
             int nextFunctionStartOffset = textSectionInfo.getNextOffset(offset);

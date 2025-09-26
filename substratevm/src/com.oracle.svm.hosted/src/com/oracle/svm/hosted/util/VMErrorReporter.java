@@ -39,7 +39,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ProgressReporter.ANSI;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
-@SuppressWarnings("try")
 public final class VMErrorReporter {
 
     public static void generateErrorReport(PrintWriter pw, StringBuilder buildOutputLog, ImageClassLoader classLoader, Optional<FeatureHandler> featureHandler, Throwable t) {
@@ -84,7 +83,7 @@ public final class VMErrorReporter {
 
         String releaseContent = getReleaseFileContent();
         if (releaseContent != null) {
-            try (DetailsPrinter d = new DetailsPrinter(pw, "GraalVM <code>release</code> file")) {
+            try (DetailsPrinter _ = new DetailsPrinter(pw, "GraalVM <code>release</code> file")) {
                 pw.println(releaseContent);
             }
         }
@@ -105,31 +104,31 @@ public final class VMErrorReporter {
     private static void reportBuilderSetup(PrintWriter pw, ImageClassLoader classLoader, Optional<FeatureHandler> featureHandler) {
         pw.println("## Builder Setup");
         pw.println();
-        try (DetailsPrinter p = new DetailsPrinter(pw, "Class path")) {
+        try (DetailsPrinter _ = new DetailsPrinter(pw, "Class path")) {
             for (String entry : DiagnosticUtils.getClassPath(classLoader)) {
                 pw.println(entry);
             }
         }
         pw.println();
-        try (DetailsPrinter p = new DetailsPrinter(pw, "Module path")) {
+        try (DetailsPrinter _ = new DetailsPrinter(pw, "Module path")) {
             for (String entry : DiagnosticUtils.getModulePath(classLoader)) {
                 pw.println(entry);
             }
         }
         pw.println();
-        try (DetailsPrinter p = new DetailsPrinter(pw, "Builder arguments")) {
+        try (DetailsPrinter _ = new DetailsPrinter(pw, "Builder arguments")) {
             for (String entry : DiagnosticUtils.getBuilderArguments(classLoader)) {
                 pw.println(entry);
             }
         }
         pw.println();
-        try (DetailsPrinter p = new DetailsPrinter(pw, "Builder properties")) {
+        try (DetailsPrinter _ = new DetailsPrinter(pw, "Builder properties")) {
             for (String entry : DiagnosticUtils.getBuilderProperties()) {
                 pw.println(entry);
             }
         }
         pw.println();
-        try (DetailsPrinter p = new DetailsPrinter(pw, "Features enabled")) {
+        try (DetailsPrinter _ = new DetailsPrinter(pw, "Features enabled")) {
             if (featureHandler.isPresent()) {
                 featureHandler.get().dumpAllFeatures(pw);
             } else {

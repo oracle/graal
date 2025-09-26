@@ -449,7 +449,7 @@ public class TruffleFeature implements InternalFeature {
 
         /* Support for deprecated bytecode osr frame transfer: GR-65788 */
         if (TruffleBaseFeature.isStaticMethodPresent("com.oracle.truffle.runtime.BytecodeOSRRootNode", "initializeClassUsingDeprecatedFrameTransfer", Collections.singleton(Class.class))) {
-            config.registerSubtypeReachabilityHandler((acc, klass) -> {
+            config.registerSubtypeReachabilityHandler((_, klass) -> {
                 /*
                  * Pass known reachable classes to the initializer: it will decide there what to do.
                  */

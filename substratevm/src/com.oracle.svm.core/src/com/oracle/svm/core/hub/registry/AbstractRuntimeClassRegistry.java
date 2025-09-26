@@ -536,7 +536,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         return sourceFile;
     }
 
-    @SuppressWarnings("try")
     public final Class<?> loadSuperType(Symbol<Type> name, Symbol<Type> superName) {
         Placeholder placeholder = new Placeholder();
         var prev = runtimeClasses.putIfAbsent(name, placeholder);
@@ -547,7 +546,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             otherPlaceHolder.addSuperProbingThread();
         }
         assert prev == null : prev;
-        try (var scope = ClassLoading.allowArbitraryClassLoading()) {
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
             return loadClass(superName);
         } catch (ClassNotFoundException e) {
             NoClassDefFoundError error = new NoClassDefFoundError(superName.toString());

@@ -94,7 +94,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
         Class<?> infoCmpClazz = ReflectionUtil.lookupClass(true, "jdk.internal.org.jline.utils.InfoCmp");
 
         if (infoCmpClazz != null) {
-            access.registerReachabilityHandler((a) -> {
+            access.registerReachabilityHandler(_ -> {
                 Module module = infoCmpClazz.getModule();
                 Optional<ResolvedModule> resolvedModule = ModuleLayer.boot().configuration().findModule(module.getName());
                 VMError.guarantee(resolvedModule.isPresent());

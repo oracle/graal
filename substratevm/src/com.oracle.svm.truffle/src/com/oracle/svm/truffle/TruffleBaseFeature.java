@@ -599,7 +599,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             var classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-            access.registerObjectReachableCallback(TruffleFile.class, (a1, file, reason) -> checkTruffleFile(classInitializationSupport, file));
+            access.registerObjectReachableCallback(TruffleFile.class, (_, file, _) -> checkTruffleFile(classInitializationSupport, file));
         }
 
         if (includeLanguageResources) {
@@ -640,7 +640,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
                             "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
                             "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                            classInitializationSupport.objectInstantiationTraceMessage(file, "", culprit -> ""),
+                            classInitializationSupport.objectInstantiationTraceMessage(file, "", _ -> ""),
                             file.getPath());
         }
     }
@@ -703,7 +703,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceRootsClass, "roots"), ResetFieldValueTransformer.INSTANCE);
         }
         if (!copyLanguageResources && !includeLanguageResources) {
-            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "useInternalResources"), (receiver, originalValue) -> false);
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "useInternalResources"), (_, _) -> false);
         }
     }
 

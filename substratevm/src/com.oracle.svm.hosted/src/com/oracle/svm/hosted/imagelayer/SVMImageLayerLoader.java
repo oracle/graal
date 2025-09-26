@@ -474,7 +474,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      * lambda types can then be found in the constant nodes of the graphs.
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
-        capturingClasses.computeIfAbsent(capturingClass, key -> {
+        capturingClasses.computeIfAbsent(capturingClass, _ -> {
             /*
              * Getting the original wrapped method is important to avoid getting exceptions that
              * would be ignored otherwise.
@@ -502,7 +502,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {
-        methodHandleCallers.computeIfAbsent(m, method -> {
+        methodHandleCallers.computeIfAbsent(m, _ -> {
             StructuredGraph graph = getMethodGraph(m, bigBang);
             if (graph != null) {
                 for (Node node : graph.getNodes()) {
@@ -586,7 +586,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private BaseLayerType getBaseLayerType(PersistedAnalysisType.Reader td, int tid, ResolvedJavaType superClass, ResolvedJavaType[] interfaces) {
-        return baseLayerTypes.computeIfAbsent(tid, (typeId) -> {
+        return baseLayerTypes.computeIfAbsent(tid, _ -> {
             String className = td.getClassName().toString();
             String sourceFileName = td.hasSourceFileName() ? td.getSourceFileName().toString() : null;
             ResolvedJavaType enclosingType = getResolvedJavaTypeForBaseLayerId(td.getEnclosingTypeId());
@@ -685,7 +685,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      * {@link AnalysisUniverse}. The side effects of this method are visible to other threads that
      * are consuming the {@link AnalysisType} object.
      */
-    @SuppressWarnings("try")
     private void initializeBaseLayerTypeBeforePublishing(AnalysisType type, PersistedAnalysisType.Reader typeData) {
         assert !(type.getWrapped() instanceof BaseLayerType);
         VMError.guarantee(type.isLinked() == typeData.getIsLinked());
@@ -739,9 +738,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     public void initializeBaseLayerType(AnalysisType type) {
         VMError.guarantee(type.isInBaseLayer());
         PersistedAnalysisType.Reader td = findType(getBaseLayerTypeId(type));
-        registerFlag(td.getIsInstantiated(), debug -> type.registerAsInstantiated(PERSISTED));
-        registerFlag(td.getIsUnsafeAllocated(), debug -> type.registerAsUnsafeAllocated(PERSISTED));
-        registerFlag(td.getIsReachable(), debug -> type.registerAsReachable(PERSISTED));
+        registerFlag(td.getIsInstantiated(), _ -> type.registerAsInstantiated(PERSISTED));
+        registerFlag(td.getIsUnsafeAllocated(), _ -> type.registerAsUnsafeAllocated(PERSISTED));
+        registerFlag(td.getIsReachable(), _ -> type.registerAsReachable(PERSISTED));
 
         if (!td.getIsInstantiated() && td.getIsAnySubtypeInstantiated()) {
             var subTypesReader = td.getSubTypes();
@@ -749,7 +748,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 int tid = subTypesReader.get(i);
                 var subTypeReader = findType(tid);
                 if (subTypeReader.getIsInstantiated()) {
-                    registerFlag(true, debug -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
+                    registerFlag(true, _ -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
                 }
             }
         }
@@ -990,7 +989,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Annotation[] annotations = getAnnotations(md.getAnnotationList());
 
         baseLayerMethods.computeIfAbsent(mid,
-                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
+                        _ -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
                                         md.getModifiers(), md.getIsSynthetic(), code, md.getBytecodeSize(), methodHandleIntrinsic, annotations));
         BaseLayerMethod baseLayerMethod = baseLayerMethods.get(mid);
 
@@ -1022,11 +1021,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         methods.putIfAbsent(analysisMethod.getId(), analysisMethod);
 
         PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
-        registerFlag(md.getIsVirtualRootMethod(), debug -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
-        registerFlag(md.getIsDirectRootMethod(), debug -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
-        registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
-        registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
-        registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+        registerFlag(md.getIsVirtualRootMethod(), _ -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
+        registerFlag(md.getIsDirectRootMethod(), _ -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
+        registerFlag(md.getIsInvoked(), _ -> analysisMethod.registerAsInvoked(PERSISTED));
+        registerFlag(md.getIsImplementationInvoked(), _ -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
+        registerFlag(md.getIsIntrinsicMethod(), _ -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
 
         AnalysisMethod.CompilationBehavior compilationBehavior = AnalysisMethod.CompilationBehavior.values()[md.getCompilationBehaviorOrdinal()];
         analysisMethod.setCompilationBehavior(compilationBehavior);
@@ -1268,7 +1267,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private BaseLayerField getBaseLayerField(PersistedAnalysisField.Reader fd, int id, ResolvedJavaType declaringClass, ResolvedJavaType type) {
         return baseLayerFields.computeIfAbsent(id,
-                        fid -> new BaseLayerField(id, fd.getName().toString(), declaringClass, type, fd.getIsInternal(),
+                        _ -> new BaseLayerField(id, fd.getName().toString(), declaringClass, type, fd.getIsInternal(),
                                         fd.getIsSynthetic(), fd.getModifiers(), getAnnotations(fd.getAnnotationList())));
     }
 
@@ -1309,17 +1308,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, debug -> {
+        registerFlag(isAccessed, _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsAccessed(PERSISTED);
         });
-        registerFlag(isRead, debug -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), debug -> {
+        registerFlag(isRead, _ -> analysisField.registerAsRead(PERSISTED));
+        registerFlag(fieldData.getIsWritten(), _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsWritten(PERSISTED);
         });
-        registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
-        registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+        registerFlag(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));
+        registerFlag(fieldData.getIsUnsafeAccessed(), _ -> analysisField.registerAsUnsafeAccessed(PERSISTED));
 
         /*
          * Inject the base layer position. If the position computed for this layer, either before
@@ -1642,7 +1641,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private void addBaseLayerObject(int id, long objectOffset, Supplier<ImageHeapConstant> imageHeapConstantSupplier) {
-        constants.computeIfAbsent(id, key -> {
+        constants.computeIfAbsent(id, _ -> {
             ImageHeapConstant heapObj = imageHeapConstantSupplier.get();
             heapObj.markInBaseLayer();
             /*

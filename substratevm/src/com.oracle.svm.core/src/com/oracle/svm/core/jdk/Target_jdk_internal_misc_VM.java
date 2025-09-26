@@ -112,7 +112,7 @@ final class DirectMemoryAccessors {
 
 final class PageAlignDirectMemoryAccessors {
     /** See {@link DirectMemoryAccessors#initialized} on why this needs to be volatile. */
-    private static volatile boolean initialized;
+    @SuppressWarnings("javadoc") private static volatile boolean initialized;
     private static boolean pageAlignDirectMemory;
 
     static Boolean getPageAlignDirectMemory() {

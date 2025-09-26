@@ -998,8 +998,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             if (word instanceof MethodRef methodRef) {
                 AnalysisMethod method = getRelocatableConstantMethod(methodRef);
                 switch (methodRef) {
-                    case MethodOffset mo -> builder.initMethodOffset().setMethodId(method.getId());
-                    case MethodPointer mp -> builder.initMethodPointer().setMethodId(method.getId());
+                    case MethodOffset _ -> builder.initMethodOffset().setMethodId(method.getId());
+                    case MethodPointer _ -> builder.initMethodPointer().setMethodId(method.getId());
                     default -> throw VMError.shouldNotReachHere("Unsupported method ref: " + methodRef);
                 }
                 return true;
@@ -1071,7 +1071,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              * withAnalysisGraph as it will throw if the MethodGraphsInfo already has an analysis
              * graph.
              */
-            methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
+            methodsMap.compute(method, (_, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
                             .withAnalysisGraph(method, location, analysisParsedGraph.isIntrinsic()));
         }
     }
@@ -1088,7 +1088,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
          * withStrengthenedGraph as it will throw if the MethodGraphsInfo already has a strengthened
          * graph.
          */
-        methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(method, location));
+        methodsMap.compute(method, (_, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(method, location));
     }
 
     private String persistGraph(AnalysisMethod method, EncodedGraph analyzedGraph) {
@@ -1123,7 +1123,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void addPolymorphicSignatureCaller(AnalysisMethod polymorphicSignature, AnalysisMethod caller) {
         AnalysisError.guarantee(!polymorphicSignatureSealed, "The caller %s for method %s was added after the methods were persisted", caller, polymorphicSignature);
-        polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
+        polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, _ -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
     record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int singletonId, RecreateInfo recreateInfo, int keyStoreId, EconomicMap<String, Object> keyStore) {

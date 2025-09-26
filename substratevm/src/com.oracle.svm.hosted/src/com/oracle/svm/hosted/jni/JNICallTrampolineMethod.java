@@ -98,13 +98,13 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     }
 
     public ParseFunction createCustomParseFunction() {
-        return (debug, method, reason, config) -> {
+        return (_, _, _, _) -> {
             // no parsing necessary
         };
     }
 
     public CompileFunction createCustomCompileFunction() {
-        return (debug, method, identifier, reason, config) -> {
+        return (_, method, identifier, _, config) -> {
             SubstrateBackend backend = config.getBackendForNormalMethod();
 
             // Determine register for jmethodID argument

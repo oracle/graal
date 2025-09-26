@@ -68,7 +68,7 @@ public class EmbeddedResourcesInfo {
             registeredResources.remove(key);
         }
 
-        registeredResources.compute(key, (k, v) -> {
+        registeredResources.compute(key, (_, v) -> {
             if (v == null) {
                 ArrayList<SourceAndOrigin> newValue = new ArrayList<>();
                 newValue.add(new SourceAndOrigin(source, origin));

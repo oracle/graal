@@ -430,14 +430,14 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
-        configurationFields.forEach((declaringClass, classFields) -> classFields.forEach((analysisField, reflectField) -> {
+        configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
                 runtimeMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
             }
         }));
 
-        configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
+        configurationExecutables.forEach((_, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
@@ -708,7 +708,7 @@ public abstract class NativeImageCodeCache {
             executor.start();
             for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
                 HostedMethod method = pair.getLeft();
-                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
+                executor.execute(_ -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
             }
             executor.complete();
         } catch (InterruptedException e) {

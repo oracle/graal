@@ -702,7 +702,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
      * See {@code jdk.internal.loader.Loader#moduleReaderFor}.
      */
     private ModuleReader moduleReaderFor(ModuleReference mref) {
-        return moduleToReader.computeIfAbsent(mref, m -> createModuleReader(mref));
+        return moduleToReader.computeIfAbsent(mref, _ -> createModuleReader(mref));
     }
 
     /**

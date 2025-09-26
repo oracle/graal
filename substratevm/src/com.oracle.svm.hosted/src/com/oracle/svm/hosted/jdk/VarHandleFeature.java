@@ -140,8 +140,8 @@ public class VarHandleFeature implements InternalFeature {
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
 
-        access.registerObjectReachableCallback(VarHandle.class, (a1, obj, reason) -> registerReachableHandle(obj, reason));
-        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (a1, obj, reason) -> registerReachableHandle(obj, reason));
+        access.registerObjectReachableCallback(VarHandle.class, (_, obj, reason) -> registerReachableHandle(obj, reason));
+        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (_, obj, reason) -> registerReachableHandle(obj, reason));
     }
 
     /**
@@ -248,7 +248,7 @@ public class VarHandleFeature implements InternalFeature {
                         "References", JavaKind.Object).entrySet()) {
             String typeName = type.getKey();
             JavaKind kind = type.getValue();
-            Function<Object, JavaKind> kindGetter = o -> kind;
+            Function<Object, JavaKind> kindGetter = _ -> kind;
             buildInfo(infos, false, kindGetter,
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));

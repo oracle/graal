@@ -24,17 +24,18 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
-import org.graalvm.nativeimage.ImageSingletons;
+import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 
 /**
  * Instances of this class are used to represent the reflection metadata for Dynamic hubs prepared
@@ -65,6 +66,7 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
         this.classFlags = classFlags;
     }
 
+    @Override
     public int getClassFlags() {
         return classFlags;
     }

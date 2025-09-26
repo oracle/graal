@@ -161,7 +161,6 @@ public class SerializationFeature implements InternalFeature {
         }
     }
 
-    @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
         StructuredGraph graph = createMethodGraph(method, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);

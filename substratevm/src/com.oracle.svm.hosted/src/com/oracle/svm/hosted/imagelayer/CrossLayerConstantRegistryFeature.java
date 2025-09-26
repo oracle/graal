@@ -440,7 +440,7 @@ class ImageLayerIdTrackingSingleton implements LayeredImageSingleton {
     }
 
     void registerPatchSite(String futureKey, int heapIndex) {
-        List<Integer> indexes = futureKeyToPatchingOffsetsMap.computeIfAbsent(futureKey, id -> new ArrayList<>());
+        List<Integer> indexes = futureKeyToPatchingOffsetsMap.computeIfAbsent(futureKey, _ -> new ArrayList<>());
         indexes.add(heapIndex);
     }
 

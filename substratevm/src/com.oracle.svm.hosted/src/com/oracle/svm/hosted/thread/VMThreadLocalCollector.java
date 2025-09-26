@@ -89,7 +89,7 @@ public class VMThreadLocalCollector implements Function<Object, Object>, Layered
                 throw VMError.shouldNotReachHere("VMThreadLocal must have been discovered during static analysis");
             } else {
                 VMThreadLocalInfo newInfo = new VMThreadLocalInfo(threadLocal);
-                localInfo = threadLocals.computeIfAbsent(threadLocal, tl -> {
+                localInfo = threadLocals.computeIfAbsent(threadLocal, _ -> {
                     infoToThreadLocals.putIfAbsent(newInfo, threadLocal);
                     return newInfo;
                 });

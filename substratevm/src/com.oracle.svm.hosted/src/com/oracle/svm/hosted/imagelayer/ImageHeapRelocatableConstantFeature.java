@@ -103,7 +103,7 @@ public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableCon
 
     @Override
     void registerLoadableConstant(ImageHeapRelocatableConstant constant) {
-        constantToInfoMap.computeIfAbsent(constant, (key) -> {
+        constantToInfoMap.computeIfAbsent(constant, _ -> {
             assert !sealed;
             return nextIndex.getAndIncrement();
         });

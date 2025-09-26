@@ -266,7 +266,7 @@ public final class NativeImageClassLoaderSupport {
 
         classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
 
-        ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
+        ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), _ -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
         allLayers(moduleLayerForImageBuild).stream()
@@ -478,7 +478,7 @@ public final class NativeImageClassLoaderSupport {
     }
 
     private LinkedHashSet<String> serviceProviders(String serviceName) {
-        return serviceProviders.computeIfAbsent(serviceName, unused -> new LinkedHashSet<>());
+        return serviceProviders.computeIfAbsent(serviceName, _ -> new LinkedHashSet<>());
     }
 
     void serviceProvidersForEach(BiConsumer<String, Collection<String>> action) {

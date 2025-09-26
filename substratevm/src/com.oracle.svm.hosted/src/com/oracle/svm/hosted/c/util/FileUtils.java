@@ -71,14 +71,13 @@ public class FileUtils {
         return executeCommand(Arrays.asList(args));
     }
 
-    @SuppressWarnings("try")
     public static int executeCommand(List<String> args) throws IOException, InterruptedException {
         ProcessBuilder command = prepareCommand(args, null).redirectErrorStream(true);
 
         traceCommand(command);
 
         Process process = command.start();
-        try (Closeable ignored = process::destroy) {
+        try (Closeable _ = process::destroy) {
 
             try (InputStream inputStream = process.getInputStream()) {
                 traceCommandOutput(readAllLines(inputStream));

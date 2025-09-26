@@ -107,9 +107,8 @@ public final class NativeImageHeapWriter {
      * Write the model of the native image heap to the RelocatableBuffers that represent the native
      * image.
      */
-    @SuppressWarnings("try")
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
-        try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
+        try (Indent _ = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject()) : "Backlisted object: " + info.getObject();
