@@ -147,6 +147,11 @@ final class LinkedKlassFieldLayout {
         if (klassType == Types.java_lang_System && (fieldName == Names.in || fieldName == Names.out || fieldName == Names.err)) {
             return false;
         }
+        // We're updating the class modifiers during redefinition if they change, so don't allow the
+        // compiler to fold the reads.
+        if (klassType == Types.java_lang_Class && fieldName == Names.modifiers) {
+            return false;
+        }
         return field.isFinal();
     }
 
