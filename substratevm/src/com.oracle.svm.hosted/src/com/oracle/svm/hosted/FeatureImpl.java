@@ -627,7 +627,6 @@ public class FeatureImpl {
          * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
          */
         public void allowStableFieldFoldingBeforeAnalysis(Field field) {
-            VMError.guarantee(field.isAnnotationPresent(Stable.class), "This method should only be called for @Stable fields: %s", field);
             getHostVM().allowStableFieldFoldingBeforeAnalysis(getMetaAccess().lookupJavaField(field));
         }
     }

@@ -197,6 +197,14 @@ public class MethodHandleFeature implements InternalFeature {
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
 
+        // We initialize most of method-handle-related classes eagerly.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.invoke.MethodHandleImpl", "ARRAYS"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.invoke.ClassSpecializer$SpeciesData", "factories"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.invoke.ClassSpecializer$SpeciesData", "nominalGetters"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.invoke.MethodType", "form"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.invoke.SimpleMethodHandle", "BMH_SPECIES"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("jdk.internal.reflect.ReflectionFactory", "config"));
+
         FieldValueTransformerWithAvailability methodHandleArrayTransformer = new FieldValueTransformerWithAvailability() {
             @Override
             public boolean isAvailable() {
