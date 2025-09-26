@@ -420,4 +420,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
+
+    @Override
+    public void invalidateCallTarget(CallTarget target, String reason) {
+        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
+            optimizedCallTarget.invalidate(reason);
+        }
+    }
 }
