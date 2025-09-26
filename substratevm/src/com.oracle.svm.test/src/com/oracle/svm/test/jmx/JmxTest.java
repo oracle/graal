@@ -50,7 +50,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerConnection;
@@ -191,12 +190,11 @@ public class JmxTest {
         ProcessBuilder pb = new ProcessBuilder().command(command);
         pb.directory(tempDirectory.toFile());
         Process process = pb.start();
-        process.waitFor(5, TimeUnit.SECONDS);
+        process.waitFor();
         if (process.exitValue() > 0) {
             String processError = String.join(" \\ ", FileUtils.readAllLines(process.getErrorStream()));
             String processOutput = String.join(" \\ ", FileUtils.readAllLines(process.getInputStream()));
-            throw new IOException(
-                            "Keytool execution error: " + processError + ", output: " + processOutput + ", command: " + command);
+            throw new IOException("Keytool execution error: " + processError + ", output: " + processOutput + ", command: " + command);
         }
     }
 
