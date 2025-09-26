@@ -29,7 +29,6 @@ import java.util.EnumSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -59,28 +58,23 @@ public class ImageCodeInfoStorage implements MultiLayeredImageSingleton, Unsaved
      */
     static final int ALIGNMENT = Long.BYTES;
 
-    ImageCodeInfoStorage(int dataSize) {
+    protected ImageCodeInfoStorage() {
+        long size = SizeOf.get(CodeInfoImpl.class);
+        int arrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+        int alignedOffset = getAlignedOffsetInArray();
+        int addend = alignedOffset - arrayBaseOffset;
+        int dataSize = NumUtil.safeToInt(size + addend);
         data = new byte[dataSize];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static CodeInfoImpl get() {
-        return ImageSingletons.lookup(ImageCodeInfoStorage.class).getData();
-    }
-
     @Fold
-    protected static UnsignedWord offset() {
-        return Word.unsigned(calculateOffset());
-    }
-
-    static int calculateOffset() {
+    static int getAlignedOffsetInArray() {
         return NumUtil.roundUp(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte), ALIGNMENT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    CodeInfoImpl getData() {
-        Pointer base = Word.objectToUntrackedPointer(data).add(offset());
-
+    public CodeInfoImpl getCodeInfo() {
+        Pointer base = Word.objectToUntrackedPointer(data).add(Word.unsigned(getAlignedOffsetInArray()));
         return (CodeInfoImpl) base;
     }
 
@@ -92,14 +86,8 @@ public class ImageCodeInfoStorage implements MultiLayeredImageSingleton, Unsaved
 
 @AutomaticallyRegisteredFeature
 class ImageCodeInfoStorageFeature implements InternalFeature, UnsavedSingleton, FeatureSingleton {
-
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        long size = SizeOf.get(CodeInfoImpl.class);
-        int arrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
-        int actualOffset = ImageCodeInfoStorage.calculateOffset();
-        int addend = actualOffset - arrayBaseOffset;
-
-        ImageSingletons.add(ImageCodeInfoStorage.class, new ImageCodeInfoStorage(NumUtil.safeToInt(size + addend)));
+        ImageSingletons.add(ImageCodeInfoStorage.class, new ImageCodeInfoStorage());
     }
 }

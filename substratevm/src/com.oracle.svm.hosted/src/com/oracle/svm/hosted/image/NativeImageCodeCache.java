@@ -142,6 +142,7 @@ public abstract class NativeImageCodeCache {
 
     protected final NativeImageHeap imageHeap;
 
+    /** The entirety of compilations in this code cache. */
     private final Map<HostedMethod, CompilationResult> compilations;
 
     private final List<Pair<HostedMethod, CompilationResult>> orderedCompilations;
@@ -167,7 +168,7 @@ public abstract class NativeImageCodeCache {
         this.imageHeap = imageHeap;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
-        this.orderedCompilations = computeCompilationOrder(compilations, imageHeap.hMetaAccess);
+        this.orderedCompilations = layoutCompilations();
     }
 
     public abstract int getCodeCacheSize();
@@ -189,22 +190,28 @@ public abstract class NativeImageCodeCache {
         return orderedCompilations.getLast();
     }
 
-    private static List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap, HostedMetaAccess metaAccess) {
-        var orderedMethods = ImageSingletons.lookup(CodeSectionLayouter.class).layout(compilationMap);
+    private List<Pair<HostedMethod, CompilationResult>> layoutCompilations() {
 
         /* We force this method to be at code offset 0 to make that offset and address invalid. */
-        HostedMethod invalidMethod = getInvalidCodeAddressHandler(metaAccess);
+        HostedMethod invalidMethod = getInvalidCodeAddressHandler(imageHeap.hMetaAccess);
 
         var orderedCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
         if (invalidMethod != null) {
-            orderedCompilations.add(Pair.create(invalidMethod, compilationMap.get(invalidMethod)));
+            orderedCompilations.add(Pair.create(invalidMethod, compilations.get(invalidMethod)));
         }
-        for (HostedMethod method : orderedMethods) {
+
+        var orderedMethods = doLayout(compilations, ImageSingletons.lookup(CodeSectionLayouter.class));
+        for (Pair<HostedMethod, CompilationResult> pair : orderedMethods) {
+            HostedMethod method = pair.getLeft();
             if (!Objects.equals(invalidMethod, method)) {
-                orderedCompilations.add(Pair.create(method, compilationMap.get(method)));
+                orderedCompilations.add(pair);
             }
         }
         return orderedCompilations;
+    }
+
+    protected List<Pair<HostedMethod, CompilationResult>> doLayout(Map<HostedMethod, CompilationResult> compilationMap, CodeSectionLayouter layouter) {
+        return layouter.layout(compilationMap).stream().map(hm -> Pair.create(hm, compilationMap.get(hm))).toList();
     }
 
     private static HostedMethod getInvalidCodeAddressHandler(HostedMetaAccess metaAccess) {
@@ -214,6 +221,13 @@ public abstract class NativeImageCodeCache {
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
         return orderedCompilations;
+    }
+
+    /**
+     * Returns those compilations for which the image should contain symbols.
+     */
+    public List<Pair<HostedMethod, CompilationResult>> getCompilationsWithSymbols() {
+        return getOrderedCompilations();
     }
 
     public abstract int codeSizeFor(HostedMethod method);
@@ -567,6 +581,7 @@ public abstract class NativeImageCodeCache {
         imageCodeInfo.setDataOffset(codeSize);
         imageCodeInfo.setDataSize(Word.zero()); // (only for data immediately after code)
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        imageCodeInfo.setRelativeIPOffset(Word.zero());
         return imageCodeInfo;
     }
 

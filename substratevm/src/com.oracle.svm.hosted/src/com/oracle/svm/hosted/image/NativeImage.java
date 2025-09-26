@@ -1022,7 +1022,7 @@ public abstract class NativeImage extends AbstractImage {
                 boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
                 HostedDynamicLayerInfo hostedDynamicLayerInfo = buildingApplicationLayer ? HostedDynamicLayerInfo.singleton() : null;
 
-                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getCompilationsWithSymbols()) {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
