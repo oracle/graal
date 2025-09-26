@@ -3,5 +3,7 @@ exceptions_indirect_call
 exceptions_local_unwind
 exceptions_single_func
 exceptions_with_params
+exceptions_with_params_catch_all
+exceptions_with_params_catch_ref
 multi_exception_types
 throw_ref
