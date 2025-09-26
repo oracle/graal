@@ -1734,20 +1734,13 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 CompilerAsserts.partialEvaluationConstant(stackPointer);
                 CompilerAsserts.partialEvaluationConstant(offset);
 
-                /*
-                 * The source of the exception, i.e., the throw/throw_ref raising the exception or
-                 * the call that forwarded the exception.
-                 */
-                final int sourceOffset = offset;
+                int exceptionTableOffset = this.exceptionTableOffset;
 
-                offset = this.exceptionTableOffset;
-
-                if (offset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
+                if (exceptionTableOffset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
                     // no exception table, directly throw to the next function on the call stack
                     throw e;
                 }
 
-                final WasmTag actualTag = e.tag();
                 /*
                  * The exception table is encoded in the following format:
                  * 
@@ -1757,9 +1750,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  * inside this range, the entry defines a possible exception handler for the
                  * exception. If the type of the exception handler is catch or catch_ref, we check
                  * whether the expected tag defined by the tag index and the tag of the exception
-                 * object match. For catch_all and catch_all_ref we don't have this check. The catch
-                 * and catch_all types push the values of the exception onto the stack, while
-                 * catch_ref and catch_all_ref also push a reference to the exception itself.
+                 * object match. For catch_all and catch_all_ref we don't have this check.
+                 *
+                 * The catch and catch_ref types push the fields of the exception onto the stack,
+                 * catch_ref also pushes a reference to the exception itself, while catch_all_ref
+                 * only pushes the reference, and catch_all doesn't push anything onto the stack.
                  *
                  * If we find a matching entry, execution continues at the label defined by target.
                  * 
@@ -1768,62 +1763,68 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  * exception to the next function on the call stack.
                  */
                 while (true) {
-                    final int from = rawPeekI32(bytecode, offset);
+                    final int from = rawPeekI32(bytecode, exceptionTableOffset);
                     if (from == -1) {
                         // we reached the end of the table
                         break;
                     }
-                    offset += 4;
-                    final int to = rawPeekI32(bytecode, offset);
-                    offset += 4;
-                    if (from < sourceOffset && sourceOffset <= to) {
-                        final int type = rawPeekU8(bytecode, offset);
-                        offset++;
-                        switch (type) {
-                            case ExceptionHandlerType.CATCH, ExceptionHandlerType.CATCH_REF -> {
-                                final int tagIndex = rawPeekI32(bytecode, offset);
-                                offset += 4;
-                                final WasmTag expectedTag = instance.tag(tagIndex);
-                                if (expectedTag == actualTag) {
-                                    final int functionTypeIndex = module.tagTypeIndex(tagIndex);
-                                    final int numFields = module.functionTypeParamCount(functionTypeIndex);
-                                    if (numFields != 0) {
-                                        pushExceptionFields(frame, e, functionTypeIndex, numFields, stackPointer);
-                                        stackPointer += numFields;
-                                    }
-                                    if (type == ExceptionHandlerType.CATCH_REF) {
-                                        pushReference(frame, stackPointer, e);
-                                        stackPointer++;
-                                    }
-                                    // load target
-                                    offset = rawPeekI32(bytecode, offset);
-                                    continue loop;
-                                } else {
-                                    // skip target
-                                    offset += 4;
-                                }
+                    exceptionTableOffset += 4;
+                    final int to = rawPeekI32(bytecode, exceptionTableOffset);
+                    exceptionTableOffset += 4;
+
+                    /*
+                     * offset is the source of the exception, i.e., the throw or throw_ref raising
+                     * the exception or the call that forwarded the exception.
+                     */
+                    if (from < offset && offset <= to) {
+                        final int catchType = rawPeekU8(bytecode, exceptionTableOffset);
+                        exceptionTableOffset++;
+                        final int tagIndex;
+                        if (catchType == ExceptionHandlerType.CATCH || catchType == ExceptionHandlerType.CATCH_REF) {
+                            tagIndex = rawPeekI32(bytecode, exceptionTableOffset);
+                            exceptionTableOffset += 4;
+                            if (e.tag() != instance.tag(tagIndex)) {
+                                // skip target
+                                exceptionTableOffset += 4;
+                                continue;
                             }
-                            case ExceptionHandlerType.CATCH_ALL, ExceptionHandlerType.CATCH_ALL_REF -> {
-                                // skip 0 tag
-                                offset += 4;
-                                if (type == ExceptionHandlerType.CATCH_ALL_REF) {
-                                    pushReference(frame, stackPointer, e);
-                                    stackPointer++;
-                                }
-                                // load target
-                                offset = rawPeekI32(bytecode, offset);
-                                continue loop;
-                            }
+                        } else {
+                            assert catchType == ExceptionHandlerType.CATCH_ALL || catchType == ExceptionHandlerType.CATCH_ALL_REF : catchType;
+                            // skip 0 tag
+                            tagIndex = -1;
+                            exceptionTableOffset += 4;
                         }
+                        stackPointer = pushExceptionFieldsAndReference(frame, e, stackPointer, catchType, tagIndex);
+                        // load target
+                        offset = rawPeekI32(bytecode, exceptionTableOffset);
+                        continue loop;
                     } else {
                         // skip the entry
-                        offset += 9;
+                        exceptionTableOffset += 9;
                     }
                 }
                 throw e;
             }
         }
         return WasmConstant.RETURN_VALUE;
+    }
+
+    private int pushExceptionFieldsAndReference(VirtualFrame frame, WasmRuntimeException e, int sourceStackPointer, int catchType, int tagIndex) {
+        int stackPointer = sourceStackPointer;
+        if (catchType == ExceptionHandlerType.CATCH || catchType == ExceptionHandlerType.CATCH_REF) {
+            final int functionTypeIndex = module.tagTypeIndex(tagIndex);
+            final int numFields = module.functionTypeParamCount(functionTypeIndex);
+            if (numFields != 0) {
+                pushExceptionFields(frame, e, functionTypeIndex, numFields, stackPointer);
+                stackPointer += numFields;
+            }
+        }
+        if (catchType == ExceptionHandlerType.CATCH_REF || catchType == ExceptionHandlerType.CATCH_ALL_REF) {
+            pushReference(frame, stackPointer, e);
+            stackPointer++;
+        }
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        return stackPointer;
     }
 
     @TruffleBoundary
