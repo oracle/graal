@@ -33,7 +33,8 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
@@ -44,7 +45,7 @@ import com.oracle.svm.util.LogUtils;
  * <p>
  * If any of the {@link #conditions} is satisfied then the whole set becomes also
  * {@link #satisfied}. {@link RuntimeConditionSet}s can be created at build time
- * {@link #createHosted(ConfigurationCondition)} and stored to the image heap, or it can be encoded
+ * {@link #createHosted(AccessCondition)} and stored to the image heap, or it can be encoded
  * ({@link #getTypesForEncoding()} and later decoded at run time ({@link #createDecoded(Object[])}.
  * The current implementation does not cache {@link #conditions}, although this will be implemented
  * in the future (GR-49526)
@@ -60,18 +61,20 @@ public class RuntimeConditionSet {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static RuntimeConditionSet createHosted(ConfigurationCondition condition) {
+    public static RuntimeConditionSet createHosted(AccessCondition condition) {
         var conditionSet = new RuntimeConditionSet(new Object[0]);
         conditionSet.addCondition(condition);
         return conditionSet;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addCondition(ConfigurationCondition cnd) {
-        VMError.guarantee(cnd.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
+    public synchronized void addCondition(AccessCondition cnd) {
+        VMError.guarantee(cnd instanceof TypeReachabilityCondition, "Only TypeReachabilityCondition conditions can be used in RuntimeConditionSet.");
+        TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
+        VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
         if (satisfied) {
             return;
-        } else if (cnd.isAlwaysTrue()) {
+        } else if (reachabilityCondition.isAlwaysTrue()) {
             conditions = null;
             satisfied = true;
             return;
@@ -159,11 +162,13 @@ public class RuntimeConditionSet {
         satisfied = false;
     }
 
-    private static Object createRuntimeCondition(ConfigurationCondition cnd) {
-        if (cnd.isAlwaysTrue() || !cnd.isRuntimeChecked()) {
+    private static Object createRuntimeCondition(AccessCondition cnd) {
+        VMError.guarantee(cnd instanceof TypeReachabilityCondition, "Only TypeReachabilityCondition conditions can be used in RuntimeConditionSet.");
+        TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
+        if (reachabilityCondition.isAlwaysTrue() || !reachabilityCondition.isRuntimeChecked()) {
             throw VMError.shouldNotReachHere("We should never create run-time conditions from conditions that are always true at build time. Condition: " + cnd);
         }
-        return cnd.getType();
+        return reachabilityCondition.getType();
     }
 
     private static boolean isSatisfied(Object condition) {
@@ -190,7 +195,7 @@ public class RuntimeConditionSet {
         }
 
         @Override
-        public synchronized void addCondition(ConfigurationCondition cnd) {
+        public synchronized void addCondition(AccessCondition cnd) {
             throw new UnsupportedOperationException("Can't add conditions to an unmodifiable set of conditions.");
         }
     }

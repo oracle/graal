@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -197,10 +197,10 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        final RuntimeResourceSupport<ConfigurationCondition> resources = RuntimeResourceSupport.singleton();
+        final RuntimeResourceSupport<AccessCondition> resources = RuntimeResourceSupport.singleton();
         final RuntimeProxyRegistrySupport proxy = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
-        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
+        final AccessCondition always = AccessCondition.unconditional();
 
         /*
          * Sort descending by class hierarchy depth to avoid complexity related to field
@@ -274,7 +274,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
     }
 
     private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
-        ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, false, c);
 
         reflection.registerAllDeclaredFields(always, c);
