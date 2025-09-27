@@ -264,6 +264,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.SWAP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
 import com.oracle.svm.core.jdk.InternalVMMethod;
@@ -1212,6 +1213,9 @@ public final class Interpreter {
             case METHODTYPE -> {
                 putObject(frame, top, resolveMethodType(pool, method, opcode, cpi));
             }
+            case METHODHANDLE -> {
+                putObject(frame, top, resolveMethodHandle(pool, method, opcode, cpi));
+            }
             case INVOKEDYNAMIC -> {
                 // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
@@ -1290,6 +1294,15 @@ public final class Interpreter {
         assert opcode == LDC || opcode == LDC_W;
         try {
             return pool.resolvedMethodTypeAt(cpi, method.getDeclaringClass());
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
+    }
+
+    private static MethodHandle resolveMethodHandle(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == LDC || opcode == LDC_W;
+        try {
+            return pool.resolvedMethodHandleAt(cpi, method.getDeclaringClass());
         } catch (Throwable t) {
             throw SemanticJavaException.raise(t);
         }
