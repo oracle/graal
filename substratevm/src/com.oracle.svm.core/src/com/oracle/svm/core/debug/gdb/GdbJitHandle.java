@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +23,41 @@
  * questions.
  */
 
-#ifndef SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
-#define SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
+package com.oracle.svm.core.debug.gdb;
 
-// This header specifies the types used by the GDB JIT compilation interface (see https://sourceware.org/gdb/current/onlinedocs/gdb.html/Declarations.html#Declarations)
-// The implementation of the JIT compilation interface is located in com.oracle.svm.core.debug.gdb.GdbJitInterface.
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 
-#ifdef __linux__
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.code.InstalledCodeObserver;
 
-#include <stdint.h>
+/**
+ * A code observer handle for wrapping a {@link GdbJitInterface.JITCodeEntry} and the corresponding
+ * run-time debug info object file.
+ * <p>
+ * This should only be accessed via {@link GdbJitHandleAccessor}.
+ */
+@RawStructure
+interface GdbJitHandle extends InstalledCodeObserver.InstalledCodeObserverHandle {
+    int INITIALIZED = 0;
+    int REGISTERED = 1;
+    int UNREGISTERED = 2;
 
-typedef enum
-{
-  JIT_NOACTION = 0,
-  JIT_REGISTER,
-  JIT_UNREGISTER
-} jit_actions_t;
+    @RawField
+    GdbJitInterface.JITCodeEntry getRawHandle();
 
-struct jit_code_entry
-{
-  struct jit_code_entry *next_entry;
-  struct jit_code_entry *prev_entry;
-  const char *symfile_addr;
-  uint64_t symfile_size;
-};
+    @RawField
+    void setRawHandle(GdbJitInterface.JITCodeEntry value);
 
-struct jit_descriptor
-{
-  uint32_t version;
-  /* This type should be jit_actions_t, but we use uint32_t
-     to be explicit about the bitwidth.  */
-  uint32_t action_flag;
-  struct jit_code_entry *relevant_entry;
-  struct jit_code_entry *first_entry;
-};
+    @RawField
+    NonmovableArray<Byte> getDebugInfoData();
 
-#endif /* __linux__ */
+    @RawField
+    void setDebugInfoData(NonmovableArray<Byte> data);
 
-#endif
+    @RawField
+    int getState();
+
+    @RawField
+    void setState(int value);
+}
