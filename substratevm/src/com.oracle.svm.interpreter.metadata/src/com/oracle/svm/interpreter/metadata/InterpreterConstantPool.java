@@ -28,8 +28,6 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -42,8 +40,10 @@ import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaField;
