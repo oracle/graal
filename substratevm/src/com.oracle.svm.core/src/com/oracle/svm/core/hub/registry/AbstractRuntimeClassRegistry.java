@@ -201,7 +201,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
-        assert typeOrNull == null || type == parsed.getType();
+        assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;
             if (Modifier.isInterface(parsed.getFlags())) {
