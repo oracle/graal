@@ -51,8 +51,61 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.AbstractLibraryTest;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import java.util.List;
+
+@RunWith(Parameterized.class)
 public class CachedFallbackTest extends AbstractLibraryTest {
+
+    public enum TestRun {
+        LIBRARY,
+        NODES;
+    }
+
+    @Parameter(0) public TestRun run;
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.values());
+    }
+
+    record CachedGetNodeWrapper(CachedGetNode node, DynamicObject.GetNode getNode) {
+        public Object execute(DynamicObject obj, Object key) {
+            if (node != null) {
+                return node.execute(obj, key);
+            } else {
+                return getNode.getOrDefault(obj, key, null);
+            }
+        }
+    }
+
+    record CachedPutNodeWrapper(CachedPutNode node, DynamicObject.PutNode putNode) {
+        public void execute(DynamicObject obj, Object key, Object value) {
+            if (node != null) {
+                node.execute(obj, key, value);
+            } else {
+                putNode.put(obj, key, value);
+            }
+        }
+    }
+
+    CachedGetNodeWrapper getNode() {
+        return switch (run) {
+            case LIBRARY -> new CachedGetNodeWrapper(adopt(CachedGetNodeGen.create()), null);
+            case NODES -> new CachedGetNodeWrapper(null, DynamicObject.GetNode.create());
+        };
+    }
+
+    CachedPutNodeWrapper putNode() {
+        return switch (run) {
+            case LIBRARY -> new CachedPutNodeWrapper(adopt(CachedPutNodeGen.create()), null);
+            case NODES -> new CachedPutNodeWrapper(null, DynamicObject.PutNode.create());
+        };
+    }
 
     @Test
     public void testMixedReceiverTypeSameShape() {
@@ -62,13 +115,13 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key = "key";
         String val = "value";
 
-        CachedPutNode writeNode = adopt(CachedPutNodeGen.create());
+        var writeNode = putNode();
         writeNode.execute(o1, key, val);
         writeNode.execute(o2, key, val);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val, readNode.execute(o1, key));
         assertEquals(val, readNode.execute(o2, key));
     }
@@ -93,7 +146,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));
@@ -120,7 +173,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));

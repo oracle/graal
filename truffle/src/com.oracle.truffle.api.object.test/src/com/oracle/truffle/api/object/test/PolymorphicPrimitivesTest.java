@@ -53,17 +53,15 @@ import java.util.List;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
-
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
-public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
+public class PolymorphicPrimitivesTest extends ParametrizedDynamicObjectTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
@@ -87,7 +85,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject object1 = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
+        DynamicObjectLibrary library = createLibrary(object1);
 
         library.put(object1, "x", 42);
         library.put(object1, "x", 42L);
@@ -104,7 +102,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
         Shape emptyShape = newEmptyShapeWithImplicitCastIntToLong();
         DynamicObject object1 = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
+        DynamicObjectLibrary library = createLibrary(object1);
 
         library.put(object1, "x", 42);
         library.put(object1, "x", 42L);
@@ -123,7 +121,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject object1 = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
+        DynamicObjectLibrary library = createLibrary(object1);
 
         library.put(object1, "x", 42);
         library.put(object1, "x", 42L);
@@ -142,7 +140,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject object1 = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
+        DynamicObjectLibrary library = createLibrary(object1);
 
         library.put(object1, "x", 42);
         library.put(object1, "y", Integer.MAX_VALUE);
@@ -158,7 +156,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
         assertEquals(object1.getShape().getProperty("y").getLocation(), object2.getShape().getProperty("y").getLocation());
 
         object2 = newInstance(emptyShape);
-        library = createLibrary(DynamicObjectLibrary.class, object2);
+        library = createLibrary(object2);
 
         library.put(object2, "x", 42L);
         library.put(object2, "y", Integer.MAX_VALUE);
@@ -175,7 +173,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
     public void testIntLongPolymorphic3() {
         Shape emptyShape = newEmptyShape();
         DynamicObject o = newInstance(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, o);
+        DynamicObjectLibrary lib = createLibrary(o);
         for (int i = -6; i < 0; i++) {
             lib.put(o, i, 0);
         }
@@ -305,7 +303,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
     }
 
     private void verifySet(DynamicObject o, Object[] v, int i, Object value) {
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, o);
+        DynamicObjectLibrary library = createLibrary(o);
 
         for (int j = 0; j < v.length; j++) {
             assertEquals(v[j], library.getOrDefault(o, j, null));

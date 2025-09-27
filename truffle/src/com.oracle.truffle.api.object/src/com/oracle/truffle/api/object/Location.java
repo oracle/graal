@@ -184,8 +184,9 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     @SuppressWarnings({"unused", "deprecation"})
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
+            boolean guard = checkShape(store, oldShape);
             DynamicObjectSupport.grow(store, oldShape, newShape);
-            setSafe(store, value, false, true);
+            setSafe(store, value, guard, true);
             DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
         } else {
             throw incompatibleLocation();

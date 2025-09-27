@@ -52,10 +52,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-
 @RunWith(Parameterized.class)
-public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
+public class DynamicTypeTest extends ParametrizedDynamicObjectTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
@@ -67,7 +65,7 @@ public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
         Object dynamicType = new Object();
         Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
         TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        DynamicObjectLibrary lib = createLibrary(obj);
         assertSame(dynamicType, lib.getDynamicType(obj));
         dynamicType = new Object();
         lib.setDynamicType(obj, dynamicType);
@@ -79,7 +77,7 @@ public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
         assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
         Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
         TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        DynamicObjectLibrary lib = createLibrary(obj);
         assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
     }
 

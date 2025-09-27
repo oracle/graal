@@ -53,9 +53,19 @@ import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.test.AbstractLibraryTest;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-public class PropertyGetterTest extends AbstractLibraryTest {
+import java.util.List;
+
+@RunWith(Parameterized.class)
+public class PropertyGetterTest extends ParametrizedDynamicObjectTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.DISPATCHED_ONLY);
+    }
 
     @Test
     public void testPropertyGetter() throws Exception {
@@ -73,9 +83,9 @@ public class PropertyGetterTest extends AbstractLibraryTest {
         double doubleVal = 3.14159265359;
         String doubleKey = "doubleKey";
 
-        DynamicObjectLibrary uncached = DynamicObjectLibrary.getUncached();
-        uncached.putWithFlags(o1, key, val, 13);
-        uncached.putWithFlags(o2, key, val, 13);
+        DynamicObjectLibrary lib = createLibrary();
+        lib.putWithFlags(o1, key, val, 13);
+        lib.putWithFlags(o2, key, val, 13);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
@@ -90,9 +100,9 @@ public class PropertyGetterTest extends AbstractLibraryTest {
         assertFails(() -> getter.getInt(o3), IllegalArgumentException.class);
         assertFails(() -> getter.getInt(o1), UnexpectedResultException.class, e -> assertEquals(val, e.getResult()));
 
-        uncached.put(o1, intKey, intVal);
-        uncached.put(o1, longKey, longVal);
-        uncached.put(o1, doubleKey, doubleVal);
+        lib.put(o1, intKey, intVal);
+        lib.put(o1, longKey, longVal);
+        lib.put(o1, doubleKey, doubleVal);
 
         PropertyGetter intGetter = o1.getShape().makePropertyGetter(intKey);
         PropertyGetter longGetter = o1.getShape().makePropertyGetter(longKey);
