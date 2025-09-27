@@ -1561,6 +1561,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      */
     public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode);
 
+    @Override
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         return lookupMethod(methodName, signature, LookupMode.ALL);
     }
