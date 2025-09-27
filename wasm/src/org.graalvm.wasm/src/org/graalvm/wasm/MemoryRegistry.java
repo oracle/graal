@@ -76,10 +76,6 @@ public class MemoryRegistry {
         return index;
     }
 
-    public int registerExternal(WasmMemory externalMemory) {
-        return register(externalMemory);
-    }
-
     public WasmMemory memory(int index) {
         assert index < numMemories;
         return memories[index];

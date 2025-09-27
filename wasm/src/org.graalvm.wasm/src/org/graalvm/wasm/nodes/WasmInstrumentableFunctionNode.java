@@ -56,6 +56,7 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.representation.DebugScopeDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -201,8 +202,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         final DebugLineSection debugLineSection = debugFunction.lineMap().getLineIndexMap(functionStartOffset, functionEndOffset);
                         final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, sourceSection.getSource());
                         final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
-                        final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
-                        final WasmFunctionNode<?> functionNodeDuplicate = new WasmFunctionNode<>(functionNode, bytecode, support::notifyLine);
+                        final var bytecodePair = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
+                        final CodeEntry bcInfo = bytecodePair.getLeft();
+                        final byte[] bytecode = bytecodePair.getRight();
+                        final WasmFunctionNode<?> functionNodeDuplicate = new WasmFunctionNode<>(functionNode, bytecode,
+                                        bcInfo.bytecodeStartOffset(), bcInfo.bytecodeEndOffset(), bcInfo.exceptionTableOffset(), support);
                         return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
                 } finally {

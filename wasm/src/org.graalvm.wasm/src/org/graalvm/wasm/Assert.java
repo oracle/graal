@@ -199,6 +199,12 @@ public class Assert {
         }
     }
 
+    public static void assertFunctionTypeEquals(SymbolTable.FunctionType t1, SymbolTable.FunctionType t2, Failure failure) throws WasmException {
+        if (!t1.equals(t2)) {
+            fail(failure, "%s: %s should = %s", failure.name, t1, t2);
+        }
+    }
+
     @TruffleBoundary
     public static RuntimeException fail(Failure failure, String format, Object... args) throws WasmException {
         throw WasmException.format(failure, format, args);

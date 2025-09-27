@@ -346,6 +346,9 @@ public abstract class BytecodeParser {
         final int flags = bytecode[codeEntryOffset];
         int effectiveOffset = codeEntryOffset + 1;
 
+        // the exception table offset is encoded in the 4 bytes before the code entry
+        final int exceptionTableOffset = BinaryStreamParser.rawPeekI32(bytecode, codeEntryOffset - 4);
+
         final int functionIndex;
         switch (flags & BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_MASK) {
             case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_ZERO:
@@ -424,9 +427,17 @@ public abstract class BytecodeParser {
         } else {
             results = Bytecode.EMPTY_BYTES;
         }
-        List<CallNode> callNodes = readCallNodes(bytecode, codeEntryOffset - length, codeEntryOffset);
+        final int endOffset;
+        if (exceptionTableOffset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
+            // no exception table
+            endOffset = (codeEntryOffset - 4);
+        } else {
+            endOffset = exceptionTableOffset;
+        }
+        final int startOffset = endOffset - length;
+        List<CallNode> callNodes = readCallNodes(bytecode, startOffset, endOffset);
         boolean usesMemoryZero = module.memoryCount() != 0;
-        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset, usesMemoryZero);
+        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, startOffset, endOffset, usesMemoryZero, exceptionTableOffset);
     }
 
     /**
@@ -774,7 +785,8 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_S:
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
-                        case Bytecode.I64_TRUNC_SAT_F64_U: {
+                        case Bytecode.I64_TRUNC_SAT_F64_U:
+                        case Bytecode.THROW_REF: {
                             break;
                         }
                         case Bytecode.MEMORY_FILL:
@@ -786,7 +798,8 @@ public abstract class BytecodeParser {
                         case Bytecode.ELEM_DROP:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
-                        case Bytecode.TABLE_FILL: {
+                        case Bytecode.TABLE_FILL:
+                        case Bytecode.THROW: {
                             offset += 4;
                             break;
                         }

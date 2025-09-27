@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.wasm.collection.IntArrayList;
@@ -54,12 +55,14 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 class IfFrame extends ControlFrame {
 
     private final IntArrayList branchTargets;
+    private final ArrayList<ExceptionHandler> exceptionHandlers;
     private int falseJumpLocation;
     private boolean elseBranch;
 
     IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         branchTargets = new IntArrayList();
+        exceptionHandlers = new ArrayList<>();
         this.falseJumpLocation = falseJumpLocation;
         this.elseBranch = false;
     }
@@ -85,13 +88,16 @@ class IfFrame extends ControlFrame {
         if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
-        if (branchTargets.size() == 0) {
+        if (branchTargets.size() == 0 && exceptionHandlers.isEmpty()) {
             bytecode.patchLocation(falseJumpLocation, bytecode.location());
         } else {
             final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
             bytecode.patchLocation(falseJumpLocation, location);
             for (int branchLocation : branchTargets.toArray()) {
                 bytecode.patchLocation(branchLocation, location);
+            }
+            for (ExceptionHandler catchEntry : exceptionHandlers) {
+                catchEntry.setTarget(location);
             }
         }
     }
@@ -109,5 +115,10 @@ class IfFrame extends ControlFrame {
     @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branchTargets.add(bytecode.addBranchTableItemLocation());
+    }
+
+    @Override
+    void addExceptionHandler(ExceptionHandler handler) {
+        exceptionHandlers.add(handler);
     }
 }

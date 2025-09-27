@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,8 @@ public class WasmType implements TruffleObject {
     @CompilationFinal(dimensions = 1) public static final byte[] FUNCREF_TYPE_ARRAY = {FUNCREF_TYPE};
     public static final byte EXTERNREF_TYPE = 0x6F;
     @CompilationFinal(dimensions = 1) public static final byte[] EXTERNREF_TYPE_ARRAY = {EXTERNREF_TYPE};
+    public static final byte EXNREF_TYPE = 0x69;
+    @CompilationFinal(dimensions = 1) public static final byte[] EXNREF_TYPE_ARRAY = {EXNREF_TYPE};
 
     public static final WasmType VOID = new WasmType("void");
     public static final WasmType NULL = new WasmType("null");
@@ -118,6 +120,8 @@ public class WasmType implements TruffleObject {
                 return "funcref";
             case EXTERNREF_TYPE:
                 return "externref";
+            case EXNREF_TYPE:
+                return "exnref";
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
@@ -132,7 +136,7 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isReferenceType(byte type) {
-        return type == FUNCREF_TYPE || type == EXTERNREF_TYPE || type == UNKNOWN_TYPE;
+        return type == FUNCREF_TYPE || type == EXTERNREF_TYPE || type == EXNREF_TYPE || type == UNKNOWN_TYPE;
     }
 
     public static int getCommonValueType(byte[] types) {

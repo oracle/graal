@@ -139,6 +139,7 @@ public class BytecodeBitEncoding {
 
     public static final int ELEM_SEG_TYPE_FUNREF = 0b0001_0000;
     public static final int ELEM_SEG_TYPE_EXTERNREF = 0b0010_0000;
+    public static final int ELEM_SEG_TYPE_EXNREF = 0b0011_0000;
 
     public static final int ELEM_SEG_MODE_VALUE = 0b0000_1111;
 
@@ -179,4 +180,8 @@ public class BytecodeBitEncoding {
 
     public static final int CODE_ENTRY_LOCALS_FLAG = 0b0000_0010;
     public static final int CODE_ENTRY_RESULT_FLAG = 0b0000_0001;
+
+    // Exception handlers
+
+    public static final int INVALID_EXCEPTION_TABLE_OFFSET = -1;
 }

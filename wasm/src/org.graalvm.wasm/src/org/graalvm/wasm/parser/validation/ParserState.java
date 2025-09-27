@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package org.graalvm.wasm.parser.validation;
 
 import static java.lang.Integer.compareUnsigned;
 
+import java.util.ArrayList;
+
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.Vector128;
@@ -63,6 +65,7 @@ public class ParserState {
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
     private final RuntimeBytecodeGen bytecode;
+    private final ArrayList<ExceptionTable> exceptionTables;
 
     private int maxStackSize;
     private boolean usesMemoryZero;
@@ -71,6 +74,7 @@ public class ParserState {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
+        this.exceptionTables = new ArrayList<>();
 
         this.maxStackSize = 0;
     }
@@ -314,8 +318,67 @@ public class ParserState {
         pushAll(frame.paramTypes());
     }
 
+    /**
+     * Creates a new try-table frame that holds information about the current try table and pushes
+     * it onto the control frame stack.
+     * 
+     * @param paramTypes The param types of the try table that was entered.
+     * @param resultTypes The result types of the try table that was entered.
+     * @param handlers The exception handlers of the try table that was entered.
+     */
+    public void enterTryTable(byte[] paramTypes, byte[] resultTypes, ExceptionHandler[] handlers) {
+        final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), false, bytecode.location(), handlers);
+        controlStack.push(frame);
+    }
+
+    /**
+     * Creates a new catch frame that holds information about the current catch clause and pushes it
+     * onto the control frame stack.
+     * 
+     * @param opcode The opcode of the catch clause (exception handler type, see
+     *            {@link org.graalvm.wasm.constants.ExceptionHandlerType}).
+     * @param tag The tag of the catch clause, if available.
+     * @param label The target label of the catch clause.
+     * @return A new exception handler for the catch clause.
+     */
+    public ExceptionHandler enterCatchClause(int opcode, int tag, int label) {
+        checkLabelExists(label);
+        final ControlFrame labelFrame = getFrame(label);
+        // we reuse the block frame, instead of introducing a new catch frame.
+        final ControlFrame frame = new BlockFrame(WasmType.VOID_TYPE_ARRAY, labelFrame.labelTypes(), labelFrame.initialStackSize(), false);
+        controlStack.push(frame);
+        final ExceptionHandler e = new ExceptionHandler(opcode, tag);
+        labelFrame.addExceptionHandler(e);
+        return e;
+    }
+
+    /**
+     * @return Whether the function contains any exception handlers.
+     */
+    public boolean needsExceptionTable() {
+        return !exceptionTables.isEmpty();
+    }
+
+    /**
+     * Generates an exception table at the current location in the bytecode. The exception table has
+     * entries in the format:
+     * 
+     * <pre>
+     *     from (4 byte) | to (4 byte) | opcode (1 byte) | tag (4 byte) (optional) | target (4 byte)
+     * </pre>
+     *
+     * The exception table has a single 4 byte entry (0xffff_ffff) to indicate the end of the table.
+     */
+    public void generateExceptionTable() {
+        for (ExceptionTable table : exceptionTables) {
+            table.generateExceptionTable(bytecode);
+        }
+        // add end indicator
+        bytecode.add(-1);
+    }
+
     public void addInstruction(int instruction) {
-        bytecode.add(instruction);
+        bytecode.addOp(instruction);
     }
 
     public void addSelectInstruction(int instruction) {
@@ -386,7 +449,7 @@ public class ParserState {
         }
         checkResultTypes(frame);
 
-        bytecode.add(Bytecode.RETURN);
+        bytecode.addOp(Bytecode.RETURN);
     }
 
     /**
@@ -411,21 +474,21 @@ public class ParserState {
      * Adds the mics flag to the bytecode.
      */
     public void addMiscFlag() {
-        bytecode.add(Bytecode.MISC);
+        bytecode.addOp(Bytecode.MISC);
     }
 
     /**
      * Adds the atomic flag to the bytecode.
      */
     public void addAtomicFlag() {
-        bytecode.add(Bytecode.ATOMIC);
+        bytecode.addOp(Bytecode.ATOMIC);
     }
 
     /**
      * Adds the vector flag to the bytecode.
      */
     public void addVectorFlag() {
-        bytecode.add(Bytecode.VECTOR);
+        bytecode.addOp(Bytecode.VECTOR);
     }
 
     /**
@@ -435,7 +498,7 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addInstruction(int instruction, int value) {
-        bytecode.add(instruction, value);
+        bytecode.addOp(instruction, value);
     }
 
     /**
@@ -445,7 +508,7 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addInstruction(int instruction, long value) {
-        bytecode.add(instruction, value);
+        bytecode.addOp(instruction, value);
     }
 
     /**
@@ -455,7 +518,7 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addInstruction(int instruction, Vector128 value) {
-        bytecode.add(instruction, value);
+        bytecode.addOp(instruction, value);
     }
 
     /**
@@ -466,7 +529,7 @@ public class ParserState {
      * @param value2 The second immediate value
      */
     public void addInstruction(int instruction, int value1, int value2) {
-        bytecode.add(instruction, value1, value2);
+        bytecode.addOp(instruction, value1, value2);
     }
 
     /**
@@ -554,7 +617,7 @@ public class ParserState {
      * @param laneIndex The lane index
      */
     public void addVectorLaneInstruction(int instruction, byte laneIndex) {
-        bytecode.add(instruction);
+        bytecode.addOp(instruction);
         bytecode.add(laneIndex);
     }
 
@@ -565,21 +628,27 @@ public class ParserState {
      *
      * @throws WasmException If the number of return value types do not match with the remaining
      *             stack or the number of return values is greater than 1.
+     * 
+     * @return The types of the return values of the current frame.
      */
-    public void exit(boolean multiValue) {
+    public byte[] exit(boolean multiValue) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
         byte[] resultTypes = frame.resultTypes();
-
         frame.exit(bytecode);
-
         checkStackAfterFrameExit(frame, resultTypes);
+
+        if (frame instanceof TryTableFrame e) {
+            final ExceptionTable t = e.table();
+            t.setTo(bytecode.location());
+            exceptionTables.add(t);
+        }
 
         controlStack.pop();
         if (!multiValue) {
             Assert.assertIntLessOrEqual(resultTypes.length, 1, "A block cannot return more than one value.", Failure.INVALID_RESULT_ARITY);
         }
-        pushAll(resultTypes);
+        return resultTypes;
     }
 
     /**

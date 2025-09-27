@@ -45,6 +45,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.ExceptionHandlerType;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.junit.Assert;
@@ -168,7 +169,7 @@ public class BytecodeSuite {
         expected[255] = (byte) 0xFF;
         test(b -> {
             for (int i = 0; i < 254; i++) {
-                b.add(0);
+                b.addOp(0);
             }
             b.addBranch(0);
         }, expected);
@@ -194,7 +195,7 @@ public class BytecodeSuite {
         expected[259] = (byte) 0xFF;
         test(b -> {
             for (int i = 0; i < 255; i++) {
-                b.add(0);
+                b.addOp(0);
             }
             b.addBranch(0);
         }, expected);
@@ -212,7 +213,7 @@ public class BytecodeSuite {
         expected[255] = (byte) 0xFF;
         test(b -> {
             for (int i = 0; i < 254; i++) {
-                b.add(0);
+                b.addOp(0);
             }
             b.addBranchIf(0);
         }, expected);
@@ -238,7 +239,7 @@ public class BytecodeSuite {
         expected[259] = (byte) 0xFF;
         test(b -> {
             for (int i = 0; i < 255; i++) {
-                b.add(0);
+                b.addOp(0);
             }
             b.addBranchIf(0);
         }, expected);
@@ -448,52 +449,52 @@ public class BytecodeSuite {
 
     @Test
     public void testAddMin() {
-        test(b -> b.add(0x00), new byte[]{0x00});
+        test(b -> b.addOp(0x00), new byte[]{0x00});
     }
 
     @Test
     public void testAddMax() {
-        test(b -> b.add(0xFF), new byte[]{(byte) 0xFF});
+        test(b -> b.addOp(0xFF), new byte[]{(byte) 0xFF});
     }
 
     @Test
     public void testInvalidAdd() {
-        testAssertion(b -> b.add(256), "opcode does not fit into byte");
+        testAssertion(b -> b.addOp(256), "opcode does not fit into byte");
     }
 
     @Test
     public void testAddImmediateMin() {
-        test(b -> b.add(0x01, 0), new byte[]{0x01, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addOp(0x01, 0), new byte[]{0x01, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testAddImmediateMax() {
-        test(b -> b.add(0x01, 0xFFFFFFFF), new byte[]{0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addOp(0x01, 0xFFFFFFFF), new byte[]{0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testInvalidAddImmediate() {
-        testAssertion(b -> b.add(256, 0), "opcode does not fit into byte");
+        testAssertion(b -> b.addOp(256, 0), "opcode does not fit into byte");
     }
 
     @Test
     public void testAddImmediate64Max() {
-        test(b -> b.add(0x01, 0xFFFFFFFFFFFFFFFFL), new byte[]{0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addOp(0x01, 0xFFFFFFFFFFFFFFFFL), new byte[]{0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testInvalidAddImmediate64() {
-        testAssertion(b -> b.add(256, 0xFFL), "opcode does not fit into byte");
+        testAssertion(b -> b.addOp(256, 0xFFL), "opcode does not fit into byte");
     }
 
     @Test
     public void testAddImmediateMax2() {
-        test(b -> b.add(0x01, 0, 0xFFFFFFFF), new byte[]{0x01, 0x00, 0x00, 0x00, 0x00, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addOp(0x01, 0, 0xFFFFFFFF), new byte[]{0x01, 0x00, 0x00, 0x00, 0x00, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testInvalidAddImmediate2() {
-        testAssertion(b -> b.add(256, 0, 0), "opcode does not fit into byte");
+        testAssertion(b -> b.addOp(256, 0, 0), "opcode does not fit into byte");
     }
 
     @Test
@@ -684,6 +685,11 @@ public class BytecodeSuite {
     @Test
     public void testElemHeaderExternref() {
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 8, WasmType.EXTERNREF_TYPE, 0, null, -1), new byte[]{0x40, 0x20, 0x08});
+    }
+
+    @Test
+    public void testElemHeaderExnref() {
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 8, WasmType.EXNREF_TYPE, 0, null, -1), new byte[]{0x40, 0x30, 0x08});
     }
 
     @Test
@@ -914,5 +920,16 @@ public class BytecodeSuite {
     @Test
     public void testCodeEntryResults() {
         test(b -> b.addCodeEntry(0, 0, 0, 0, 1), new byte[]{0x05, 0x00});
+    }
+
+    @Test
+    public void testCatchExceptionHandler() {
+        test(b -> b.addExceptionHandler(5, 10, ExceptionHandlerType.CATCH, 0, 10), new byte[]{0x05, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00});
+    }
+
+    @Test
+    public void testCatchRefExceptionHandler() {
+        test(b -> b.addExceptionHandler(0, 12, ExceptionHandlerType.CATCH_REF, 1, 256),
+                        new byte[]{0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00});
     }
 }

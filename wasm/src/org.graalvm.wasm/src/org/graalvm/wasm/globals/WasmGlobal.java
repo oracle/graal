@@ -48,6 +48,7 @@ import org.graalvm.wasm.WasmNamesObject;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.WasmRuntimeException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -178,7 +179,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
             case f32 -> Float.intBitsToFloat(loadAsInt());
             case f64 -> Double.longBitsToDouble(loadAsLong());
             case v128 -> loadAsVector128();
-            case anyfunc, externref -> loadAsReference();
+            case anyfunc, externref, exnref -> loadAsReference();
         };
     }
 
@@ -224,6 +225,12 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
             }
             case externref -> {
                 if (value instanceof TruffleObject) {
+                    storeReference(value);
+                }
+                throw UnsupportedMessageException.create();
+            }
+            case exnref -> {
+                if (value == WasmConstant.NULL || value instanceof WasmRuntimeException) {
                     storeReference(value);
                 }
                 throw UnsupportedMessageException.create();

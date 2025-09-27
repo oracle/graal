@@ -534,8 +534,10 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
     public void testMultipleTables() throws IOException {
         // (table 1 1 funcref)
         // (table 1 1 externref)
-        final byte[] binary = newBuilder().addTable((byte) 1, (byte) 1, WasmType.FUNCREF_TYPE).addTable((byte) 1, (byte) 1, WasmType.EXTERNREF_TYPE).build();
-        runParserTest(binary, Context::eval);
+        // (table 1 1 exnref)
+        final byte[] binary = newBuilder().addTable((byte) 1, (byte) 1, WasmType.FUNCREF_TYPE).addTable((byte) 1, (byte) 1, WasmType.EXTERNREF_TYPE).addTable((byte) 1, (byte) 1,
+                        WasmType.EXNREF_TYPE).build();
+        runParserTest(binary, options -> options.option("wasm.Exceptions", "true"), Context::eval);
     }
 
     @Test
@@ -876,6 +878,22 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.EXTERNREF_TYPE, "D0 6F 0B").addType(EMPTY_BYTES, new byte[]{WasmType.EXTERNREF_TYPE}).addFunction((byte) 0,
                         EMPTY_BYTES, "23 00 0B").addFunctionExport((byte) 0, "main").build();
         runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertTrue("Unexpected result value", result.isNull());
+        });
+    }
+
+    @Test
+    public void testGlobalWithNullException() throws IOException {
+        // (global exnref (ref.null))
+        // (type (func (result exnref)))
+        // (func (export "main") (type 0)
+        // global.get 0
+        // )
+        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.EXNREF_TYPE, "D0 69 0B").addType(EMPTY_BYTES, new byte[]{WasmType.EXNREF_TYPE}).addFunction((byte) 0,
+                        EMPTY_BYTES, "23 00 0B").addFunctionExport((byte) 0, "main").build();
+        runRuntimeTest(binary, options -> options.option("wasm.Exceptions", "true"), instance -> {
             Value main = instance.getMember("main");
             Value result = main.execute();
             Assert.assertTrue("Unexpected result value", result.isNull());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -137,7 +137,7 @@ public abstract class ControlFrame {
     abstract void addBranch(RuntimeBytecodeGen bytecode);
 
     /**
-     * Adds a conditional branch targeting this control frame. Automatically patches the branch *
+     * Adds a conditional branch targeting this control frame. Automatically patches the branch
      * target as soon as it is available.
      * 
      * @param bytecode The bytecode of the current control frame.
@@ -146,11 +146,19 @@ public abstract class ControlFrame {
     abstract void addBranchIf(RuntimeBytecodeGen bytecode);
 
     /**
-     * Adds a branch table item targeting this control frame. Automatically patches the branch *
+     * Adds a branch table item targeting this control frame. Automatically patches the branch
      * target as soon as it is available.
      * 
      * @param bytecode The bytecode of the current control frame.
      */
 
     abstract void addBranchTableItem(RuntimeBytecodeGen bytecode);
+
+    /**
+     * Adds an exception handler targeting this control frame. Automatically patches the exception
+     * handler target as soon as it is available.
+     * 
+     * @param handler The exception handler that targets the frame.
+     */
+    abstract void addExceptionHandler(ExceptionHandler handler);
 }

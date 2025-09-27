@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,8 @@ public enum ValueType {
     f64(WasmType.F64_TYPE),
     v128(WasmType.V128_TYPE),
     anyfunc(WasmType.FUNCREF_TYPE),
-    externref(WasmType.EXTERNREF_TYPE);
+    externref(WasmType.EXTERNREF_TYPE),
+    exnref(WasmType.EXNREF_TYPE);
 
     private final byte byteValue;
 
@@ -63,24 +64,18 @@ public enum ValueType {
 
     public static ValueType fromByteValue(byte value) {
         CompilerAsserts.neverPartOfCompilation();
-        switch (value) {
-            case WasmType.I32_TYPE:
-                return i32;
-            case WasmType.I64_TYPE:
-                return i64;
-            case WasmType.F32_TYPE:
-                return f32;
-            case WasmType.F64_TYPE:
-                return f64;
-            case WasmType.V128_TYPE:
-                return v128;
-            case WasmType.FUNCREF_TYPE:
-                return anyfunc;
-            case WasmType.EXTERNREF_TYPE:
-                return externref;
-            default:
+        return switch (value) {
+            case WasmType.I32_TYPE -> i32;
+            case WasmType.I64_TYPE -> i64;
+            case WasmType.F32_TYPE -> f32;
+            case WasmType.F64_TYPE -> f64;
+            case WasmType.V128_TYPE -> v128;
+            case WasmType.FUNCREF_TYPE -> anyfunc;
+            case WasmType.EXTERNREF_TYPE -> externref;
+            case WasmType.EXNREF_TYPE -> exnref;
+            default ->
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
-        }
+        };
     }
 
     public byte byteValue() {
@@ -96,6 +91,6 @@ public enum ValueType {
     }
 
     public static boolean isReferenceType(ValueType valueType) {
-        return valueType == anyfunc || valueType == externref;
+        return valueType == anyfunc || valueType == externref || valueType == exnref;
     }
 }

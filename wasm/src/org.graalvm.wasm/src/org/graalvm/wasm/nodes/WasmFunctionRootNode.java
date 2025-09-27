@@ -171,6 +171,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     return Vector128Ops.SINGLETON_IMPLEMENTATION.toVector128(popVector128(frame, localCount));
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
+                case WasmType.EXNREF_TYPE:
                     return popReference(frame, localCount);
                 default:
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
@@ -208,6 +209,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
+                case WasmType.EXNREF_TYPE:
                     objectMultiValueStack[i] = popReference(frame, localCount + i);
                     break;
                 default:
@@ -242,6 +244,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
+                case WasmType.EXNREF_TYPE:
                     pushReference(frame, i, arg);
                     break;
             }
@@ -271,6 +274,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
+                case WasmType.EXNREF_TYPE:
                     pushReference(frame, i, WasmConstant.NULL);
                     break;
             }

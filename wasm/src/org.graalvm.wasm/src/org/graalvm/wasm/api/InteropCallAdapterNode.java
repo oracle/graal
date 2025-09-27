@@ -49,6 +49,7 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -170,6 +171,11 @@ public final class InteropCallAdapterNode extends RootNode {
             case WasmType.EXTERNREF_TYPE -> {
                 return;
             }
+            case WasmType.EXNREF_TYPE -> {
+                if (value instanceof WasmRuntimeException || value == WasmConstant.NULL) {
+                    return;
+                }
+            }
             default -> throw WasmException.create(Failure.UNKNOWN_TYPE);
         }
         throw UnsupportedTypeException.create(arguments);
@@ -209,7 +215,7 @@ public final class InteropCallAdapterNode extends RootNode {
             case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
             case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
             case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> {
                 Object obj = objectMultiValueStack[i];
                 objectMultiValueStack[i] = null;
                 yield obj;
