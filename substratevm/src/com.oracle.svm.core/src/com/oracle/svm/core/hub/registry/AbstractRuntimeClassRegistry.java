@@ -95,6 +95,7 @@ import jdk.vm.ci.meta.MetaUtil;
  * {@linkplain UserDefinedClassRegistry all other class loaders}.
  */
 public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassRegistry permits BootClassRegistry, UserDefinedClassRegistry {
+    public static final Object UNINITIALIZED_DECLARING_CLASS_SENTINEL = new Object();
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
     /**
@@ -284,7 +285,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String externalName = getExternalName(parsed, info);
         String simpleBinaryName = getSimpleBinaryName(parsed);
         String sourceFile = getSourceFile(parsed);
-        Class<?> enclosingClass = getEnclosingClass(parsed);
+        // The declaring class must be computed lazily
+        Object declaringClass = UNINITIALIZED_DECLARING_CLASS_SENTINEL;
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
@@ -403,7 +405,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, declaringClass, classSignature,
                         typeID, interfaceID,
                         hasClassInitializer(parsed), numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength,
@@ -495,14 +497,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             externalName = new String(chars);
         }
         return externalName;
-    }
-
-    private static Class<?> getEnclosingClass(ParserKlass parsed) {
-        InnerClassesAttribute innerClassesAttribute = (InnerClassesAttribute) parsed.getAttribute(InnerClassesAttribute.NAME);
-        if (innerClassesAttribute == null) {
-            return null;
-        }
-        throw VMError.unimplemented("enclosing class is not supported yet");
     }
 
     private static String getSimpleBinaryName(ParserKlass parsed) {
