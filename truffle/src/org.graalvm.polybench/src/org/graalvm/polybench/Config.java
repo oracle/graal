@@ -26,6 +26,7 @@ package org.graalvm.polybench;
 
 import org.graalvm.polyglot.Value;
 
+import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public class Config {
     int iterations;
     Metric metric;
     boolean evalSourceOnlyDefault;
+    Summary summary;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
@@ -79,7 +81,7 @@ public class Config {
         return multiEngine;
     }
 
-    public void parseBenchSpecificDefaults(Value benchmark) {
+    public void parseBenchSpecificDefaults(Value benchmark) throws InvalidObjectException {
         if (warmupIterations == UNINITIALIZED_ITERATIONS) {
             if (benchmark.hasMember("warmupIterations")) {
                 Value warmupIterationsMember = benchmark.getMember("warmupIterations");
@@ -96,6 +98,37 @@ public class Config {
                 iterations = DEFAULT_ITERATIONS;
             }
         }
+        parseBenchSpecificSummary(benchmark);
+    }
+
+    private void parseBenchSpecificSummary(Value benchmark) throws InvalidObjectException {
+        if (!benchmark.hasMember("summary")) {
+            // No 'summary' member provided in the benchmark
+            return;
+        }
+        Value summaryMember = benchmark.getMember("summary");
+        if (summaryMember.canExecute()) {
+            summaryMember = summaryMember.execute();
+        }
+        if (!summaryMember.hasMember("get")) {
+            throw new InvalidObjectException("Failed at parsing the 'summary' benchmark member due to it missing a 'get' member!");
+        }
+        Value summaryGetMethod = summaryMember.getMember("get");
+        String summaryClassName = summaryGetMethod.execute("name").asString();
+        if (OutlierRemovalAverageSummary.class.getSimpleName().equals(summaryClassName)) {
+            Value lowerThresholdValue = summaryGetMethod.execute("lower-threshold");
+            Value upperThresholdValue = summaryGetMethod.execute("upper-threshold");
+            if (!lowerThresholdValue.fitsInDouble() || !upperThresholdValue.fitsInDouble()) {
+                String msg = "Failed at parsing 'summary' benchmark member with name of '" + summaryClassName + "'";
+                msg += " because 'lower-threshold' or 'upper-threshold' is not present, or does not fit into a double!";
+                throw new InvalidObjectException(msg);
+            }
+            summary = new OutlierRemovalAverageSummary(lowerThresholdValue.asDouble(), upperThresholdValue.asDouble());
+        } else if (AverageSummary.class.getSimpleName().equals(summaryClassName)) {
+            summary = new AverageSummary();
+        } else {
+            throw new InvalidObjectException("Failed at parsing the 'summary' benchmark member due to unrecognized name of '" + summaryClassName + "'!");
+        }
     }
 
     @Override
@@ -107,7 +140,10 @@ public class Config {
                         "iterations:        " + (iterations == UNINITIALIZED_ITERATIONS ? "default" : iterations + "\n");
         if (multiEngine != null) {
             config += "runs:              " + multiEngine.numberOfRuns + "\n" +
-                            "shared engine:     " + multiEngine.sharedEngine;
+                            "shared engine:     " + multiEngine.sharedEngine + "\n";
+        }
+        if (summary != null) {
+            config += "summary:           " + summary + "\n";
         }
         return config;
     }

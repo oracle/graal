@@ -69,13 +69,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     # Extends the provided polybench command with common arguments used in CI. We want the command at the call site
     # to be simple (i.e., a flat array of string literals) so it can be easily copied and run locally; using this
     # wrapper allows us to inject CI-specific fields without specifying them in the command.
+    hwloc_command_prefix:: if std.length(std.find('bench', self.targets)) > 0 then ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"] else [],
     polybench_wrap(command)::
       assert command[0] == 'mx' : "polybench command should start with 'mx'";
       // Dynamically import /truffle-enterprise when running on enterprise.
       local extra_imports = if is_enterprise then ['--dy', '/truffle-enterprise'] else [];
-      ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
+      self.hwloc_command_prefix + ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
       (if (fail_fast) then ['--fail-fast'] else []),
-    notify_groups:: ['polybench'],
+    notify_groups:: ['polybench']
   },
 
   polybench_vm_hpc_common: self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
@@ -99,9 +100,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   build_polybenchmarks: [
-      ['mx', '--env', '${VM_ENV}', '--dy', 'polybenchmarks', 'sforceimports'],
-      ['mx', '-p', '../../polybenchmarks', 'build_benchmarks'],
-      ['mx', '--dy', 'polybenchmarks', 'build', '--dependencies', 'POLYBENCHMARKS_BENCHMARKS']
+    ['mx', '--env', '${VM_ENV}', '--dy', 'polybenchmarks', 'sforceimports'],
+    ['mx', '-p', '../../polybenchmarks', 'build_benchmarks'],
+    ['mx', '--dy', 'polybenchmarks', 'build', '--dependencies', 'POLYBENCHMARKS_BENCHMARKS']
   ],
 
   js_bench_compilation_throughput(pgo): self.vm_bench_common + common.heap.default + {
