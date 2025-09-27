@@ -46,6 +46,7 @@ import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
+import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.io.InputStream;
@@ -1333,6 +1334,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         } else if (declaringClass instanceof Class) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) declaringClass, getClassLoader0());
             return (Class<?>) declaringClass;
+        } else if (declaringClass == UNINITIALIZED_DECLARING_CLASS_SENTINEL) {
+            // GR-70363
+            throw VMError.unimplemented("getDeclaringClass0 is not implemented yet for runtime-loaded classes");
         } else if (declaringClass instanceof LinkageError) {
             throw (LinkageError) declaringClass;
         } else {
