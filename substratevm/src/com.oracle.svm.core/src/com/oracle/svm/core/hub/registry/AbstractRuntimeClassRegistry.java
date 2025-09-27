@@ -175,20 +175,17 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     protected abstract boolean loaderIsBootOrPlatform();
 
     public final Class<?> defineClass(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader()) {
+        // GR-62338: for parallel class loaders this synchronization should be skipped.
+        Object syncObject = getClassLoader();
+        if (syncObject == null) {
+            syncObject = this;
+        }
+        synchronized (syncObject) {
             return defineClassInner(typeOrNull, b, off, len, info);
-        } else {
-            synchronized (getClassLoader()) {
-                return defineClassInner(typeOrNull, b, off, len, info);
-            }
         }
     }
 
     private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader() || getClassLoader() == null) {
-            // GR-62338
-            throw VMError.unimplemented("Parallel class loading:" + getClassLoader());
-        }
         byte[] data = b;
         if (off != 0 || b.length != len) {
             if (len < 0) {
