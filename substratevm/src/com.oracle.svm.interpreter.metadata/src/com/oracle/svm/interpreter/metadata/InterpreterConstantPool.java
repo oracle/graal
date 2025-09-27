@@ -35,9 +35,17 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -330,5 +338,23 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             return primitiveConstant.asLong();
         }
         return super.longAt(index);
+    }
+
+    public JavaType findClassAt(int cpi) {
+        if (peekCachedEntry(cpi) instanceof InterpreterResolvedObjectType type) {
+            return type;
+        }
+        Symbol<Name> nameSymbol = className(cpi);
+        ByteSequence typeBytes = TypeSymbols.nameToType(nameSymbol);
+        Symbol<Type> typeSymbol = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (typeSymbol == null) {
+            return null;
+        }
+        Class<?> cls = CremaSupport.singleton().findLoadedClass(typeSymbol, getHolder());
+        if (cls == null) {
+            return UnresolvedJavaType.create(typeBytes.toString());
+        } else {
+            return DynamicHub.fromClass(cls).getInterpreterType();
+        }
     }
 }
