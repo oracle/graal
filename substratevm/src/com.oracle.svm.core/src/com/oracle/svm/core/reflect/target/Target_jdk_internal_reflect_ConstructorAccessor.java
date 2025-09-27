@@ -27,5 +27,5 @@ package com.oracle.svm.core.reflect.target;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.internal.reflect.ConstructorAccessor")
-final class Target_jdk_internal_reflect_ConstructorAccessor {
+public final class Target_jdk_internal_reflect_ConstructorAccessor {
 }
