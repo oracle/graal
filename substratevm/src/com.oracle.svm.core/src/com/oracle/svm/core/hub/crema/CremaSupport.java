@@ -34,6 +34,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
@@ -96,6 +97,8 @@ public interface CremaSupport {
     Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass);
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
+
+    ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);
