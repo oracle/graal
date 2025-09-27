@@ -1364,6 +1364,19 @@ public class SubstrateOptions {
                     "the default file name.") //
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
+    @Option(help = "Path of the file in which heap metadata should be dumped. " +
+                    "If this option is an empty string, the metadata will not be dumped.")//
+    public static final HostedOptionKey<String> OutHeapMetadataPath = new HostedOptionKey<>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            if (newValue != null && !newValue.trim().isEmpty()) {
+                GenerateDebugInfo.update(values, 2);
+                DeleteLocalSymbols.update(values, false);
+                PreserveFramePointer.update(values, true);
+            }
+        }
+    };
+
     @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
     public static final HostedOptionKey<String> HeapDumpDefaultFilenamePrefix = new HostedOptionKey<>("svm-heapdump-");
 
