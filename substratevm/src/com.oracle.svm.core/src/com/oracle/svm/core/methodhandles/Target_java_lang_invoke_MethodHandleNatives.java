@@ -223,7 +223,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     public static native MethodType findMethodHandleType(Class<?> rtype, Class<?>[] ptypes);
 
     @Delete
-    static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
+    @TargetElement(onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class, name = "linkMethodHandleConstant")
+    static native MethodHandle linkMethodHandleConstantDeleted(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
+
+    @Alias
+    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    public static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
 }
 
 /**
