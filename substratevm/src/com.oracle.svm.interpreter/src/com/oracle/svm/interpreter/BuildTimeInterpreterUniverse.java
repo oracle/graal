@@ -201,9 +201,11 @@ public final class BuildTimeInterpreterUniverse {
         InterpreterUnresolvedSignature signature = universe.unresolvedSignature(originalMethod.getSignature());
         byte[] interpretedCode = originalMethod.getCode() == null ? null : originalMethod.getCode().clone();
 
+        boolean isSubstitutedNative = false;
         AnalysisMethod analysisMethod = (AnalysisMethod) originalMethod;
         if (analysisMethod.wrapped instanceof SubstitutionMethod substitutionMethod) {
             modifiers = substitutionMethod.getOriginal().getModifiers();
+            isSubstitutedNative = Modifier.isNative(modifiers);
             if (substitutionMethod.hasBytecodes()) {
                 /*
                  * GR-53710: Keep bytecodes for substitutions, but only when there's no compiled
@@ -224,6 +226,7 @@ public final class BuildTimeInterpreterUniverse {
                         modifiers,
                         declaringClass,
                         signature,
+                        isSubstitutedNative,
                         interpretedCode,
                         null,
                         lineNumberTable,

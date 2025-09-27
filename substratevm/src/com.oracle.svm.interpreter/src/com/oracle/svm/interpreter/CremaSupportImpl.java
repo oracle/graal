@@ -65,6 +65,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
@@ -86,6 +87,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CremaSupportImpl implements CremaSupport {
+    private final MethodHandleIntrinsics<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> methodHandleIntrinsics = new MethodHandleIntrinsics<>();
+
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType type) {
@@ -732,5 +735,10 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object allocateInstance(ResolvedJavaType type) {
         return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
+    }
+
+    @Override
+    public ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature) {
+        return methodHandleIntrinsics.findIntrinsic((InterpreterResolvedJavaMethod) signaturePolymorphicMethod, signature, CremaRuntimeAccess.getInstance());
     }
 }
