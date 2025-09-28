@@ -31,8 +31,10 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
+import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.HashSet;
@@ -45,6 +47,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.Constants;
@@ -739,4 +742,8 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     }
 
     // endregion Unimplemented methods
+
+    public static InterpreterResolvedJavaMethod fromMemberName(Target_java_lang_invoke_MemberName memberName) {
+        return toJVMCI((Executable) memberName.reflectAccess);
+    }
 }

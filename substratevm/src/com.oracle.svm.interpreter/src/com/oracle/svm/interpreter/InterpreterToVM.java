@@ -865,9 +865,8 @@ public final class InterpreterToVM {
             }
         }
 
-        if (!goThroughPLT && targetMethod.isNative()) {
+        if (!goThroughPLT && (targetMethod.isNative() && targetMethod.getSignaturePolymorphicIntrinsic() == null)) {
             /* no way to execute target in interpreter, fall back to compiled code */
-            /* example: MethodHandle.invokeBasic */
             VMError.guarantee(targetMethod.hasNativeEntryPoint());
             calleeFtnPtr = targetMethod.getNativeEntryPoint();
             VMError.guarantee(calleeFtnPtr.isNonNull());
