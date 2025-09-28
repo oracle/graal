@@ -278,35 +278,35 @@ public abstract class InterpreterStubSection {
 
         switch (returnType.getJavaKind()) {
             case Boolean:
-                assert retVal instanceof Boolean;
+                InterpreterUtil.assertion(retVal instanceof Boolean, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Boolean) retVal) ? 1 : 0);
                 break;
             case Byte:
-                assert retVal instanceof Byte;
+                InterpreterUtil.assertion(retVal instanceof Byte, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Byte) retVal).longValue());
                 break;
             case Short:
-                assert retVal instanceof Short;
+                InterpreterUtil.assertion(retVal instanceof Short, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Short) retVal).longValue());
                 break;
             case Char:
-                assert retVal instanceof Character;
+                InterpreterUtil.assertion(retVal instanceof Character, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Character) retVal).charValue());
                 break;
             case Int:
-                assert retVal instanceof Integer;
+                InterpreterUtil.assertion(retVal instanceof Integer, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Integer) retVal).longValue());
                 break;
             case Long:
-                assert retVal instanceof Long;
+                InterpreterUtil.assertion(retVal instanceof Long, "invalid return type");
                 accessHelper.setGpReturn(enterData, (Long) retVal);
                 break;
             case Float:
-                assert retVal instanceof Float;
+                InterpreterUtil.assertion(retVal instanceof Float, "invalid return type");
                 accessHelper.setFpReturn(enterData, Float.floatToRawIntBits((float) retVal));
                 break;
             case Double:
-                assert retVal instanceof Double;
+                InterpreterUtil.assertion(retVal instanceof Double, "invalid return type");
                 accessHelper.setFpReturn(enterData, Double.doubleToRawLongBits((double) retVal));
                 break;
             case Object:

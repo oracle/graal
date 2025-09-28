@@ -46,7 +46,7 @@ public final class SemanticJavaException extends RuntimeException {
     }
 
     public static RuntimeException raise(Throwable cause) {
-        assert cause != null && !(cause instanceof SemanticJavaException);
+        InterpreterUtil.assertion(cause != null && !(cause instanceof SemanticJavaException), "bad SemanticJavaException nesting");
         throw new SemanticJavaException(cause);
     }
 }
