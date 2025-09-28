@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.interpreter;
 
+import java.lang.invoke.MethodType;
+
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
+import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -62,8 +67,15 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             case INTERFACE_METHOD_REF -> resolveInterfaceMethodRefConstant(cpi, accessingClass);
             case METHOD_REF -> resolveClassMethodRefConstant(cpi, accessingClass);
             case CLASS -> resolveClassConstant(cpi, accessingClass);
+            case METHODTYPE -> resolveMethodType(cpi, accessingClass);
             default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tag);
         };
+    }
+
+    private Object resolveMethodType(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Symbol<Signature> sig = this.methodTypeSignature(cpi);
+        Symbol<Type>[] parsed = SymbolsSupport.getSignatures().parsed(sig);
+        return signatureToMethodType(parsed, accessingClass);
     }
 
     private String resolveStringConstant(int stringIndex, @SuppressWarnings("unused") InterpreterResolvedObjectType accessingKlass) {
@@ -222,5 +234,25 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         // TODO(peterssen): Support MethodHandle invoke intrinsics.
 
         return interfaceMethod;
+    }
+
+    public static MethodType signatureToMethodType(Symbol<Type>[] signature, InterpreterResolvedObjectType accessingClass) {
+        Symbol<Type> rt = SignatureSymbols.returnType(signature);
+        int pcount = SignatureSymbols.parameterCount(signature);
+        Class<?>[] ptypes = new Class<?>[pcount];
+        Class<?> rtype;
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
+            ptypes[i] = resolveSymbolAndAccessCheck(accessingClass, paramType);
+        }
+        rtype = resolveSymbolAndAccessCheck(accessingClass, rt);
+
+        return Target_java_lang_invoke_MethodHandleNatives.findMethodHandleType(rtype, ptypes);
+    }
+
+    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
+        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+        // GR-62339 check access
+        return clazz;
     }
 }

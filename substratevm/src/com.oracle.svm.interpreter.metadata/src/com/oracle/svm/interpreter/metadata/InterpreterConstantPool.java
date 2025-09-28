@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
+import java.lang.invoke.MethodType;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -268,6 +269,12 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         }
         assert resolvedEntry != null;
         return (String) resolvedEntry;
+    }
+
+    public MethodType resolvedMethodTypeAt(char cpi, InterpreterResolvedObjectType accessingClass) {
+        Object resolvedEntry = resolvedAt(cpi, accessingClass);
+        assert resolvedEntry != null;
+        return (MethodType) resolvedEntry;
     }
 
     @Override
