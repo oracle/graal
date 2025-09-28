@@ -46,7 +46,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
@@ -77,7 +79,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
  * also abstract methods for vtable calls.
  */
-public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
+public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember {
     public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
     public static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
@@ -744,6 +746,23 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     // endregion Unimplemented methods
 
     public static InterpreterResolvedJavaMethod fromMemberName(Target_java_lang_invoke_MemberName memberName) {
-        return toJVMCI((Executable) memberName.reflectAccess);
+        InterpreterResolvedJavaMethod invoker = (InterpreterResolvedJavaMethod) memberName.resolved;
+        if (invoker == null) {
+            Executable reflectInvoker = (Executable) memberName.reflectAccess;
+            if (reflectInvoker == null) {
+                /*
+                 * This should only happen on first use of image-heap MemberNames. Those don't have
+                 * a `resolved` target and their `reflectAccess` is reset to null. Unfortunately we
+                 * don't have a caller class to use for access checks.
+                 */
+                CremaSupport.singleton().resolveMemberName(memberName, null);
+                invoker = (InterpreterResolvedJavaMethod) memberName.resolved;
+                assert invoker != null;
+            } else {
+                invoker = toJVMCI(reflectInvoker);
+                memberName.resolved = invoker;
+            }
+        }
+        return invoker;
     }
 }

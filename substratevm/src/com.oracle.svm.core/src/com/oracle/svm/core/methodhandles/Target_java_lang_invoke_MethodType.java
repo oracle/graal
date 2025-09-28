@@ -31,6 +31,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 @TargetClass(java.lang.invoke.MethodType.class)
@@ -70,6 +72,7 @@ final class Target_java_lang_invoke_Invokers {
 final class Target_java_lang_invoke_InvokerBytecodeGenerator {
     @SuppressWarnings("unused")
     @Substitute
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     static Target_java_lang_invoke_MemberName generateLambdaFormInterpreterEntryPoint(MethodType mt) {
         return null; /* Prevent runtime compilation of invokers */
     }

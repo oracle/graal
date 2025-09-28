@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 
 /**
  * In the JDK implementation of method handles, each bound method handle is an instance of a
@@ -73,7 +74,7 @@ final class Target_java_lang_invoke_BoundMethodHandle {
  * We hijack the species with no bound parameters for our implementation since it already inherits
  * from BoundMethodHandle and doesn't contain any superfluous members.
  */
-@TargetClass(className = "java.lang.invoke.SimpleMethodHandle")
+@TargetClass(className = "java.lang.invoke.SimpleMethodHandle", onlyWith = NoRuntimeClassLoading.class)
 final class Target_java_lang_invoke_SimpleMethodHandle {
     /*
      * Since we represent all the bound method handle species with the basic one, the species data
@@ -130,7 +131,7 @@ final class Target_java_lang_invoke_SimpleMethodHandle {
 }
 
 /* Hardcoded species, needs a special case to avoid initialization */
-@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Species_L")
+@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Species_L", onlyWith = NoRuntimeClassLoading.class)
 final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
     @Substitute
     static Target_java_lang_invoke_BoundMethodHandle make(MethodType mt, Target_java_lang_invoke_LambdaForm lf, Object argL0) {

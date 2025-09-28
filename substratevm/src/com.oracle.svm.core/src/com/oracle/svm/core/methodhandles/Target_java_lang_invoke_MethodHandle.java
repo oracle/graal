@@ -44,7 +44,11 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -83,6 +87,17 @@ final class Target_java_lang_invoke_MethodHandle {
     /* All MethodHandle.invoke* methods funnel through here. */
     @Substitute(polymorphicSignature = true)
     Object invokeBasic(Object... args) throws Throwable {
+        if (RuntimeClassLoading.isSupported()) {
+            Target_java_lang_invoke_LambdaForm form = internalForm();
+            Target_java_lang_invoke_MemberName vmentry = form.vmentry;
+            if (vmentry == null) {
+                // if the form comes from the image, its entry might have been reset
+                form.prepare();
+                vmentry = form.vmentry;
+                assert vmentry != null;
+            }
+            return CremaSupport.singleton().invokeBasic(vmentry, this, args);
+        }
         Target_java_lang_invoke_MemberName memberName = internalMemberName();
         Object ret;
         if (memberName != null) {
@@ -125,21 +140,33 @@ final class Target_java_lang_invoke_MethodHandle {
 
     @Substitute(polymorphicSignature = true)
     static Object linkToVirtual(Object... args) throws Throwable {
+        if (RuntimeClassLoading.isSupported()) {
+            return CremaSupport.singleton().linkToVirtual(args);
+        }
         return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToStatic(Object... args) throws Throwable {
+        if (RuntimeClassLoading.isSupported()) {
+            return CremaSupport.singleton().linkToStatic(args);
+        }
         return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToInterface(Object... args) throws Throwable {
+        if (RuntimeClassLoading.isSupported()) {
+            return CremaSupport.singleton().linkToInterface(args);
+        }
         return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToSpecial(Object... args) throws Throwable {
+        if (RuntimeClassLoading.isSupported()) {
+            return CremaSupport.singleton().linkToSpecial(args);
+        }
         return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
@@ -153,6 +180,7 @@ final class Target_java_lang_invoke_MethodHandle {
     }
 
     @Substitute
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     void maybeCustomize() {
         /*
          * JDK 8 update 60 added an additional customization possibility for method handles. For all
@@ -161,6 +189,7 @@ final class Target_java_lang_invoke_MethodHandle {
     }
 
     @Delete
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     native void customize();
 }
 
@@ -173,6 +202,11 @@ final class Util_java_lang_invoke_MethodHandle {
     }
 
     static Object invokeInternal(Target_java_lang_invoke_MemberName memberName, MethodType methodType, Object... args) throws Throwable {
+        /*
+         * This is never reached in the "crema" case since invokeBasic & linkTo* are instead
+         * redirected to CremaSupport.
+         */
+        assert !RuntimeClassLoading.isSupported();
         /*
          * The method handle may have been resolved at build time. If that is the case, the
          * SVM-specific information needed to perform the invoke is not stored in the handle yet, so
