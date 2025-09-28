@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.List;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
@@ -66,6 +73,35 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
         }
         JavaType returnType = toJavaType(SignatureSymbols.returnType(parsed));
         return InterpreterUnresolvedSignature.create(returnType, parameters);
+    }
+
+    static InterpreterResolvedJavaMethod toJVMCI(Executable executable) {
+        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(executable.getDeclaringClass()).getInterpreterType();
+        Symbol<Name> name;
+        if (executable instanceof Constructor<?>) {
+            name = ParserSymbols.ParserNames._init_;
+        } else {
+            /*
+             * Since we are looking for a method that already exists in the system, we expect the
+             * symbols to already exist for the name here as well as for the signature below. As a
+             * result we just perform a lookup instead of getOrCreate.
+             */
+            name = SymbolsSupport.getNames().lookup(executable.getName());
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append('(');
+        for (Class<?> type : executable.getParameterTypes()) {
+            sb.append(type.descriptorString());
+        }
+        sb.append(')');
+        if (executable instanceof Method method) {
+            sb.append(method.getReturnType().descriptorString());
+        } else {
+            assert executable instanceof Constructor;
+            sb.append('V');
+        }
+        Symbol<Signature> signature = SymbolsSupport.getSignatures().lookupValidSignature(sb.toString());
+        return holder.lookupMethod(name, signature);
     }
 
     static Symbol<Signature> toSymbol(InterpreterUnresolvedSignature jvmciSignature, SignatureSymbols signatures) {

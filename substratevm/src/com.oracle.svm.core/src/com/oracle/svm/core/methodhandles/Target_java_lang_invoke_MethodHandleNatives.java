@@ -52,6 +52,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -219,15 +221,23 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Alias
-    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    @TargetElement(onlyWith = WithRuntimeClassLoading.class)
+    public static native Target_java_lang_invoke_MemberName linkCallSite(Object callerObj,
+                    Object bootstrapMethodObj,
+                    Object nameObj, Object typeObj,
+                    Object staticArguments,
+                    Object[] appendixResult);
+
+    @Alias
+    @TargetElement(onlyWith = WithRuntimeClassLoading.class)
     public static native MethodType findMethodHandleType(Class<?> rtype, Class<?>[] ptypes);
 
     @Delete
-    @TargetElement(onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class, name = "linkMethodHandleConstant")
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class, name = "linkMethodHandleConstant")
     static native MethodHandle linkMethodHandleConstantDeleted(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
 
     @Alias
-    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    @TargetElement(onlyWith = WithRuntimeClassLoading.class)
     public static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
 }
 

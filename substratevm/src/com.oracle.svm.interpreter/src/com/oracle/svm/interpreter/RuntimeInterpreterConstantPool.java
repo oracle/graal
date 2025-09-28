@@ -31,12 +31,14 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -71,8 +73,20 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             case CLASS -> resolveClassConstant(cpi, accessingClass);
             case METHODTYPE -> resolveMethodType(cpi, accessingClass);
             case METHODHANDLE -> resolveMethodHandle(cpi, accessingClass);
+            case INVOKEDYNAMIC -> resolveInvokeDynamic(cpi, accessingClass);
             default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tag);
         };
+    }
+
+    private Object resolveInvokeDynamic(int cpi, InterpreterResolvedObjectType accessingClass) {
+        BootstrapMethodsAttribute bms = ((CremaResolvedObjectType) accessingClass).getBootstrapMethodsAttribute();
+        int bootstrapMethodAttrIndex = this.invokeDynamicBootstrapMethodAttrIndex(cpi);
+        BootstrapMethodsAttribute.Entry bsEntry = bms.at(bootstrapMethodAttrIndex);
+
+        Symbol<Signature> invokeSignature = this.invokeDynamicSignature(cpi);
+        Symbol<Type>[] parsedInvokeSignature = SymbolsSupport.getSignatures().parsed(invokeSignature);
+
+        return new ResolvedInvokeDynamicConstant(bsEntry, parsedInvokeSignature, this.invokeDynamicName(cpi));
     }
 
     private Object resolveMethodHandle(int cpi, InterpreterResolvedObjectType accessingClass) {
@@ -273,6 +287,24 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         // TODO(peterssen): Support MethodHandle invoke intrinsics.
 
         return interfaceMethod;
+    }
+
+    public Object[] getStaticArguments(BootstrapMethodsAttribute.Entry entry, InterpreterResolvedObjectType accessingClass) {
+        Object[] args = new Object[entry.numBootstrapArguments()];
+        for (int i = 0; i < entry.numBootstrapArguments(); i++) {
+            args[i] = switch (tagAt(entry.argAt(i))) {
+                case METHODHANDLE -> this.resolvedMethodHandleAt(entry.argAt(i), accessingClass);
+                case METHODTYPE -> this.resolvedMethodTypeAt(entry.argAt(i), accessingClass);
+                case CLASS -> this.resolveClassConstant(entry.argAt(i), accessingClass).getJavaClass();
+                case STRING -> this.resolveStringAt(entry.argAt(i));
+                case INTEGER -> this.intAt(entry.argAt(i));
+                case LONG -> this.longAt(entry.argAt(i));
+                case DOUBLE -> this.doubleAt(entry.argAt(i));
+                case FLOAT -> this.floatAt(entry.argAt(i));
+                default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tagAt(entry.argAt(i)));
+            };
+        }
+        return args;
     }
 
     public static MethodType signatureToMethodType(Symbol<Type>[] signature, InterpreterResolvedObjectType accessingClass) {
