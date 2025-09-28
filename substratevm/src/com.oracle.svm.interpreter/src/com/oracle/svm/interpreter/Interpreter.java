@@ -540,7 +540,7 @@ public final class Interpreter {
                     boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceInvokeBasic(target, indent);
                     try {
-                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, false, forceStayInInterpreter, preferStayInInterpreter, false);
+                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, false, forceStayInInterpreter, preferStayInInterpreter, false, false);
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
                     }
@@ -555,7 +555,7 @@ public final class Interpreter {
                     try {
                         boolean isInvokeInterface = intrinsic == SignaturePolymorphicIntrinsic.LinkToInterface;
                         boolean isVirtual = isInvokeInterface || intrinsic == SignaturePolymorphicIntrinsic.LinkToVirtual;
-                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, isInvokeInterface);
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, isInvokeInterface, false);
                         yield rebasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
@@ -1455,7 +1455,7 @@ public final class Interpreter {
         if (!seedMethod.isStatic()) {
             nullCheck(calleeArgs[0]);
         }
-        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE);
+        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);
 
         retStackEffect += EspressoFrame.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
 
