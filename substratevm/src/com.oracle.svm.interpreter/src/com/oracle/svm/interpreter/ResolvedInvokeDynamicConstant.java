@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.fromMemberName;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Executable;
 import java.util.Arrays;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -165,8 +164,8 @@ public final class ResolvedInvokeDynamicConstant {
                             args,
                             appendix);
             Object unboxedAppendix = appendix[0];
-            Executable reflectInvoker = (Executable) memberName.reflectAccess;
-            return new SuccessfulCallSiteLink(method, bci, toJVMCI(reflectInvoker), unboxedAppendix);
+            InterpreterResolvedJavaMethod invoker = fromMemberName(memberName);
+            return new SuccessfulCallSiteLink(method, bci, invoker, unboxedAppendix);
         } catch (LinkageError e) {
             return new FailedCallSiteLink(method, bci, e);
         }

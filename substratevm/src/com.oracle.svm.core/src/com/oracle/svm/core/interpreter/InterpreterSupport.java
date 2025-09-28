@@ -64,16 +64,14 @@ public abstract class InterpreterSupport {
         return ImageSingletons.lookup(InterpreterSupport.class);
     }
 
-    /*
-     * Check if a given argument matches the inner class Interpreter.Root (holder of the interpreter
-     * dispatch loop).
+    /**
+     * Check if a given frame should be processed by {@link #getInterpretedMethodFrameInfo}.
      */
-    public abstract boolean isInterpreterRoot(Class<?> clazz);
+    public abstract boolean isInterpreterRoot(FrameInfoQueryResult frameInfo);
 
     /**
-     * Transforms an interpreter (root) frame into a frame of the interpreted method. The passed
-     * frame must be an interpreter root e.g. {@code isInterpreterRoot(frameInfo.getSourceClass())}
-     * otherwise a fatal exception is thrown.
+     * Transforms an interpreter (root) frame into a frame of the interpreted method. An error is
+     * thrown if the passed frame is not an {@link #isInterpreterRoot interpreter root}.
      *
      * @param frameInfo interpreter root frame
      * @param sp stack pointer of the interpreter frame

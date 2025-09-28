@@ -266,10 +266,15 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.util.Objects;
 
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
@@ -364,7 +369,7 @@ public final class Interpreter {
     public static Object execute(InterpreterResolvedJavaMethod method, Object[] args, boolean forceStayInInterpreter) {
         InterpreterFrame frame = EspressoFrame.allocate(method.getMaxLocals(), method.getMaxStackSize(), args);
 
-        InterpreterUtil.guarantee(!method.isNative(), "trying to interpret native method %s", method);
+        InterpreterUtil.guarantee(!method.isNative() || method.getSignaturePolymorphicIntrinsic() != null, "trying to interpret native method %s", method);
 
         initializeFrame(frame, method);
         return execute0(method, frame, forceStayInInterpreter);
@@ -379,8 +384,13 @@ public final class Interpreter {
                 assert lockTarget != null;
                 InterpreterToVM.monitorEnter(frame, nullCheck(lockTarget));
             }
-            int startTop = startingStackOffset(method.getMaxLocals());
-            return Root.executeBodyFromBCI(frame, method, 0, startTop, stayInInterpreter);
+            SignaturePolymorphicIntrinsic intrinsic = method.getSignaturePolymorphicIntrinsic();
+            if (intrinsic != null) {
+                return IntrinsicRoot.execute(frame, method, intrinsic, stayInInterpreter);
+            } else {
+                int startTop = startingStackOffset(method.getMaxLocals());
+                return Root.executeBodyFromBCI(frame, method, 0, startTop, stayInInterpreter);
+            }
         } finally {
             InterpreterToVM.releaseInterpreterFrameLocks(frame);
         }
@@ -467,8 +477,144 @@ public final class Interpreter {
                         .string("/top=").unsigned(top).newline();
     }
 
-    public static final class Root {
+    private static void traceIntrinsicEnter(InterpreterResolvedJavaMethod method, int indent, SignaturePolymorphicIntrinsic intrinsic) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
 
+        setLogIndent(indent + 2);
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("[interp] Intrinsic Entered ") //
+                        .string(method.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(method.getName()) //
+                        .string(method.getSignature().toMethodDescriptor()) //
+                        .string(" with iid=").string(intrinsic.name()) //
+                        .newline();
+    }
+
+    private static void traceInvokeBasic(InterpreterResolvedJavaMethod target, int indent) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
+
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("invokeBasic target=") //
+                        .string(target.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(target.getName()) //
+                        .string(target.getSignature().toMethodDescriptor()) //
+                        .newline();
+    }
+
+    private static void traceLinkTo(InterpreterResolvedJavaMethod target, SignaturePolymorphicIntrinsic intrinsic, int indent) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
+
+        traceInterpreter(" ".repeat(indent)) //
+                        .string(intrinsic.name())
+                        .string(" target=") //
+                        .string(target.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(target.getName()) //
+                        .string(target.getSignature().toMethodDescriptor()) //
+                        .newline();
+    }
+
+    public static final class IntrinsicRoot {
+        @NeverInline("needed far stack walking")
+        public static Object execute(InterpreterFrame frame, InterpreterResolvedJavaMethod method, SignaturePolymorphicIntrinsic intrinsic, boolean forceStayInInterpreter) {
+            int indent = getLogIndent();
+            traceIntrinsicEnter(method, indent, intrinsic);
+            return switch (intrinsic) {
+                case InvokeBasic -> {
+                    MethodHandle mh = (MethodHandle) EspressoFrame.getThis(frame);
+                    Target_java_lang_invoke_MemberName vmentry = MethodHandleInterpreterUtils.extractVMEntry(mh);
+                    InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(vmentry);
+                    Object[] calleeArgs = frame.getArguments();
+                    // This should integrate with the debugger GR-70801
+                    boolean preferStayInInterpreter = forceStayInInterpreter;
+                    traceInvokeBasic(target, indent);
+                    try {
+                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, false, forceStayInInterpreter, preferStayInInterpreter, false);
+                    } catch (SemanticJavaException e) {
+                        throw uncheckedThrow(e.getCause());
+                    }
+                }
+                case LinkToStatic, LinkToSpecial, LinkToVirtual, LinkToInterface -> {
+                    InterpreterResolvedJavaMethod resolutionSeed = getLinkToTarget(frame);
+                    InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
+                    Object[] basicArgs = unbasic(frame, signature, false);
+                    // This should integrate with the debugger GR-70801
+                    boolean preferStayInInterpreter = forceStayInInterpreter;
+                    traceLinkTo(resolutionSeed, intrinsic, indent);
+                    try {
+                        boolean isInvokeInterface = intrinsic == SignaturePolymorphicIntrinsic.LinkToInterface;
+                        boolean isVirtual = isInvokeInterface || intrinsic == SignaturePolymorphicIntrinsic.LinkToVirtual;
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, isInvokeInterface);
+                        yield rebasic(result, signature.getReturnKind());
+                    } catch (SemanticJavaException e) {
+                        throw uncheckedThrow(e.getCause());
+                    }
+                }
+                default -> throw VMError.shouldNotReachHere(Objects.toString(intrinsic));
+            };
+        }
+    }
+
+    private static InterpreterResolvedJavaMethod getLinkToTarget(InterpreterFrame frame) {
+        Object[] arguments = frame.getArguments();
+        Target_java_lang_invoke_MemberName memberName = (Target_java_lang_invoke_MemberName) arguments[arguments.length - 1];
+        return InterpreterResolvedJavaMethod.fromMemberName(memberName);
+    }
+
+    private static Object[] unbasic(InterpreterFrame frame, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
+        Object[] arguments = frame.getArguments();
+        int parameterCount = targetSig.getParameterCount(inclReceiver);
+        Object[] res = new Object[parameterCount];
+        int start = 0;
+        if (inclReceiver) {
+            res[start++] = arguments[0];
+        }
+        for (int i = start; i < parameterCount; i++) {
+            JavaKind kind = targetSig.getParameterKind(i - start);
+            res[i] = unbasic(arguments[i], kind);
+        }
+        return res;
+    }
+
+    // Transforms ints to sub-words
+    public static Object unbasic(Object arg, JavaKind kind) {
+        return switch (kind) {
+            case Boolean -> (int) arg != 0;
+            case Byte -> (byte) (int) arg;
+            case Char -> (char) (int) arg;
+            case Short -> (short) (int) arg;
+            default -> arg;
+        };
+    }
+
+    private static Object rebasic(Object value, JavaKind returnType) {
+        // @formatter:off
+        return switch (returnType) {
+            case Boolean -> stackIntToBoolean((int) value);
+            case Byte    -> (byte) value;
+            case Short   -> (short) value;
+            case Char    -> (char) value;
+            case Int, Long, Float, Double, Object
+                         -> value;
+            case Void    -> null; // void
+            default      -> throw VMError.shouldNotReachHereAtRuntime();
+        };
+        // @formatter:on
+    }
+
+    public static final class Root {
+        @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
             int curBCI = startBCI;

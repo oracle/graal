@@ -200,20 +200,26 @@ public class InterpreterFeature implements InternalFeature {
         BuildTimeInterpreterUniverse.freshSingletonInstance();
         AnalysisMethod interpreterRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.Root.class).getDeclaredMethods(false)[0];
 
-        accessImpl.registerAsRoot(interpreterRoot, true, "interpreter main loop");
         LocalVariableTable interpreterVariableTable = interpreterRoot.getLocalVariableTable();
-        int interpretedMethodSlot = findLocalSlotByName("method", interpreterVariableTable.getLocalsAt(0)); // parameter
+        int interpreterMethodSlot = findLocalSlotByName("method", interpreterVariableTable.getLocalsAt(0)); // parameter
         int interpreterFrameSlot = findLocalSlotByName("frame", interpreterVariableTable.getLocalsAt(0)); // parameter
         // Local variable, search all locals.
         int bciSlot = findLocalSlotByName("curBCI", interpreterVariableTable.getLocals());
 
-        ImageSingletons.add(InterpreterSupport.class, new InterpreterSupportImpl(bciSlot, interpretedMethodSlot, interpreterFrameSlot));
+        AnalysisMethod intrinsicRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.IntrinsicRoot.class).getDeclaredMethods(false)[0];
+
+        LocalVariableTable intrinsicVariableTable = intrinsicRoot.getLocalVariableTable();
+        int intrinsicMethodSlot = findLocalSlotByName("method", intrinsicVariableTable.getLocalsAt(0)); // parameter
+        int intrinsicFrameSlot = findLocalSlotByName("frame", intrinsicVariableTable.getLocalsAt(0)); // parameter
+
+        ImageSingletons.add(InterpreterSupport.class, new InterpreterSupportImpl(bciSlot, interpreterMethodSlot, interpreterFrameSlot, intrinsicMethodSlot, intrinsicFrameSlot));
         ImageSingletons.add(InterpreterDirectivesSupport.class, new InterpreterDirectivesSupportImpl());
         ImageSingletons.add(InterpreterMethodPointerHolder.class, new InterpreterMethodPointerHolder());
 
         // Locals must be available at runtime to retrieve BCI, interpreted method and interpreter
         // frame.
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(interpreterRoot);
+        SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(intrinsicRoot);
 
         Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class, long.class);
         leaveStub = accessImpl.getMetaAccess().lookupJavaMethod(leaveMethod);
