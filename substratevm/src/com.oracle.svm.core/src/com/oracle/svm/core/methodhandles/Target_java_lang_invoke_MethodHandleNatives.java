@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -48,7 +49,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -214,6 +217,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
         return resolved;
     }
+
+    @Alias
+    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    public static native MethodType findMethodHandleType(Class<?> rtype, Class<?>[] ptypes);
 
     @Delete
     static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
