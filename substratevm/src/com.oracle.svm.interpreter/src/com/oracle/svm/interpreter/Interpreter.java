@@ -322,7 +322,7 @@ public final class Interpreter {
         int receiverSlot = hasReceiver ? 1 : 0;
         int curSlot = 0;
         if (hasReceiver) {
-            assert arguments[0] != null : "null receiver in init arguments !";
+            InterpreterUtil.assertion(arguments[0] != null, "null receiver in init arguments !");
             Object receiver = arguments[0];
             setLocalObject(frame, curSlot, receiver);
             curSlot += JavaKind.Object.getSlotCount();
