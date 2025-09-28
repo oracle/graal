@@ -1231,36 +1231,74 @@ public final class Interpreter {
                     boolean preferStayInInterpreter) {
         int invokeTop = top;
 
-        char cpi = BytecodeStream.readCPI2(code, curBCI);
-        InterpreterResolvedJavaMethod seedMethod = Interpreter.resolveMethod(method, opcode, cpi);
-
-        boolean hasReceiver = !seedMethod.isStatic();
+        InterpreterResolvedJavaMethod seedMethod;
         boolean isVirtual = opcode == INVOKEVIRTUAL || opcode == INVOKEINTERFACE;
 
         if (opcode == INVOKEDYNAMIC) {
-            int appendixCPI = BytecodeStream.readCPI4(code, curBCI) & 0xFFFF;
-            if (appendixCPI != 0) {
-                Object appendixEntry = method.getConstantPool().resolvedAt(appendixCPI, method.getDeclaringClass());
-                Object appendix;
+            int fullCPI = BytecodeStream.readCPI4(code, curBCI);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
+                // This can happen for the debugger
+                throw noSuchMethodError(opcode, null);
+            }
+            int indyCPI = fullCPI >>> 16;
+            int extraCPI = fullCPI & 0xFFFF;
+            Object indyEntry = method.getConstantPool().resolvedAt(indyCPI, method.getDeclaringClass());
+            Object appendix;
+            if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
+                // runtime-loaded case
+                if (extraCPI == 0) {
+                    // This call site is not linked yet
+                    try {
+                        extraCPI = invokeDynamicConstant.link((RuntimeInterpreterConstantPool) method.getConstantPool(), method.getDeclaringClass().getJavaClass(), method, curBCI);
+                        assert extraCPI != 0;
+                    } catch (Throwable e) {
+                        throw SemanticJavaException.raise(e);
+                    }
+                    BytecodeStream.patchIndyExtraCPI(code, curBCI, extraCPI);
+                    assert BytecodeStream.readCPI2Volatile(code, curBCI) == extraCPI;
+                }
+                CallSiteLink link = invokeDynamicConstant.getCallSiteLink(extraCPI);
+                while (!link.matchesCallSite(method, curBCI)) {
+                    /*
+                     * since the extra cpi read and write is not atomic, we might have read only 1
+                     * of the non-zero bytes. That is guaranteed to be <= the real extra CPI so it's
+                     * still safe to use in `getCallSiteLink`. `matchesCallSite` ensures we have the
+                     * full extraCPI.
+                     */
+                    extraCPI = BytecodeStream.readCPI2Volatile(code, curBCI);
+                    link = invokeDynamicConstant.getCallSiteLink(extraCPI);
+                }
+                if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {
+                    appendix = successfulCallSiteLink.getUnboxedAppendix();
+                    seedMethod = successfulCallSiteLink.getInvoker();
+                } else {
+                    throw SemanticJavaException.raise(((FailedCallSiteLink) link).getFailure());
+                }
+            } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
+                // AOT case
+                seedMethod = entryMethod;
+                Object appendixEntry = method.getConstantPool().resolvedAt(extraCPI, method.getDeclaringClass());
                 if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
                     // The appendix is deliberately null.
                     appendix = null;
-                } else {
-                    if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
-                        appendix = referenceConstant.getReferent();
-                    } else {
-                        throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
-                    }
+                } else if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
+                    appendix = referenceConstant.getReferent();
                     if (appendix == null) {
                         throw SemanticJavaException.raise(new IncompatibleClassChangeError("INVOKEDYNAMIC appendix was not included in the image heap"));
                     }
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
                 }
-                EspressoFrame.putObject(callerFrame, top, appendix);
-                invokeTop = top + 1;
             } else {
-                throw VMError.shouldNotReachHere("Appendix-less INVOKEDYNAMIC");
+                throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC constant: " + indyEntry);
             }
+            EspressoFrame.putObject(callerFrame, top, appendix);
+            invokeTop = top + 1;
+        } else {
+            char cpi = BytecodeStream.readCPI2(code, curBCI);
+            seedMethod = Interpreter.resolveMethod(method, opcode, cpi);
         }
+        boolean hasReceiver = !seedMethod.isStatic();
 
         InterpreterUnresolvedSignature seedSignature = seedMethod.getSignature();
         int resultAt = invokeTop - seedSignature.slotsForParameters(hasReceiver);

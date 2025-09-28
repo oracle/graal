@@ -183,7 +183,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         CodeAttribute codeAttribute = (CodeAttribute) m.getAttribute(CodeAttribute.NAME);
         if (codeAttribute != null) {
             this.maxLocals = codeAttribute.getMaxLocals();
-            this.maxStackSize = codeAttribute.getMaxStack();
+            this.maxStackSize = codeAttribute.getMaxStack() + 1;
             this.interpretedCode = codeAttribute.getOriginalCode();
             this.lineNumberTable = CremaMethodAccess.toJVMCI(codeAttribute.getLineNumberTableAttribute());
         } else {
@@ -201,7 +201,6 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         this.enterStubOffset = EST_NO_ENTRY;
         this.methodId = UNKNOWN_METHOD_ID;
         this.inlinedBy = new InlinedBy(this, new HashSet<>());
-
     }
 
     @VisibleForSerialization

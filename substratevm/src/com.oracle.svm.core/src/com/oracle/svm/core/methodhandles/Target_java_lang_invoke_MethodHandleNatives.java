@@ -220,6 +220,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Alias
     @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    public static native Target_java_lang_invoke_MemberName linkCallSite(Object callerObj,
+                    Object bootstrapMethodObj,
+                    Object nameObj, Object typeObj,
+                    Object staticArguments,
+                    Object[] appendixResult);
+
+    @Alias
+    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
     public static native MethodType findMethodHandleType(Class<?> rtype, Class<?>[] ptypes);
 
     @Delete
