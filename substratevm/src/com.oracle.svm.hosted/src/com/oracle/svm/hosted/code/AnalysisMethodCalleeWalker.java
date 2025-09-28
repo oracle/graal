@@ -50,7 +50,6 @@ public class AnalysisMethodCalleeWalker {
      * Walk a method by applying a visitor to the method and all of its callees. Returns true if all
      * the visits returned true, else returns false.
      */
-    @SuppressWarnings("try")
     public boolean walkMethod(AnalysisMethod method, CallPathVisitor visitor) {
         if (visitor.prologue() != VisitResult.CONTINUE) {
             return false;

@@ -63,6 +63,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         return type.getModifiers();
     }
 
+    @Override
     public Field[] getDeclaredFields(DynamicHub declaringClass, boolean publicOnly, @SuppressWarnings("unused") int layerNum) {
         ArrayList<Field> result = new ArrayList<>();
         includeFields(declaringClass, publicOnly, type.getDeclaredFields(), result);

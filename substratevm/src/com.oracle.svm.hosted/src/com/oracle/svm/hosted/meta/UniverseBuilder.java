@@ -148,12 +148,11 @@ public class UniverseBuilder {
      * This step is single threaded, i.e., all the maps are modified only by a single thread, so no
      * synchronization is necessary. Accesses (the lookup methods) are multi-threaded.
      */
-    @SuppressWarnings("try")
     public void build(DebugContext debug) {
         aUniverse.seal();
         DeadlockWatchdog.singleton().recordActivity();
 
-        try (Indent indent = debug.logAndIndent("build universe")) {
+        try (Indent _ = debug.logAndIndent("build universe")) {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
             }

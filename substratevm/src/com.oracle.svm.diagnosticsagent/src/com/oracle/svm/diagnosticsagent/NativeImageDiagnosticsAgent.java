@@ -389,8 +389,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
     private byte[] maybeInstrumentClassWithClinit(String clazzName, byte[] clazzData) {
         try {
-            TracingAdvisor advisor = JvmtiAgentBase.<NativeImageDiagnosticsAgentJNIHandleSet, NativeImageDiagnosticsAgent> singleton().advisor;
-            if (advisor.shouldTraceClassInitialization(clazzName.replace("/", "."))) {
+            TracingAdvisor adv = JvmtiAgentBase.<NativeImageDiagnosticsAgentJNIHandleSet, NativeImageDiagnosticsAgent> singleton().advisor;
+            if (adv.shouldTraceClassInitialization(clazzName.replace("/", "."))) {
                 return instrumentClassWithClinit(clazzData);
             }
             return null;

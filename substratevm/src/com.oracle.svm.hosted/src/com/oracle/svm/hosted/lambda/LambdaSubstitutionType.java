@@ -37,7 +37,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class LambdaSubstitutionType extends CustomSubstitutionType {
     private final String stableName;
 
-    @SuppressWarnings("try")
     LambdaSubstitutionType(ResolvedJavaType original, String stableName) {
         super(original);
         this.stableName = stableName;

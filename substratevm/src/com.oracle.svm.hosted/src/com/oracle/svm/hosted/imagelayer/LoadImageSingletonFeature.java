@@ -540,7 +540,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
         }
 
         LoadImageSingletonDataImpl newInfo = new LoadImageSingletonDataImpl(keyClass, kind);
-        result = layerKeyToSingletonDataMap.computeIfAbsent(keyClass, k -> newInfo);
+        result = layerKeyToSingletonDataMap.computeIfAbsent(keyClass, _ -> newInfo);
         if (result != newInfo) {
             /*
              * A different thread added this singleton in the meantime.
@@ -648,7 +648,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
         for (var keyClass : LayeredImageSingletonSupport.singleton().getMultiLayeredImageSingletonKeys()) {
             Integer id = layerKeyToObjectIDMap.get(keyClass);
             assert id != null : "Missing multiLayerKey " + keyClass;
-            currentKeyToSingletonObjectIDsMap.compute(keyClass, (k, v) -> {
+            currentKeyToSingletonObjectIDsMap.compute(keyClass, (_, v) -> {
                 if (v == null) {
                     return List.of(id);
                 } else {

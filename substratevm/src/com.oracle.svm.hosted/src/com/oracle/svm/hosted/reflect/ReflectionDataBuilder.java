@@ -191,7 +191,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void setQueryFlag(Class<?> clazz, int flag) {
-        enabledQueriesFlags.compute(clazz, (key, oldValue) -> (oldValue == null) ? flag : (oldValue | flag));
+        enabledQueriesFlags.compute(clazz, (_, oldValue) -> (oldValue == null) ? flag : (oldValue | flag));
     }
 
     private boolean isQueryFlagSet(Class<?> clazz, int flag) {
@@ -218,7 +218,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 for (Class<?> innerClass : clazz.getClasses()) {
                     if (innerClass.getDeclaringClass() != null) {
                         /* Malformed inner classes can have no declaring class */
-                        innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                        innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), _ -> ConcurrentHashMap.newKeySet()).add(innerClass);
                     }
                     registerClass(cnd, innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
                 }
@@ -260,7 +260,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_DECLARED_CLASSES_FLAG);
             try {
                 for (Class<?> innerClass : clazz.getDeclaredClasses()) {
-                    innerClasses.computeIfAbsent(clazz, c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                    innerClasses.computeIfAbsent(clazz, _ -> ConcurrentHashMap.newKeySet()).add(innerClass);
                     registerClass(cnd, innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
                 }
             } catch (LinkageError e) {
@@ -295,7 +295,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 try {
                     if (clazz.getEnclosingClass() != null) {
                         Class<?> enclosingClass = metaAccess.lookupJavaType(clazz.getEnclosingClass()).getJavaClass();
-                        innerClasses.computeIfAbsent(enclosingClass, (enclosingType) -> ConcurrentHashMap.newKeySet()).add(clazz);
+                        innerClasses.computeIfAbsent(enclosingClass, _ -> ConcurrentHashMap.newKeySet()).add(clazz);
                     }
                 } catch (LinkageError e) {
                     reportLinkingErrors(clazz, List.of(e));
@@ -325,7 +325,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz) {
         guaranteeNotRuntimeConditionForQueries(condition, true);
-        runConditionalInAnalysisTask(condition, (cnd) -> {
+        runConditionalInAnalysisTask(condition, _ -> {
             setQueryFlag(clazz, ALL_RECORD_COMPONENTS_FLAG);
             registerRecordComponents(clazz);
         });
@@ -334,7 +334,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz) {
         guaranteeNotRuntimeConditionForQueries(condition, true);
-        runConditionalInAnalysisTask(condition, (cnd) -> {
+        runConditionalInAnalysisTask(condition, _ -> {
             setQueryFlag(clazz, ALL_PERMITTED_SUBCLASSES_FLAG);
             if (clazz.isSealed()) {
                 for (Class<?> permittedSubclass : clazz.getPermittedSubclasses()) {
@@ -347,7 +347,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz) {
         guaranteeNotRuntimeConditionForQueries(condition, true);
-        runConditionalInAnalysisTask(condition, (cnd) -> {
+        runConditionalInAnalysisTask(condition, _ -> {
             setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG);
             for (Class<?> nestMember : clazz.getNestMembers()) {
                 if (nestMember != clazz) {
@@ -360,7 +360,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz) {
         guaranteeNotRuntimeConditionForQueries(condition, true);
-        runConditionalInAnalysisTask(condition, (cnd) -> {
+        runConditionalInAnalysisTask(condition, _ -> {
             setQueryFlag(clazz, ALL_SIGNERS_FLAG);
             Object[] signers = clazz.getSigners();
             if (signers != null) {
@@ -452,7 +452,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
 
-        var classMethods = registeredMethods.computeIfAbsent(declaringType, t -> new ConcurrentHashMap<>());
+        var classMethods = registeredMethods.computeIfAbsent(declaringType, _ -> new ConcurrentHashMap<>());
         var shouldRegisterReachabilityHandler = classMethods.isEmpty();
 
         boolean registered = false;
@@ -480,8 +480,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              */
             if (shouldRegisterReachabilityHandler) {
                 analysisAccess.registerSubtypeReachabilityHandler(
-                                (access, subType) -> universe.getBigbang()
-                                                .postTask(debug -> checkSubtypeForOverridingMethods(metaAccess.lookupJavaType(subType), registeredMethods.get(declaringType).keySet())),
+                                (_, subType) -> universe.getBigbang()
+                                                .postTask(_ -> checkSubtypeForOverridingMethods(metaAccess.lookupJavaType(subType), registeredMethods.get(declaringType).keySet())),
                                 declaringClass);
             } else {
                 /*
@@ -489,7 +489,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * reachability handler was already called for them.
                  */
                 for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringType)) {
-                    universe.getBigbang().postTask(debug -> checkSubtypeForOverridingMethods(subtype, Collections.singleton(analysisMethod)));
+                    universe.getBigbang().postTask(_ -> checkSubtypeForOverridingMethods(subtype, Collections.singleton(analysisMethod)));
                 }
             }
 
@@ -498,7 +498,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
 
             if (!throwMissingRegistrationErrors() && declaringClass.isRecord()) {
-                pendingRecordClasses.computeIfPresent(declaringClass, (clazz, unregisteredAccessors) -> {
+                pendingRecordClasses.computeIfPresent(declaringClass, (_, unregisteredAccessors) -> {
                     if (unregisteredAccessors.remove(reflectExecutable) && unregisteredAccessors.isEmpty()) {
                         registerRecordComponents(declaringClass);
                     }
@@ -512,7 +512,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as queried.
          */
         if (!queriedOnly) {
-            methodAccessors.computeIfAbsent(analysisMethod, aMethod -> {
+            methodAccessors.computeIfAbsent(analysisMethod, _ -> {
                 SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(reflectExecutable);
                 universe.getHeapScanner().rescanObject(accessor);
                 return accessor;
@@ -527,7 +527,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             try {
                 registerMethod(cnd, true, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
-                negativeMethodLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
+                negativeMethodLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), _ -> ConcurrentHashMap.newKeySet())
                                 .add(new AnalysisMethod.Signature(methodName, metaAccess.lookupJavaTypes(parameterTypes)));
             } catch (LinkageError le) {
                 registerLinkageError(declaringClass, le, methodLookupExceptions);
@@ -542,7 +542,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             try {
                 registerMethod(cnd, true, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
-                negativeConstructorLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
+                negativeConstructorLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), _ -> ConcurrentHashMap.newKeySet())
                                 .add(metaAccess.lookupJavaTypes(parameterTypes));
             } catch (LinkageError le) {
                 registerLinkageError(declaringClass, le, constructorLookupExceptions);
@@ -619,10 +619,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
 
-        var classFields = registeredFields.computeIfAbsent(declaringClass, t -> new ConcurrentHashMap<>());
+        var classFields = registeredFields.computeIfAbsent(declaringClass, _ -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
-        var cndValue = classFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
+        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
         if (!exists) {
             registerTypesForField(analysisField, reflectField, queriedOnly);
 
@@ -632,8 +632,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              */
             if (shouldRegisterReachabilityHandler) {
                 analysisAccess.registerSubtypeReachabilityHandler(
-                                (access, subType) -> universe.getBigbang()
-                                                .postTask(debug -> checkSubtypeForOverridingFields(metaAccess.lookupJavaType(subType),
+                                (_, subType) -> universe.getBigbang()
+                                                .postTask(_ -> checkSubtypeForOverridingFields(metaAccess.lookupJavaType(subType),
                                                                 registeredFields.get(declaringClass).keySet())),
                                 declaringClass.getJavaClass());
             } else {
@@ -642,7 +642,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * reachability handler was already called for them.
                  */
                 for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringClass)) {
-                    universe.getBigbang().postTask(debug -> checkSubtypeForOverridingFields(subtype, Collections.singleton(analysisField)));
+                    universe.getBigbang().postTask(_ -> checkSubtypeForOverridingFields(subtype, Collections.singleton(analysisField)));
                 }
             }
 
@@ -673,7 +673,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * can only be used with `type` which includes all fields so negative lookups are
                  * not necessary.
                  */
-                negativeFieldLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet()).add(fieldName);
+                negativeFieldLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), _ -> ConcurrentHashMap.newKeySet()).add(fieldName);
             } catch (LinkageError le) {
                 registerLinkageError(declaringClass, le, fieldLookupExceptions);
             }
@@ -939,7 +939,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      */
     private void registerTypesForGenericSignature(Type type, int dimension) {
         try {
-            if (type == null || !processedTypes.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet()).add(dimension)) {
+            if (type == null || !processedTypes.computeIfAbsent(type, _ -> ConcurrentHashMap.newKeySet()).add(dimension)) {
                 return;
             }
         } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
@@ -1154,7 +1154,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
             throw error;
         } else {
-            var registeredError = errorMap.computeIfAbsent(clazz, k -> {
+            var registeredError = errorMap.computeIfAbsent(clazz, _ -> {
                 universe.getHeapScanner().rescanObject(error);
                 return error;
             });

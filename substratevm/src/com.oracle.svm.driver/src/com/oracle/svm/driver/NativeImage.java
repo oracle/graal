@@ -1732,7 +1732,7 @@ public class NativeImage {
             arguments.addAll(strings);
         }
 
-        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
+        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, _) -> a;
         Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
         List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
 
@@ -2538,7 +2538,7 @@ public class NativeImage {
 
     void showOutOfMemoryWarning() {
         String xmxFlag = "-Xmx";
-        String lastMaxHeapValue = imageBuilderArgs.stream().filter(arg -> arg.startsWith(xmxFlag)).reduce((first, second) -> second).orElse(null);
+        String lastMaxHeapValue = imageBuilderArgs.stream().filter(arg -> arg.startsWith(xmxFlag)).reduce((_, second) -> second).orElse(null);
         String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set with '" + lastMaxHeapValue + "'.)";
         String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + xmxFlag + "' option";
         showMessage("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.", maxHeapText, additionalAction);

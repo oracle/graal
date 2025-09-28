@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,6 +51,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -276,7 +276,7 @@ public class FrameInfoEncoder {
                 for (CompressedFrameData frame : frameSliceToEncode) {
                     frameSliceFrequency.merge(frame, 1, Integer::sum);
                     if (prevFrame != null) {
-                        frameSuccessorMap.compute(prevFrame, (k, v) -> {
+                        frameSuccessorMap.compute(prevFrame, (_, v) -> {
                             Set<CompressedFrameData> callers;
                             if (v == null) {
                                 callers = new HashSet<>();

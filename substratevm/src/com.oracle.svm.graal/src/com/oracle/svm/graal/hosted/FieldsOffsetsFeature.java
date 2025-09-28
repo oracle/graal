@@ -167,7 +167,7 @@ public class FieldsOffsetsFeature implements Feature {
 
             /* The partial evaluator allocates Node classes via Unsafe. */
             AnalysisType nodeType = config.getMetaAccess().lookupJavaType(nodeClass.getJavaClass());
-            nodeType.registerInstantiatedCallback(unused -> config.registerAsUnsafeAllocated(nodeType));
+            nodeType.registerInstantiatedCallback(_ -> config.registerAsUnsafeAllocated(nodeType));
 
             Fields dataFields = nodeClass.getData();
             registerFields(dataFields, config, "Graal node data field");
@@ -214,7 +214,7 @@ public class FieldsOffsetsFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        access.registerAsImmutable(GraalCompilerSupport.get().nodeClasses.getValues(), o -> true);
-        access.registerAsImmutable(GraalCompilerSupport.get().instructionClasses.getValues(), o -> true);
+        access.registerAsImmutable(GraalCompilerSupport.get().nodeClasses.getValues(), _ -> true);
+        access.registerAsImmutable(GraalCompilerSupport.get().instructionClasses.getValues(), _ -> true);
     }
 }

@@ -77,14 +77,14 @@ public class JfrManager {
 
     public static RuntimeSupport.Hook initializationHook() {
         /* Parse arguments early on so that we can tear down the isolate more easily if it fails. */
-        return isFirstIsolate -> {
+        return _ -> {
             parseFlightRecorderLogging();
             parseFlightRecorderOptions();
         };
     }
 
     public static RuntimeSupport.Hook startupHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             periodicEventSetup();
 
             boolean startRecording = SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
@@ -152,7 +152,7 @@ public class JfrManager {
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             /*
              * Everything should already have been torn down by JVM.destroyJFR(), which is called in
              * a shutdown hook. So in this method we should only unregister periodic events.

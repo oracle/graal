@@ -123,7 +123,6 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
     static class TransformerClassesAndResources extends XMLParsersRegistration {
 
         @Override
-        @SuppressWarnings("try")
         void registerResources() {
             /*
              * To allow register new resource bundle classes during analysis phase

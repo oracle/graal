@@ -106,7 +106,6 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         return installMethodCodeInClientIsolate(installInfo, installedCodeFactoryHandle, method);
     }
 
-    @SuppressWarnings("try")
     private CodeInstallInfo doPrepareInstall() {
         IsolatedReferenceAdjuster adjuster = new IsolatedReferenceAdjuster();
 

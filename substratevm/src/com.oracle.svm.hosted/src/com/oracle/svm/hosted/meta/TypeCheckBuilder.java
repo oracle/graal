@@ -236,7 +236,7 @@ public final class TypeCheckBuilder {
 
         /* Finding subtype graph roots. */
         HashSet<HostedType> hasParent = new HashSet<>();
-        subtypeMap.forEach((type, subtypes) -> hasParent.addAll(subtypes));
+        subtypeMap.forEach((_, subtypes) -> hasParent.addAll(subtypes));
         allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).toList();
 
         heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
@@ -344,7 +344,7 @@ public final class TypeCheckBuilder {
 
         /* Finding the roots of the parent map. */
         Set<HostedType> hasSubtype = new HashSet<>();
-        elementParentMap.forEach((child, parents) -> hasSubtype.addAll(parents));
+        elementParentMap.forEach((_, parents) -> hasSubtype.addAll(parents));
         List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).toList();
 
         List<HostedType> heightOrderedElements = generateHeightOrder(elementParentMapRoots, elementParentMap);
@@ -455,7 +455,7 @@ public final class TypeCheckBuilder {
 
                 /* Getting filteredArraySubtypesMap roots. */
                 Set<HostedType> typesWithSubtypes = new HashSet<>();
-                filteredArraySubtypesMap.forEach((k, v) -> typesWithSubtypes.addAll(v));
+                filteredArraySubtypesMap.forEach((_, v) -> typesWithSubtypes.addAll(v));
                 List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).toList();
 
                 HostedType parentObjectType = getHighestDimArrayType(objectType, dimension - 1);
@@ -944,7 +944,7 @@ public final class TypeCheckBuilder {
                          * not possible to merge interfaces into each other.
                          */
                         Map<Integer, ArrayList<Node>> destinationMap = isNodeInterface ? interfaceHashMap : classHashMap;
-                        destinationMap.computeIfAbsent(hash, k -> new ArrayList<>()).add(node);
+                        destinationMap.computeIfAbsent(hash, _ -> new ArrayList<>()).add(node);
                     }
                 }
 
@@ -1061,7 +1061,7 @@ public final class TypeCheckBuilder {
              */
             static void recordDuplicateRelation(Map<Node, Set<HostedType>> duplicateMap, Node node, Node duplicate) {
                 assert !duplicateMap.containsKey(duplicate) : "By removing this node, duplicate records are being lost.";
-                duplicateMap.computeIfAbsent(node, k -> new HashSet<>()).add(duplicate.type);
+                duplicateMap.computeIfAbsent(node, _ -> new HashSet<>()).add(duplicate.type);
             }
 
             /**
@@ -1078,7 +1078,7 @@ public final class TypeCheckBuilder {
                     Node node = nodes[i];
                     if (node.isInterface) {
                         // recording descendant information
-                        Set<Node> descendants = descendantMap.computeIfAbsent(node, k -> new HashSet<>());
+                        Set<Node> descendants = descendantMap.computeIfAbsent(node, _ -> new HashSet<>());
                         descendants.add(node);
                         Node[] descendantArray = descendants.toArray(Node.EMPTY_ARRAY);
                         Arrays.sort(descendantArray, Comparator.comparingInt(n -> n.id));
@@ -1094,7 +1094,7 @@ public final class TypeCheckBuilder {
                      * ancestors, due to the guarantees about the interface graph
                      */
                     for (Node ancestor : node.sortedAncestors) {
-                        descendantMap.computeIfAbsent(ancestor, k -> new HashSet<>()).add(node);
+                        descendantMap.computeIfAbsent(ancestor, _ -> new HashSet<>()).add(node);
                     }
                 }
                 this.interfaceNodes = interfaceList.toArray(Node.EMPTY_ARRAY);
@@ -1112,7 +1112,7 @@ public final class TypeCheckBuilder {
                 for (HostedType type : heightOrderedTypes) {
 
                     boolean isTypeInterface = isInterface(type);
-                    Set<Node> ancestors = interfaceAncestors.computeIfAbsent(type, k -> isTypeInterface ? new HashSet<>() : null);
+                    Set<Node> ancestors = interfaceAncestors.computeIfAbsent(type, _ -> isTypeInterface ? new HashSet<>() : null);
                     if (ancestors == null) {
                         /* This node does not need to be part of the interface graph */
                         continue;
@@ -1131,7 +1131,7 @@ public final class TypeCheckBuilder {
 
                     /* Passing ancestor information to children. */
                     for (HostedType child : subtypeMap.get(type)) {
-                        interfaceAncestors.computeIfAbsent(child, k -> new HashSet<>()).addAll(ancestors);
+                        interfaceAncestors.computeIfAbsent(child, _ -> new HashSet<>()).addAll(ancestors);
                     }
                 }
 
@@ -1277,7 +1277,7 @@ public final class TypeCheckBuilder {
 
                 // add new relation to proper columnToGroupingMap keys
                 for (int connection : sortedGroupIds) {
-                    columnToGroupingMap.computeIfAbsent(connection, k -> new HashSet<>()).add(newGrouping);
+                    columnToGroupingMap.computeIfAbsent(connection, _ -> new HashSet<>()).add(newGrouping);
                 }
 
                 return AddGroupingResult.SUCCESS;
@@ -1541,7 +1541,7 @@ public final class TypeCheckBuilder {
                     Map<ContiguousGroup, Set<ContiguousGroup>> otherEdgeMap = matrix.edgeMap;
                     for (Map.Entry<ContiguousGroup, Set<ContiguousGroup>> entry : otherEdgeMap.entrySet()) {
                         ContiguousGroup key = entry.getKey();
-                        edgeMap.computeIfAbsent(key, k -> new HashSet<>()).addAll(entry.getValue());
+                        edgeMap.computeIfAbsent(key, _ -> new HashSet<>()).addAll(entry.getValue());
                     }
                 }
 
@@ -1552,7 +1552,7 @@ public final class TypeCheckBuilder {
                 edgeMap.put(initialGroup, new HashSet<>());
                 for (ContiguousGroup edge : edges) {
                     edgeMap.get(initialGroup).add(edge);
-                    edgeMap.computeIfAbsent(edge, k -> new HashSet<>()).add(initialGroup);
+                    edgeMap.computeIfAbsent(edge, _ -> new HashSet<>()).add(initialGroup);
                 }
 
                 return true;
@@ -1976,7 +1976,7 @@ public final class TypeCheckBuilder {
 
         BiFunction<HostedType, Boolean, OpenTypeWorldTypeInfo> getTypeInfo = (type, allowMissing) -> {
             if (allowMissing) {
-                typeInfoMap.computeIfAbsent(type, (k) -> new OpenTypeWorldTypeInfo());
+                typeInfoMap.computeIfAbsent(type, _ -> new OpenTypeWorldTypeInfo());
             }
 
             OpenTypeWorldTypeInfo typeInfo = typeInfoMap.get(type);

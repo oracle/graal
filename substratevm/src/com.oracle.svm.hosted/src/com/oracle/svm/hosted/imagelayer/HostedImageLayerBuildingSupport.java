@@ -388,7 +388,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
         for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
             for (LayerVerifiedOption layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerifiedOption.class)) {
-                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.add(layerVerification);
+                result.computeIfAbsent(optionDescriptor.getName(), _ -> new OptionLayerVerificationRequests(optionDescriptor)).requests.add(layerVerification);
             }
         }
         return result;
@@ -403,7 +403,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         nativeLibs.addDynamicNonJniLibrary(libName);
     }
 
-    public void registerBaseLayerTypes(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
+    public static void registerBaseLayerTypes(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
         classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
     }
 }

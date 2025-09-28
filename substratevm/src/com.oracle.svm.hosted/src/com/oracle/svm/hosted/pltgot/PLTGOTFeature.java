@@ -251,7 +251,7 @@ public class PLTGOTFeature implements InternalFeature {
         methodsForDirectGOTRelocation.addAll(methods);
     }
 
-    private void verifyGOTEntryValues(Set<? extends SharedMethod> methods) {
+    private static void verifyGOTEntryValues(Set<? extends SharedMethod> methods) {
         GOTEntryAllocator gotEntryAllocator = HostedPLTGOTConfiguration.singleton().getGOTEntryAllocator();
         List<String> methodsWithoutGOTEntry = methods.stream()
                         .filter(method -> gotEntryAllocator.queryGotEntry(method) == GOTEntryAllocator.GOT_NO_ENTRY)

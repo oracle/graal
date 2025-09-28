@@ -2064,7 +2064,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              * in this branch, we're dealing with a Crema dynamic hub.
              */
             assert hubMetadata() instanceof RuntimeDynamicHubMetadata;
-            return companion.nestHost = ((RuntimeDynamicHubMetadata) hubMetadata()).getNestHost(this);
+            return companion.nestHost = RuntimeDynamicHubMetadata.getNestHost(this);
         }
     }
 

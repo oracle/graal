@@ -213,7 +213,7 @@ public class SVMImageLayerSnapshotUtil {
      * the given type.
      */
     public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
-        Set<Integer> result = fieldsToRelink.computeIfAbsent(type, key -> {
+        Set<Integer> result = fieldsToRelink.computeIfAbsent(type, _ -> {
             Class<?> clazz = type.getJavaClass();
             if (clazz == Class.class) {
                 return getRelinkedFields(type, dynamicHubRelinkedFields, metaAccess);
