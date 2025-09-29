@@ -43,6 +43,7 @@ package org.graalvm.wasm.parser.validation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
@@ -56,13 +57,15 @@ class IfFrame extends ControlFrame {
 
     private final IntArrayList branchTargets;
     private final ArrayList<ExceptionHandler> exceptionHandlers;
+    private final ControlFrame parentFrame;
     private int falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        branchTargets = new IntArrayList();
-        exceptionHandlers = new ArrayList<>();
+    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int falseJumpLocation) {
+        super(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+        this.branchTargets = new IntArrayList();
+        this.exceptionHandlers = new ArrayList<>();
+        this.parentFrame = parentFrame;
         this.falseJumpLocation = falseJumpLocation;
         this.elseBranch = false;
     }
@@ -74,6 +77,7 @@ class IfFrame extends ControlFrame {
 
     @Override
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
+        initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
         final int location = bytecode.addBranchLocation();
         bytecode.patchLocation(falseJumpLocation, bytecode.location());
         falseJumpLocation = location;

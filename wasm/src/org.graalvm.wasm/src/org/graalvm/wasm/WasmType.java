@@ -193,6 +193,10 @@ public class WasmType implements TruffleObject {
         return nullable ? type | TYPE_NULLABLE_MASK : type & ~TYPE_NULLABLE_MASK;
     }
 
+    public static boolean hasDefaultValue(int type) {
+        return !(isReferenceType(type) && !isNullable(type));
+    }
+
     public static int getCommonValueType(int[] types) {
         int type = 0;
         for (int resultType : types) {

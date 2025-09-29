@@ -44,6 +44,8 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
+import java.util.BitSet;
+
 /**
  * Represents the scope of a block structure during module validation.
  */
@@ -54,19 +56,20 @@ public abstract class ControlFrame {
     private final int initialStackSize;
     private boolean unreachable;
     private final int commonResultType;
+    protected BitSet initializedLocals;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
      * @param initialStackSize The size of the value stack when entering this block structure.
-     * @param unreachable If the block structure should be declared unreachable.
      */
-    ControlFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable) {
+    ControlFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, BitSet initializedLocals) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
-        this.unreachable = unreachable;
+        this.unreachable = false;
         commonResultType = WasmType.getCommonValueType(resultTypes);
+        this.initializedLocals = (BitSet) initializedLocals.clone();
     }
 
     protected int[] paramTypes() {
@@ -111,6 +114,14 @@ public abstract class ControlFrame {
 
     protected void resetUnreachable() {
         this.unreachable = false;
+    }
+
+    boolean isLocalInitialized(int localIndex) {
+        return initializedLocals.get(localIndex);
+    }
+
+    void initializeLocal(int localIndex) {
+        initializedLocals.set(localIndex);
     }
 
     /**

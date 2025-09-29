@@ -60,8 +60,6 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  * additional information used to generate parser nodes.
  */
 public class ParserState {
-    private static final int[] EMPTY_ARRAY = new int[0];
-
     private final IntArrayList valueStack;
     private final ControlStack controlStack;
     private final RuntimeBytecodeGen bytecode;
@@ -267,8 +265,9 @@ public class ParserState {
         }
     }
 
-    public void enterFunction(int[] resultTypes) {
-        enterBlock(EMPTY_ARRAY, resultTypes);
+    public void enterFunction(int[] resultTypes, int[] locals) {
+        ControlFrame frame = BlockFrame.createFunctionFrame(resultTypes, locals);
+        controlStack.push(frame);
     }
 
     /**
@@ -279,7 +278,7 @@ public class ParserState {
      * @param resultTypes The result types of the block that was entered.
      */
     public void enterBlock(int[] paramTypes, int[] resultTypes) {
-        ControlFrame frame = new BlockFrame(paramTypes, resultTypes, valueStack.size(), false);
+        ControlFrame frame = new BlockFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek());
         controlStack.push(frame);
         pushAll(paramTypes);
     }
@@ -293,7 +292,7 @@ public class ParserState {
      */
     public void enterLoop(int[] paramTypes, int[] resultTypes) {
         final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(resultTypes));
-        ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
+        ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), label);
         controlStack.push(frame);
         pushAll(paramTypes);
     }
@@ -307,7 +306,7 @@ public class ParserState {
      */
     public void enterIf(int[] paramTypes, int[] resultTypes) {
         final int fixupLocation = bytecode.addIfLocation();
-        ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, fixupLocation);
+        ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), fixupLocation);
         controlStack.push(frame);
         pushAll(paramTypes);
     }
@@ -330,7 +329,7 @@ public class ParserState {
      * @param handlers The exception handlers of the try table that was entered.
      */
     public void enterTryTable(int[] paramTypes, int[] resultTypes, ExceptionHandler[] handlers) {
-        final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), false, bytecode.location(), handlers);
+        final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), bytecode.location(), handlers);
         controlStack.push(frame);
 
         exceptionTables.add(frame.table());
@@ -350,7 +349,7 @@ public class ParserState {
         checkLabelExists(label);
         final ControlFrame labelFrame = getFrame(label);
         // we reuse the block frame, instead of introducing a new catch frame.
-        final ControlFrame frame = new BlockFrame(WasmType.VOID_TYPE_ARRAY, labelFrame.labelTypes(), labelFrame.initialStackSize(), false);
+        final ControlFrame frame = new BlockFrame(WasmType.VOID_TYPE_ARRAY, labelFrame.labelTypes(), labelFrame.initialStackSize(), controlStack.peek());
         controlStack.push(frame);
         final ExceptionHandler e = new ExceptionHandler(opcode, tag);
         labelFrame.addExceptionHandler(e);
@@ -723,6 +722,14 @@ public class ParserState {
      */
     public ControlFrame getRootBlock() {
         return controlStack.getFirst();
+    }
+
+    public boolean isLocalInitialized(int localIndex) {
+        return controlStack.peek().isLocalInitialized(localIndex);
+    }
+
+    public void initializeLocal(int localIndex) {
+        controlStack.peek().initializeLocal(localIndex);
     }
 
     /**

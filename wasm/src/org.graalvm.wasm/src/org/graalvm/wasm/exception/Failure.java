@@ -82,6 +82,7 @@ public enum Failure {
     MULTIPLE_TABLES(Type.INVALID, "multiple tables"),
     LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
     UNKNOWN_LOCAL(Type.INVALID, "unknown local"),
+    UNINITIALIZED_LOCAL(Type.INVALID, "uninitialized local"),
     UNKNOWN_GLOBAL(Type.INVALID, "unknown global"),
     UNKNOWN_MEMORY(Type.INVALID, "unknown memory"),
     UNKNOWN_TABLE(Type.INVALID, "unknown table"),

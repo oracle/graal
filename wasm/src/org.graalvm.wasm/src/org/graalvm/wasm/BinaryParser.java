@@ -118,6 +118,8 @@ public class BinaryParser extends BinaryStreamParser {
     private static final int MAGIC = 0x6d736100;
     private static final int VERSION = 0x00000001;
 
+    private static final int[] EMPTY_LOCALS = new int[0];
+
     private final WasmModule module;
     private final WasmContext wasmContext;
     private final int[] multiResult;
@@ -607,7 +609,7 @@ public class BinaryParser extends BinaryStreamParser {
         final ParserState state = new ParserState(bytecode, module);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
-        state.enterFunction(resultTypes);
+        state.enterFunction(resultTypes, locals);
 
         int opcode;
         end: while (offset < sourceCodeEndOffset) {
@@ -906,6 +908,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.LOCAL_GET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    Assert.assertTrue(state.isLocalInitialized(localIndex), Failure.UNINITIALIZED_LOCAL);
                     final int localType = locals[localIndex];
                     state.push(localType);
                     if (WasmType.isNumberType(localType)) {
@@ -918,6 +921,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.LOCAL_SET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    state.initializeLocal(localIndex);
                     final int localType = locals[localIndex];
                     state.popChecked(localType);
                     if (WasmType.isNumberType(localType)) {
@@ -930,6 +934,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.LOCAL_TEE: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    state.initializeLocal(localIndex);
                     final int localType = locals[localIndex];
                     state.popChecked(localType);
                     state.push(localType);
@@ -2649,7 +2654,7 @@ public class BinaryParser extends BinaryStreamParser {
         final List<Object> stack = new ArrayList<>();
         boolean calculable = true;
 
-        state.enterFunction(new int[]{resultType});
+        state.enterFunction(new int[]{resultType}, EMPTY_LOCALS);
         int opcode;
         while ((opcode = read1() & 0xFF) != Instructions.END) {
             switch (opcode) {

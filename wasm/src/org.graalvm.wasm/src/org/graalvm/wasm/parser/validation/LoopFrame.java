@@ -45,14 +45,16 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
+import java.util.BitSet;
+
 /**
  * Representation of a wasm loop during module validation.
  */
 class LoopFrame extends ControlFrame {
     private final int labelLocation;
 
-    LoopFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
+    LoopFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int labelLocation) {
+        super(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
         this.labelLocation = labelLocation;
     }
 
