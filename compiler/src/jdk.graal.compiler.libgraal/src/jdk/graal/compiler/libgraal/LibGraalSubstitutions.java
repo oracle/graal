@@ -68,13 +68,13 @@ class LibGraalSubstitutions {
         @Substitute
         public static Class<?> forName(String name, boolean initialize, ClassLoader loader)
                         throws ClassNotFoundException {
-            throw new ClassNotFoundException(name);
+            throw new ClassNotFoundException(name + " (class loading not supported in libgraal)");
         }
 
         @Substitute
         private static Class<?> forName(String className, Class<?> caller)
                         throws ClassNotFoundException {
-            throw new ClassNotFoundException(className);
+            throw new ClassNotFoundException(className + " (class loading not supported in libgraal)");
         }
 
         @Substitute
@@ -95,7 +95,7 @@ class LibGraalSubstitutions {
     static final class Target_java_lang_ClassLoader {
         @Substitute
         public Class<?> loadClass(String name) throws ClassNotFoundException {
-            throw new ClassNotFoundException(name);
+            throw new ClassNotFoundException(name + " (class loading not supported in libgraal)");
         }
 
         @Substitute
