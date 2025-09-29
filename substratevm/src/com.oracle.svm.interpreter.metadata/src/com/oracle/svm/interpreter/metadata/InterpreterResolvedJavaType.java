@@ -304,7 +304,9 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
-    public final ResolvedJavaMethod getClassInitializer() {
+    public ResolvedJavaMethod getClassInitializer() {
+        // We currently do not expect this to be called for any other type than
+        // CremaResolvedObjectType.
         throw VMError.intentionallyUnimplemented();
     }
 

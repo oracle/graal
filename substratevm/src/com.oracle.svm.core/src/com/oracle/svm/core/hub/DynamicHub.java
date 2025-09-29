@@ -472,7 +472,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
                     int modifiers, short flags, ClassLoader classLoader, String simpleBinaryName, Module module,
-                    Object declaringClass, String signature, int typeID, int interfaceID,
+                    Object declaringClass, String signature,
+                    int typeID, int interfaceID,
+                    boolean hasClassInitializer,
                     short numClassTypes,
                     short typeIDDepth,
                     short numIterableInterfaceTypes,
@@ -506,7 +508,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
-        companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(false);
+        companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(false, hasClassInitializer);
 
         assert !isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
         boolean isInterface = isFlagSet(flags, IS_INTERFACE_FLAG_BIT);
