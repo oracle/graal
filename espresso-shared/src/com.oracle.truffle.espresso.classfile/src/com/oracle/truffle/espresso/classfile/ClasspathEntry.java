@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import java.io.File;
+
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 /**
@@ -35,7 +37,14 @@ public abstract class ClasspathEntry {
     /**
      * Gets the string representing the underlying path of this entry.
      */
-    public abstract String path();
+    public final String path() {
+        return file().getPath();
+    }
+
+    /**
+     * Gets the File object representing the underlying path of this entry.
+     */
+    public abstract File file();
 
     /**
      * Gets the contents of a file denoted by a given path that is relative to this classpath entry.

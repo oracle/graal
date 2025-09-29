@@ -30,15 +30,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ClasspathFile;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
@@ -58,10 +57,10 @@ public final class Classpath {
      */
     @TruffleBoundary
     public static ClasspathEntry createEntry(String name) {
-        TruffleFile pathFile = EspressoContext.get(null).getEnv().getPublicTruffleFile(name);
+        final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
-        } else if (pathFile.isRegularFile()) {
+        } else if (pathFile.isFile()) {
             // regular file.
             EspressoContext context = EspressoContext.get(null);
             if (context.getJavaVersion().modulesEnabled()) {
@@ -71,9 +70,7 @@ public final class Classpath {
                 }
             }
             try {
-                Path file = Files.createTempFile(null, null);
-                Files.write(file, pathFile.readAllBytes());
-                ZipFile zipFile = new JarFile(file.toFile(), false, OPEN_READ, context.getJavaVersion().toRunTimeVersion());
+                ZipFile zipFile = new JarFile(pathFile, false, OPEN_READ, context.getJavaVersion().toRunTimeVersion());
                 return new Archive(pathFile, zipFile);
             } catch (IOException ignored) {
             }
@@ -88,9 +85,9 @@ public final class Classpath {
      * archive file.
      */
     static final class PlainFile extends ClasspathEntry {
-        private final TruffleFile file;
+        private final File file;
 
-        PlainFile(TruffleFile file) {
+        PlainFile(File file) {
             this.file = file;
         }
 
@@ -100,8 +97,8 @@ public final class Classpath {
         }
 
         @Override
-        public String path() {
-            return file.getPath();
+        public File file() {
+            return file;
         }
     }
 
@@ -111,9 +108,9 @@ public final class Classpath {
     public static final class Directory extends ClasspathEntry {
         private static final boolean REPLACE_SEPARATOR = File.separatorChar != '/';
 
-        private final TruffleFile directory;
+        private final File directory;
 
-        public Directory(TruffleFile directory) {
+        public Directory(File directory) {
             // makes getParent work as expected with relative pathnames
             this.directory = directory.getAbsoluteFile();
         }
@@ -124,11 +121,10 @@ public final class Classpath {
             if (REPLACE_SEPARATOR) {
                 fsPath = fsPath.replace('/', File.separatorChar);
             }
-            TruffleFile file = directory.resolve(fsPath);
+            final File file = new File(directory, fsPath);
             if (file.exists()) {
                 try {
-                    byte[] bytes = file.readAllBytes();
-                    return new ClasspathFile(bytes, this, archiveName);
+                    return new ClasspathFile(Files.readAllBytes(file.toPath()), this, archiveName);
                 } catch (IOException ioException) {
                     return null;
                 }
@@ -137,8 +133,8 @@ public final class Classpath {
         }
 
         @Override
-        public String path() {
-            return directory.getPath();
+        public File file() {
+            return directory;
         }
 
         @Override
@@ -151,10 +147,10 @@ public final class Classpath {
      * Represents a classpath entry that is a path to an existing zip/jar archive file.
      */
     static final class Archive extends ClasspathEntry {
-        private final TruffleFile file;
+        private final File file;
         private final ZipFile zipFile;
 
-        Archive(TruffleFile file, ZipFile zipFile) {
+        Archive(File file, ZipFile zipFile) {
             this.file = file;
             this.zipFile = zipFile;
         }
@@ -172,8 +168,8 @@ public final class Classpath {
         }
 
         @Override
-        public String path() {
-            return file.getPath();
+        public File file() {
+            return file;
         }
 
         @Override
@@ -187,19 +183,19 @@ public final class Classpath {
      * Represents a classpath entry that is a path to a jimage modules file.
      */
     static final class Modules extends ClasspathEntry {
-        private final TruffleFile file;
+        private final File file;
         private final JImageHelper helper;
         private final JImageExtensions extensions;
 
-        Modules(TruffleFile file, JImageHelper helper, JImageExtensions extensions) {
+        Modules(File file, JImageHelper helper, JImageExtensions extensions) {
             this.file = file;
             this.helper = helper;
             this.extensions = extensions;
         }
 
         @Override
-        public String path() {
-            return file.getPath();
+        public File file() {
+            return file;
         }
 
         @Override
