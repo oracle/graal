@@ -86,7 +86,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * </pre>
  *
  * @see Operation#storeBytecodeIndex()
- * @since 26.0
+ * @since 25.1
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD})

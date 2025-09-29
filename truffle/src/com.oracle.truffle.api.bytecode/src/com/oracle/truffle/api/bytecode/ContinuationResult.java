@@ -112,7 +112,7 @@ public final class ContinuationResult implements TruffleObject {
      * {@link GenerateBytecode#enableYield() built-in yield} creates continuation results
      * automatically.
      *
-     * @since 26.0
+     * @since 25.1
      */
     public static ContinuationResult create(ContinuationRootNode rootNode, MaterializedFrame frame, Object result) {
         return new ContinuationResult(rootNode, frame, result);
