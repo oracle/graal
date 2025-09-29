@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Ljava/io/TruffleFileSystem;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_TruffleFileSystem {
     private static final int NAME_MAX = 255;
 

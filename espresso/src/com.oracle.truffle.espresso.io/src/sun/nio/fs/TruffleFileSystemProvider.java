@@ -52,7 +52,6 @@ import java.util.Set;
  * This file must be compatible with 21+.
  */
 class TruffleFileSystemProvider extends FileSystemProvider {
-
     static {
         // ensure 'nio' is loaded. Also loads 'net' as a side-effect.
         sun.nio.ch.IOUtil.load();

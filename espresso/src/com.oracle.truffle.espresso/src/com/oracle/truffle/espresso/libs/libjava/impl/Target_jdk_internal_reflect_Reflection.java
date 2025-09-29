@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/reflect/Reflection;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_reflect_Reflection {
     @Substitution
     public static int getClassAccessFlags(@JavaType(Class.class) StaticObject cls, @Inject EspressoContext ctx) {

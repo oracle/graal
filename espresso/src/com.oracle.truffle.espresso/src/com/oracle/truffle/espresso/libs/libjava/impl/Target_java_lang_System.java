@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
+import com.oracle.truffle.espresso.libs.JNU;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -39,7 +40,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = java.lang.System.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_System {
 
     @Substitution
@@ -86,7 +87,7 @@ public final class Target_java_lang_System {
             known[props.userDirNdx] = java.lang.System.getProperty("user.dir");
             known[props.userNameNdx] = java.lang.System.getProperty("user.name");
 
-            known[props.sunJnuEncodingNdx] = java.lang.System.getProperty("sun.jnu.encoding");
+            known[props.sunJnuEncodingNdx] = JNU.getCharSet().toString();
             if (ctx.getJavaVersion().java21OrEarlier()) {
                 known[props.fileEncodingNdx] = java.lang.System.getProperty("file.encoding");
             }
@@ -95,6 +96,7 @@ public final class Target_java_lang_System {
             }
             known[props.stdoutEncodingNdx] = java.lang.System.getProperty("stdout.encoding");
             known[props.stderrEncodingNdx] = java.lang.System.getProperty("stderr.encoding");
+            known[props.stdinEncodingNdx] = java.lang.System.getProperty("stdin.encoding");
 
             known[props.osNameNdx] = java.lang.System.getProperty("os.name");
             known[props.osArchNdx] = java.lang.System.getProperty("os.arch");
@@ -175,6 +177,7 @@ public final class Target_java_lang_System {
             private final int socksProxyHostNdx;
             private final int socksProxyPortNdx;
             private final int stderrEncodingNdx;
+            private final int stdinEncodingNdx;
             private final int stdoutEncodingNdx;
             private final int sunArchAbiNdx;
             private final int sunArchDataModelNdx;
@@ -227,6 +230,7 @@ public final class Target_java_lang_System {
                 socksProxyHostNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyHost_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 socksProxyPortNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyPort_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 stderrEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stderr_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
+                stdinEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdin_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 stdoutEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdout_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchAbiNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_abi_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchDataModelNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_data_model_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());

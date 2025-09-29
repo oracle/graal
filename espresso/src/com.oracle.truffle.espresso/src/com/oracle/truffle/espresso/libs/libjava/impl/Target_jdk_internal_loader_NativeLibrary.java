@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/loader/NativeLibrary;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_loader_NativeLibrary {
     @Substitution
     public static long findEntry0(long handle, @JavaType(String.class) StaticObject name,

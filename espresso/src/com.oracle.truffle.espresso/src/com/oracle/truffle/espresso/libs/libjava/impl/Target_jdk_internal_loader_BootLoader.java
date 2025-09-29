@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/loader/BootLoader;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_loader_BootLoader {
     @Substitution
     public static void setBootLoaderUnnamedModule0(@JavaType(Module.class) StaticObject module, @Inject EspressoContext ctx) {

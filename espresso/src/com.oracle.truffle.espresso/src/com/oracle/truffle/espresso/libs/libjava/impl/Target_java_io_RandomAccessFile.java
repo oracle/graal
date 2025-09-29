@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -46,7 +47,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNamesProvider;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = RandomAccessFile.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_RandomAccessFile {
 
     @Substitution
@@ -68,7 +69,12 @@ public final class Target_java_io_RandomAccessFile {
         Checks.nullCheck(name, context);
         String hostName = context.getMeta().toHostString(name);
         Set<OpenOption> openOptions = getOpenOptions(mode, context, io);
-        io.open(self, FDAccess.forRandomAccessFile(), hostName, openOptions);
+        try {
+            io.open(self, FDAccess.forRandomAccessFile(), hostName, openOptions);
+        } catch (EspressoException e) {
+            // Guest code only ever expects FileNotFoundException.
+            throw Throw.throwFileNotFoundException(hostName, context);
+        }
     }
 
     @Substitution(hasReceiver = true, nameProvider = Append0.class)

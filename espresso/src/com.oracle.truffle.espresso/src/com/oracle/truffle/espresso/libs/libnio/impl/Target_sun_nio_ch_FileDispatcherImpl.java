@@ -31,6 +31,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.Throw;
@@ -92,7 +94,7 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
             do {
                 nextRead = io.readBytes(fd, FDAccess.forFileDescriptor(), byteBuffer);
                 read += nextRead;
-            } while (nextRead != -1 && read < length);
+            } while (nextRead != io.ioStatusSync.EOF && read < length);
         } finally {
             // always reset the position
             io.seek(fd, FDAccess.forFileDescriptor(), oldPosition);
@@ -102,8 +104,9 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     @SuppressWarnings("unused")
-    public static int unmap0(long address, long length) {
-        throw JavaSubstitution.unimplemented();
+    public static int unmap0(long address, long length, @Inject NativeAccess nativeAccess) {
+        nativeAccess.freeMemory(RawPointer.create(address));
+        return 0;
     }
 
     @Substitution
@@ -170,43 +173,6 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     @Throws(IOException.class)
-    public static int read0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len,
-                    @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.readBytes(fd, FDAccess.forFileDescriptor(), dst);
-
-    }
-
-    @Substitution
-    @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static int readv0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
-        throw JavaSubstitution.unimplemented();
-    }
-
-    @Substitution
-    @Throws(IOException.class)
-    public static int write0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.writeBytes(fd, FDAccess.forFileDescriptor(), dst);
-    }
-
-    @Substitution
-    @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static int writev0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
-        throw JavaSubstitution.unimplemented();
-    }
-
-    @Substitution
-    @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static void close0(@JavaType(FileDescriptor.class) StaticObject fd) {
-        throw JavaSubstitution.unimplemented();
-    }
-
-    @Substitution
-    @Throws(IOException.class)
     public static int pread0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position,
                     @Inject TruffleIO io) {
         // Currently, this is not thread safe as we temporarily update the position of the file.
@@ -239,5 +205,11 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @SuppressWarnings("unused")
     public static int setDirect0(@JavaType(FileDescriptor.class) StaticObject fd, @JavaType(String.class) StaticObject path) {
         throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    public static int available0(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
+        return io.available(fd, FDAccess.forFileDescriptor());
     }
 }

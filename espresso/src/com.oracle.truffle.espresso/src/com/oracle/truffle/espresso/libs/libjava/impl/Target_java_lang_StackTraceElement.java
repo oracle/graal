@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = StackTraceElement.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_StackTraceElement {
     @Substitution
     public static void initStackTraceElement(@JavaType(StackTraceElement.class) StaticObject stack, @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
