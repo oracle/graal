@@ -69,7 +69,7 @@ public interface CremaSupport {
 
     Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
 
-    Object getStaticStorage(Class<?> cls, boolean primitives);
+    Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);

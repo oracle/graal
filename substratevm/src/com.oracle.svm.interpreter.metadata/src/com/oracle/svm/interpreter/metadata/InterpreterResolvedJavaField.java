@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Modifier;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
@@ -33,12 +34,14 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -59,6 +62,7 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
 
     // Computed after analysis.
     private int offset;
+    protected byte layerNum;
 
     private final InterpreterResolvedObjectType declaringClass;
     protected InterpreterResolvedJavaType resolvedType;
@@ -96,6 +100,9 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
             // Primitive types are trivially resolved.
             this.resolvedType = InterpreterResolvedPrimitiveType.fromKind(CremaTypeAccess.symbolToJvmciKind(typeSymbol));
         }
+        this.layerNum = NumUtil.safeToByte(Modifier.isStatic(modifiers) /*- Prevents 'this-escape' warning. */
+                        ? MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED
+                        : MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -117,13 +124,18 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
                     JavaType type, InterpreterResolvedObjectType declaringClass,
                     int offset,
                     JavaConstant constant,
-                    boolean isWordStorage) {
+                    boolean isWordStorage,
+                    int layerNum) {
         MetadataUtil.requireNonNull(type);
         MetadataUtil.requireNonNull(declaringClass);
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
         InterpreterResolvedJavaType resolvedType = type instanceof InterpreterResolvedJavaType ? (InterpreterResolvedJavaType) type : null;
         Symbol<Type> symbolicType = resolvedType == null ? CremaTypeAccess.jvmciNameToType(type.getName()) : resolvedType.getSymbolicType();
-        return new InterpreterResolvedJavaField(nameSymbol, symbolicType, modifiers, resolvedType, declaringClass, offset, constant, isWordStorage);
+        InterpreterResolvedJavaField result = new InterpreterResolvedJavaField(nameSymbol, symbolicType, modifiers, resolvedType, declaringClass, offset, constant, isWordStorage);
+        if (result.isStatic()) {
+            result.layerNum = NumUtil.safeToByte(layerNum);
+        }
+        return result;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -164,6 +176,14 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setInstalledLayerNum(int layerNum) {
+        assert isStatic();
+        VMError.guarantee(this.layerNum == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED || this.layerNum == layerNum);
+        this.layerNum = NumUtil.safeToByte(layerNum);
+
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public final void setResolvedType(InterpreterResolvedJavaType resolvedType) {
         VMError.guarantee(this.resolvedType == null || this.resolvedType.equals(resolvedType),
                         "InterpreterField resolvedType should not be set twice.");
@@ -178,6 +198,10 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
     @Override
     public final int getOffset() {
         return offset;
+    }
+
+    public final int getInstalledLayerNum() {
+        return layerNum;
     }
 
     @Override

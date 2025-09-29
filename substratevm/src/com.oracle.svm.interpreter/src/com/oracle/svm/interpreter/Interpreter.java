@@ -1501,7 +1501,7 @@ public final class Interpreter {
 
         int slotCount = kind.getSlotCount();
         Object receiver = (opcode == PUTSTATIC)
-                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive())
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - slotCount - 1));
 
         if (field.isStatic()) {
@@ -1544,7 +1544,7 @@ public final class Interpreter {
         assert kind != JavaKind.Illegal;
 
         Object receiver = opcode == GETSTATIC
-                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive())
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - 1));
 
         if (field.isStatic()) {

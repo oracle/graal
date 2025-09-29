@@ -295,55 +295,55 @@ public class CremaSupportImpl implements CremaSupport {
                         case Boolean: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
                             boolean c = type.getConstantPool().intAt(constantValueIndex) != 0;
-                            InterpreterToVM.setFieldBoolean(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldBoolean(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Byte: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
                             byte c = (byte) type.getConstantPool().intAt(constantValueIndex);
-                            InterpreterToVM.setFieldByte(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldByte(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Short: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
                             short c = (short) type.getConstantPool().intAt(constantValueIndex);
-                            InterpreterToVM.setFieldShort(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldShort(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Char: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
                             char c = (char) type.getConstantPool().intAt(constantValueIndex);
-                            InterpreterToVM.setFieldChar(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldChar(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Int: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
                             int c = type.getConstantPool().intAt(constantValueIndex);
-                            InterpreterToVM.setFieldInt(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldInt(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Float: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.FLOAT;
                             float c = type.getConstantPool().floatAt(constantValueIndex);
-                            InterpreterToVM.setFieldFloat(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldFloat(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Long: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.LONG;
                             long c = type.getConstantPool().longAt(constantValueIndex);
-                            InterpreterToVM.setFieldLong(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldLong(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Double: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.DOUBLE;
                             double c = type.getConstantPool().doubleAt(constantValueIndex);
-                            InterpreterToVM.setFieldDouble(c, type.getStaticStorage(true), resolvedField);
+                            InterpreterToVM.setFieldDouble(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                         case Object: {
                             assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.STRING;
                             String c = type.getConstantPool().resolveStringAt(constantValueIndex);
-                            InterpreterToVM.setFieldObject(c, type.getStaticStorage(false), resolvedField);
+                            InterpreterToVM.setFieldObject(c, type.getStaticStorage(false, resolvedField.getInstalledLayerNum()), resolvedField);
                             break;
                         }
                     }
@@ -685,8 +685,8 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Object getStaticStorage(Class<?> cls, boolean primitives) {
-        return ((InterpreterResolvedObjectType) DynamicHub.fromClass(cls).getInterpreterType()).getStaticStorage(primitives);
+    public Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum) {
+        return ((InterpreterResolvedObjectType) DynamicHub.fromClass(cls).getInterpreterType()).getStaticStorage(primitives, layerNum);
     }
 
     @Override
