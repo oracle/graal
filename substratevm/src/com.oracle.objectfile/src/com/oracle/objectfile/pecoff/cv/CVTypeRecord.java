@@ -317,50 +317,6 @@ abstract class CVTypeRecord {
         }
     }
 
-    static final class CVTypeFuncIdRecord extends CVTypeRecord {
-
-        int scopeIdx;
-        int typeIdx;
-        String name;
-
-        CVTypeFuncIdRecord(int scopeIdx, int typeIdx, String name) {
-            super(LF_FUNC_ID);
-            this.scopeIdx = scopeIdx;
-            this.typeIdx = typeIdx;
-            this.name = name;
-        }
-
-        @Override
-        public int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putInt(scopeIdx, buffer, initialPos);
-            pos = CVUtil.putInt(typeIdx, buffer, pos);
-            return CVUtil.putUTF8StringBytes(name, buffer, pos);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("LF_FUNC_ID 0x%04x scopeIdx=0x%x typeIdx=0x%x %s", getSequenceNumber(), scopeIdx, typeIdx, name);
-        }
-
-        @Override
-        public int hashCode() {
-            int h = type;
-            h = 31 * h + scopeIdx;
-            h = 31 * h + typeIdx;
-            h = 31 * h + name.hashCode();
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            CVTypeFuncIdRecord other = (CVTypeFuncIdRecord) obj;
-            return this.typeIdx == other.typeIdx && this.name.equals(other.name) && this.scopeIdx == other.scopeIdx;
-        }
-    }
-
     static final class CVTypeMFuncIdRecord extends CVTypeRecord {
 
         int parentTypeIdx;
@@ -495,64 +451,6 @@ abstract class CVTypeRecord {
             }
             CVTypeModifierRecord other = (CVTypeModifierRecord) obj;
             return this.typeIndex == other.typeIndex && this.attrs == other.attrs;
-        }
-    }
-
-    static final class CVTypeProcedureRecord extends CVTypeRecord {
-
-        private int returnType = -1;
-        private CVTypeArglistRecord argList = null;
-
-        CVTypeProcedureRecord() {
-            super(LF_PROCEDURE);
-        }
-
-        public CVTypeProcedureRecord setReturnType(int leaf) {
-            this.returnType = leaf;
-            return this;
-        }
-
-        public CVTypeProcedureRecord setReturnType(CVTypeRecord leaf) {
-            this.returnType = leaf.getSequenceNumber();
-            return this;
-        }
-
-        CVTypeProcedureRecord setArgList(CVTypeArglistRecord leaf) {
-            this.argList = leaf;
-            return this;
-        }
-
-        @Override
-        public int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putInt(returnType, buffer, initialPos);
-            pos = CVUtil.putByte((byte) CV_CALL_NEAR_C, buffer, pos);
-            pos = CVUtil.putByte((byte) 0, buffer, pos); /* TODO funcAttr */
-            pos = CVUtil.putShort((short) argList.getSize(), buffer, pos);
-            pos = CVUtil.putInt(argList.getSequenceNumber(), buffer, pos);
-            return pos;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("LF_PROCEDURE 0x%04x ret=0x%04x arg=0x%04x ", getSequenceNumber(), returnType, argList.getSequenceNumber());
-        }
-
-        @Override
-        public int hashCode() {
-            int h = type;
-            h = 31 * h + returnType;
-            h = 31 * h + argList.hashCode();
-            /* callType and funcAttr are always the same so do not add them to the hash */
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            CVTypeProcedureRecord other = (CVTypeProcedureRecord) obj;
-            return this.returnType == other.returnType && this.argList == other.argList;
         }
     }
 

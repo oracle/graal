@@ -150,7 +150,7 @@ class CVTypeSectionBuilder {
         ClassEntry ownerType = entry.ownerType();
         assert ownerType != null;
         CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord = buildMemberFunction(ownerType, entry.primary().getMethodEntry());
-        return buildFuncIdRecord(mFunctionRecord, entry.primary().getMethodName());
+        return buildMFuncIdRecord(mFunctionRecord, entry.primary().getMethodName());
     }
 
     static class FieldListBuilder {
@@ -500,12 +500,8 @@ class CVTypeSectionBuilder {
         return addTypeRecord(mFunctionRecord);
     }
 
-    CVTypeRecord buildFuncIdRecord(CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord, String functionName) {
-        if (mFunctionRecord.getClassType() != 0) {
-            return addTypeRecord(new CVTypeRecord.CVTypeMFuncIdRecord(mFunctionRecord.getClassType(), mFunctionRecord.getSequenceNumber(), functionName));
-        } else {
-            return addTypeRecord(new CVTypeRecord.CVTypeFuncIdRecord(0, mFunctionRecord.getSequenceNumber(), functionName));
-        }
+    CVTypeRecord buildMFuncIdRecord(CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord, String functionName) {
+        return addTypeRecord(new CVTypeRecord.CVTypeMFuncIdRecord(mFunctionRecord.getClassType(), mFunctionRecord.getSequenceNumber(), functionName));
     }
 
     private <T extends CVTypeRecord> T addTypeRecord(T record) {
