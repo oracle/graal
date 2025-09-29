@@ -62,10 +62,13 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.generator.BitSet;
+import com.oracle.truffle.dsl.processor.generator.NodeState;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -438,6 +441,26 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
+        for (InstructionModel instr : getInstructions()) {
+            if (instr.nodeData == null) {
+                continue;
+            }
+            /*
+             * InstructionModel.canUseNodeSingleton() depends on NodeData.isForceSpecialize() which
+             * is initialized in the parser when quickening is applied. By generating the node
+             * profile in finalizeInstructions we ensure that it is properly initialized.
+             */
+            if (!instr.canUseNodeSingleton()) {
+                instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
+            }
+            if (instr.canInlineState()) {
+                NodeState state = NodeState.create(instr.nodeData, ImmediateKind.STATE_PROFILE.width.byteSize * 8);
+                for (BitSet s : state.activeState.getSets()) {
+                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), false);
+                }
+            }
+        }
+
         BytecodeDSLBuiltins.addBuiltinsOnFinalize(this);
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();

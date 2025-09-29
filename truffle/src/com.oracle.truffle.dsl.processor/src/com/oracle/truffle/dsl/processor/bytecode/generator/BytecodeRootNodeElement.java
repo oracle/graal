@@ -120,6 +120,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateWidth;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
@@ -624,6 +625,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         nodeConsts.addToClass(el);
 
         if (instr.canUseNodeSingleton()) {
+
+            for (VariableElement field : ElementFilter.fieldsIn(el.getEnclosedElements())) {
+                if (field.getModifiers().contains(STATIC)) {
+                    continue;
+                }
+                // safety check so we never have inconsistent conditions
+                throw new AssertionError("Instruction " + instr + " is used as singleton but has node fields " + field);
+            }
+
             el.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
             CodeVariableElement singleton = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL),
                             el.asType(), "SINGLETON");
@@ -2280,9 +2290,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return b.build();
     }
 
-    private static CodeTree writeImmediate(String bc, String bci, String value, InstructionImmediate immediate) {
+    static CodeTree writeImmediate(String bc, String bci, String value, InstructionImmediateEncoding immediate) {
+        return writeImmediate(bc, bci, CodeTreeBuilder.singleString(value), immediate);
+    }
+
+    static CodeTree writeImmediate(String bc, String bci, CodeTree value, InstructionImmediateEncoding immediate) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        String accessor = switch (immediate.kind().width) {
+        String accessor = switch (immediate.width()) {
             case BYTE -> "putByte";
             case SHORT -> "putShort";
             case INT -> "putInt";
@@ -2290,10 +2304,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
-        b.string(bci).string(" + ").string(immediate.offset()).string(" ");
-        b.startComment().string(" imm ", immediate.name(), " ").end();
+        b.string(bci).string(" + ").string(immediate.offset());
         b.end();
-        b.string(value);
+        b.tree(value);
         b.end();
         return b.build();
     }
@@ -2570,6 +2583,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return cachedDataClassName(instr.quickeningBase);
         }
         return instr.getInternalName() + "Node";
+    }
+
+    private static GeneratedTypeMirror getCachedDataClassType(InstructionModel instr) {
+        return new GeneratedTypeMirror("", cachedDataClassName(instr));
     }
 
     private static String childString(int numChildren) {
@@ -4993,7 +5010,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
                         InstructionImmediate immediate = constantOperands.get(endConstantsOffset + i);
                         b.statement(writeImmediate("state.bc", operationStack.read(rootOperation, operationFields.prologBci),
-                                        "state.addConstant(" + prologOperation.operationEndArguments[i].name() + ")", immediate));
+                                        "state.addConstant(" + prologOperation.operationEndArguments[i].name() + ")", immediate.encoding()));
                     }
                 }
 
@@ -5895,7 +5912,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().end();
             }
 
-            List<InstructionImmediate> immediates = instruction.getImmediates();
+            List<InstructionImmediate> immediates = instruction.getExplicitImmediates();
             String[] args = new String[immediates.size()];
 
             int childBciIndex = 0;
@@ -5933,7 +5950,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     }
                     case NODE_PROFILE -> "state.allocateNode()";
                     case TAG_NODE -> "node";
-                    case FRAME_INDEX, LOCAL_INDEX, LOCAL_ROOT, SHORT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
+                    case FRAME_INDEX, LOCAL_INDEX, SHORT, STATE_PROFILE, LOCAL_ROOT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -6099,7 +6116,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
             InstructionModel booleanConverter = shortCircuitInstruction.shortCircuitModel.booleanConverterInstruction();
 
-            List<InstructionImmediate> immediates = booleanConverter.getImmediates();
+            List<InstructionImmediate> immediates = booleanConverter.getExplicitImmediates();
             String[] args = new String[immediates.size()];
             for (int i = 0; i < args.length; i++) {
                 InstructionImmediate immediate = immediates.get(i);
@@ -6807,9 +6824,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.tree(createInstructionConstant(instr));
             b.string(stackEffect);
             int argumentsLength = arguments != null ? arguments.length : 0;
-            if (argumentsLength != instr.getImmediates().size()) {
+            if (argumentsLength != instr.getExplicitImmediates().size()) {
                 throw new AssertionError(
-                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
+                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getExplicitImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
                                                 String.join(", ", arguments));
             }
 
@@ -8067,16 +8084,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement ensureDoEmitInstructionCreated(InstructionModel instruction) {
-                InstructionEncoding encoding = instruction.getInstructionEncoding();
-                return doEmitInstructionMethods.computeIfAbsent(encoding, (length) -> createDoEmitInstruction(instruction));
+                return doEmitInstructionMethods.computeIfAbsent(instruction.getInstructionEncoding(), (e) -> createDoEmitInstruction(e));
             }
 
-            private CodeExecutableElement createDoEmitInstruction(InstructionModel representativeInstruction) {
+            private CodeExecutableElement createDoEmitInstruction(InstructionEncoding encoding) {
                 // Give each method a unique name so that we don't accidentally use the wrong
                 // overload.
                 StringBuilder methodName = new StringBuilder("doEmitInstruction");
-                for (InstructionImmediate immediate : representativeInstruction.immediates) {
-                    methodName.append(switch (immediate.kind().width) {
+                for (InstructionImmediateEncoding immediate : encoding.immediates()) {
+                    methodName.append(switch (immediate.width()) {
                         case BYTE -> "B";
                         case SHORT -> "S";
                         case INT -> "I";
@@ -8086,9 +8102,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), methodName.toString());
                 ex.addParameter(new CodeVariableElement(type(short.class), "instruction"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "stackEffect"));
-                for (int i = 0; i < representativeInstruction.immediates.size(); i++) {
-                    ex.addParameter(new CodeVariableElement(representativeInstruction.immediates.get(i).kind().width.toType(context), "data" + i));
+
+                int explicitImmediateIndex = 0;
+                for (InstructionImmediateEncoding immediate : encoding.getExplicitImmediateEncodings()) {
+                    ex.addParameter(new CodeVariableElement(immediate.width().toType(context), "data" + explicitImmediateIndex++));
                 }
+
                 CodeTreeBuilder b = ex.createBuilder();
 
                 b.startIf().string("stackEffect != 0").end().startBlock();
@@ -8104,7 +8123,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("return false");
                 b.end();
 
-                b.declaration(type(int.class), "newBci", "checkBci(this.bci + " + representativeInstruction.getInstructionLength() + ")");
+                b.declaration(type(int.class), "newBci", "checkBci(this.bci + " + encoding.length() + ")");
                 b.startIf().string("newBci > this.bc.length").end().startBlock();
                 b.statement("this.ensureBytecodeCapacity(newBci)");
                 b.end();
@@ -8112,11 +8131,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
 
                 b.statement(writeInstruction("this.bc", "this.bci + 0", "instruction"));
-                for (int i = 0; i < representativeInstruction.immediates.size(); i++) {
-                    InstructionImmediate immediate = representativeInstruction.immediates.get(i);
-                    // Use a general immediate name instead of this particular immediate's name.
-                    InstructionImmediate representativeImmediate = new InstructionImmediate(immediate.offset(), immediate.kind(), Integer.toString(i));
-                    b.statement(writeImmediate("this.bc", "this.bci", "data" + i, representativeImmediate));
+
+                explicitImmediateIndex = 0;
+                for (InstructionImmediateEncoding immediateEncoding : encoding.immediates()) {
+                    String data;
+                    if (immediateEncoding.explicit()) {
+                        data = "data" + explicitImmediateIndex++;
+                    } else {
+                        data = ElementUtils.defaultValue(immediateEncoding.width().toType(context));
+                    }
+
+                    b.statement(writeImmediate("this.bc", "this.bci", data, immediateEncoding));
                 }
 
                 b.statement("this.bci = newBci");
@@ -10092,48 +10117,71 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.addParameter(new CodeVariableElement(type(Object[].class), "constants"));
 
             CodeTreeBuilder b = ex.createBuilder();
+
+            Map<EqualityCodeTree, List<InstructionModel>> caseGrouping = EqualityCodeTree.group(b, model.getInstructions(), (InstructionModel instruction, CodeTreeBuilder group) -> {
+                group.startCaseBlock();
+                group.startReturn().startStaticCall(type(List.class), "of");
+                for (InstructionImmediate immediate : instruction.getImmediates()) {
+                    emitCreateArgument(group, instruction, immediate);
+                }
+
+                if (instruction.nodeData != null && instruction.canUseNodeSingleton()) {
+                    emitCreateArgument(group, instruction, new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE));
+                }
+
+                group.end().end(); // return
+                group.end(); // case block
+            });
+
             b.startSwitch().string("opcode").end().startBlock();
-            // Pop any value produced by a transparent operation's child.
-            for (var instructions : groupInstructionsByImmediates(model.getInstructions())) {
-                for (InstructionModel instruction : instructions) {
+            for (var group : caseGrouping.entrySet()) {
+                EqualityCodeTree key = group.getKey();
+                for (InstructionModel instruction : group.getValue()) {
                     b.startCase().tree(createInstructionConstant(instruction)).end();
                 }
-                InstructionModel instruction = instructions.get(0);
-
                 b.startCaseBlock();
-                b.startReturn().startStaticCall(type(List.class), "of");
-                for (InstructionImmediate immediate : instruction.getImmediates()) {
-                    b.startGroup();
-                    b.newLine();
-                    b.startIndention();
-                    b.startNew(getImmediateClassName(immediate.kind()));
-
-                    b.doubleQuote(getIntrospectionArgumentName(immediate));
-                    b.string("bci + " + immediate.offset());
-
-                    for (CodeVariableElement var : createImmediateArguments(immediate.kind())) {
-                        String name = var.getName();
-                        switch (name) {
-                            case "width":
-                                b.string(Integer.toString(immediate.kind().width.byteSize));
-                                break;
-                            default:
-                                b.string(var.getName());
-                                break;
-                        }
-                    }
-
-                    b.end();
-                    b.end();
-                    b.end();
-                }
-                b.end().end(); // return
-
-                b.end(); // case block
+                b.tree(key.getTree());
+                b.end();
             }
-            b.end();
+            b.end(); // switch
             b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
             return ex;
+        }
+
+        private void emitCreateArgument(CodeTreeBuilder b, InstructionModel instruction, InstructionImmediate immediate) {
+            b.startGroup();
+            b.newLine();
+            b.startIndention();
+            b.startNew(getImmediateClassName(immediate.kind()));
+
+            b.doubleQuote(getIntrospectionArgumentName(immediate));
+            b.string("bci + " + immediate.offset());
+
+            for (CodeVariableElement var : createImmediateArguments(immediate.kind())) {
+                String name = var.getName();
+                switch (name) {
+                    case "width":
+                        b.string(Integer.toString(immediate.kind().width.byteSize));
+                        break;
+                    case "bytecodeIndex":
+                        b.string("bci");
+                        break;
+                    case "singleton":
+                        if (instruction.canUseNodeSingleton()) {
+                            b.staticReference(getCachedDataClassType(instruction), "SINGLETON");
+                        } else {
+                            b.string("null");
+                        }
+                        break;
+                    default:
+                        b.string(var.getName());
+                        break;
+                }
+            }
+
+            b.end(); // indention
+            b.end(); // line
+            b.end(); // group
         }
 
         private static String getImmediateClassName(ImmediateKind kind) {
@@ -10152,6 +10200,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case INTEGER:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
+                case STATE_PROFILE:
                     return "IntegerArgument";
                 case NODE_PROFILE:
                     return "NodeProfileArgument";
@@ -10180,12 +10229,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case LOCAL_ROOT:
                 case STACK_POINTER:
                 case INTEGER:
+                case STATE_PROFILE:
                     args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
                     args.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
                     break;
                 case BYTECODE_INDEX:
                 case FRAME_INDEX:
                     args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
+                    break;
+                case NODE_PROFILE:
+                    args.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+                    args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
+                    args.add(new CodeVariableElement(Set.of(FINAL), types.Node, "singleton"));
+                    args.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "bytecodeIndex"));
                     break;
                 default:
                     args.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
@@ -10258,6 +10314,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         break;
                     case NODE_PROFILE:
                         this.add(createAsCachedNode());
+                        this.add(createGetSpecializationInfoInternal());
                         break;
                     case BRANCH_PROFILE:
                         this.add(createAsBranchProfile());
@@ -10359,12 +10416,39 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 return ex;
             }
 
+            private CodeExecutableElement createGetSpecializationInfoInternal() {
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "getSpecializationInfoInternal");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+
+                if (model.enableSpecializationIntrospection) {
+                    b.declaration(types.Node, "node", "asCachedNode()");
+                    b.startIf().startStaticCall(types.Introspection, "isIntrospectable").string("node").end().end().startBlock();
+                    b.startReturn();
+                    b.startStaticCall(types.Introspection, "getSpecializations").string("this.bytecode").string("this.bytecodeIndex").string("node").end();
+                    b.end(); // return
+                    b.end();
+                }
+                b.returnNull();
+                return ex;
+            }
+
             private CodeExecutableElement createAsCachedNode() {
                 CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asCachedNode");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.startIf().string("this.bytecode == null").end().startBlock();
                 b.returnNull();
+                b.end();
+
+                // we need to check this explicitly as we do not want to return the singleton node
+                // for uncached
+                b.startIf().string("this.bytecode.getTier() != ").staticReference(types.BytecodeTier, "CACHED").end().startBlock();
+                b.returnNull();
+                b.end();
+
+                b.startIf().string("this.singleton != null").end().startBlock();
+                b.startReturn().string("this.singleton").end();
                 b.end();
 
                 b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
@@ -10452,16 +10536,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     case SHORT, INTEGER, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
+                    case STATE_PROFILE -> "STATE_PROFILE";
                 };
                 b.staticReference(types.Instruction_Argument_Kind, name);
                 b.end();
                 return ex;
             }
 
-        }
-
-        private Collection<List<InstructionModel>> groupInstructionsByImmediates(Collection<InstructionModel> models) {
-            return models.stream().collect(deterministicGroupingBy((m) -> m.getImmediates())).values().stream().sorted(Comparator.comparingInt((i) -> i.get(0).getId())).toList();
         }
 
     }
@@ -12072,6 +12153,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.tree(createValidationErrorWithBci("tagNode is null"));
                             b.end();
                             b.end();
+                            break;
+                        case STATE_PROFILE:
+                            // indirectly validated by node profile
                             break;
                         default:
                             throw new AssertionError("Unexpected kind");
@@ -17754,10 +17838,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else if (stackEffect < 0) {
                 continueAtBuilder.statement("sp -= " + -stackEffect);
             }
-        }
-
-        private GeneratedTypeMirror getCachedDataClassType(InstructionModel instr) {
-            return new GeneratedTypeMirror("", cachedDataClassName(instr));
         }
 
         private List<CodeVariableElement> createExtraParameters() {

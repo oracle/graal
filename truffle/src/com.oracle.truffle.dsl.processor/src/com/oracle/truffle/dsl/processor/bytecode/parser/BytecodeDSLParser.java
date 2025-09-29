@@ -1073,14 +1073,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
             }
 
-            for (InstructionModel instruction1 : model.getInstructions().toArray(InstructionModel[]::new)) {
+            for (InstructionModel instruction1 : model.getInstructions()) {
                 if (instruction1.nodeData != null) {
                     if (instruction1.getQuickeningRoot().hasSpecializedQuickenings()) {
                         instruction1.nodeData.setForceSpecialize(true);
                     }
                 }
             }
+
         }
+
     }
 
     private static void parseDefaultUncachedThreshold(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, DSLExpressionResolver resolver) {

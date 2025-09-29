@@ -48,7 +48,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
-class MultiBitSet {
+public class MultiBitSet {
 
     private final List<BitSet> sets;
 

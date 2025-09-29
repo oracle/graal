@@ -51,8 +51,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
-final class BitSet {
+public final class BitSet {
 
+    // factory may be null
     private final FlatNodeGenFactory factory;
     private final BitStateList states;
     private final String name;

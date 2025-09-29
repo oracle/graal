@@ -338,7 +338,7 @@ public class FlatNodeGenFactory {
 
     @SuppressWarnings("hiding")
     NodeState createNodeState() {
-        return NodeState.create(this, sharingNodes, node);
+        return NodeState.create(this, plugs.getMaxStateBitWidth(), sharingNodes, node);
     }
 
     static boolean needsAOTReset(NodeData node, Collection<NodeData> stateSharingNodes) {
@@ -1754,6 +1754,8 @@ public class FlatNodeGenFactory {
 
         builder.startReturn().startStaticCall(types.Introspection_Provider, "create").string("data").end().end();
 
+        plugs.modifyIntrospectionMethod(reflection);
+
         clazz.add(reflection);
     }
 
@@ -1821,7 +1823,7 @@ public class FlatNodeGenFactory {
             }
 
             if (useSpecializationClass) {
-                createSpecializationClass(baseType, specialization, specializationState, specializationClassElements);
+                ensureSpecializationClassCreated(baseType, specialization, specializationState, specializationClassElements);
 
                 // force creating the specialization class.
                 CodeVariableElement specializationClassVar = createNodeField(PRIVATE, createSpecializationClassReferenceType(specialization),
@@ -1839,8 +1841,8 @@ public class FlatNodeGenFactory {
 
                 nodeElements.add(specializationClassVar);
             }
-
         }
+
         return nodeElements;
     }
 
@@ -1909,7 +1911,7 @@ public class FlatNodeGenFactory {
         return ElementUtils.createConstantName(createSpecializationFieldName(specialization)) + "_UPDATER";
     }
 
-    private void createSpecializationClass(CodeTypeElement enclosingType, SpecializationData specialization,
+    private void ensureSpecializationClassCreated(CodeTypeElement enclosingType, SpecializationData specialization,
                     MultiStateBitSet specializationState,
                     List<Element> specializationClassElements) {
         CodeTypeElement specializationClass = specializationClasses.get(specialization);
@@ -2804,7 +2806,7 @@ public class FlatNodeGenFactory {
                                     filterCompatibleSpecializations(node.getReachableSpecializations(), delegateType), delegateType);
                     coversAllSpecializations = delegateSpecializations.size() == node.getReachableSpecializations().size();
                     if (!coversAllSpecializations) {
-                        builder.tree(multiState.createLoadFastPath(frameState, delegateSpecializations));
+                        builder.tree(multiState.createLoadFastPath(frameState, type, delegateSpecializations));
                         elseIf = delegateBuilder.startIf(elseIf);
 
                         delegateBuilder.startGroup();
@@ -2838,7 +2840,7 @@ public class FlatNodeGenFactory {
             ExecutableTypeData delegateType = compatibleDelegateTypes.get(0);
             coversAllSpecializations = notImplemented.size() == node.getReachableSpecializations().size();
             if (!coversAllSpecializations) {
-                builder.tree(multiState.createLoadFastPath(frameState, notImplemented));
+                builder.tree(multiState.createLoadFastPath(frameState, type, notImplemented));
                 elseIf = delegateBuilder.startIf(elseIf);
                 delegateBuilder.tree(multiState.createContains(frameState, StateQuery.create(SpecializationActive.class, notImplemented))).end();
                 delegateBuilder.startBlock();
@@ -3276,7 +3278,7 @@ public class FlatNodeGenFactory {
 
         boolean needsRewrites = node.needsSpecialize();
         if (needsRewrites) {
-            builder.tree(multiState.createLoadFastPath(frameState, allSpecializations));
+            builder.tree(multiState.createLoadFastPath(frameState, currentType, allSpecializations));
         }
 
         int sharedExecutes = 0;
@@ -3331,13 +3333,13 @@ public class FlatNodeGenFactory {
                 builder.tree(multiState.createIsNotAny(frameState, allSpecializationQuery));
                 builder.end();
                 builder.end().startBlock();
-                builder.tree(wrapInAMethod(builder, specializations, split.group, originalFrameState, split.getName(),
+                builder.tree(wrapInAMethod(builder, currentType, specializations, split.group, originalFrameState, split.getName(),
                                 executeFastPathGroup(builder, frameState.copy(), currentType, split.group, sharedExecutes, specializations)));
                 builder.end();
             }
 
             builder.startElseBlock();
-            builder.tree(wrapInAMethod(builder, allSpecializations, originalGroup, originalFrameState, "generic",
+            builder.tree(wrapInAMethod(builder, currentType, allSpecializations, originalGroup, originalFrameState, "generic",
                             executeFastPathGroup(builder, frameState, currentType, originalGroup, sharedExecutes, null)));
             builder.end();
         }
@@ -3354,7 +3356,7 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private CodeTree wrapInAMethod(CodeTreeBuilder parent, List<SpecializationData> specializations, SpecializationGroup group, FrameState frameState,
+    private CodeTree wrapInAMethod(CodeTreeBuilder parent, ExecutableTypeData typeData, List<SpecializationData> specializations, SpecializationGroup group, FrameState frameState,
                     String suffix, CodeTree codeTree) {
         CodeExecutableElement parentMethod = (CodeExecutableElement) parent.findMethod();
         CodeTypeElement parentClass = (CodeTypeElement) parentMethod.getEnclosingElement();
@@ -3371,7 +3373,7 @@ public class FlatNodeGenFactory {
         int parameterIndex = 0;
         for (BitSet set : multiState.getSets()) {
             LocalVariable local = frameState.get(set.getName());
-            if (local != null && MultiStateBitSet.isRelevantForFastPath(frameState, set, specializations)) {
+            if (local != null && MultiStateBitSet.isRelevantForFastPath(frameState, set, typeData, specializations)) {
                 CodeVariableElement var = (CodeVariableElement) method.getParameters().get(parameterIndex);
                 String oldName = var.getName();
                 String newName = var.getName() + "__";
@@ -7149,7 +7151,8 @@ public class FlatNodeGenFactory {
                 if (useCacheClass(specialization, cache)) {
                     builder.string(".delegate");
                 }
-                return createInlinedAccess(frameState, specialization, builder.build(), value);
+                CodeTree nodeAccess = createNodeAccess(frameState);
+                return createInlinedAccess(frameState, specialization, builder.build(), value, nodeAccess);
             }
         } else {
             String cacheFieldName = createLocalCachedInlinedName(specialization, cache);
@@ -7301,15 +7304,14 @@ public class FlatNodeGenFactory {
     }
 
     @SuppressWarnings("unused")
-    CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value) {
+    CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value, CodeTree nodeReference) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(reference);
         if (frameState.isInlinedNode()) {
-            CodeTree nodeAccess = createNodeAccess(frameState, specialization);
             if (value == null) {
-                builder.startCall(".get").tree(nodeAccess).end();
+                builder.startCall(".get").tree(nodeReference).end();
             } else {
-                builder.startCall(".set").tree(nodeAccess).tree(value).end();
+                builder.startCall(".set").tree(nodeReference).tree(value).end();
             }
         } else {
             if (value != null) {
@@ -7317,6 +7319,10 @@ public class FlatNodeGenFactory {
             }
         }
         return builder.build();
+    }
+
+    CodeTree createInlinedAccess(FrameState frameState, SpecializationData specialization, CodeTree reference, CodeTree value) {
+        return createInlinedAccess(frameState, specialization, reference, value, createNodeAccess(frameState, specialization));
     }
 
     private CodeTree createAssumptionReference(FrameState frameState, SpecializationData s, AssumptionExpression a) {

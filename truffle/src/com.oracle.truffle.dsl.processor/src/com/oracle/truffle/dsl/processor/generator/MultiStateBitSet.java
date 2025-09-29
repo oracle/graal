@@ -59,10 +59,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
-final class MultiStateBitSet extends MultiBitSet {
+public final class MultiStateBitSet extends MultiBitSet {
 
     /*
      * All bitsets in used by other nodes in the same generated class. E.g. nodes in exports are all
@@ -174,10 +175,10 @@ final class MultiStateBitSet extends MultiBitSet {
         return createLoadImpl(all, frameState, false, relevantQuery);
     }
 
-    CodeTree createLoadFastPath(FrameState frameState, List<SpecializationData> specializations) {
+    CodeTree createLoadFastPath(FrameState frameState, ExecutableTypeData executable, List<SpecializationData> specializations) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         for (BitSet bitSet : getSets()) {
-            if (isRelevantForFastPath(frameState, bitSet, specializations)) {
+            if (isRelevantForFastPath(frameState, bitSet, executable, specializations)) {
                 builder.tree(bitSet.createLoad(frameState));
             }
         }
@@ -195,7 +196,7 @@ final class MultiStateBitSet extends MultiBitSet {
         return builder.build();
     }
 
-    static boolean isRelevantForFastPath(FrameState frameState, BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
+    static boolean isRelevantForFastPath(FrameState frameState, BitSet bitSet, ExecutableTypeData executable, Collection<SpecializationData> usedSpecializations) {
         if (!frameState.isSkipStateChecks() && bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
             return true;
         }
@@ -207,6 +208,16 @@ final class MultiStateBitSet extends MultiBitSet {
                 return true;
             }
         }
+        for (SpecializationData specialization : usedSpecializations) {
+            for (TypeGuard implicitTypeGuard : specialization.getImplicitTypeGuards()) {
+                if (specialization.isImplicitTypeGuardUsed(implicitTypeGuard, executable)) {
+                    if (bitSet.getStates().contains(StateQuery.create(ImplicitCastState.class, implicitTypeGuard))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         return false;
     }
 

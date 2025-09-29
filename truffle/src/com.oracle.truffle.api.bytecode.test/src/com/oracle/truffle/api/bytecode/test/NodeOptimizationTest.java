@@ -41,17 +41,18 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
-import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -76,11 +77,13 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
             b.endRoot();
         }).getRootNode();
 
-        Instruction singleSpecializationNode = node.getBytecodeNode().getInstructionsAsList().get(1);
-        assertEquals("c.SingleSpecialization", singleSpecializationNode.getName());
-        assertNoNode(singleSpecializationNode);
-
         assertEquals(42, node.getCallTarget().call(42));
+
+        Instruction instruction = node.getBytecodeNode().getInstructionsAsList().get(1);
+        assertEquals("c.SingleSpecialization", instruction.getName());
+        Instruction.Argument nodeArgument = findNodeArgument(instruction);
+        assertNotNull(nodeArgument);
+        assertSingletonNode(nodeArgument);
     }
 
     @Test
@@ -90,35 +93,72 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginBound();
+            b.beginBoundNode();
             b.emitLoadArgument(0);
-            b.endBound();
+            b.endBoundNode();
             b.endReturn();
             b.endRoot();
         }).getRootNode();
 
-        Instruction singleSpecializationNode = node.getBytecodeNode().getInstructionsAsList().get(1);
-        assertEquals("c.Bound", singleSpecializationNode.getName());
-        assertNode(singleSpecializationNode);
+        assertEquals(42, node.getCallTarget().call(42));
+
+        Instruction instruction = node.getBytecodeNode().getInstructionsAsList().get(1);
+        Instruction.Argument nodeArgument = findNodeArgument(instruction);
+        assertEquals("c.BoundNode", instruction.getName());
+        assertNotNull(nodeArgument);
+
+        assertInstanceNode(nodeArgument);
+        assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
+    }
+
+    @Test
+    public void testBoundBytecodeNode() {
+        // return - (arg0)
+        NodeOptimizationTestNode node = (NodeOptimizationTestNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginBoundBytecodeNode();
+            b.emitLoadArgument(0);
+            b.endBoundBytecodeNode();
+            b.endReturn();
+            b.endRoot();
+        }).getRootNode();
 
         assertEquals(42, node.getCallTarget().call(42));
+
+        Instruction instruction = node.getBytecodeNode().getInstructionsAsList().get(1);
+        Instruction.Argument nodeArgument = findNodeArgument(instruction);
+        assertEquals("c.BoundBytecodeNode", instruction.getName());
+        assertNotNull(nodeArgument);
+
+        assertSingletonNode(nodeArgument);
+        assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
     }
 
-    private static void assertNoNode(Instruction i) {
-        for (Instruction.Argument arg : i.getArguments()) {
-            if (arg.getKind() == Kind.NODE_PROFILE) {
-                fail("No node profile expected but found in " + i);
-            }
-        }
-    }
+    @Test
+    public void testSingletonForSpecialization() {
+        // return - (arg0)
+        NodeOptimizationTestNode node = (NodeOptimizationTestNode) parse(b -> {
+            b.beginRoot();
 
-    private static void assertNode(Instruction i) {
-        for (Instruction.Argument arg : i.getArguments()) {
-            if (arg.getKind() == Kind.NODE_PROFILE) {
-                return;
-            }
-        }
-        fail("No node profile found but expected in " + i);
+            b.beginReturn();
+            b.beginSpecializationTest();
+            b.emitLoadArgument(0);
+            b.endSpecializationTest();
+            b.endReturn();
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals(42, node.getCallTarget().call(42));
+
+        Instruction instruction = node.getBytecodeNode().getInstructionsAsList().get(1);
+        assertEquals("c.SpecializationTest$Int", instruction.getName());
+        Instruction.Argument nodeArgument = findNodeArgument(instruction);
+        assertNotNull(nodeArgument);
+
+        assertSingletonNode(nodeArgument);
+        assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
     }
 
     private static NodeOptimizationTestNode parse(BytecodeParser<NodeOptimizationTestNodeGen.Builder> builder) {
@@ -128,13 +168,31 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
-                    enableQuickening = true, //
+                    enableSpecializationIntrospection = true, enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
     public abstract static class NodeOptimizationTestNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected NodeOptimizationTestNode(BytecodeDSLTestLanguage language,
                         FrameDescriptor.Builder frameDescriptor) {
             super(language, frameDescriptor.build());
+        }
+
+        @Operation
+        static final class SpecializationTest {
+            @Specialization
+            public static int doInt(int a) {
+                return a;
+            }
+
+            @Specialization
+            public static long doLong(long a) {
+                return a;
+            }
+
+            @Specialization
+            public static boolean doBoolean(boolean a) {
+                return a;
+            }
         }
 
         @Operation
@@ -146,9 +204,17 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
         }
 
         @Operation
-        static final class Bound {
+        static final class BoundNode {
             @Specialization
             public static Object doDefault(Object v, @SuppressWarnings("unused") @Bind Node node) {
+                return v;
+            }
+        }
+
+        @Operation
+        static final class BoundBytecodeNode {
+            @Specialization
+            public static Object doDefault(Object v, @SuppressWarnings("unused") @Bind BytecodeNode node) {
                 return v;
             }
         }
