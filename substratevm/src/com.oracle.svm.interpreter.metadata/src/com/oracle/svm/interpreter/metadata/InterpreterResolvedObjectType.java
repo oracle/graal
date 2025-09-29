@@ -228,11 +228,12 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return false;
     }
 
-    public Object getStaticStorage(boolean primitives) {
+    public Object getStaticStorage(boolean primitives, int layerNum) {
+        assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER : "Requesting static storage for a non-static field: " + layerNum;
         if (primitives) {
-            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNum);
         } else {
-            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNum);
         }
     }
 

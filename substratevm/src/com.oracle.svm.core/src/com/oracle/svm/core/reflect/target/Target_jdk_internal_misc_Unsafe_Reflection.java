@@ -59,7 +59,7 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         int layerNumber = ImageLayerBuildingSupport.buildingImageLayer() ? field.installedLayerNumber : MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         if (RuntimeClassLoading.isSupported()) {
             Field reflectField = SubstrateUtil.cast(field, Field.class);
-            return CremaSupport.singleton().getStaticStorage(reflectField.getDeclaringClass(), reflectField.getType().isPrimitive());
+            return CremaSupport.singleton().getStaticStorage(reflectField.getDeclaringClass(), reflectField.getType().isPrimitive(), field.installedLayerNumber);
         }
         if (SubstrateUtil.cast(field, Field.class).getType().isPrimitive()) {
             return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNumber);

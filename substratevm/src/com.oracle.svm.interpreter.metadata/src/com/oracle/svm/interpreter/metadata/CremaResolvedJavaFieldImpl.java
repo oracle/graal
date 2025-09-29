@@ -27,8 +27,10 @@ package com.oracle.svm.interpreter.metadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.espresso.classfile.ParserField;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -42,6 +44,7 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
                         offset,
                         /*- constantValue */ null,
                         /*- isWordStorage */ false);
+        this.layerNum = NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID);
     }
 
     public static CremaResolvedJavaFieldImpl createAtRuntime(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {

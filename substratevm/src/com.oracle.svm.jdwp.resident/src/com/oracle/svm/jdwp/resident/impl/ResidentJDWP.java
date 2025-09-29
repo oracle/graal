@@ -36,14 +36,12 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads;
@@ -1322,11 +1320,8 @@ public final class ResidentJDWP implements JDWP {
         Object receiver;
         JavaKind fieldKind = field.getJavaKind();
         if (field.isStatic()) {
-            assert typeOrReceiver instanceof InterpreterResolvedJavaType;
-            // typeOrReceiver is ignored, all static fields are grouped together.
-            receiver = (fieldKind.isPrimitive() || field.isWordStorage())
-                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
+            InterpreterResolvedObjectType resolvedType = (InterpreterResolvedObjectType) typeOrReceiver;
+            receiver = resolvedType.getStaticStorage(fieldKind.isPrimitive() || field.isWordStorage(), field.getInstalledLayerNum());
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;
@@ -1760,11 +1755,8 @@ public final class ResidentJDWP implements JDWP {
         Object receiver;
         JavaKind fieldKind = field.getJavaKind();
         if (field.isStatic()) {
-            assert typeOrReceiver instanceof InterpreterResolvedJavaType;
-            // typeOrReceiver is ignored, all static fields are grouped together.
-            receiver = (fieldKind.isPrimitive() || field.isWordStorage())
-                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
+            InterpreterResolvedObjectType resolvedType = (InterpreterResolvedObjectType) typeOrReceiver;
+            receiver = resolvedType.getStaticStorage(fieldKind.isPrimitive() || field.isWordStorage(), field.getInstalledLayerNum());
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;
@@ -1802,7 +1794,9 @@ public final class ResidentJDWP implements JDWP {
             case Object  -> {
                 assert !field.isWordStorage() : field; // handled above
                 Object value = readReferenceOrNull(reader);
+                /* If the field type is not in the image, there is no need to type-check, as no AOT code can access the field. */
                 if (field.getResolvedType() != null) {
+                    /* Analysis may have constrained the field type to a more precise type, and AOT code expects that typing. */
                     if (value != null && !field.getResolvedType().getJavaClass().isInstance(value)) {
                         throw JDWPException.raise(ErrorCode.TYPE_MISMATCH);
                     }
