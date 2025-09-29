@@ -26,7 +26,6 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -171,7 +170,7 @@ public class CremaSupportImpl implements CremaSupport {
                 /* ignore e.g. hosted fields */
                 continue;
             }
-            if (!analysisUniverse.hostVM().platformSupported((AnnotatedElement) wrappedField.getType())) {
+            if (wrappedField.getType() instanceof ResolvedJavaType resolvedFieldType && !analysisUniverse.hostVM().platformSupported(resolvedFieldType)) {
                 /* ignore fields with unsupported types */
                 continue;
             }
