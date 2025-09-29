@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
@@ -51,6 +50,9 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationK
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.model.CacheExpression;
+import com.oracle.truffle.dsl.processor.model.InlineFieldData;
+import com.oracle.truffle.dsl.processor.model.InlinedNodeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
@@ -169,6 +171,7 @@ public final class InstructionModel implements PrettyPrintable {
          * local accesses.
          */
         LOCAL_ROOT("local_root", ImmediateWidth.SHORT),
+        STATE_PROFILE("state", ImmediateWidth.SHORT),
         SHORT("short", ImmediateWidth.SHORT),
         INTEGER("int", ImmediateWidth.INT),
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
@@ -191,40 +194,25 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediate(int offset, ImmediateKind kind, String name) {
+    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding) {
 
+        public boolean explicit() {
+            return encoding.explicit();
+        }
+
+        public int offset() {
+            return encoding.offset();
+        }
     }
 
-    public static final class InstructionEncoding implements Comparable<InstructionEncoding> {
-        public final ImmediateWidth[] immediates;
-        public final int length;
+    public record InstructionEncoding(List<InstructionImmediateEncoding> immediates, int length) implements Comparable<InstructionEncoding> {
 
-        public InstructionEncoding(ImmediateWidth[] immediates, int length) {
-            this.immediates = immediates;
-            this.length = length;
+        InstructionEncoding(InstructionModel instruction) {
+            this(instruction.immediates.stream().map((i) -> i.encoding()).toList(),
+                            instruction.getInstructionLength());
         }
 
         @Override
-        public int hashCode() {
-            return Arrays.hashCode(immediates);
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (!(other instanceof InstructionEncoding otherEncoding)) {
-                return false;
-            }
-            if (immediates.length != otherEncoding.immediates.length) {
-                return false;
-            }
-            for (int i = 0; i < immediates.length; i++) {
-                if (immediates[i] != otherEncoding.immediates[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         public int compareTo(InstructionEncoding other) {
             // First, order by byte length.
             int diff = length - other.length;
@@ -233,20 +221,44 @@ public final class InstructionModel implements PrettyPrintable {
             }
 
             // Then, order by number of immediates.
-            diff = immediates.length - other.immediates.length;
+            diff = immediates.size() - other.immediates.size();
             if (diff != 0) {
                 return diff;
             }
 
             // If both match, order by each pairwise immediate's byte width.
-            for (int i = 0; i < immediates.length; i++) {
-                if (immediates[i] != other.immediates[i]) {
-                    return immediates[i].byteSize - other.immediates[i].byteSize;
+            for (int i = 0; i < immediates.size(); i++) {
+                diff = immediates.get(i).compareTo(other.immediates.get(i));
+                if (diff != 0) {
+                    return diff;
                 }
             }
 
             return 0;
         }
+
+        public List<InstructionImmediateEncoding> getExplicitImmediateEncodings() {
+            return immediates.stream().filter((i) -> i.explicit()).toList();
+        }
+
+    }
+
+    public record InstructionImmediateEncoding(int offset, ImmediateWidth width, boolean explicit) implements Comparable<InstructionImmediateEncoding> {
+
+        public static final InstructionImmediateEncoding NONE = new InstructionImmediateEncoding(0, null, false);
+
+        @Override
+        public int compareTo(InstructionImmediateEncoding other) {
+            if (this.equals(other)) {
+                return 0;
+            }
+            int diff = this.width.byteSize - other.width.byteSize;
+            if (diff != 0) {
+                return diff;
+            }
+            return Boolean.compare(this.explicit, other.explicit);
+        }
+
     }
 
     private short id = -1;
@@ -297,6 +309,10 @@ public final class InstructionModel implements PrettyPrintable {
         this.name = name;
         this.signature = signature;
         this.quickeningName = quickeningName;
+    }
+
+    public List<InstructionImmediate> getExplicitImmediates() {
+        return immediates.stream().filter((i) -> i.explicit()).toList();
     }
 
     public boolean isShortCircuitConverter() {
@@ -490,7 +506,11 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName) {
-        immediates.add(new InstructionImmediate(byteLength, immediateKind, immediateName));
+        return addImmediate(immediateKind, immediateName, true);
+    }
+
+    public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean explicit) {
+        immediates.add(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width, explicit)));
         byteLength += immediateKind.width.byteSize;
         return this;
     }
@@ -535,11 +555,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionEncoding getInstructionEncoding() {
-        ImmediateWidth[] immediateWidths = new ImmediateWidth[immediates.size()];
-        for (int i = 0; i < immediateWidths.length; i++) {
-            immediateWidths[i] = immediates.get(i).kind.width;
-        }
-        return new InstructionEncoding(immediateWidths, byteLength);
+        return new InstructionEncoding(this);
     }
 
     public String getInternalName() {
@@ -617,11 +633,28 @@ public final class InstructionModel implements PrettyPrintable {
         if (nodeData == null) {
             return false;
         }
-        if (nodeData.needsState()) {
+        if (!canInlineState() && (nodeData.needsState() || nodeData.isForceSpecialize())) {
             return false;
         }
         for (SpecializationData specialization : nodeData.getReachableSpecializations()) {
-            if (specialization.isNodeReceiverBoundInAnyExpression()) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                if (cache.isEncodedEnum()) {
+                    continue;
+                }
+                return false;
+            }
+
+            /*
+             * When storeBciInFrame is disabled, $node may be used to identify the bytecode
+             * location, so if $node is bound we cannot use a node singleton. We can still use a
+             * node singleton when storeBciInFrame is true: we just bind the bytecode node to $node
+             * instead of the singleton. The bytecode node and the bytecode index is enough to
+             * identify the stack trace.
+             */
+            if (!operation.parent.storeBciInFrame && specialization.isNodeReceiverBoundInAnyExpression()) {
                 return false;
             }
         }
@@ -683,10 +716,43 @@ public final class InstructionModel implements PrettyPrintable {
         }
 
         for (InstructionImmediate immediate : immediates) {
-            if (immediate.kind == ImmediateKind.SHORT && immediate.offset % 2 != 0) {
+            if (immediate.kind == ImmediateKind.SHORT && immediate.offset() % 2 != 0) {
                 throw new AssertionError(String.format("Immediate %s of instruction %s should be short-aligned, but it appears at offset %s.",
-                                immediate.name, name, immediate.offset));
+                                immediate.name, name, immediate.offset()));
             }
         }
     }
+
+    /**
+     * Returns <code>true</code> if all state of this operation should get inlined into the
+     * instruction, else <code>false</code>.
+     *
+     * Inlining the state is almost always beneficial as we already have the bytecode array in a
+     * register.
+     */
+    public boolean canInlineState() {
+        NodeData node = this.nodeData;
+        if (node == null) {
+            return false;
+        }
+
+        for (SpecializationData specialization : node.getReachableSpecializations()) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                InlinedNodeData inlinedNode = cache.getInlinedNode();
+                if (inlinedNode != null) {
+                    for (InlineFieldData inlineField : inlinedNode.getFields()) {
+                        /*
+                         * Inlined node data cannot be supported if state is inlined.
+                         */
+                        if (inlineField.isState()) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
 }

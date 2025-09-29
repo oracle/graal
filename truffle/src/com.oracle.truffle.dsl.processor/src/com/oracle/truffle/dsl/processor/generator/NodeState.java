@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
@@ -72,13 +73,22 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 /**
- * Encapsulates all logic related to specialization bit-wise profiling state.
+ * Encapsulates all logic related to specialization bit-wise profiling state. It encapsulating all
+ * logic so we can also use it in the parser to share the complex logic.
  */
-final class NodeState {
+public final class NodeState {
 
+    // factory may be null
     private final FlatNodeGenFactory factory;
-    final MultiStateBitSet activeState;
-    final MultiStateBitSet allState;
+    /**
+     * All state active for the given current node.
+     */
+    public final MultiStateBitSet activeState;
+    /**
+     * All state for all sharingNodes.
+     */
+    public final MultiStateBitSet allState;
+
     private final Map<SpecializationData, MultiStateBitSet> specializationStates = new HashMap<>();
 
     NodeState(FlatNodeGenFactory factory, MultiStateBitSet state, MultiStateBitSet allState) {
@@ -87,10 +97,17 @@ final class NodeState {
         this.allState = allState;
     }
 
+    public static NodeState create(NodeData node, int maxBitWidth) {
+        return create(null, maxBitWidth, List.of(node), node);
+    }
+
     @SuppressWarnings("hiding")
-    static NodeState create(FlatNodeGenFactory factory, Collection<NodeData> sharingNodes, NodeData node) {
+    public static NodeState create(FlatNodeGenFactory factory, int maxBitWidth, Collection<NodeData> sharingNodes, NodeData node) {
+        Objects.requireNonNull(sharingNodes);
+        Objects.requireNonNull(node);
+
         BitStateList list = computeNodeState(factory, sharingNodes, node);
-        MultiStateBitSet state = createMultiStateBitset("", node, list);
+        MultiStateBitSet state = createMultiStateBitset("", maxBitWidth, node, list);
         MultiStateBitSet allState = new MultiStateBitSet(state.all, state.all);
         return new NodeState(factory, state, allState);
     }
@@ -100,15 +117,15 @@ final class NodeState {
         if (!specializationStates.containsKey(specialization)) {
             BitStateList list = computeSpecializationState(factory, specialization);
             if (list.getBitCount() > 0) {
-                specializationState = createMultiStateBitset(ElementUtils.firstLetterLowerCase(specialization.getId()) + "_", specialization.getNode(), list);
+                specializationState = createMultiStateBitset(ElementUtils.firstLetterLowerCase(specialization.getId()) + "_", FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH, specialization.getNode(), list);
             }
             specializationStates.put(specialization, specializationState);
         }
         return specializationState;
     }
 
-    private static MultiStateBitSet createMultiStateBitset(String namePrefix, NodeData activeNode, BitStateList objects) {
-        int maxBits = TruffleProcessorOptions.stateBitWidth(activeNode);
+    private static MultiStateBitSet createMultiStateBitset(String namePrefix, int maxBitWidth, NodeData activeNode, BitStateList objects) {
+        int maxBits = TruffleProcessorOptions.stateBitWidth(activeNode, maxBitWidth);
         return objects.splitBitSets(namePrefix, activeNode, maxBits);
     }
 

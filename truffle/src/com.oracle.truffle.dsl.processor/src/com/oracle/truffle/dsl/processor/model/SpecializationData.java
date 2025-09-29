@@ -175,13 +175,17 @@ public final class SpecializationData extends TemplateMethod {
         }
         int signatureIndex = 0;
         List<TypeGuard> implicitTypeChecks = new ArrayList<>();
-        for (Parameter p : getDynamicParameters()) {
+        for (Parameter p : getSignatureParameters()) {
             if (typeSystem.hasImplicitSourceTypes(p.getType())) {
                 implicitTypeChecks.add(new TypeGuard(typeSystem, p.getType(), signatureIndex));
             }
             signatureIndex++;
         }
         return implicitTypeChecks;
+    }
+
+    public boolean isImplicitTypeGuard(TypeGuard typeGuard) {
+        return getNode().getTypeSystem().hasImplicitSourceTypes(typeGuard.getType());
     }
 
     public boolean isNodeReceiverVariable(VariableElement var) {
@@ -759,17 +763,35 @@ public final class SpecializationData extends TemplateMethod {
         return FlatNodeGenFactory.useSpecializationClass(this);
     }
 
-    private boolean isImplicitTypeGuardUsed(TypeGuard guard) {
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard, ExecutableTypeData inExecutable) {
+        if (!isImplicitTypeGuard(guard)) {
+            return false;
+        }
         int signatureIndex = guard.getSignatureIndex();
+        List<Parameter> specializationSignature = getSignatureParameters();
+        if (signatureIndex >= specializationSignature.size()) {
+            return false;
+        }
+
+        TypeMirror specializationType = specializationSignature.get(signatureIndex).getType();
+        if (!ElementUtils.typeEquals(guard.getType(), specializationType)) {
+            return false;
+        }
+
+        List<TypeMirror> parameters = inExecutable.getSignatureParameters();
+        if (signatureIndex >= parameters.size()) {
+            return true;
+        }
+        TypeMirror evaluatedParameter = parameters.get(signatureIndex);
+        if (ElementUtils.typeEquals(evaluatedParameter, specializationType)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard) {
         for (ExecutableTypeData executable : node.getExecutableTypes()) {
-            List<TypeMirror> parameters = executable.getSignatureParameters();
-            if (signatureIndex >= parameters.size()) {
-                // dynamically executed can be any type.
-                return true;
-            }
-            TypeMirror polymorphicParameter = parameters.get(signatureIndex);
-            TypeMirror specializationType = this.getSignatureParameters().get(signatureIndex).getType();
-            if (ElementUtils.needsCastTo(polymorphicParameter, specializationType)) {
+            if (isImplicitTypeGuardUsed(guard, executable)) {
                 return true;
             }
         }

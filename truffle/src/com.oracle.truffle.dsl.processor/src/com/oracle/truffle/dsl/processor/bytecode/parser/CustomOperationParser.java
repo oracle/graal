@@ -337,7 +337,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
         operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), constantOperandAfterNames);
 
-        operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
+        createCustomInstruction(customOperation, generatedNode, signature, name);
 
         parseStoreBytecodeIndex(mirror, operation);
 
@@ -1027,7 +1027,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * generate a {@link NodeData node model} that will later be used by {@link FlatNodeGenFactory
      * code generation} to generate code for the instruction.
      */
-    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
+    private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
         String instructionName = "c." + operationName;
         InstructionModel instr;
@@ -1041,6 +1041,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         instr.nodeType = generatedNode;
         instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
 
+        customOperation.operation.setInstruction(instr);
         if (customOperation.operation.variadicReturn) {
             instr.nonNull = true;
         }
@@ -1058,12 +1059,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             // Index of continuation root node.
             instr.addImmediate(ImmediateKind.CONSTANT, "location");
         }
-
-        if (!instr.canUseNodeSingleton()) {
-            instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
-        }
-
-        return instr;
     }
 
     /**
