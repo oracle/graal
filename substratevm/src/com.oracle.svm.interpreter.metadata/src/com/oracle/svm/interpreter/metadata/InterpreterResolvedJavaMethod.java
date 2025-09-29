@@ -44,6 +44,7 @@ import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
@@ -330,12 +331,12 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     @Override
     public final boolean isClassInitializer() {
-        return "<clinit>".equals(getName()) && isStatic();
+        return ParserSymbols.ParserNames._clinit_ == getSymbolicName() && isStatic();
     }
 
     @Override
     public final boolean isConstructor() {
-        return "<init>".equals(getName()) && !isStatic();
+        return ParserSymbols.ParserNames._init_ == getSymbolicName() && !isStatic();
     }
 
     @Override

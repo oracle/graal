@@ -35,6 +35,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType {
@@ -81,6 +82,16 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
             }
         }
         return result.toArray(new CremaResolvedJavaMethod[0]);
+    }
+
+    @Override
+    public ResolvedJavaMethod getClassInitializer() {
+        for (InterpreterResolvedJavaMethod method : getDeclaredMethods(false)) {
+            if (method.isClassInitializer()) {
+                return method;
+            }
+        }
+        return null;
     }
 
     @Override
