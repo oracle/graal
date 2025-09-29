@@ -489,12 +489,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 Workload workload = lookup(context, evalResult.languageId, evalResult.value, "run");
 
                 log("::: Running warmup :::");
-                repeatIterations(context, workload, evalResult.sourceName, true, config.warmupIterations);
+                repeatIterations(context, workload, evalResult.sourceName, true, config.warmupIterations, config.summary);
                 log("");
 
                 log("::: Running :::");
                 config.metric.reset();
-                repeatIterations(context, workload, evalResult.sourceName, false, config.iterations);
+                repeatIterations(context, workload, evalResult.sourceName, false, config.iterations, config.summary);
                 log("");
             }
 
@@ -515,9 +515,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         return String.format("%.2f", v);
     }
 
-    private void repeatIterations(Context context, Workload workload, String name, boolean warmup, int iterations) {
+    private void repeatIterations(Context context, Workload workload, String name, boolean warmup, int iterations, Summary summary) {
         // Enter explicitly to avoid context switches for each iteration.
         context.enter();
+        double[] iterationResults = new double[iterations];
         try {
             for (int i = 0; i < iterations; i++) {
                 config.metric.beforeIteration(warmup, i, config);
@@ -531,13 +532,18 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 final Optional<Double> value = config.metric.reportAfterIteration(config);
                 if (value.isPresent()) {
                     log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
+                    iterationResults[i] = value.get();
                 }
             }
 
+            log("------");
             final Optional<Double> value = config.metric.reportAfterAll();
             if (value.isPresent()) {
-                log("------");
                 log("[" + name + "] " + (warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + config.metric.unit());
+            }
+            Optional<Double> summaryAggregate = summary != null ? summary.postprocess(iterationResults) : Optional.empty();
+            if (summaryAggregate.isPresent()) {
+                log("[" + name + "] " + (warmup ? "warmup" : "run") + " aggregate summary: " + round(summaryAggregate.get()) + " " + config.metric.unit());
             }
         } finally {
             context.leave();

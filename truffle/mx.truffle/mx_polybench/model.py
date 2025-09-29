@@ -520,7 +520,8 @@ class PolybenchBenchmarkSuite(
         if metric_name == "time":
             # For metric "time", two metrics are reported:
             # - "warmup" (per-iteration data for "warmup" and "run" iterations)
-            # - "time" (per-iteration data for only the "run" iterations)
+            # - "time-sample" (per-iteration data for only the "run" iterations)
+            # - "time" (aggregation of per-iteration data for the "run" iterations after outlier removal)
             rules += [
                 mx_benchmark.StdOutRule(
                     r"\[.*\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)",
@@ -540,12 +541,25 @@ class PolybenchBenchmarkSuite(
                     {
                         "benchmark": benchmark_name,
                         "metric.better": "lower",
-                        "metric.name": "time",
+                        "metric.name": "time-sample",
                         "metric.unit": ("<unit>", str),
                         "metric.value": ("<value>", float),
                         "metric.type": "numeric",
                         "metric.score-function": "id",
                         "metric.iteration": ("<iteration>", int),
+                    },
+                    startPattern=r"::: Running :::",
+                ),
+                ExcludeWarmupRule(
+                    r"\[.*\] run aggregate summary: (?P<value>.*) (?P<unit>.*)",
+                    {
+                        "benchmark": benchmark_name,
+                        "metric.better": "lower",
+                        "metric.name": "time",
+                        "metric.unit": ("<unit>", str),
+                        "metric.value": ("<value>", float),
+                        "metric.type": "numeric",
+                        "metric.score-function": "id",
                     },
                     startPattern=r"::: Running :::",
                 ),
