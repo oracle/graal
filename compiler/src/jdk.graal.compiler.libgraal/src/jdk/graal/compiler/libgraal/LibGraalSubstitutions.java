@@ -24,13 +24,17 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import java.text.DateFormatSymbols;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Set;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+
+import jdk.graal.compiler.debug.DebugOptions;
 
 class LibGraalSubstitutions {
 
@@ -101,6 +105,20 @@ class LibGraalSubstitutions {
         @Substitute
         static Class<?> findBootstrapClassOrNull(String name) {
             return null;
+        }
+    }
+
+    @TargetClass(value = java.text.DateFormatSymbols.class, onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_text_DateFormatSymbols {
+        /*
+         * DateFormatSymbols.getInstance(Locale) relies on String-based class-lookup (to find
+         * resource bundle sun.text.resources.cldr.FormatData) which we do not want to rely on at
+         * libgraal runtime because it increases image size too much. Instead, we return the
+         * DateFormatSymbols instance that we already have in the image heap.
+         */
+        @Substitute
+        public static DateFormatSymbols getInstance(Locale unused) {
+            return DebugOptions.getSharedDateFormatSymbols();
         }
     }
 }

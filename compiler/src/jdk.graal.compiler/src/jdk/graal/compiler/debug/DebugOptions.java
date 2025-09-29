@@ -30,6 +30,7 @@ import static jdk.graal.compiler.debug.PathUtilities.getAbsolutePath;
 import static jdk.graal.compiler.debug.PathUtilities.getPath;
 
 import java.io.IOException;
+import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -325,6 +326,20 @@ public class DebugOptions {
     }
 
     /**
+     * This circumvents instantiating SimpleDateFormat at libgraal runtime. This is needed to avoid
+     * String-based class-lookup (to find resource bundle sun.text.resources.cldr.FormatData as part
+     * of SimpleDateFormat construction) and allows us to avoid class-lookup support in the image.
+     */
+    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
+
+    public static DateFormatSymbols getSharedDateFormatSymbols() {
+        // SimpleDateFormat is not thread-safe
+        synchronized (SIMPLE_DATE_FORMAT) {
+            return SIMPLE_DATE_FORMAT.getDateFormatSymbols();
+        }
+    }
+
+    /**
      * Returns the {@link #getDumpDirectory} without attempting to create it.
      */
     public static String getDumpDirectoryName(OptionValues options) {
@@ -333,8 +348,12 @@ public class DebugOptions {
             dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
-            dumpDir = getPath(DumpPath.getValue(options), formatter.format(date));
+            // SimpleDateFormat is not thread-safe
+            String dateString;
+            synchronized (SIMPLE_DATE_FORMAT) {
+                dateString = SIMPLE_DATE_FORMAT.format(date);
+            }
+            dumpDir = getPath(DumpPath.getValue(options), dateString);
         }
         dumpDir = getAbsolutePath(dumpDir);
         return dumpDir;
