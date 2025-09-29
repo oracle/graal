@@ -4797,7 +4797,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     buildEmitOperationInstruction(b, operation, constantOperandIndices);
 
                     if (model.enableTagInstrumentation) {
-                        b.statement("doEmitTagResume()");
+                        b.declaration(type(int.class), "tagResumeBci", "doEmitTagResume()");
                     }
                     break;
                 default:
@@ -4847,6 +4847,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
 
                 emitCallAfterChild(b, operation, "true", "nextBci");
+            } else if (model.enableTagInstrumentation && (operation.kind == OperationKind.YIELD || operation.kind == OperationKind.CUSTOM_YIELD)) {
+                // The "childBci" can change depending on whether tag.resume was emitted.
+                // We don't BE yields/tag.resume but the BE machinery needs a valid bci.
+                emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : state.bci - " + operation.instruction.getInstructionLength());
             } else {
                 String nextBci;
                 if (operation.instruction != null) {
@@ -7109,11 +7113,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 throw new AssertionError("cannot produce method");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitTagResume");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitTagResume");
             CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "tagResumeBci", "-1");
 
             b.startIf().string("tags == 0").end().startBlock();
-            b.returnDefault();
+            b.startReturn().string("tagResumeBci").end();
             b.end();
 
             buildOperationStackWalkFromBottom(b, "state.rootOperationSp", () -> {
@@ -7121,12 +7126,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 OperationModel op = model.findOperation(OperationKind.TAG);
                 b.startCase().tree(createOperationConstant(op)).end();
                 b.startBlock();
+                b.startAssign("tagResumeBci").string("state.bci").end();
                 buildEmitInstruction(b, model.tagResumeInstruction, operationStack.read(op, operationFields.nodeId));
                 b.statement("break");
                 b.end(); // case tag
 
                 b.end(); // switch
             });
+            b.startReturn().string("tagResumeBci").end();
 
             return ex;
         }
