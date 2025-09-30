@@ -30,9 +30,9 @@ After embedding the compressed SBOM into the image, there are two possible ways 
 - using the [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md)
 - using [Syft](https://github.com/anchore/syft){:target="_blank"}
 
-### Native Image Inspect Tool
+### Native Image Configure Tool
 
-The [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md) is able to extract the compressed SBOM using the `--sbom` parameter, accessible from both executables and shared libraries:
+The Native Image Inspect Tool is able to extract the compressed SBOM using the `extract-sbom` command from executables and shared libraries.
 ```bash
 native-image-inspect --sbom <path_to_binary>
 ```
